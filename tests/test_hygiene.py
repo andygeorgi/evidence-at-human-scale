@@ -1,5 +1,6 @@
 """The hygiene scanner must find what it claims to find, leave legitimate text alone, and the repository itself must pass it."""
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -207,6 +208,7 @@ class CommandLine(unittest.TestCase):
         self.assertEqual(done.returncode, 0)
         for code in ("HYG101", "HYG108", "HYG205", "HYG206", "HYG207"):
             self.assertIn(code, done.stdout)
+        self.assertIn("--history", done.stdout)
 
     def test_output_is_utf8_even_when_the_console_uses_a_legacy_code_page(self):
         """The rules text holds letters (an accented i, an eth) that a legacy Windows code page cannot print."""
@@ -215,6 +217,116 @@ class CommandLine(unittest.TestCase):
         done = subprocess.run([sys.executable, str(support.SCRIPTS / "check_hygiene.py"), "--rules"], capture_output=True, env=env)
         self.assertEqual(done.returncode, 0, done.stderr.decode("utf-8", "replace"))
         self.assertIn("R\u00edkisendursko\u00f0un", done.stdout.decode("utf-8"))
+
+
+class Speed(unittest.TestCase):
+    def test_a_long_unbroken_run_of_characters_is_not_quadratic_for_the_e_mail_rule(self):
+        """A rendered SVG can hold tens of thousands of characters with no separator; the scan must not slow to a crawl on them."""
+        import time
+        text = "@" + "a1-" * 40000 + "\n"
+        start = time.perf_counter()
+        codes_for_text(text, name="figures/x.svg")
+        self.assertLess(time.perf_counter() - start, 5)
+
+
+NOREPLY = ("Test Author", "1+test@users.noreply.github.com")
+
+
+def git(root, *args, who=NOREPLY):
+    env = dict(os.environ, GIT_AUTHOR_NAME=who[0], GIT_AUTHOR_EMAIL=who[1], GIT_COMMITTER_NAME=who[0], GIT_COMMITTER_EMAIL=who[1])
+    done = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false"] + list(args), capture_output=True, env=env)
+    if done.returncode:
+        raise RuntimeError("git %s failed: %s" % (" ".join(args), done.stderr.decode("utf-8", "replace")))
+
+
+class History(unittest.TestCase):
+    """The whole history is published by a push, so a term that was removed from the tree is still a finding in an old commit."""
+
+    def repository(self, steps):
+        """A throwaway repository. A step is (message, {path: text, bytes or None to delete}, who)."""
+        tmp = tempfile.TemporaryDirectory()
+        root = Path(tmp.name)
+        git(root, "init", "-q")
+        git(root, "symbolic-ref", "HEAD", "refs/heads/main")
+        for message, files, who in steps:
+            for name, content in files.items():
+                target = root / name
+                if content is None:
+                    target.unlink()
+                    continue
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(content if isinstance(content, bytes) else content.encode("utf-8"))
+            git(root, "add", "-A")
+            git(root, "commit", "-q", "-m", message, who=who)
+        self.addCleanup(tmp.cleanup)
+        return root
+
+    def setUp(self):
+        try:
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+
+    def test_a_term_that_was_removed_from_the_tree_is_still_found_in_the_history(self):
+        root = self.repository([("add a page", {"docs/page.md": "Zebracorp wrote this\n"}, NOREPLY), ("remove the term", {"docs/page.md": "A clean page\n"}, NOREPLY)])
+        head, _, _ = hyg.scan(root, private_terms=list(SYNTHETIC_TERMS))
+        history, _, counts = hyg.scan_history(root, private_terms=list(SYNTHETIC_TERMS))
+        self.assertEqual(head, [], "the tree itself is clean")
+        self.assertEqual([f.code for f in history], ["HYG105"])
+        self.assertRegex(history[0].path, r"^docs/page\.md @ [0-9a-f]{7}$")
+        self.assertEqual((counts["commits"], counts["file_versions"]), (2, 2))
+
+    def test_a_blocked_file_that_was_committed_and_removed_is_found(self):
+        root = self.repository([("add a report", {"docs/report.docx": b"PK\x03\x04\x00\x00"}, NOREPLY), ("remove it", {"docs/report.docx": None}, NOREPLY)])
+        history, _, _ = hyg.scan_history(root, private_terms=[])
+        self.assertEqual(sorted({f.code for f in history}), ["HYG201"])
+
+    def test_commit_messages_and_identities_are_scanned_and_each_identity_is_reported_once(self):
+        stranger = ("Someone", "someone@contoso.com")
+        root = self.repository([
+            ("see C:\\Users\\someone\\notes for Zebracorp", {"a.md": "x\n"}, stranger),
+            ("a second commit by the same person", {"a.md": "y\n"}, stranger),
+            ("a fine commit", {"a.md": "z\n"}, NOREPLY)])
+        history, _, _ = hyg.scan_history(root, private_terms=list(SYNTHETIC_TERMS))
+        self.assertEqual(sorted({f.code for f in history}), ["HYG102", "HYG104", "HYG105"])
+        by_where = [f.path.split(" ", 2)[-1] for f in history if f.code == "HYG104"]
+        self.assertEqual(sorted(by_where), ["author", "committer"], "the address is reported once as author and once as committer, not once per commit")
+        self.assertTrue(any(f.code == "HYG102" and f.path.endswith("message") for f in history))
+
+    def test_a_noreply_address_a_clean_message_and_a_clean_tree_pass(self):
+        root = self.repository([("add a page", {"docs/page.md": "A clean page\n"}, NOREPLY), ("edit it\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>", {"docs/page.md": "Another\n"}, NOREPLY)])
+        history, notices, counts = hyg.scan_history(root, private_terms=[])
+        self.assertEqual([f.format() for f in history], [])
+        self.assertEqual(counts["commits"], 2)
+        self.assertEqual(notices, [])
+
+    def test_a_tag_is_reported_as_something_a_push_would_publish(self):
+        root = self.repository([("add a page", {"docs/page.md": "A clean page\n"}, NOREPLY)])
+        git(root, "tag", "-a", "v0", "-m", "a tag about Zebracorp")
+        history, notices, _ = hyg.scan_history(root, private_terms=list(SYNTHETIC_TERMS))
+        self.assertEqual([f.code for f in history], ["HYG105"])
+        self.assertTrue(history[0].path.startswith("ref refs/tags/v0"))
+        self.assertTrue(any("refs/tags/v0" in n for n in notices))
+
+    def test_a_folder_that_is_not_a_repository_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(hyg.HistoryError):
+                hyg.scan_history(Path(tmp), private_terms=[])
+
+    def test_the_command_line_scans_the_history_on_request(self):
+        root = self.repository([("add a page", {"docs/page.md": "Zebracorp wrote this\n"}, NOREPLY), ("remove the term", {"docs/page.md": "A clean page\n"}, NOREPLY)])
+        env_terms = dict(os.environ, EAHS_PRIVATE_TERMS="Zebracorp")
+        base = [sys.executable, str(support.SCRIPTS / "check_hygiene.py"), "--root", str(root)]
+        plain = subprocess.run(base, capture_output=True, text=True, encoding="utf-8", env=env_terms)
+        self.assertEqual(plain.returncode, 0, plain.stdout + plain.stderr)
+        deep = subprocess.run(base + ["--history"], capture_output=True, text=True, encoding="utf-8", env=env_terms)
+        self.assertEqual(deep.returncode, 1, deep.stdout + deep.stderr)
+        self.assertIn("HYG105", deep.stdout)
+        data = json.loads(subprocess.run(base + ["--history", "--json"], capture_output=True, text=True, encoding="utf-8", env=env_terms).stdout)
+        self.assertEqual(data["history"]["commits"], 2)
+        with tempfile.TemporaryDirectory() as empty:
+            outside = subprocess.run([sys.executable, str(support.SCRIPTS / "check_hygiene.py"), "--root", empty, "--history"], capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(outside.returncode, 2)
 
 
 if __name__ == "__main__":

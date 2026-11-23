@@ -2,11 +2,14 @@
 """Scan the repository for what must not reach a public repository, and for files that do not survive a clone.
 
     python scripts/check_hygiene.py            # scan, exit 1 on any finding
+    python scripts/check_hygiene.py --history  # also scan every commit: each file version, path, message, author and ref
     python scripts/check_hygiene.py --rules    # list what is looked for, and where a rule is waived
     python scripts/check_hygiene.py --json     # machine-readable result
 
 Standard library only; works offline and is platform-neutral. It scans every file Git would include (tracked, or
 untracked and not ignored), or every file under the folder when Git is not available, and it also reads file names.
+With --history it also reads everything that a push of the whole history would publish: a term that was removed from the
+tree is still in an old commit, and a commit message or an author's address is published with it.
 
 A finding is a reason to look, not a verdict. If a flagged line is legitimate, change the wording; if it cannot change
 (for example a quoted public source), add a narrow waiver to ``RULES`` below, with the reason, in a reviewed commit.
@@ -26,9 +29,10 @@ import os
 import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
+from pathlib import Path, PurePosixPath
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 REPO = Path(__file__).resolve().parents[1]
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache"}
@@ -52,6 +56,7 @@ class Rule:
     ignore_line: str = ""  # a line that matches this is fine for this rule
     waivers: Tuple[Tuple[str, str], ...] = ()  # (path prefix, regex a line must match) where the rule is waived
     on_names: bool = False  # also apply to the file path
+    needle: str = ""  # a literal that every match contains: text without it cannot match, so it is not searched
 
 
 RULES: Tuple[Rule, ...] = (
@@ -71,9 +76,9 @@ RULES: Tuple[Rule, ...] = (
          r"|\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}"
          r"|(?i:\b(?:password|passwd|secret|api[_-]?key|token)\b\s*[:=]\s*[\"'][^\"'\s]{8,}[\"'])",
          "Remove it and rotate the credential: it must be treated as exposed."),
-    Rule("HYG104", "e-mail address", r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+",
+    Rule("HYG104", "e-mail address", r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+",
          "Use a role link or the repository's issue tracker, not a personal address.",
-         ignore_match=r"(?i:[^@]+@(?:users\.noreply\.github\.com|example\.(?:com|org|net))|git@github\.com)"),
+         ignore_match=r"(?i:[^@]+@(?:users\.noreply\.github\.com|example\.(?:com|org|net))|git@github\.com)", needle="@"),
     Rule("HYG105", "internal vocabulary or confidentiality label",
          LABEL_MARKERS,
          "This names the private origin of the material or carries a confidentiality label. Use the public wording.",
@@ -178,6 +183,13 @@ def apply_rule(rule: Rule, rel: str, line: str) -> Optional[str]:
     return None
 
 
+def _may_match(rule: Rule, text: str) -> bool:
+    """False only when the rule cannot match anywhere in the text, so that most files are not read line by line for every rule."""
+    if rule.needle and rule.needle not in text:
+        return False
+    return any(pattern.search(text) for pattern in [_COMPILED[rule.code]] + (_PRIVATE if rule.code == "HYG105" else []))
+
+
 def candidate_files(root: Path) -> List[str]:
     """Repository-relative POSIX paths of everything that would be published, sorted."""
     if (root / ".git").exists():
@@ -223,9 +235,8 @@ def check_names(paths: Iterable[str]) -> List[Finding]:
     return findings
 
 
-def read_text(path: Path) -> Optional[str]:
-    """The text of a file, or None when it is binary or not UTF-8."""
-    data = path.read_bytes()
+def decode_text(data: bytes) -> Optional[str]:
+    """The text of some bytes, or None when they are binary or not UTF-8."""
     if b"\0" in data[:8192]:
         return None
     try:
@@ -234,11 +245,16 @@ def read_text(path: Path) -> Optional[str]:
         return None
 
 
-def scan_file(root: Path, rel: str) -> List[Finding]:
+def read_text(path: Path) -> Optional[str]:
+    """The text of a file, or None when it is binary or not UTF-8."""
+    return decode_text(path.read_bytes())
+
+
+def scan_bytes(rel: str, data: bytes) -> List[Finding]:
+    """The findings in one file, given its repository-relative path and its content."""
     findings: List[Finding] = []
-    path = root / rel
-    if path.stat().st_size > MAX_BYTES and rel not in ALLOWED_FILES:
-        findings.append(Finding("HYG202", rel, 0, "larger than 1 MiB (%d bytes); the repository is for text and small figures" % path.stat().st_size))
+    if len(data) > MAX_BYTES and rel not in ALLOWED_FILES:
+        findings.append(Finding("HYG202", rel, 0, "larger than 1 MiB (%d bytes); the repository is for text and small figures" % len(data)))
     if rel in SELF_FILES or rel == PRIVATE_TERMS_FILE:
         return findings
     for rule in RULES:
@@ -246,20 +262,27 @@ def scan_file(root: Path, rel: str) -> List[Finding]:
             hit = apply_rule(rule, rel, rel)
             if hit:
                 findings.append(Finding(rule.code, rel, 0, "%s in the file name. %s" % (rule.label, rule.advice), hit))
-    suffix = path.suffix.lower()
+    suffix = PurePosixPath(rel).suffix.lower()
     if suffix in BLOCKED_SUFFIXES and rel not in ALLOWED_FILES:
         return findings
-    text = read_text(path)
+    text = decode_text(data)
     if text is None:
         findings.append(Finding("HYG203", rel, 0, "not UTF-8 text; every file here should be readable as text"))
         return findings
+    active = [rule for rule in RULES if _may_match(rule, text)]
+    if not active:
+        return findings
     for number, line in enumerate(text.split("\n"), 1):
-        for rule in RULES:
+        for rule in active:
             hit = apply_rule(rule, rel, line)
             if hit:
                 shown = hit if rule.code != "HYG106" else "U+%04X" % ord(hit)
                 findings.append(Finding(rule.code, rel, number, "%s. %s" % (rule.label, rule.advice), shown))
     return findings
+
+
+def scan_file(root: Path, rel: str) -> List[Finding]:
+    return scan_bytes(rel, (root / rel).read_bytes())
 
 
 def scan(root: Path = REPO, files: Optional[Sequence[str]] = None, private_terms: Optional[Sequence[str]] = None) -> Tuple[List[Finding], List[str], int]:
@@ -284,6 +307,172 @@ def scan(root: Path = REPO, files: Optional[Sequence[str]] = None, private_terms
     return findings, notices, len(names)
 
 
+# ------------------------------------------------------------------------------------------------------------ history
+class HistoryError(RuntimeError):
+    """The history cannot be read: this is not a Git repository, or Git is not available."""
+
+
+def _git(root: Path, *args: str, data: Optional[bytes] = None) -> bytes:
+    try:
+        done = subprocess.run(["git", "-C", str(root)] + list(args), capture_output=True, check=True, input=data)
+    except OSError as exc:
+        raise HistoryError("git is not available: %s" % exc) from exc
+    except subprocess.CalledProcessError as exc:
+        raise HistoryError("git %s failed: %s" % (" ".join(args[:2]), exc.stderr.decode("utf-8", "replace").strip())) from exc
+    return done.stdout
+
+
+def _git_each(root: Path, calls: Sequence[Sequence[str]]) -> List[bytes]:
+    """The output of each of several Git commands, run side by side because starting a process is most of what each one costs."""
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        return list(pool.map(lambda args: _git(root, *args), calls))
+
+
+def history_commits(root: Path) -> List[str]:
+    """Every commit reachable from any ref, oldest first."""
+    if not (root / ".git").exists():
+        raise HistoryError("%s is not a Git repository" % root)
+    return _git(root, "rev-list", "--reverse", "--all").decode().split()
+
+
+def history_versions(root: Path, commits: Sequence[str]) -> Dict[str, Tuple[str, str]]:
+    """Every file version that any commit adds or changes: its blob id -> (the first commit that has it, its path there)."""
+    first: Dict[str, Tuple[str, str]] = {}
+    calls = [("diff-tree", "-r", "-m", "--root", "--no-commit-id", "--no-renames", "--raw", "-z", commit) for commit in commits]
+    for commit, output in zip(commits, _git_each(root, calls)):
+        raw = output.split(b"\0")
+        for meta, path in zip(raw[0::2], raw[1::2]):
+            fields = meta.lstrip(b":").split()
+            if len(fields) < 5:
+                continue
+            mode, blob, status = fields[1], fields[3].decode(), fields[4].decode()
+            if status.startswith("D") or mode == b"160000" or set(blob) == {"0"}:
+                continue
+            first.setdefault(blob, (commit, path.decode("utf-8", "replace")))
+    return first
+
+
+def read_blobs(root: Path, blobs: Sequence[str]) -> Dict[str, bytes]:
+    """The content of each blob that exists."""
+    out = _git(root, "cat-file", "--batch", data=("\n".join(blobs) + "\n").encode())
+    found: Dict[str, bytes] = {}
+    position = 0
+    for blob in blobs:
+        end = out.index(b"\n", position)
+        header = out[position:end].split()
+        if len(header) == 3 and header[1] == b"blob":
+            size = int(header[2])
+            found[blob] = out[end + 1:end + 1 + size]
+            position = end + 1 + size + 1
+        else:
+            position = end + 1
+    return found
+
+
+def _relabel(findings: Iterable[Finding], commit: str) -> List[Finding]:
+    return [Finding(f.code, "%s @ %s" % (f.path, commit[:7]), f.line, f.message, f.excerpt) for f in findings]
+
+
+def scan_text(label: str, text: str) -> List[Finding]:
+    """Every rule, applied to each line of a piece of text that is not a file: a commit message, an identity, a ref."""
+    findings: List[Finding] = []
+    for number, line in enumerate(text.split("\n"), 1):
+        for rule in RULES:
+            hit = apply_rule(rule, "", line)
+            if hit:
+                findings.append(Finding(rule.code, label, number, "%s. %s" % (rule.label, rule.advice), hit if rule.code != "HYG106" else "U+%04X" % ord(hit)))
+    return findings
+
+
+def history_name_findings(root: Path, commits: Sequence[str]) -> Tuple[List[Finding], int]:
+    """File-name rules on the tree of every commit; returns the findings, once each, and the number of distinct paths."""
+    findings: List[Finding] = []
+    reported, paths = set(), set()
+    calls = [("ls-tree", "-r", "--name-only", "-z", commit) for commit in commits]
+    for commit, output in zip(commits, _git_each(root, calls)):
+        names = [n for n in output.decode("utf-8", "replace").split("\0") if n]
+        paths.update(names)
+        for finding in check_names(sorted(names)):
+            key = (finding.code, finding.path, finding.message)
+            if key not in reported:
+                reported.add(key)
+                findings += _relabel([finding], commit)
+    return findings, len(paths)
+
+
+def history_message_findings(root: Path) -> List[Finding]:
+    """The rules on every commit message, and on the name and address of every author and committer."""
+    fmt = "%H%x1f%an%x1f%ae%x1f%cn%x1f%ce%x1f%B%x1e"
+    findings: List[Finding] = []
+    reported = set()
+    for record in _git(root, "log", "--all", "--format=" + fmt).decode("utf-8", "replace").split("\x1e"):
+        record = record.lstrip("\n")
+        if not record:
+            continue
+        commit, author, author_mail, committer, committer_mail, message = record.split("\x1f", 5)
+        for role, name, mail in (("author", author, author_mail), ("committer", committer, committer_mail)):
+            for finding in scan_text("commit %s %s" % (commit[:7], role), "%s <%s>" % (name, mail)):
+                key = (finding.code, finding.excerpt, role)
+                if key not in reported:
+                    reported.add(key)
+                    findings.append(finding)
+        findings += scan_text("commit %s message" % commit[:7], message)
+    return findings
+
+
+def history_ref_findings(root: Path) -> Tuple[List[Finding], List[str]]:
+    """The rules on every ref name and tag message, and the refs that are not branches."""
+    findings: List[Finding] = []
+    others = []
+    for record in _git(root, "for-each-ref", "--format=%(refname)%1f%(taggername)%1f%(taggeremail)%1f%(contents)%1e").decode("utf-8", "replace").split("\x1e"):
+        record = record.lstrip("\n")
+        if not record:
+            continue
+        ref, tagger, tagger_mail, contents = record.split("\x1f", 3)
+        if not ref.startswith("refs/heads/"):
+            others.append(ref)
+        findings += scan_text("ref %s" % ref, "%s\n%s <%s>\n%s" % (ref, tagger, tagger_mail, contents) if tagger or contents.strip() else ref)
+    return findings, others
+
+
+def scan_history(root: Path = REPO, private_terms: Optional[Sequence[str]] = None) -> Tuple[List[Finding], List[str], Dict[str, int]]:
+    """Scan everything that a push of the whole history would publish.
+
+    Every file version that any commit ever added or changed is read and scanned as a file is, so a term that was removed from
+    the tree but is still in an old commit is found. So are the names of all paths, every commit message, every author and
+    committer, and every ref. Returns (findings, notices, counts).
+    """
+    use_private_terms(load_private_terms(root) if private_terms is None else list(private_terms))
+    commits = history_commits(root)
+    versions = history_versions(root, commits)
+    findings: List[Finding] = []
+    unreadable = 0
+    ids = list(versions)
+    for start in range(0, len(ids), 200):
+        batch = ids[start:start + 200]
+        blobs = read_blobs(root, batch)
+        for blob in batch:
+            commit, rel = versions[blob]
+            if blob not in blobs:
+                unreadable += 1
+                continue
+            findings += _relabel(scan_bytes(rel, blobs[blob]), commit)
+    names, path_count = history_name_findings(root, commits)
+    findings += names
+    findings += history_message_findings(root)
+    ref_findings, others = history_ref_findings(root)
+    findings += ref_findings
+    notices = []
+    if unreadable:
+        notices.append("%d file version(s) could not be read, so they were not scanned." % unreadable)
+    if _git(root, "rev-parse", "--is-shallow-repository").strip() == b"true":
+        notices.append("This is a shallow clone: only the commits that were fetched were scanned.")
+    if others:
+        notices.append("Refs other than branches exist (%s). Pushing them publishes what they point to." % ", ".join(others))
+    findings.sort(key=lambda f: (f.path, f.line, f.code))
+    return findings, notices, {"commits": len(commits), "file_versions": len(versions), "paths": path_count}
+
+
 def describe_rules() -> str:
     lines = ["Rules (a match on any line of any file, and for some rules in file names):", ""]
     for rule in RULES:
@@ -302,6 +491,8 @@ def describe_rules() -> str:
               "  HYG205  two files that differ only by case",
               "  HYG206  an entry in the private term list is not a valid regular expression",
               "  HYG207  the private term list is among the files that would be published",
+              "", "With --history, every rule above is also applied to each file version that any commit added or changed (reported as path @ commit),",
+              "to the path names in every commit, to every commit message, to every author and committer, and to every ref.",
               "", "Skipped: %s. Two files that quote the patterns are not read: %s." % (", ".join(sorted(SKIP_DIRS)), ", ".join(sorted(SELF_FILES)))]
     return "\n".join(lines)
 
@@ -309,6 +500,7 @@ def describe_rules() -> str:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--root", default=str(REPO), help="folder to scan (default: this repository)")
+    parser.add_argument("--history", action="store_true", help="also scan the whole Git history: every file version, path, commit message, author, committer and ref")
     parser.add_argument("--rules", action="store_true", help="list the rules and exit")
     parser.add_argument("--json", action="store_true", help="print a machine-readable result")
     args = parser.parse_args(argv)
@@ -318,18 +510,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     root = Path(args.root).resolve()
     terms = load_private_terms(root)
     findings, notices, count = scan(root, private_terms=terms)
+    counts = None
+    if args.history:
+        try:
+            more, more_notices, counts = scan_history(root, private_terms=terms)
+        except HistoryError as exc:
+            print("error: --history needs a Git history that can be read: %s" % exc, file=sys.stderr)
+            return 2
+        findings = findings + more
+        notices = notices + more_notices
     if args.json:
-        print(json.dumps({"files": count, "private_terms": len(terms), "findings": [f.as_dict() for f in findings], "notices": notices}, indent=2, ensure_ascii=False))
+        print(json.dumps({"files": count, "private_terms": len(terms), "history": counts, "findings": [f.as_dict() for f in findings], "notices": notices}, indent=2, ensure_ascii=False))
         return 1 if findings else 0
     for finding in findings:
         print(finding.format())
     for notice in notices:
         print("note: " + notice)
     if findings:
-        print("\n%d finding(s) in %d file(s) scanned. Run with --rules to see what is looked for." % (len(findings), count))
+        print("\n%d finding(s) in %d file(s) scanned%s. Run with --rules to see what is looked for." % (
+            len(findings), count, " and %d commit(s)" % counts["commits"] if counts else ""))
         return 1
     internal = "internal term, " if terms else ""
     print("Hygiene scan clean: %d files, no private link, local path, credential, e-mail address, %sconfidentiality label, hidden character, draft marker or claim of finality." % (count, internal))
+    if counts:
+        print("History scan clean: %d commits, %d file versions and %d paths, with every commit message, author, committer and ref name, under the same rules." % (
+            counts["commits"], counts["file_versions"], counts["paths"]))
     return 0
 
 
