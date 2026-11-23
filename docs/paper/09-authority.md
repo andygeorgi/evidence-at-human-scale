@@ -22,8 +22,8 @@ sequenceDiagram
     participant T as Target
     participant X as Receipt (C07)
     Note over R: Packet lists the<br/>proposal: proposed,<br/>not executed
-    R->>A: Approve this exact proposal version?
-    A-->>G: Exact approval, or a standing class grant (C06)
+    R->>A: Approve this exact<br/>proposal version?
+    A-->>G: Exact approval, or a<br/>standing class grant (C06)
     Note over G: Approval is not commit
     Note over G,T: Recheck at commit<br/>Grant current, not revoked<br/>Evidence current and fresh<br/>Preconditions hold<br/>Parameters and target match<br/>Per-action and cumulative<br/>limits (consumed + reserved)
     alt every check passes

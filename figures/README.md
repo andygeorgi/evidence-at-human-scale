@@ -203,11 +203,11 @@ In every row, execution is **Closed** whenever the authority is invalid or uncer
 
 **Alt text.** A decision tree. A stale record gives stale. Otherwise a check not performed gives not_assessed, a principal not permitted gives inaccessible, no answer from the source gives unavailable, no completed scoped retrieval gives missing, an observed absence with method, time and complete coverage gives negative, and otherwise not_retrieved.
 
-**Description.** For an expected input that is not in front of the reader, ask six questions in order. One: is a record available but failing the freshness requirement? If yes, the label is stale. Two: was the check or assessment performed? If not, not_assessed. Three: may the reader's principal read the source? If not, inaccessible, and the reason and existence are disclosed only when permitted. Four: did the source or dependency answer? If not, unavailable, which is not the same as denied. Five: did a scoped retrieval complete? If not, missing: expected, not obtained, reason may be unknown. Six: was absence observed with method, time and complete coverage? If yes, negative. If not, not_retrieved: a completed retrieval found nothing, which is not evidence of absence.
+**Description.** For an expected input that is not in front of the reader, ask six questions in order. One: is a record available but failing the freshness requirement? If yes, the label is stale. Two: was the check or assessment performed? If not, not_assessed. Three: may the reader's principal read the source? If not, inaccessible, and the reason and existence are disclosed only when permitted. Four: did the source or dependency answer? If not, unavailable, which is not the same as denied. Five: did a scoped retrieval complete? If not, missing: expected, not obtained, reason may be unknown. Six: was absence observed with method, time and complete coverage? If yes, negative. If not, not_retrieved: a completed retrieval found nothing, which is not evidence of absence. Only negative is evidence of absence: it is drawn in green, and the other six labels in amber.
 
 **Used in:** [8. Uncertainty is part of the result](../docs/paper/08-uncertainty.md); [04 Selection and missingness](../examples/04-selection-and-missingness/README.md).
 
-**Source:** [`figures/src/F09.mmd`](src/F09.mmd). Files: [light](F09-light.svg) · [dark](F09-dark.svg).
+**Source:** [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](F09-light.svg) · [dark](F09-dark.svg).
 
 ### F10 A late correction reaches a pending approval
 

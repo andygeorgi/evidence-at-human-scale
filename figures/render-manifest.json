@@ -3,8 +3,8 @@
   "sources": {
     "F01": {
       "source_sha256": "13dcfac4d8f46387b2b93915e549576b6daa5a2aaec239d4b398f71fc68c65dc",
-      "light_sha256": "1d82af2c8e36c652d1fd8db3ad66b969700ba19faf2dd2bb2d3a4a20ba3ee1e6",
-      "dark_sha256": "fadb18d4b11b5f1934fcfe839a0b1ad211c60caede8430a0c2cad4b02b591910"
+      "light_sha256": "633f8f17c325aa4913e913c66393f6a0d19af84bdf3175888c93ed158f4b9f85",
+      "dark_sha256": "631230e564762ae3ec8d1d3f10cfffe0c96bc85d366c447f9d9c4d3513182c74"
     },
     "F03": {
       "source_sha256": "776fd62623ccaea64f37cce436b0bb678a88a9e72c267f49d2b31f9cc3c56cf5",
@@ -12,24 +12,19 @@
       "dark_sha256": "2658b8453656e94b9bc6a63231cfab3a2bd0a002a3d193781d0e5c729569fcc8"
     },
     "F05": {
-      "source_sha256": "4c33991bd25c77f164a448a9ff09ad1a3057a0d970c51a6fb0d1e92d2d79f866",
-      "light_sha256": "352141ff5ac14e1ce20a44862fc905388c8f0d06081f6ae1defd6984ad23e563",
-      "dark_sha256": "2cd7003a09c787ab283a99a7d25d20af47c367ea81d48e4d4469bceaac201040"
+      "source_sha256": "616ab87e487d5ac349d478bee59b81b3e2b2c594c2e655d873bb0f5e826cf05d",
+      "light_sha256": "e909b1ecb2b4e9df42e50cf45874cf6f3b46d0e800b06246279dc8e4ffb1e727",
+      "dark_sha256": "9acba6950650e6aac60921537e2828fd803fb2299bd7357cafb92ef90e8ecd44"
     },
     "F08": {
       "source_sha256": "a7607e3e1c0f628d11d7de5ae9bd18ddacb26115af1cc0342bc02e2b639afb91",
       "light_sha256": "dc4066d793ecbbbf7145a37794db91ec8e8d92f482a26c246cd0095a6c93b692",
       "dark_sha256": "9d535b867017547765eeedb2a52eb309338748abba7733b07fc311122c802253"
     },
-    "F09": {
-      "source_sha256": "142044ed90bdebeaa4bf6e16b47b12fe268ef822bb231ed8e294e158056f2f52",
-      "light_sha256": "404d05ca1a32738f8a658669fdcbb3acc529c69b0890a62c04d971db24352d76",
-      "dark_sha256": "203b5a9a977b066c1f635d9155fe791692d566c37cd76ae2c40d280ef7078cc4"
-    },
     "F10": {
-      "source_sha256": "6cca9bdc8695e54d864c5a363217ac1c6ce208aa814b360211549602f0c24e40",
-      "light_sha256": "383fac24579e71c9576a623538a4751bac8a62c40d2bfc310295cc9a3d0992a6",
-      "dark_sha256": "720dceb4b2ca337d4a5188145c9ada561482bfeec83afc5d07ff6ce64f6e6b85"
+      "source_sha256": "2f047e2fb04a8271413ae277ddecdff4ce47be038b556fb7cba539f2e6dc26db",
+      "light_sha256": "165f49e9cae986c563f213adb79a5f316286bcab13bc56367d719f6e2f8075f8",
+      "dark_sha256": "db9967f432fa319b5d8e638115859861f6b418f37bc8d76de32e45893bd3e978"
     },
     "F11": {
       "source_sha256": "3bfa52abd969a9147b2758d93b2e2a0665f61ca4eac837f9f02bd03fbaa85a9d",

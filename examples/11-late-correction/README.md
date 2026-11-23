@@ -23,17 +23,17 @@ sequenceDiagram
     participant L as Lineage
     participant P as Packets (C04)<br/>and approvals (C06)
     participant G as Gateway
-    Note over P,G: An approval is queued for a later run
-    S->>E: Correction admitted as a new version
-    E->>L: Supersedes the earlier version
-    L->>E: Invalidates findings and summaries derived from it
-    L->>P: The packet that rested on them is invalidated
+    Note over P,G: An approval is queued<br/>for a later run
+    S->>E: Correction admitted<br/>as a new version
+    E->>L: Supersedes the<br/>earlier version
+    L->>E: Invalidates findings and<br/>summaries derived from it
+    L->>P: The packet that rested<br/>on them is invalidated
     Note over P: Revised packet produced,<br/>prior version linked
     L->>P: Pending approval revoked
-    G->>P: Queued action reaches commit: recheck
-    P-->>G: Grant revoked, evidence no longer current
+    G->>P: Queued action reaches<br/>commit: recheck
+    P-->>G: Grant revoked, evidence<br/>no longer current
     Note over G: Refused<br/>Receipt (C07): not executed,<br/>with reasons
-    Note over P,G: A new proposal on the revised packet<br/>needs a new approval
+    Note over P,G: A new proposal on the<br/>revised packet needs<br/>a new approval
 ```
 
 

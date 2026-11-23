@@ -22,7 +22,7 @@ The first version of this repository. It is offered for review and is not a fina
 - **No evaluation has been run.** EV01–EV12, the 70 fixtures and the 12 matched baseline records are NOT RUN; the 47 domain parameters are UNSET. The repository's own checks are deterministic checks on invented data and say nothing about a real system.
 - **The paper is Markdown only.** No PDF or Word edition is included in this release candidate.
 - **Accessibility has not been audited.** Every figure has alt text and a text description, and colors are always paired with a text label, but no screen-reader test, WCAG audit or PDF/UA check has been performed: NOT ASSESSED.
-- **Some figures are wide.** F02, F04, F06 and the banner are drawn 1,000 to 1,280 pixels wide, and the sequence diagrams F05 and F10 and the decision tree F09 are wide too, so their text is small on a phone. Every figure has an *Open at full size* link and a text description that carries the same content.
+- **Some figures are wide.** F02, F04, F06, F09 and the banner are drawn 1,000 to 1,280 pixels wide, and the sequence diagrams F05 and F10 are about 1,100 wide, so their text is small on a phone. Every figure has an *Open at full size* link and a text description that carries the same content.
 - **Reviews were AI-assisted.** No independent human review of the text is recorded here.
 - **Product statements are dated.** Statements about Azure options carry their verification date, 17 November 2026, and may be out of date. Links to public records can move.
 - **The example is one domain.** The supplier-payment story is invented to need no specialist knowledge. It shows the contracts at work; it is not evidence that the architecture works.

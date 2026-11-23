@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draw the figures that are laid out by hand rather than by Mermaid: F02, F04, F06 and the repository banner.
+"""Draw the figures that are laid out by hand rather than by Mermaid: F02, F04, F06, F09 and the repository banner.
 
     python figures/src/svg_figures.py            # writes figures/F02-architecture-light.svg, ...-dark.svg and the banner
     python figures/src/svg_figures.py --check    # fails if the committed SVGs differ from what this script draws
@@ -224,6 +224,47 @@ def f06(theme):
     return c
 
 
+# ------------------------------------------------------------------------------------------------------------------ F09
+def f09(theme):
+    c = Canvas(1000, 712, theme, "Which missingness label applies?",
+               "A decision tree for an input that is not in front of the reader, read from the top. If a record is available but fails the freshness "
+               "requirement, the label is stale. Otherwise, if the check or assessment was not performed, not assessed. Otherwise, if the reader's "
+               "principal may not read the source, inaccessible. Otherwise, if the source or dependency did not answer, unavailable. Otherwise, if no "
+               "scoped retrieval completed, missing. Otherwise, if an adequately scoped observation of absence was made with method, time and complete "
+               "coverage, negative; if not, not retrieved, which is not evidence of absence. Only negative is evidence of absence.")
+    x0, w, qh, pitch, top = 24, 470, 56, 84, 80
+    tx, tw = 590, 386
+    cx = x0 + w / 2
+    c.rect(x0, 14, w, 40, "note", rx=20)
+    c.text(cx, 40, "An expected input is not in front of the reader", 15, True, c.p["note"][2])
+    c.path([(cx, 54), (cx, top)])
+    # question lines, the answer that leaves the spine, the answer that continues, the label, and its explanation
+    rows = [
+        (["A record is available but fails", "the freshness requirement?"], "yes", "no", "stale", "a record exists but fails the freshness requirement"),
+        (["Was the check or assessment performed?"], "no", "yes", "not_assessed", "the check or assessment was not performed"),
+        (["May the reader's principal read the source?"], "no", "yes", "inaccessible", "reason and existence disclosed only when permitted"),
+        (["Did the source or dependency answer?"], "no", "yes", "unavailable", "not the same as denied"),
+        (["Did a scoped retrieval complete?"], "no", "yes", "missing", "expected, not obtained; reason may be unknown"),
+        (["Was absence observed, with method,", "time and complete coverage?"], "yes", "no", "negative", "an adequately scoped observation of absence"),
+    ]
+    for i, (question, leaves, continues, label, why) in enumerate(rows):
+        y = top + i * pitch
+        c.rect(x0, y, w, qh, "note")
+        c.badge(x0 + 26, y + qh / 2, i + 1, "note")
+        first = y + (qh - 19 * (len(question) - 1)) / 2 + 5
+        c.text(x0 + 52, first, question, 14.5, False, c.p["note"][2], anchor="start", leading=19)
+        c.path([(x0 + w, y + qh / 2), (tx, y + qh / 2)])
+        c.text((x0 + w + tx) / 2, y + qh / 2 - 7, leaves, 12.5, False, c.p["muted"])
+        c.box(tx, y, tw, qh, "pkt" if label == "negative" else "warn", label, why, size=15, sub_size=12.5)
+        c.path([(cx, y + qh), (cx, y + pitch)])
+        c.text(cx + 16, y + qh + (pitch - qh) / 2 + 4.5, continues, 12.5, False, c.p["muted"], anchor="start")
+    y = top + len(rows) * pitch
+    c.box(x0, y, w, qh, "warn", "not_retrieved", "a completed retrieval found nothing; not evidence of absence", size=15, sub_size=12.5)
+    c.text(500, y + qh + 36, "Only negative is evidence of absence.", 13.5, True, c.p["text"])
+    c.text(500, y + qh + 56, "Each of the other six labels says why nothing can be concluded from the missing input.", 12.5, False, c.p["muted"])
+    return c
+
+
 # ------------------------------------------------------------------------------------------------------------------ banner
 def banner(theme):
     c = Canvas(1280, 420, theme, "Evidence at Human Scale: systems produce evidence, AI makes it consumable, people remain accountable",
@@ -263,7 +304,7 @@ def banner(theme):
     return c
 
 
-FIGURES = {"F02": f02, "F04": f04, "F06": f06, "banner": banner}
+FIGURES = {"F02": f02, "F04": f04, "F06": f06, "F09": f09, "banner": banner}
 
 
 def render_all():
