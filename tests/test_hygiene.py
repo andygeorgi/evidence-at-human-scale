@@ -151,6 +151,14 @@ class CommandLine(unittest.TestCase):
         for code in ("HYG101", "HYG108", "HYG205"):
             self.assertIn(code, done.stdout)
 
+    def test_output_is_utf8_even_when_the_console_uses_a_legacy_code_page(self):
+        """The rules text holds letters (an accented i, an eth) that a legacy Windows code page cannot print."""
+        import os
+        env = dict(os.environ, PYTHONIOENCODING="cp437", PYTHONUTF8="0")
+        done = subprocess.run([sys.executable, str(support.SCRIPTS / "check_hygiene.py"), "--rules"], capture_output=True, env=env)
+        self.assertEqual(done.returncode, 0, done.stderr.decode("utf-8", "replace"))
+        self.assertIn("R\u00edkisendursko\u00f0un", done.stdout.decode("utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

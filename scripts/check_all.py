@@ -14,6 +14,7 @@ Exit code 0 means every check passed.
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 import time
@@ -40,7 +41,9 @@ CHECKS: Tuple[Tuple[str, str, Tuple[str, ...]], ...] = (
 
 def run(name: str, command: Sequence[str]) -> Tuple[bool, float, str]:
     started = time.time()
-    done = subprocess.run([sys.executable] + list(command), cwd=str(REPO), capture_output=True, text=True, encoding="utf-8", errors="replace")
+    # A pipe on Windows defaults to a legacy code page; ask the child for UTF-8 and read it as UTF-8.
+    env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
+    done = subprocess.run([sys.executable] + list(command), cwd=str(REPO), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     return done.returncode == 0, time.time() - started, (done.stdout + done.stderr).strip()
 
 
@@ -83,4 +86,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
 
 if __name__ == "__main__":
+    for _stream in (sys.stdout, sys.stderr):  # a legacy console code page must not break the output
+        getattr(_stream, "reconfigure", lambda **_: None)(encoding="utf-8", errors="replace")
     sys.exit(main())

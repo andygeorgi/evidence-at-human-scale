@@ -47,7 +47,7 @@ class Timestamps(unittest.TestCase):
 
 class CommandLine(unittest.TestCase):
     def test_validate_examples_passes_on_the_committed_examples(self):
-        done = subprocess.run([sys.executable, str(support.SCRIPTS / "validate_examples.py")], capture_output=True, text=True)
+        done = subprocess.run([sys.executable, str(support.SCRIPTS / "validate_examples.py")], capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("All 6 stages passed.", done.stdout)
 
@@ -61,7 +61,7 @@ class CommandLine(unittest.TestCase):
             target = copy / "01-source-records" / "c02-INV-2026-0417-v1.json"
             text = target.read_text(encoding="utf-8").replace('"2026-11-23T07:31:00Z"', '"2026-11-23T07:31:00"', 1)
             target.write_text(text, encoding="utf-8")
-            done = subprocess.run([sys.executable, str(support.SCRIPTS / "validate_examples.py"), "--examples", str(copy)], capture_output=True, text=True)
+            done = subprocess.run([sys.executable, str(support.SCRIPTS / "validate_examples.py"), "--examples", str(copy)], capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(done.returncode, 1)
         self.assertIn("FAIL", done.stdout)
         self.assertIn("SCH002", done.stdout)

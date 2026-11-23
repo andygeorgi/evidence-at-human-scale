@@ -8,6 +8,7 @@ Exit code 0 means every figure has what it needs and every block in the document
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -23,7 +24,8 @@ MERMAID_CLASSES = {"label", "edgelabel", "node", "nodes", "cluster", "edge", "ed
 
 
 def run_tool(args):
-    done = subprocess.run([sys.executable] + args, capture_output=True, text=True, cwd=str(REPO))
+    env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
+    done = subprocess.run([sys.executable] + args, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=str(REPO), env=env)
     return done.returncode, (done.stdout + done.stderr).strip()
 
 
@@ -105,4 +107,6 @@ def main():
 
 
 if __name__ == "__main__":
+    for _stream in (sys.stdout, sys.stderr):  # a legacy console code page must not break the output
+        getattr(_stream, "reconfigure", lambda **_: None)(encoding="utf-8", errors="replace")
     sys.exit(main())

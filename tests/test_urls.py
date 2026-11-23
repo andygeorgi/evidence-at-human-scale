@@ -118,7 +118,7 @@ class Classification(unittest.TestCase):
             script = str(support.SCRIPTS / "check_urls.py")
             (root / "a.md").write_text("Cited: %s/ok\n" % self.base.replace("127.0.0.1", "127.0.0.2"), encoding="utf-8")
             (root / "b.md").write_text("Local only: %s/missing\n" % self.base, encoding="utf-8")
-            done = subprocess.run([sys.executable, script, "--root", str(root), "--list"], capture_output=True, text=True)
+            done = subprocess.run([sys.executable, script, "--root", str(root), "--list"], capture_output=True, text=True, encoding="utf-8")
             self.assertEqual(done.returncode, 0)
             self.assertIn("a.md", done.stdout)
             self.assertNotIn("b.md", done.stdout)

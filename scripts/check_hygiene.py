@@ -5,7 +5,7 @@
     python scripts/check_hygiene.py --rules    # list what is looked for, and where a rule is waived
     python scripts/check_hygiene.py --json     # machine-readable result
 
-Standard library only; works offline on Windows, macOS and Linux. It scans every file Git would include (tracked, or
+Standard library only; works offline and is platform-neutral. It scans every file Git would include (tracked, or
 untracked and not ignored), or every file under the folder when Git is not available, and it also reads file names.
 
 A finding is a reason to look, not a verdict. If a flagged line is legitimate, change the wording; if it cannot change
@@ -269,4 +269,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
 
 if __name__ == "__main__":
+    for _stream in (sys.stdout, sys.stderr):  # a legacy console code page must not break the output
+        getattr(_stream, "reconfigure", lambda **_: None)(encoding="utf-8", errors="replace")
     sys.exit(main())
