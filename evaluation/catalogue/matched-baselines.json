@@ -1,0 +1,290 @@
+[
+  {
+    "id": "BASE-01",
+    "class": "Comparison framework—not an achieved benefit",
+    "fixture_family": "Correctness and omissions",
+    "expected_oracle": [
+      "Preregister matched task/risk/current-workflow baseline, native safety routes and acceptance before comparing; specialists excluded unless later justified."
+    ],
+    "metrics": [
+      "Gold task correctness, critical-item retention, material conflict/gap coverage; same positive gold denominators."
+    ],
+    "positive_denominators": [
+      "Declare positive task/inspection/adversarial opportunity denominators per metric; absence never PASS."
+    ],
+    "normative_gate": "Domain threshold UNSET / NOT ASSESSED; exact normative safety gates still apply.",
+    "status": "NOT RUN",
+    "observed_status": "NOT RUN",
+    "evidence": "No human/domain/runtime/latency/cost result supplied.",
+    "owner": "Human evaluation and domain owners unassigned",
+    "prerequisites": "Domain thresholds and risk acceptance; workload/freshness/time/cost inputs UNSET",
+    "comparison_baseline": "Native/current workflow",
+    "measurement_plan": "Gold task correctness, critical-item retention, material conflict/gap coverage; same positive gold denominators.",
+    "acceptance_stage": "Pre-deployment matched comparison",
+    "scope_and_uncertainty": "No inferred benefit/ROI/latency/cost claims. Report sample and uncertainty; formal threshold acceptance unresolved. Optional convenience ratios/count summaries removed; observational count fields remain blank until actual run evidence. Observed result is NOT RUN; positive declared denominator/opportunity and exact normative acceptance rules remain mandatory."
+  },
+  {
+    "id": "BASE-02",
+    "class": "Comparison framework—not an achieved benefit",
+    "fixture_family": "Human inspection and decision quality",
+    "expected_oracle": [
+      "Preregister matched task/risk/current-workflow baseline, native safety routes and acceptance before comparing; specialists excluded unless later justified."
+    ],
+    "metrics": [
+      "Observed actual evidence/drillback inspection, review quality and decision quality under matched task/risk protocol; no fluent-text proxy."
+    ],
+    "positive_denominators": [
+      "Declare positive task/inspection/adversarial opportunity denominators per metric; absence never PASS."
+    ],
+    "normative_gate": "Domain threshold UNSET / NOT ASSESSED; exact normative safety gates still apply.",
+    "status": "NOT RUN",
+    "observed_status": "NOT RUN",
+    "evidence": "No human/domain/runtime/latency/cost result supplied.",
+    "owner": "Human evaluation and domain owners unassigned",
+    "prerequisites": "Domain thresholds and risk acceptance; workload/freshness/time/cost inputs UNSET",
+    "comparison_baseline": "Native/current workflow",
+    "measurement_plan": "Observed actual evidence/drillback inspection, review quality and decision quality under matched task/risk protocol; no fluent-text proxy.",
+    "acceptance_stage": "Pre-deployment matched comparison",
+    "scope_and_uncertainty": "No inferred benefit/ROI/latency/cost claims. Report sample and uncertainty; formal threshold acceptance unresolved. Optional convenience ratios/count summaries removed; observational count fields remain blank until actual run evidence. Observed result is NOT RUN; positive declared denominator/opportunity and exact normative acceptance rules remain mandatory."
+  },
+  {
+    "id": "BASE-03",
+    "class": "Comparison framework—not an achieved benefit",
+    "fixture_family": "Time and workload",
+    "expected_oracle": [
+      "Preregister matched task/risk/current-workflow baseline, native safety routes and acceptance before comparing; specialists excluded unless later justified."
+    ],
+    "metrics": [
+      "Observed completion time, critical path versus total work, reviewer workload; no invented durations."
+    ],
+    "positive_denominators": [
+      "Declare positive task/inspection/adversarial opportunity denominators per metric; absence never PASS."
+    ],
+    "normative_gate": "Domain threshold UNSET / NOT ASSESSED; exact normative safety gates still apply.",
+    "status": "NOT RUN",
+    "observed_status": "NOT RUN",
+    "evidence": "No human/domain/runtime/latency/cost result supplied.",
+    "owner": "Human evaluation and domain owners unassigned",
+    "prerequisites": "Domain thresholds and risk acceptance; workload/freshness/time/cost inputs UNSET",
+    "comparison_baseline": "Native/current workflow",
+    "measurement_plan": "Observed completion time, critical path versus total work, reviewer workload; no invented durations.",
+    "acceptance_stage": "Pre-deployment matched comparison",
+    "scope_and_uncertainty": "No inferred benefit/ROI/latency/cost claims. Report sample and uncertainty; formal threshold acceptance unresolved. Optional convenience ratios/count summaries removed; observational count fields remain blank until actual run evidence. Observed result is NOT RUN; positive declared denominator/opportunity and exact normative acceptance rules remain mandatory."
+  },
+  {
+    "id": "BASE-04",
+    "class": "Comparison framework—not an achieved benefit",
+    "fixture_family": "Latency and lifecycle cost",
+    "expected_oracle": [
+      "Preregister matched task/risk/current-workflow baseline, native safety routes and acceptance before comparing; specialists excluded unless later justified."
+    ],
+    "metrics": [
+      "Observed configured B_time/B_cost conformance including retrieval/storage/telemetry/evaluation/inference/retries/operations; units and uncertainty explicit."
+    ],
+    "positive_denominators": [
+      "Declare positive task/inspection/adversarial opportunity denominators per metric; absence never PASS."
+    ],
+    "normative_gate": "Domain threshold UNSET / NOT ASSESSED; exact normative safety gates still apply.",
+    "status": "NOT RUN",
+    "observed_status": "NOT RUN",
+    "evidence": "No human/domain/runtime/latency/cost result supplied.",
+    "owner": "Human evaluation and domain owners unassigned",
+    "prerequisites": "Domain thresholds and risk acceptance; workload/freshness/time/cost inputs UNSET",
+    "comparison_baseline": "Native/current workflow",
+    "measurement_plan": "Observed configured B_time/B_cost conformance including retrieval/storage/telemetry/evaluation/inference/retries/operations; units and uncertainty explicit.",
+    "acceptance_stage": "Pre-deployment matched comparison",
+    "scope_and_uncertainty": "No inferred benefit/ROI/latency/cost claims. Report sample and uncertainty; formal threshold acceptance unresolved. Optional convenience ratios/count summaries removed; observational count fields remain blank until actual run evidence. Observed result is NOT RUN; positive declared denominator/opportunity and exact normative acceptance rules remain mandatory."
+  },
+  {
+    "id": "BASE-05",
+    "class": "Comparison framework—not an achieved benefit",
+    "fixture_family": "Correctness and omissions",
+    "expected_oracle": [
+      "Preregister matched task/risk/current-workflow baseline, native safety routes and acceptance before comparing; specialists excluded unless later justified."
+    ],
+    "metrics": [
+      "Gold task correctness, critical-item retention, material conflict/gap coverage; same positive gold denominators."
+    ],
+    "positive_denominators": [
+      "Declare positive task/inspection/adversarial opportunity denominators per metric; absence never PASS."
+    ],
+    "normative_gate": "Domain threshold UNSET / NOT ASSESSED; exact normative safety gates still apply.",
+    "status": "NOT RUN",
+    "observed_status": "NOT RUN",
+    "evidence": "No human/domain/runtime/latency/cost result supplied.",
+    "owner": "Human evaluation and domain owners unassigned",
+    "prerequisites": "Domain thresholds and risk acceptance; workload/freshness/time/cost inputs UNSET",
+    "comparison_baseline": "Deterministic templates/grouping",
+    "measurement_plan": "Gold task correctness, critical-item retention, material conflict/gap coverage; same positive gold denominators.",
+    "acceptance_stage": "Pre-deployment matched comparison",
+    "scope_and_uncertainty": "No inferred benefit/ROI/latency/cost claims. Report sample and uncertainty; formal threshold acceptance unresolved. Optional convenience ratios/count summaries removed; observational count fields remain blank until actual run evidence. Observed result is NOT RUN; positive declared denominator/opportunity and exact normative acceptance rules remain mandatory."
+  },
+  {
+    "id": "BASE-06",
+    "class": "Comparison framework—not an achieved benefit",
+    "fixture_family": "Human inspection and decision quality",
+    "expected_oracle": [
+      "Preregister matched task/risk/current-workflow baseline, native safety routes and acceptance before comparing; specialists excluded unless later justified."
+    ],
+    "metrics": [
+      "Observed actual evidence/drillback inspection, review quality and decision quality under matched task/risk protocol; no fluent-text proxy."
+    ],
+    "positive_denominators": [
+      "Declare positive task/inspection/adversarial opportunity denominators per metric; absence never PASS."
+    ],
+    "normative_gate": "Domain threshold UNSET / NOT ASSESSED; exact normative safety gates still apply.",
+    "status": "NOT RUN",
+    "observed_status": "NOT RUN",
+    "evidence": "No human/domain/runtime/latency/cost result supplied.",
+    "owner": "Human evaluation and domain owners unassigned",
+    "prerequisites": "Domain thresholds and risk acceptance; workload/freshness/time/cost inputs UNSET",
+    "comparison_baseline": "Deterministic templates/grouping",
+    "measurement_plan": "Observed actual evidence/drillback inspection, review quality and decision quality under matched task/risk protocol; no fluent-text proxy.",
+    "acceptance_stage": "Pre-deployment matched comparison",
+    "scope_and_uncertainty": "No inferred benefit/ROI/latency/cost claims. Report sample and uncertainty; formal threshold acceptance unresolved. Optional convenience ratios/count summaries removed; observational count fields remain blank until actual run evidence. Observed result is NOT RUN; positive declared denominator/opportunity and exact normative acceptance rules remain mandatory."
+  },
+  {
+    "id": "BASE-07",
+    "class": "Comparison framework—not an achieved benefit",
+    "fixture_family": "Time and workload",
+    "expected_oracle": [
+      "Preregister matched task/risk/current-workflow baseline, native safety routes and acceptance before comparing; specialists excluded unless later justified."
+    ],
+    "metrics": [
+      "Observed completion time, critical path versus total work, reviewer workload; no invented durations."
+    ],
+    "positive_denominators": [
+      "Declare positive task/inspection/adversarial opportunity denominators per metric; absence never PASS."
+    ],
+    "normative_gate": "Domain threshold UNSET / NOT ASSESSED; exact normative safety gates still apply.",
+    "status": "NOT RUN",
+    "observed_status": "NOT RUN",
+    "evidence": "No human/domain/runtime/latency/cost result supplied.",
+    "owner": "Human evaluation and domain owners unassigned",
+    "prerequisites": "Domain thresholds and risk acceptance; workload/freshness/time/cost inputs UNSET",
+    "comparison_baseline": "Deterministic templates/grouping",
+    "measurement_plan": "Observed completion time, critical path versus total work, reviewer workload; no invented durations.",
+    "acceptance_stage": "Pre-deployment matched comparison",
+    "scope_and_uncertainty": "No inferred benefit/ROI/latency/cost claims. Report sample and uncertainty; formal threshold acceptance unresolved. Optional convenience ratios/count summaries removed; observational count fields remain blank until actual run evidence. Observed result is NOT RUN; positive declared denominator/opportunity and exact normative acceptance rules remain mandatory."
+  },
+  {
+    "id": "BASE-08",
+    "class": "Comparison framework—not an achieved benefit",
+    "fixture_family": "Latency and lifecycle cost",
+    "expected_oracle": [
+      "Preregister matched task/risk/current-workflow baseline, native safety routes and acceptance before comparing; specialists excluded unless later justified."
+    ],
+    "metrics": [
+      "Observed configured B_time/B_cost conformance including retrieval/storage/telemetry/evaluation/inference/retries/operations; units and uncertainty explicit."
+    ],
+    "positive_denominators": [
+      "Declare positive task/inspection/adversarial opportunity denominators per metric; absence never PASS."
+    ],
+    "normative_gate": "Domain threshold UNSET / NOT ASSESSED; exact normative safety gates still apply.",
+    "status": "NOT RUN",
+    "observed_status": "NOT RUN",
+    "evidence": "No human/domain/runtime/latency/cost result supplied.",
+    "owner": "Human evaluation and domain owners unassigned",
+    "prerequisites": "Domain thresholds and risk acceptance; workload/freshness/time/cost inputs UNSET",
+    "comparison_baseline": "Deterministic templates/grouping",
+    "measurement_plan": "Observed configured B_time/B_cost conformance including retrieval/storage/telemetry/evaluation/inference/retries/operations; units and uncertainty explicit.",
+    "acceptance_stage": "Pre-deployment matched comparison",
+    "scope_and_uncertainty": "No inferred benefit/ROI/latency/cost claims. Report sample and uncertainty; formal threshold acceptance unresolved. Optional convenience ratios/count summaries removed; observational count fields remain blank until actual run evidence. Observed result is NOT RUN; positive declared denominator/opportunity and exact normative acceptance rules remain mandatory."
+  },
+  {
+    "id": "BASE-09",
+    "class": "Comparison framework—not an achieved benefit",
+    "fixture_family": "Correctness and omissions",
+    "expected_oracle": [
+      "Preregister matched task/risk/current-workflow baseline, native safety routes and acceptance before comparing; specialists excluded unless later justified."
+    ],
+    "metrics": [
+      "Gold task correctness, critical-item retention, material conflict/gap coverage; same positive gold denominators."
+    ],
+    "positive_denominators": [
+      "Declare positive task/inspection/adversarial opportunity denominators per metric; absence never PASS."
+    ],
+    "normative_gate": "Domain threshold UNSET / NOT ASSESSED; exact normative safety gates still apply.",
+    "status": "NOT RUN",
+    "observed_status": "NOT RUN",
+    "evidence": "No human/domain/runtime/latency/cost result supplied.",
+    "owner": "Human evaluation and domain owners unassigned",
+    "prerequisites": "Domain thresholds and risk acceptance; workload/freshness/time/cost inputs UNSET",
+    "comparison_baseline": "Simple synthesis—zero specialists",
+    "measurement_plan": "Gold task correctness, critical-item retention, material conflict/gap coverage; same positive gold denominators.",
+    "acceptance_stage": "Pre-deployment matched comparison",
+    "scope_and_uncertainty": "No inferred benefit/ROI/latency/cost claims. Report sample and uncertainty; formal threshold acceptance unresolved. Optional convenience ratios/count summaries removed; observational count fields remain blank until actual run evidence. Observed result is NOT RUN; positive declared denominator/opportunity and exact normative acceptance rules remain mandatory."
+  },
+  {
+    "id": "BASE-10",
+    "class": "Comparison framework—not an achieved benefit",
+    "fixture_family": "Human inspection and decision quality",
+    "expected_oracle": [
+      "Preregister matched task/risk/current-workflow baseline, native safety routes and acceptance before comparing; specialists excluded unless later justified."
+    ],
+    "metrics": [
+      "Observed actual evidence/drillback inspection, review quality and decision quality under matched task/risk protocol; no fluent-text proxy."
+    ],
+    "positive_denominators": [
+      "Declare positive task/inspection/adversarial opportunity denominators per metric; absence never PASS."
+    ],
+    "normative_gate": "Domain threshold UNSET / NOT ASSESSED; exact normative safety gates still apply.",
+    "status": "NOT RUN",
+    "observed_status": "NOT RUN",
+    "evidence": "No human/domain/runtime/latency/cost result supplied.",
+    "owner": "Human evaluation and domain owners unassigned",
+    "prerequisites": "Domain thresholds and risk acceptance; workload/freshness/time/cost inputs UNSET",
+    "comparison_baseline": "Simple synthesis—zero specialists",
+    "measurement_plan": "Observed actual evidence/drillback inspection, review quality and decision quality under matched task/risk protocol; no fluent-text proxy.",
+    "acceptance_stage": "Pre-deployment matched comparison",
+    "scope_and_uncertainty": "No inferred benefit/ROI/latency/cost claims. Report sample and uncertainty; formal threshold acceptance unresolved. Optional convenience ratios/count summaries removed; observational count fields remain blank until actual run evidence. Observed result is NOT RUN; positive declared denominator/opportunity and exact normative acceptance rules remain mandatory."
+  },
+  {
+    "id": "BASE-11",
+    "class": "Comparison framework—not an achieved benefit",
+    "fixture_family": "Time and workload",
+    "expected_oracle": [
+      "Preregister matched task/risk/current-workflow baseline, native safety routes and acceptance before comparing; specialists excluded unless later justified."
+    ],
+    "metrics": [
+      "Observed completion time, critical path versus total work, reviewer workload; no invented durations."
+    ],
+    "positive_denominators": [
+      "Declare positive task/inspection/adversarial opportunity denominators per metric; absence never PASS."
+    ],
+    "normative_gate": "Domain threshold UNSET / NOT ASSESSED; exact normative safety gates still apply.",
+    "status": "NOT RUN",
+    "observed_status": "NOT RUN",
+    "evidence": "No human/domain/runtime/latency/cost result supplied.",
+    "owner": "Human evaluation and domain owners unassigned",
+    "prerequisites": "Domain thresholds and risk acceptance; workload/freshness/time/cost inputs UNSET",
+    "comparison_baseline": "Simple synthesis—zero specialists",
+    "measurement_plan": "Observed completion time, critical path versus total work, reviewer workload; no invented durations.",
+    "acceptance_stage": "Pre-deployment matched comparison",
+    "scope_and_uncertainty": "No inferred benefit/ROI/latency/cost claims. Report sample and uncertainty; formal threshold acceptance unresolved. Optional convenience ratios/count summaries removed; observational count fields remain blank until actual run evidence. Observed result is NOT RUN; positive declared denominator/opportunity and exact normative acceptance rules remain mandatory."
+  },
+  {
+    "id": "BASE-12",
+    "class": "Comparison framework—not an achieved benefit",
+    "fixture_family": "Latency and lifecycle cost",
+    "expected_oracle": [
+      "Preregister matched task/risk/current-workflow baseline, native safety routes and acceptance before comparing; specialists excluded unless later justified."
+    ],
+    "metrics": [
+      "Observed configured B_time/B_cost conformance including retrieval/storage/telemetry/evaluation/inference/retries/operations; units and uncertainty explicit."
+    ],
+    "positive_denominators": [
+      "Declare positive task/inspection/adversarial opportunity denominators per metric; absence never PASS."
+    ],
+    "normative_gate": "Domain threshold UNSET / NOT ASSESSED; exact normative safety gates still apply.",
+    "status": "NOT RUN",
+    "observed_status": "NOT RUN",
+    "evidence": "No human/domain/runtime/latency/cost result supplied.",
+    "owner": "Human evaluation and domain owners unassigned",
+    "prerequisites": "Domain thresholds and risk acceptance; workload/freshness/time/cost inputs UNSET",
+    "comparison_baseline": "Simple synthesis—zero specialists",
+    "measurement_plan": "Observed configured B_time/B_cost conformance including retrieval/storage/telemetry/evaluation/inference/retries/operations; units and uncertainty explicit.",
+    "acceptance_stage": "Pre-deployment matched comparison",
+    "scope_and_uncertainty": "No inferred benefit/ROI/latency/cost claims. Report sample and uncertainty; formal threshold acceptance unresolved. Optional convenience ratios/count summaries removed; observational count fields remain blank until actual run evidence. Observed result is NOT RUN; positive declared denominator/opportunity and exact normative acceptance rules remain mandatory."
+  }
+]
