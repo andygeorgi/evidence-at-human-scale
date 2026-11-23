@@ -66,7 +66,7 @@ The [figures](../figures/README.md) have one source of truth, [`figures/figures.
 - `sync_figures.py` writes the figure blocks into the pages that use them, between `<!-- figure:Fxx:start -->` and `<!-- figure:Fxx:end -->` markers, and writes the gallery. `--check` writes nothing and fails if a block is out of date.
 - `check_figures.py` checks that every figure has a caption, alt text, a long description and a place in the documents, that every picture exists, and that the blocks are in sync.
 - `figures/src/svg_figures.py` draws F02, F04, F06 and the banner, in light and dark. It is deterministic. `--check` fails if a committed SVG differs.
-- `figures/src/render_mermaid.py` renders the Mermaid sources to light and dark SVG with the Mermaid CLI and records what it rendered in `figures/render-manifest.json`. It is the only script that needs anything beyond Python (Node.js, the Mermaid CLI and a Chromium-based browser), so it is not part of `check_all.py`; `--check` compares the sources with the manifest (it fails if a rendered SVG is missing or older than its source) and needs none of them.
+- `figures/src/render_mermaid.py` renders the Mermaid sources to light and dark SVG with the Mermaid CLI and records what it rendered in `figures/render-manifest.json`. Mermaid does not render byte for byte reproducibly (it generates element ids), so the rendered SVGs are committed and checked against the manifest, not rebuilt on every check. It is the only script that needs anything beyond Python (Node.js, the Mermaid CLI and a Chromium-based browser), so it is not part of `check_all.py`; `--check` compares the sources with the manifest (it fails if a rendered SVG is missing or older than its source) and needs none of them.
 
 ### check_hygiene.py
 

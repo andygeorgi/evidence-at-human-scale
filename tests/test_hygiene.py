@@ -36,6 +36,15 @@ class TheRepository(unittest.TestCase):
         self.assertGreater(count, 100)
         self.assertEqual([f.format() for f in findings], [])
 
+    def test_no_file_is_committed_with_windows_line_endings(self):
+        if not (support.REPO / ".git").exists():
+            self.skipTest("not a git checkout")
+        done = subprocess.run(["git", "-C", str(support.REPO), "ls-files", "--eol"], capture_output=True, text=True)
+        if done.returncode != 0:
+            self.skipTest("git is not available")
+        crlf = [line.split("\t")[-1] for line in done.stdout.splitlines() if line.startswith("i/crlf") or line.split()[0] == "i/mixed"]
+        self.assertEqual(crlf, [], ".gitattributes asks for LF; run git add --renormalize .")
+
 
 class Detection(unittest.TestCase):
     def test_private_and_tenant_links(self):

@@ -27,6 +27,23 @@ def run_tool(args):
     return done.returncode, (done.stdout + done.stderr).strip()
 
 
+def lint_mermaid(fid, name, text):
+    """What a Mermaid source needs to be accessible and legible in both color schemes."""
+    problems = []
+    for needle in ("accTitle:", "accDescr:"):
+        if needle not in text:
+            problems.append("%s: %s has no %s" % (fid, name, needle))
+    if re.search(r"^\s*(click|href)\b", text, re.M):
+        problems.append("%s: %s uses click or href, which GitHub does not allow" % (fid, name))
+    for line in text.splitlines():
+        if line.strip().startswith("classDef") and not all(k in line for k in ("fill:", "stroke:", "color:")):
+            problems.append("%s: %s has a classDef without fill, stroke and text color, which is unsafe in dark mode: %s" % (fid, name, line.strip()))
+        named = re.match(r"\s*classDef\s+(\w+)", line)
+        if named and named.group(1).lower() in MERMAID_CLASSES:
+            problems.append("%s: %s names a class %r, which is also a CSS class Mermaid uses for its own elements; the colors would leak into edge labels and clusters" % (fid, name, named.group(1)))
+    return problems
+
+
 def check():
     problems = []
     figures, banner = sync_figures.load()
@@ -67,18 +84,7 @@ def check():
             if re.search(r"<script|on\w+\s*=|href=\"https?:", svg):
                 problems.append("%s: %s contains a script, an event handler or an external link" % (fid, image.name))
         if kind == "mermaid" and source.exists():
-            text = source.read_text(encoding="utf-8")
-            for needle in ("accTitle:", "accDescr:"):
-                if needle not in text:
-                    problems.append("%s: %s has no %s" % (fid, source.name, needle))
-            if re.search(r"^\s*(click|href)\b", text, re.M):
-                problems.append("%s: %s uses click or href, which GitHub does not allow" % (fid, source.name))
-            for line in text.splitlines():
-                if line.strip().startswith("classDef") and not all(k in line for k in ("fill:", "stroke:", "color:")):
-                    problems.append("%s: %s has a classDef without fill, stroke and text color, which is unsafe in dark mode: %s" % (fid, source.name, line.strip()))
-                named = re.match(r"\s*classDef\s+(\w+)", line)
-                if named and named.group(1).lower() in MERMAID_CLASSES:
-                    problems.append("%s: %s names a class %r, which is also a CSS class Mermaid uses for its own elements; the colors would leak into edge labels and clusters" % (fid, source.name, named.group(1)))
+            problems += lint_mermaid(fid, source.name, source.read_text(encoding="utf-8"))
     problems += ["gallery/documents: " + p for p in sync_figures.sync(check=True)]
     for label, args in (("Mermaid renders", ["figures/src/render_mermaid.py", "--check"]), ("hand-drawn SVGs", ["figures/src/svg_figures.py", "--check"])):
         code, out = run_tool(args)

@@ -28,7 +28,8 @@ THEMES = {"light": ("default", "white"), "dark": ("dark", "#0d1117")}
 
 
 def sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    """SHA-256 of a file with line endings normalized, so a checkout on any platform hashes the same."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def sources():
