@@ -14,7 +14,7 @@ The first version of this repository. It is offered for review and is not a fina
 - **A synthetic worked example**: 13 folders and 37 contract instances telling one invented supplier-payment story, with raw exports, a registry, stored gateway evaluations and an assistant response, and a validation command that runs the same on Windows, macOS and Linux.
 - **Evaluation guidance**: the [evaluation guide](evaluation/README.md), the oracles, human-outcome guidance and a catalogue of 12 tests, 12 matched baseline records, 70 fixtures and 47 domain parameters. Every status is NOT RUN or UNSET.
 - **A figure set**: 11 figures and a banner, each with a caption, alt text and a text description, in light and dark variants, with their sources.
-- **Tooling**: [`scripts/check_all.py`](scripts/check_all.py) and the checks behind it (examples, unit tests, link and anchor check, figure and hygiene checks), an optional external-URL check, and a GitHub Actions workflow that runs them on Ubuntu and Windows.
+- **Tooling**: [`scripts/check_all.py`](scripts/check_all.py) and the checks behind it (examples, unit tests, link and anchor check, page-structure check, figure and hygiene checks), an optional external-URL check, and a GitHub Actions workflow that runs them on Ubuntu and Windows.
 
 ### Known limitations of this release candidate
 

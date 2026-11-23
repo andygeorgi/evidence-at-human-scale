@@ -64,7 +64,7 @@ Some example checks touch the same failure area as an EV test. That is a relatio
 
 12 tests, 70 synthetic fixtures, 12 matched baseline records and 47 domain parameters, all NOT RUN or UNSET. The [oracles](oracles.md) page states what each test requires. The [catalogue](catalogue/README.md) holds the machine-readable tables.
 
-| | |
+| Topic | What the programme defines |
 |---|---|
 | **Tests** | EV01 Types and source fidelity · EV02 Rule reproducibility · EV03 Correlated agents · EV04 Conflict retention · EV05 Missingness · EV06 Derived and authorised disclosure · EV07 Revocation · EV08 Prompt injection · EV09 Obligation overload · EV10 Degradation · EV11 Race, duplicate and unknown action · EV12 Late or corrected evidence |
 | **Gates** | 100% over a positive denominator for the ratio metrics; zero for prohibited events, only over positive adversarial opportunities. Finite fixture targets, not production safety guarantees. |

@@ -19,7 +19,7 @@ It is an architecture proposition, not a deployment or a benefit claim. **No eva
 
 ## What is here
 
-| | |
+| Goal | Where |
 |---|---|
 | **Read** | [The paper](docs/paper/README.md): 15 short chapters, from the problem to "start with one decision, not a platform". |
 | **Check the detail** | [Architecture reference](architecture/README.md) · [seven contracts](contracts/README.md) · [JSON Schema bundle](schemas/README.md). |

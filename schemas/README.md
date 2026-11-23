@@ -19,7 +19,7 @@ Everything with an `x-` prefix, every `title`, `description`, `examples` and `$c
 
 ## Identity and version
 
-| | |
+| Property | Value |
 |---|---|
 | `$id` | `urn:evidence-at-human-scale:contracts:1` |
 | Instance `schema_version` | `"1"` |

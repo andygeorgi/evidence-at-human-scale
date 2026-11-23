@@ -131,11 +131,11 @@ class StatedCounts(unittest.TestCase):
 class CodeReference(unittest.TestCase):
     """The code table in scripts/README.md must name every code the checks can produce, and no code that does not exist."""
 
-    FAMILIES = r"SCH|REF|LIN|KIND|COR|LIFE|MISS|PKT|AUTH|ACC|DISC|RESP|GW|CASE|HYG"
+    FAMILIES = r"SCH|REF|LIN|KIND|COR|LIFE|MISS|PKT|AUTH|ACC|DISC|RESP|GW|CASE|HYG|STR"
 
     def codes_in_scripts(self):
         found = set()
-        for path in list((REPO / "scripts" / "eahs").glob("*.py")) + [REPO / "scripts" / "validate_examples.py", REPO / "scripts" / "check_hygiene.py"]:
+        for path in list((REPO / "scripts" / "eahs").glob("*.py")) + [REPO / "scripts" / "validate_examples.py", REPO / "scripts" / "check_hygiene.py", REPO / "scripts" / "check_structure.py"]:
             found |= set(re.findall(r"\b(?:%s)\d{3}\b" % self.FAMILIES, path.read_text(encoding="utf-8")))
         return found
 

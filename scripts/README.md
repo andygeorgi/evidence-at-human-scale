@@ -25,6 +25,7 @@ python scripts/check_all.py --skip tests
 | `example-data` | `build_example_data.py --check` | The committed example JSON is exactly what its builder writes. |
 | `schema-hash` | `schema_surface_hash.py --check` | The schema's validation surface is unchanged since it was recorded. |
 | `links` | `check_links.py --orphans` | Relative links, anchors, images and alt text resolve, and every page is linked from another. |
+| `structure` | `check_structure.py` | Every page has one H1, no skipped heading levels, no empty table headers and no generic link text. |
 | `figures` | `check_figures.py` | Every figure is complete, accessible, rendered and in sync with the documents. |
 | `svg` | `figures/src/svg_figures.py --check` | The hand-drawn SVGs are what their generator draws. |
 | `hygiene` | `check_hygiene.py` | No private link, local path, credential, e-mail address, internal term or unfinished marker, and no file that would not survive a clone. |
@@ -58,6 +59,10 @@ Prints a hash of the schema's *validation surface*: every keyword that can chang
 ### check_links.py
 
 Checks every Markdown file for broken relative links, broken heading anchors (by GitHub's rules), missing images, and images without alt text. A path must match in case, so a link that works on Windows or macOS but not on Linux counts as broken. Links inside code are ignored. `--orphans` also lists pages nothing links to (folder READMEs and `.github/` are exempt), and `check_all.py` uses it; `--external` prints the external URLs it found.
+
+### check_structure.py
+
+Checks the structure a screen-reader user navigates by, on every Markdown page: exactly one H1 (`STR001`), no heading level skipped going down (`STR002`), no link text that says nothing out of context, such as "here" (`STR003`), and no table with an empty header row (`STR004`). Code and HTML comments are ignored. It does not replace an accessibility audit; see the [limitations](../CHANGELOG.md#known-limitations-of-this-release-candidate).
 
 ### check_figures.py, sync_figures.py and the figure sources
 
@@ -120,6 +125,7 @@ Each finding has a code. The page named in a finding explains the rule. The [eva
 | `GW001`, `GW002` | A stored gateway evaluation no longer gives its recorded decision, or cannot be evaluated. |
 | `CASE001`–`CASE003` | An evaluation case produces other codes than it declares, repeats an id, or has a mutation that cannot be applied. |
 | `HYG101`–`HYG108`, `HYG201`–`HYG205` | The [hygiene](#check_hygienepy) rules; see `check_hygiene.py --rules`. |
+| `STR001`–`STR004` | The [structure](#check_structurepy) rules: one H1, no skipped heading level, no generic link text, no empty table header. |
 
 The sixteen reason codes of the commit check itself (for example `GRANT_REVOKED`, `EVIDENCE_STALE`, `CUMULATIVE_LIMIT`) are explained in [example 08](../examples/08-blocked-action/README.md#the-commit-time-reason-codes) and exercised by the stored evaluations in examples [07](../examples/07-authority-and-delegation/README.md), [08](../examples/08-blocked-action/README.md), [09](../examples/09-unknown-outcome/README.md), [10](../examples/10-degraded-modes/README.md) and [12](../examples/12-controlled-change/README.md).
 
