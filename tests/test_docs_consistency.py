@@ -180,5 +180,42 @@ class CodeReference(unittest.TestCase):
         self.assertEqual([c for c in GATE_CODES if "`%s`" % c not in page], [])
 
 
+def excerpt_differences(excerpt, actual, path="$"):
+    """Where `excerpt` says something `actual` does not. A list may show only its first items, and "…" matches anything."""
+    if excerpt == "…":
+        return []
+    if isinstance(excerpt, dict):
+        if not isinstance(actual, dict):
+            return [path]
+        found = []
+        for key, value in excerpt.items():
+            found += [path + "." + key] if key not in actual else excerpt_differences(value, actual[key], path + "." + key)
+        return found
+    if isinstance(excerpt, list):
+        if not isinstance(actual, list) or len(excerpt) > len(actual):
+            return [path]
+        return [d for i, value in enumerate(excerpt) for d in excerpt_differences(value, actual[i], "%s[%d]" % (path, i))]
+    return [] if excerpt == actual else [path]
+
+
+class ContractPageExcerpts(unittest.TestCase):
+    PAGE = "contracts/c06-delegation.md"
+
+    def test_the_c06_page_names_every_commit_reason_code(self):
+        self.assertEqual([c for c in GATE_CODES if "`%s`" % c not in text(self.PAGE)], [])
+
+    def test_the_abridged_c06_instance_is_an_excerpt_of_the_real_file(self):
+        block = re.search(r"```json\n(.*?)\n```", text(self.PAGE), re.S)
+        self.assertIsNotNone(block, "the page has lost its abridged instance")
+        excerpt = json.loads(block.group(1))
+        actual = json.loads(text("examples/07-authority-and-delegation/c06-GRT-APPR-0417-A-v1.json"))
+        self.assertEqual(excerpt_differences(excerpt, actual), [])
+
+    def test_the_excerpt_check_notices_a_changed_value(self):
+        self.assertEqual(excerpt_differences({"a": {"b": 1}}, {"a": {"b": 2}}), ["$.a.b"])
+        self.assertEqual(excerpt_differences({"a": ["…"]}, {"a": [1, 2]}), [])
+        self.assertEqual(excerpt_differences({"a": [1, 2, 3]}, {"a": [1, 2]}), ["$.a"])
+
+
 if __name__ == "__main__":
     unittest.main()

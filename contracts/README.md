@@ -11,7 +11,7 @@ Seven documentation contracts carry the responsibilities of the architecture: C0
 | [C03 Selection](c03-selection.md) | `C03` | `#/$defs/selection` | 6 | What the system actually considered and retained: authorized retrieval coverage, dispositions, obligations, conflicts, missingness and coverage. A selected scope is not whole-corpus coverage. |
 | [C04 Decision packet](c04-decision-packet.md) | `C04` | `#/$defs/decision_packet` | 9 | A versioned review context tied to evidence and selection. Not action authorization. |
 | [C05 Action proposal](c05-action-proposal.md) | `C05` | `#/$defs/action_proposal` | 3 | The exact versioned action to consider. Advice is not approval or commit. |
-| [C06 Delegation](c06-delegation.md) | `C06` | `#/$defs/delegation` | 3 | A bounded grant for a predefined action class. Current rights, evidence, policy, target state and shared limits still govern commit. |
+| [C06 Delegation](c06-delegation.md) | `C06` | `#/$defs/delegation` | 3 | An exact approval of one proposal version, or a bounded grant for a predefined action class. Current rights, evidence, policy, target state and shared limits still govern commit. |
 | [C07 Execution receipt](c07-execution-receipt.md) | `C07` | `#/$defs/execution_receipt` | 3 | Verified outcome. Unknown is unresolved; partial effects count. |
 
 ## Notation
