@@ -5,7 +5,7 @@ Two ideas are demonstrated, both on synthetic data:
 * A deterministic template can write a faithful response from a packet with no model at all (a fallback when the
   assistant model is unavailable, and a baseline to compare a model against).
 * A response can be checked mechanically for the properties the architecture asks of it: every statement cites
-  packet items, figures come from those items, inferences are labelled, every conflict, gap, recommendation and
+  packet items, figures come from those items, inferences are labeled, every conflict, gap, recommendation and
   proposal in the packet is mentioned, proposals are not worded as decisions, and a response is not presented as
   current when its packet has been invalidated.
 
@@ -179,7 +179,7 @@ def check_response(model: Model, response: dict, path) -> List[Finding]:
             if extra:
                 findings.append(Finding("RESP002", "figures %s do not appear in the cited packet items" % ", ".join(sorted(extra)), file, loc, DOC_EVIDENCE))
         if kind == "inference" and not text.lower().startswith("inference"):
-            findings.append(Finding("RESP003", "an inference must be labelled as one (start with \"Inference\")", file, loc, DOC_EVIDENCE))
+            findings.append(Finding("RESP003", "an inference must be labeled as one (start with \"Inference\")", file, loc, DOC_EVIDENCE))
         if kind == "proposal" and "not executed" not in text.lower():
             findings.append(Finding("RESP005", "a proposal must say it is not executed or approved", file, loc, "contracts/c05-action-proposal.md"))
         if kind not in ("claim", "conflict") and DECISION_WORDING.search(text):

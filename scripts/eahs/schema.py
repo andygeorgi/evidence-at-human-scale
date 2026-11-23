@@ -134,7 +134,7 @@ class ExampleResult:
 
 
 def check_embedded_examples(schema: dict) -> List[ExampleResult]:
-    """The bundle documents 38 valid and 64 invalid instances; each must behave as labelled."""
+    """The bundle documents 38 valid and 64 invalid instances; each must behave as labeled."""
     results: List[ExampleResult] = []
     index = schema.get("x-valid-example-index", [])
     for position, instance in enumerate(schema.get("examples", [])):

@@ -14,7 +14,7 @@ Each figure has a caption, a short alt text and a long description. They appear 
 
 Mermaid figures also have rendered SVGs (`F01-light.svg`, `F01-dark.svg`, and so on), for this gallery and for anyone who needs a picture. Hand-drawn figures were laid out by script because Mermaid cannot place a nine-step path beside two other paths legibly.
 
-All colours are paired with a text label. No meaning is carried by colour alone, and every fill is paired with dark text of high contrast.
+All colors are paired with a text label. No meaning is carried by color alone, and every fill is paired with dark text of high contrast.
 
 **On a narrow screen**, tap a figure to open it at full size, or read the text description under it: every figure has one, and the description carries the same content as the picture.
 
@@ -49,7 +49,7 @@ Source: [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](banne
 
 **Alt text.** A wide band of growing records, events, findings and model interpretations narrows through a governed decision context into one accountable Decision Owner with finite attention.
 
-**Description.** A funnel with three stages. At the top, a wide band: information production keeps growing, as records, events, deterministic findings, analytical results and model interpretations. In the middle, the governed decision context, which keeps what could change a decision and shows its source, scope, gaps and owner. At the bottom, the Decision Owner, who has finite attention and is accountable. The step from the wide band to the context is labelled authorize, select, label; the step from the context to the owner is labelled one decision packet.
+**Description.** A funnel with three stages. At the top, a wide band: information production keeps growing, as records, events, deterministic findings, analytical results and model interpretations. In the middle, the governed decision context, which keeps what could change a decision and shows its source, scope, gaps and owner. At the bottom, the Decision Owner, who has finite attention and is accountable. The step from the wide band to the context is labeled authorize, select, label; the step from the context to the owner is labelled one decision packet.
 
 **Used in:** [1. The scarce resource is human attention](../docs/paper/01-human-attention.md).
 
@@ -106,7 +106,7 @@ Source: [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](banne
 
 **Alt text.** The Decision Owner reviews a decision packet made of eight groups, G02 to G09. Claims, inferences and conflicts point to evidence records; coverage and obligations point to the selection manifest; action proposals point to action proposal records.
 
-**Description.** The Decision Owner reviews one decision packet (C04), bound to an exact context, selection and as-of time (group G01). The packet has eight further groups: G02 supported claims, each citing an exact record version; G03 labelled inferences, with method and limits, never claims; G04 recommendations, with the accountable review requirement; G05 conflicts and uncertainty, visible and never settled by majority; G06 coverage, omissions and gaps, with seven missingness labels; G07 obligations, priority and mandatory items; G08 action proposals, proposed and not executed; and G09 review and version history. Claims, inferences and conflicts point to evidence records (C02) by exact version, claim or payload pointer and original locator. Coverage and obligations come from the selection manifest (C03). Action proposals point to action proposal records (C05).
+**Description.** The Decision Owner reviews one decision packet (C04), bound to an exact context, selection and as-of time (group G01). The packet has eight further groups: G02 supported claims, each citing an exact record version; G03 labeled inferences, with method and limits, never claims; G04 recommendations, with the accountable review requirement; G05 conflicts and uncertainty, visible and never settled by majority; G06 coverage, omissions and gaps, with seven missingness labels; G07 obligations, priority and mandatory items; G08 action proposals, proposed and not executed; and G09 review and version history. Claims, inferences and conflicts point to evidence records (C02) by exact version, claim or payload pointer and original locator. Coverage and obligations come from the selection manifest (C03). Action proposals point to action proposal records (C05).
 
 **Used in:** [6. The decision packet compresses presentation](../docs/paper/06-decision-packet.md); [05 Decision packet](../examples/05-decision-packet/README.md).
 
@@ -155,7 +155,7 @@ Source: [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](banne
 | Information state | What the reader sees | Review | Execution, authority valid and current | Execution, authority invalid or uncertain |
 |---|---|---|---|---|
 | Current and sufficient | The full packet | Normal review | Eligible, after the commit checks | **Closed** |
-| Qualified: stale, partial, or a source unavailable | The packet with labelled gaps; never a clean negative | Limited review, limits visible | Eligible only if the action's own evidence and precondition checks still pass | **Closed** |
+| Qualified: stale, partial, or a source unavailable | The packet with labeled gaps; never a clean negative | Limited review, limits visible | Eligible only if the action's own evidence and precondition checks still pass | **Closed** |
 | Assistant model unavailable | A qualified deterministic template, or a native or manual route; unsupported synthesis is not released as advice | Review from the template | As in the row above | **Closed** |
 | Authorization or revocation cannot be established | Dependent disclosure withheld | Blocked for what depends on it | **Closed** | **Closed** |
 

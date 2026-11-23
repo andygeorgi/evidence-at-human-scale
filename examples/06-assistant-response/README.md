@@ -9,7 +9,7 @@
 The reviewer usually meets a packet through an assistant's response. This folder shows two things:
 
 1. A **template** can write a faithful response from a packet with no model at all. That is a fallback for when the assistant model is unavailable, and a baseline to compare a model against. See [degraded modes](../10-degraded-modes/README.md).
-2. Any response, whoever wrote it, can be **checked against its packet** mechanically: is each statement attributable, do its figures come from the packet, is an inference labelled, is anything the packet flagged left out?
+2. Any response, whoever wrote it, can be **checked against its packet** mechanically: is each statement attributable, do its figures come from the packet, is an inference labeled, is anything the packet flagged left out?
 
 The reasoning is in [chapter 7, one interaction](../../docs/paper/07-one-interaction.md) and the [implementation guide](../../docs/implementation-guide.md).
 
@@ -44,7 +44,7 @@ A response is a list of statements. Each has a `kind` (`claim`, `inference`, `co
 |---|---|
 | `RESP001` | a statement cites nothing, cites something that does not resolve, or cites an item of the wrong kind (an inference cited as a claim) |
 | `RESP002` | a claim, conflict, recommendation or inference contains a figure that is not in the packet items it cites |
-| `RESP003` | an inference is not labelled as one |
+| `RESP003` | an inference is not labeled as one |
 | `RESP004` | it drops an inference, conflict, gap, recommendation, proposal or obligation of the packet, or omits the packet's coverage limitation |
 | `RESP005` | a proposal does not say it is not executed or approved, or other wording presents an action as approved or done |
 | `RESP006` | it is `current` but its packet has been invalidated, or its as-of time differs |
@@ -56,7 +56,7 @@ The negative cases for these rules live in [`tests/test_response.py`](../../test
 
 ## What this shows, and what it does not
 
-- **Shows:** that attribution, completeness and honest labelling of a response can be tested without reading it, and that a no-model fallback is possible.
+- **Shows:** that attribution, completeness and honest labeling of a response can be tested without reading it, and that a no-model fallback is possible.
 - **Does not show:** that a real model's response would conform, that conformance makes a response correct, or that reviewers prefer it. The checker compares a response with its packet. It says nothing about whether the packet is right, and it is not a model evaluation.
 
 [← 05 Decision packet](../05-decision-packet/README.md) · [Examples](../README.md) · [Next: 07 Authority and delegation →](../07-authority-and-delegation/README.md)

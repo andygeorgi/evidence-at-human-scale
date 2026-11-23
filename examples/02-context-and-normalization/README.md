@@ -6,7 +6,7 @@
 
 ## Purpose
 
-Before anything is selected, the interaction is bound to a context ([C01](../../contracts/c01-context.md)): who is asking, for which task and purpose, about which entities, as of when, at what risk, under which policies and with what authorisation. Everything that follows (selection, packet, proposal) refers back to one exact version of this object. The reasoning is in [chapter 3](../../docs/paper/03-governed-context.md) and [chapter 5](../../docs/paper/05-context-and-attention.md).
+Before anything is selected, the interaction is bound to a context ([C01](../../contracts/c01-context.md)): who is asking, for which task and purpose, about which entities, as of when, at what risk, under which policies and with what authorization. Everything that follows (selection, packet, proposal) refers back to one exact version of this object. The reasoning is in [chapter 3](../../docs/paper/03-governed-context.md) and [chapter 5](../../docs/paper/05-context-and-attention.md).
 
 ## Files
 
@@ -26,9 +26,9 @@ Before anything is selected, the interaction is bound to a context ([C01](../../
 
 The access decision itself is not defined by the contracts. It is an external record the domain owns: see `external_records` in the [registry](../registry.json).
 
-## Normalisation: the rules that keep records comparable
+## Normalization: the rules that keep records comparable
 
-Folder [01](../01-source-records/README.md) shows admission of one record. Normalisation is also a set of rules every record's **scope** obeys, so that two records can be compared without guessing. Look at `scope` in any C02 file:
+Folder [01](../01-source-records/README.md) shows admission of one record. Normalization is also a set of rules every record's **scope** obeys, so that two records can be compared without guessing. Look at `scope` in any C02 file:
 
 - **Entities and task** are named, not implied.
 - **Jurisdiction** is never left blank. Here it is `not_applicable` with a reason ("Internal accounts-payable review; no external jurisdiction asserted").
@@ -40,7 +40,7 @@ A field that does not apply says so. A reader never has to wonder whether a blan
 
 ## v1 and v2
 
-Only the as-of time and the authorisation reference differ. The second context is a new object because the first one governed a selection and a packet that have since been invalidated; they still refer to v1, and that is how a reader can tell which snapshot a packet answered.
+Only the as-of time and the authorization reference differ. The second context is a new object because the first one governed a selection and a packet that have since been invalidated; they still refer to v1, and that is how a reader can tell which snapshot a packet answered.
 
 ## Checks that run here
 
@@ -49,6 +49,6 @@ Stage 2 validates both contexts. Stage 3 checks that the policy references resol
 ## What this shows, and what it does not
 
 - **Shows:** an interaction bound to who, what, why, when and under which rules, with a person and a workload kept apart.
-- **Does not show:** how an access decision is made, how identities are federated, or that a context is sufficient for authorisation. The access decision is a stand-in.
+- **Does not show:** how an access decision is made, how identities are federated, or that a context is sufficient for authorization. The access decision is a stand-in.
 
 [← 01 Source records](../01-source-records/README.md) · [Examples](../README.md) · [Next: 03 Lineage and common origin →](../03-lineage-and-common-origin/README.md)

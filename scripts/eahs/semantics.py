@@ -280,7 +280,7 @@ def _check_gap(model: Model, inst: Instance, m: dict, loc: str, as_of: str, sele
             limit = freshness_max_age(model, rec.data)
             age = age_hours(rec.data, ts(m["freshness"]["evaluated_at"]))
             if limit is not None and age is not None and age <= limit:
-                out.append(_f("MISS003", "labelled stale, but the record is %.1f h old and policy allows %.0f h" % (age, limit), inst, loc, DOC_LINEAGE))
+                out.append(_f("MISS003", "labeled stale, but the record is %.1f h old and policy allows %.0f h" % (age, limit), inst, loc, DOC_LINEAGE))
     elif state == "unavailable":
         rec = model.get("C02", m["dependency_failure_reference"]["record_id"], m["dependency_failure_reference"]["version"])
         if rec is not None and rec.data["identity_schema"]["kind"] != "source_record_assertion":

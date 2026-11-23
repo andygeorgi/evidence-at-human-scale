@@ -2,7 +2,7 @@
 
 Every change to what the contracts accept or reject is recorded here, newest first. Changes to wording, examples or crosswalk metadata are recorded too, so a reader can see that they did not alter validation.
 
-The schema file is [`schemas/contracts-v1.schema.json`](../schemas/contracts-v1.schema.json). See [Schemas](../schemas/README.md) for how it is organised.
+The schema file is [`schemas/contracts-v1.schema.json`](../schemas/contracts-v1.schema.json). See [Schemas](../schemas/README.md) for how it is organized.
 
 ## How to record a change
 
@@ -10,7 +10,7 @@ For each change give: the previous form, the new form, the reason, the compatibi
 
 ## v1.0.0-rc.1 (release candidate)
 
-First public candidate. The definitions were carried over from an earlier review draft that was never published, so there is no public migration. Before release, only identity and annotations were normalised. **What validates did not change.**
+First public candidate. The definitions were carried over from an earlier review draft that was never published, so there is no public migration. Before release, only identity and annotations were normalized. **What validates did not change.**
 
 | # | Change | Previous form | New form | Why | Compatibility | Migration |
 |---|---|---|---|---|---|---|

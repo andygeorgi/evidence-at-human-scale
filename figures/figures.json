@@ -6,7 +6,7 @@
       "title": "Information production can outgrow human inspection",
       "caption": "Information production can outgrow human inspection; governed decision context preserves what could change a decision.",
       "alt": "A wide band of growing records, events, findings and model interpretations narrows through a governed decision context into one accountable Decision Owner with finite attention.",
-      "description": "A funnel with three stages. At the top, a wide band: information production keeps growing, as records, events, deterministic findings, analytical results and model interpretations. In the middle, the governed decision context, which keeps what could change a decision and shows its source, scope, gaps and owner. At the bottom, the Decision Owner, who has finite attention and is accountable. The step from the wide band to the context is labelled authorize, select, label; the step from the context to the owner is labelled one decision packet.",
+      "description": "A funnel with three stages. At the top, a wide band: information production keeps growing, as records, events, deterministic findings, analytical results and model interpretations. In the middle, the governed decision context, which keeps what could change a decision and shows its source, scope, gaps and owner. At the bottom, the Decision Owner, who has finite attention and is accountable. The step from the wide band to the context is labeled authorize, select, label; the step from the context to the owner is labelled one decision packet.",
       "kind": "mermaid",
       "source": "figures/src/F01.mmd",
       "images": {"light": "figures/F01-light.svg", "dark": "figures/F01-dark.svg"},
@@ -39,7 +39,7 @@
       "title": "Anatomy of a decision packet",
       "caption": "A decision packet makes evidence consumable while exposing interpretation, gaps, obligations and unexecuted proposals to an accountable owner.",
       "alt": "The Decision Owner reviews a decision packet made of eight groups, G02 to G09. Claims, inferences and conflicts point to evidence records; coverage and obligations point to the selection manifest; action proposals point to action proposal records.",
-      "description": "The Decision Owner reviews one decision packet (C04), bound to an exact context, selection and as-of time (group G01). The packet has eight further groups: G02 supported claims, each citing an exact record version; G03 labelled inferences, with method and limits, never claims; G04 recommendations, with the accountable review requirement; G05 conflicts and uncertainty, visible and never settled by majority; G06 coverage, omissions and gaps, with seven missingness labels; G07 obligations, priority and mandatory items; G08 action proposals, proposed and not executed; and G09 review and version history. Claims, inferences and conflicts point to evidence records (C02) by exact version, claim or payload pointer and original locator. Coverage and obligations come from the selection manifest (C03). Action proposals point to action proposal records (C05).",
+      "description": "The Decision Owner reviews one decision packet (C04), bound to an exact context, selection and as-of time (group G01). The packet has eight further groups: G02 supported claims, each citing an exact record version; G03 labeled inferences, with method and limits, never claims; G04 recommendations, with the accountable review requirement; G05 conflicts and uncertainty, visible and never settled by majority; G06 coverage, omissions and gaps, with seven missingness labels; G07 obligations, priority and mandatory items; G08 action proposals, proposed and not executed; and G09 review and version history. Claims, inferences and conflicts point to evidence records (C02) by exact version, claim or payload pointer and original locator. Coverage and obligations come from the selection manifest (C03). Action proposals point to action proposal records (C05).",
       "kind": "svg",
       "source": "figures/src/svg_figures.py",
       "images": {"light": "figures/F04-light.svg", "dark": "figures/F04-dark.svg"},
@@ -79,7 +79,7 @@
         "columns": ["Information state", "What the reader sees", "Review", "Execution, authority valid and current", "Execution, authority invalid or uncertain"],
         "rows": [
           ["Current and sufficient", "The full packet", "Normal review", "Eligible, after the commit checks", "**Closed**"],
-          ["Qualified: stale, partial, or a source unavailable", "The packet with labelled gaps; never a clean negative", "Limited review, limits visible", "Eligible only if the action's own evidence and precondition checks still pass", "**Closed**"],
+          ["Qualified: stale, partial, or a source unavailable", "The packet with labeled gaps; never a clean negative", "Limited review, limits visible", "Eligible only if the action's own evidence and precondition checks still pass", "**Closed**"],
           ["Assistant model unavailable", "A qualified deterministic template, or a native or manual route; unsupported synthesis is not released as advice", "Review from the template", "As in the row above", "**Closed**"],
           ["Authorization or revocation cannot be established", "Dependent disclosure withheld", "Blocked for what depends on it", "**Closed**", "**Closed**"]
         ],

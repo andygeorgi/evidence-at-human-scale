@@ -59,7 +59,7 @@ To try your own, add a case to `scripts/build_example_data.py` (`case_file`) and
 | Case | Mutation | Expect | Why |
 |---|---|---|---|
 | `CASE-KIND-01` | A producer submits a kind it is not registered for | `KIND001` | A producer cannot promote its output to another kind: an ERP export is not a model inference, and the reverse. |
-| `CASE-KIND-02` | A model inference cited as a supported claim | `KIND002` | Model inferences are listed and labelled as inferences; they never support a "supported claim". |
+| `CASE-KIND-02` | A model inference cited as a supported claim | `KIND002` | Model inferences are listed and labeled as inferences; they never support a "supported claim". |
 
 ### Corroboration
 
@@ -80,7 +80,7 @@ To try your own, add a case to `scripts/build_example_data.py` (`case_file`) and
 
 | Case | Mutation | Expect | Why |
 |---|---|---|---|
-| `CASE-MISS-01` | Labelled stale although it is fresh | `MISS003` | A stale label must be justified by the freshness policy; a fresh record cannot be called stale. |
+| `CASE-MISS-01` | Labeled stale although it is fresh | `MISS003` | A stale label must be justified by the freshness policy; a fresh record cannot be called stale. |
 | `CASE-MISS-02` | A negative without complete coverage | `MISS002` | "Checked and none found" needs complete coverage of its declared scope; otherwise it is only "not retrieved" or "missing". |
 | `CASE-MISS-03` | An empty result from a retrieval that never completed | `MISS001`, `REF006` | "Not retrieved" means a completed retrieval returned nothing; an interrupted retrieval is not an empty result. |
 | `CASE-MISS-04` | The packet drops a gap its selection recorded | `MISS005` | Every gap in the selection must stay visible in the packet. |

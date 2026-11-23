@@ -47,6 +47,6 @@ Stage 2 validates each file against the C02 definition. Stage 3 checks that the 
 ## What this shows, and what it does not
 
 - **Shows:** a record that carries its own origin, scope, time, method, permissions and lifecycle, and a conversion that preserves the way back to the source.
-- **Does not show:** that normalisation scales, that real exports are this tidy, or that any source is correct. The records are hand-shaped to be small and readable.
+- **Does not show:** that normalization scales, that real exports are this tidy, or that any source is correct. The records are hand-shaped to be small and readable.
 
 [← Examples](../README.md) · [Next: 02 Context and normalization →](../02-context-and-normalization/README.md)

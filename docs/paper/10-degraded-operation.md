@@ -12,7 +12,7 @@ Information availability and authority validity are separate axes. Current suffi
 | Information state | What the reader sees | Review | Execution, authority valid and current | Execution, authority invalid or uncertain |
 |---|---|---|---|---|
 | Current and sufficient | The full packet | Normal review | Eligible, after the commit checks | **Closed** |
-| Qualified: stale, partial, or a source unavailable | The packet with labelled gaps; never a clean negative | Limited review, limits visible | Eligible only if the action's own evidence and precondition checks still pass | **Closed** |
+| Qualified: stale, partial, or a source unavailable | The packet with labeled gaps; never a clean negative | Limited review, limits visible | Eligible only if the action's own evidence and precondition checks still pass | **Closed** |
 | Assistant model unavailable | A qualified deterministic template, or a native or manual route; unsupported synthesis is not released as advice | Review from the template | As in the row above | **Closed** |
 | Authorization or revocation cannot be established | Dependent disclosure withheld | Blocked for what depends on it | **Closed** | **Closed** |
 

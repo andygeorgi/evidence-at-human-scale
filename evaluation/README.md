@@ -12,7 +12,7 @@ This repository proposes an evaluation programme. **It contains no results.** Ev
 | **Deterministic functional checks** | That a documented rule can be implemented and behaves consistently on a small, fixed input. | That a real system, model or person behaves that way. | **Two parts.** (1) The repository's own checks on the [synthetic examples](../examples/README.md): they exist and run. (2) The 70 fixtures of the **EV01–EV12** programme, to be run against an implementation: **NOT RUN**. |
 | **Model evaluation** | How a particular model and prompt perform on grounded tasks, against gold answers. | Whether the architecture is worthwhile. | **NOT RUN.** No model has been evaluated. |
 | **Human-outcome evaluation** | Whether people using the architecture inspect more evidence, decide better and carry a reasonable workload, compared with matched baselines. | Anything about safety or correctness of the system alone. | **NOT RUN.** See [human-outcome evaluation](human-outcome-evaluation.md). |
-| **Operational validation** | Whether it works in a real environment: latency, cost, failure behaviour, change control. | Whether the outcomes are good for people. | **NOT RUN.** |
+| **Operational validation** | Whether it works in a real environment: latency, cost, failure behavior, change control. | Whether the outcomes are good for people. | **NOT RUN.** |
 | **Production evidence** | What actually happened in use, over time. | | **None.** |
 
 The status words are used strictly:
@@ -26,11 +26,11 @@ The status words are used strictly:
 
 | Check | Command | Covers | Does not cover |
 |---|---|---|---|
-| Schema bundle | `python scripts/validate_examples.py` (stage 1) | The bundle is valid Draft 2020-12; the 102 embedded examples behave as labelled. | Anything about the contracts' meaning. |
+| Schema bundle | `python scripts/validate_examples.py` (stage 1) | The bundle is valid Draft 2020-12; the 102 embedded examples behave as labeled. | Anything about the contracts' meaning. |
 | Example instances | stage 2 | Every example validates against its contract. | |
 | Scenario semantics | stage 3 | References resolve to exact versions; lineage is acyclic; corrections propagate; missingness labels are justified; approvals end with their basis; receipts agree with the commit check; disclosure. | Real data, real producers, scale. |
 | Gateway scenarios | stage 4 | 19 stored what-if evaluations of the reference commit check; every reason code is exercised. | A real gateway: state, concurrency, a live target. |
-| Assistant responses | stage 5 | Attribution, figures, labelling, completeness and withdrawal of stored responses. | What a real model would write. |
+| Assistant responses | stage 5 | Attribution, figures, labeling, completeness and withdrawal of stored responses. | What a real model would write. |
 | Evaluation cases | stage 6 | 32 mutated copies of the example set each produce exactly their declared codes. | The EV01–EV12 fixtures. |
 | Unit tests | `python -m unittest discover -s tests` | The checks themselves, including negative cases. | |
 | Contract surface | `python scripts/schema_surface_hash.py --check` | No unrecorded change to what validates. | |

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 690" width="1000" height="690" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">Anatomy of a decision packet</title>
-<desc id="d">The Decision Owner reviews one decision packet bound to an exact context, selection and as-of time. Its supported claims, labelled inferences and conflicts point to exact evidence records. Its coverage, omissions and obligations come from the selection manifest. Its action proposals are proposed, not executed, and point to action proposal records.</desc>
+<desc id="d">The Decision Owner reviews one decision packet bound to an exact context, selection and as-of time. Its supported claims, labeled inferences and conflicts point to exact evidence records. Its coverage, omissions and obligations come from the selection manifest. Its action proposals are proposed, not executed, and point to action proposal records.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
 <rect width="1000" height="690" fill="#ffffff"/>
 <rect x="16.0" y="290.0" width="150.0" height="80.0" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
@@ -14,7 +14,7 @@
 <text x="433.0" y="73.7" font-size="15" text-anchor="middle" font-weight="700" fill="#0F2E1B">G02 Supported claims</text>
 <text x="433.0" y="95.4" font-size="12.5" text-anchor="middle" fill="#0F2E1B">each cites an exact record version</text>
 <rect x="222.0" y="124.0" width="422.0" height="66.0" rx="8" fill="#FFF1D6" stroke="#B26A00" stroke-width="1.6"/>
-<text x="433.0" y="151.7" font-size="15" text-anchor="middle" font-weight="700" fill="#3D2500">G03 Labelled inferences</text>
+<text x="433.0" y="151.7" font-size="15" text-anchor="middle" font-weight="700" fill="#3D2500">G03 Labeled inferences</text>
 <text x="433.0" y="173.4" font-size="12.5" text-anchor="middle" fill="#3D2500">method and limits; never claims</text>
 <rect x="222.0" y="202.0" width="422.0" height="66.0" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
 <text x="433.0" y="229.7" font-size="15" text-anchor="middle" font-weight="700" fill="#0F2E1B">G04 Recommendations</text>

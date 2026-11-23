@@ -515,8 +515,8 @@ def build_selection(S, version, as_of):
             if u["retrieval_unit_id"] in ("RETR-LEDGER-0417", "RETR-CREDIT-0417", "RETR-TREASURY-0417", "RETR-RESTRICTED-0417", "RETR-POLICY-0417"):
                 u["reason"] += " Carried over from SEL-0417 v1."
     else:
-        disp.append(disposition(R[("SUM-A-0417", "v1")], "included", "Model summary, labelled as an inference."))
-        disp.append(disposition(R[("SUM-B-0417", "v1")], "included", "Model summary, labelled as an inference."))
+        disp.append(disposition(R[("SUM-A-0417", "v1")], "included", "Model summary, labeled as an inference."))
+        disp.append(disposition(R[("SUM-B-0417", "v1")], "included", "Model summary, labeled as an inference."))
     gaps = missingness_entries(S, version, as_of, scr, dup)
     conflicts = [] if v2 else [{
         "conflict_id": "CONF-QTY", "scope": scope(TASK, "units"),
@@ -1213,7 +1213,7 @@ def case_file(S):
     sum_a = R[("SUM-A-0417", "v1")]
     stale_gap = {
         "state": "stale", "scope": R[("SCR-S1042", "v2")]["scope"], "expected_evidence": "Supplier screening no older than 24 hours",
-        "materiality": "decision_changing", "reason": known("Labelled stale in error."), "assessment_basis": "Counterfactual: the record is under one hour old.",
+        "materiality": "decision_changing", "reason": known("Labeled stale in error."), "assessment_basis": "Counterfactual: the record is under one hour old.",
         "available_record": rref("SCR-S1042", "v2"),
         "freshness": dict(freshness("POL-FRESH-SCREEN", T_SCR2_EVENT, T_ASOF2), state="fails_policy"),
     }
@@ -1250,7 +1250,7 @@ def case_file(S):
              ("C02 GR-5521 v1", [rep("/lifecycle", {"state": "current", "effective_time": "2026-11-18T14:06:00Z", "reason": "Initial admitted version."})])),
         case("CASE-KIND-01", "kinds", "A producer submits a kind it is not registered for", "A producer cannot promote its output to another kind: an ERP export is not a model inference, and the reverse.", ["KIND001"],
              ("C02 INV-2026-0417 v1", [rep("/producer_admission/producer_id", "producer:agent-a")])),
-        case("CASE-KIND-02", "kinds", "A model inference cited as a supported claim", "Model inferences are listed and labelled as inferences; they never support a 'supported claim'.", ["KIND002"],
+        case("CASE-KIND-02", "kinds", "A model inference cited as a supported claim", "Model inferences are listed and labeled as inferences; they never support a 'supported claim'.", ["KIND002"],
              ("C04 PKT-0417 v1", [rep("/supported_claims_references/1/text", claim_text(sum_a)), rep("/supported_claims_references/1/supporting_references/0", support(sum_a, "c1"))])),
         case("CASE-COR-01", "corroboration", "Two inferences share one origin and do not say so", "Agreement between derivations that share a root is not independent corroboration; each must say it has a common origin.", ["COR002"],
              ("C04 PKT-0417 v1", [rep("/labeled_inferences/0/limitations", ["Model output; not verified against any source."])])),
@@ -1262,7 +1262,7 @@ def case_file(S):
              ("C04 PKT-0417 v1", [rep("/review_version_history/state", "reviewed")])),
         case("CASE-LIFE-03", "lifecycle", "A pending approval survives the invalidation of its basis", "An approval cannot outlive the packet it relied on: when the basis is invalidated, the approval is revoked.", ["LIFE005"],
              ("C06 GRT-APPR-0417-A v1", [rep("/limits_lifecycle/revocation/state", "not_revoked")])),
-        case("CASE-MISS-01", "missingness", "Labelled stale although it is fresh", "A stale label must be justified by the freshness policy; a fresh record cannot be called stale.", ["MISS003"],
+        case("CASE-MISS-01", "missingness", "Labeled stale although it is fresh", "A stale label must be justified by the freshness policy; a fresh record cannot be called stale.", ["MISS003"],
              ("C03 SEL-0417 v2", [{"op": "add", "path": "/conflicts_gaps/missingness/-", "value": stale_gap}]),
              ("C04 PKT-0417 v2", [{"op": "add", "path": "/coverage_omissions_gaps/missingness/-", "value": stale_gap}])),
         case("CASE-MISS-02", "missingness", "A negative without complete coverage", "'Checked and none found' needs complete coverage of its declared scope; otherwise it is only 'not retrieved' or 'missing'.", ["MISS002"],

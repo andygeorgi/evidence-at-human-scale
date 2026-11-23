@@ -279,7 +279,7 @@
         "version": "v1"
       },
       "state": "included",
-      "reason": "Model summary, labelled as an inference."
+      "reason": "Model summary, labeled as an inference."
     },
     {
       "record_reference": {
@@ -287,7 +287,7 @@
         "version": "v1"
       },
       "state": "included",
-      "reason": "Model summary, labelled as an inference."
+      "reason": "Model summary, labeled as an inference."
     }
   ],
   "obligations": [

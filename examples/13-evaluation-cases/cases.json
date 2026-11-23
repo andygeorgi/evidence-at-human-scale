@@ -287,7 +287,7 @@
       "case_id": "CASE-KIND-02",
       "family": "kinds",
       "title": "A model inference cited as a supported claim",
-      "why": "Model inferences are listed and labelled as inferences; they never support a 'supported claim'.",
+      "why": "Model inferences are listed and labeled as inferences; they never support a 'supported claim'.",
       "expect": [
         "KIND002"
       ],
@@ -460,7 +460,7 @@
     {
       "case_id": "CASE-MISS-01",
       "family": "missingness",
-      "title": "Labelled stale although it is fresh",
+      "title": "Labeled stale although it is fresh",
       "why": "A stale label must be justified by the freshness policy; a fresh record cannot be called stale.",
       "expect": [
         "MISS003"
@@ -503,7 +503,7 @@
                 "materiality": "decision_changing",
                 "reason": {
                   "state": "known",
-                  "value": "Labelled stale in error."
+                  "value": "Labeled stale in error."
                 },
                 "assessment_basis": "Counterfactual: the record is under one hour old.",
                 "available_record": {
@@ -560,7 +560,7 @@
                 "materiality": "decision_changing",
                 "reason": {
                   "state": "known",
-                  "value": "Labelled stale in error."
+                  "value": "Labeled stale in error."
                 },
                 "assessment_basis": "Counterfactual: the record is under one hour old.",
                 "available_record": {

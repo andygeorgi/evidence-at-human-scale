@@ -33,7 +33,7 @@ flowchart TB
 <details>
 <summary>Text description of Figure F01</summary>
 
-A funnel with three stages. At the top, a wide band: information production keeps growing, as records, events, deterministic findings, analytical results and model interpretations. In the middle, the governed decision context, which keeps what could change a decision and shows its source, scope, gaps and owner. At the bottom, the Decision Owner, who has finite attention and is accountable. The step from the wide band to the context is labelled authorize, select, label; the step from the context to the owner is labelled one decision packet.
+A funnel with three stages. At the top, a wide band: information production keeps growing, as records, events, deterministic findings, analytical results and model interpretations. In the middle, the governed decision context, which keeps what could change a decision and shows its source, scope, gaps and owner. At the bottom, the Decision Owner, who has finite attention and is accountable. The step from the wide band to the context is labeled authorize, select, label; the step from the context to the owner is labelled one decision packet.
 
 [All figures and their descriptions](../../figures/README.md#f01-information-production-can-outgrow-human-inspection)
 

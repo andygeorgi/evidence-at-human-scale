@@ -2,7 +2,7 @@
 
 One synthetic story, told in thirteen folders. It walks a single decision through the [reference architecture](../architecture/README.md): a supplier invoice that should be paid, a goods receipt that disagrees with it, two assistants that appear to agree, a correction that arrives after an approval, a payment whose outcome is unknown, and a limit that is lowered while work is in flight.
 
-**Everything here is invented.** The buyer (Calder Works), the supplier (Fenwick Components, `S-1042`), the invoice, the amounts, the dates, the people and the systems do not describe any real organisation, person or system. The examples illustrate the [contracts](../contracts/README.md) and give the repository's checks something to run on. They are not evidence that the architecture works. See [Claims and limits](../docs/claims-and-limits.md).
+**Everything here is invented.** The buyer (Calder Works), the supplier (Fenwick Components, `S-1042`), the invoice, the amounts, the dates, the people and the systems do not describe any real organization, person or system. The examples illustrate the [contracts](../contracts/README.md) and give the repository's checks something to run on. They are not evidence that the architecture works. See [Claims and limits](../docs/claims-and-limits.md).
 
 ## Run the checks
 
@@ -33,7 +33,7 @@ It works the same on Windows, macOS and Linux. Add `--verbose` to see what each 
 
 | Stage | What it checks |
 |---|---|
-| Schema bundle | The schema is valid JSON Schema (Draft 2020-12) and its 38 valid and 64 invalid embedded examples behave as labelled. |
+| Schema bundle | The schema is valid JSON Schema (Draft 2020-12) and its 38 valid and 64 invalid embedded examples behave as labeled. |
 | Example instances | Every contract instance in this folder validates against its contract. |
 | Scenario semantics | What a schema cannot say: references resolve to the exact version they name, derivation is acyclic, a correction reaches everything built on the corrected record, each missingness label is justified, a pending approval ends when its basis is invalidated, a receipt agrees with what the commit check decides, a summary does not disclose what a record withholds. |
 | Gateway scenarios | 19 stored what-if evaluations of the reference commit check reproduce their recorded decisions, and between them they exercise every reason code. |
@@ -74,9 +74,11 @@ The [degraded modes](10-degraded-modes/README.md) folder replays the commit chec
 
 ## Folder map
 
+The set holds 37 contract instances: 19 evidence records (C02), 2 contexts (C01), 2 selections (C03), 2 decision packets (C04), 3 action proposals (C05), 5 grants and approvals (C06) and 4 execution receipts (C07). Around them are the raw system exports, the registry, the stored what-if evaluations, the responses and the evaluation cases.
+
 | Folder | What it shows | Contracts | Figures |
 |---|---|---|---|
-| [01 Source records](01-source-records/README.md) | Raw system exports and the evidence records normalised from them | C02 | F02 |
+| [01 Source records](01-source-records/README.md) | Raw system exports and the evidence records normalized from them | C02 | F02 |
 | [02 Context and normalization](02-context-and-normalization/README.md) | Who is asking, for what, as of when, with which restrictions | C01 | F02 · F11 |
 | [03 Lineage and common origin](03-lineage-and-common-origin/README.md) | A derived finding, two summaries that share one origin, scoped validation | C02 | F03 |
 | [04 Selection and missingness](04-selection-and-missingness/README.md) | One selection that carries all seven missingness labels, a conflict and an obligation | C02 · C03 | F09 |

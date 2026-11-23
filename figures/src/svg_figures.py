@@ -50,7 +50,7 @@ class Canvas:
         self.parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="%d" fill="%s" stroke="%s" stroke-width="%s"/>' % (x, y, w, h, rx, fill, stroke, stroke_w))
 
     def box(self, x, y, w, h, kind, title, sub=(), size=15, sub_size=12.5, gap=3):
-        """A filled box with a bold title and smaller lines under it, centred vertically."""
+        """A filled box with a bold title and smaller lines under it, centered vertically."""
         self.rect(x, y, w, h, kind)
         color = self.p[kind][2]
         titles = [title] if isinstance(title, str) else list(title)
@@ -157,7 +157,7 @@ def f02(theme):
 # ------------------------------------------------------------------------------------------------------------------ F04
 def f04(theme):
     c = Canvas(1000, 690, theme, "Anatomy of a decision packet",
-               "The Decision Owner reviews one decision packet bound to an exact context, selection and as-of time. Its supported claims, labelled inferences and "
+               "The Decision Owner reviews one decision packet bound to an exact context, selection and as-of time. Its supported claims, labeled inferences and "
                "conflicts point to exact evidence records. Its coverage, omissions and obligations come from the selection manifest. Its action proposals are "
                "proposed, not executed, and point to action proposal records.")
     c.box(16, 290, 150, 80, "own", "Decision Owner", ["reviews,", "challenges, decides"], size=15, sub_size=12.5)
@@ -165,7 +165,7 @@ def f04(theme):
     c.band(206, 12, 454, 666, "DECISION PACKET (C04) · one context, selection, as-of (G01)")
     rows = [
         ("pkt", "G02 Supported claims", "each cites an exact record version"),
-        ("warn", "G03 Labelled inferences", "method and limits; never claims"),
+        ("warn", "G03 Labeled inferences", "method and limits; never claims"),
         ("pkt", "G04 Recommendations", "with the accountable review requirement"),
         ("stop", "G05 Conflicts and uncertainty", "visible, never settled by majority"),
         ("stop", "G06 Coverage, omissions, gaps", "seven missingness labels"),
@@ -228,7 +228,7 @@ def f06(theme):
 def banner(theme):
     c = Canvas(1280, 420, theme, "Evidence at Human Scale: systems produce evidence, AI makes it consumable, people remain accountable",
                "A banner in three parts. Systems produce evidence: typed records with versions and lineage. AI makes it consumable: a decision packet that "
-               "separates claims from labelled inferences and shows conflicts, gaps and unexecuted proposals. People remain accountable: a person approves "
+               "separates claims from labeled inferences and shows conflicts, gaps and unexecuted proposals. People remain accountable: a person approves "
                "an exact proposal or holds it. Evidence is not inference, not recommendation, and not authority.")
     p = c.p
     c.text(640, 50, "Evidence at Human Scale", 36, True, p["text"])
@@ -243,7 +243,7 @@ def banner(theme):
         c.text(170, y + 28, b, 15, False, p[k][2], anchor="start")
     c.text(220, 334, "typed · versioned · with lineage", 13, False, p["muted"])
     c.rect(490, 166, 300, 168, "note", rx=8)
-    for i, (a, b, k) in enumerate([("Claims", "each cites its evidence", "pkt"), ("Inferences", "labelled, never claims", "warn"), ("Conflicts · gaps", "stay visible", "stop"), ("Proposals", "not executed", "own")]):
+    for i, (a, b, k) in enumerate([("Claims", "each cites its evidence", "pkt"), ("Inferences", "labeled, never claims", "warn"), ("Conflicts · gaps", "stay visible", "stop"), ("Proposals", "not executed", "own")]):
         y = 176 + i * 38
         c.rect(500, y, 280, 30, k, rx=6, stroke_w=1.2)
         c.text(510, y + 20, a, 14, True, p[k][2], anchor="start")

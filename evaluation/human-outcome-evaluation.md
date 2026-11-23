@@ -4,7 +4,7 @@
 
 **Status: NOT RUN.** There is no human-outcome result in this repository, no pilot, and no recommended threshold.
 
-The architecture's central claim is about people: that someone with limited attention can still be accountable for a decision, because the evidence, its gaps and its limits stay in front of them. That is a claim about human behaviour, and the checks in this repository cannot test it. This page is a **template of what a study has to define** before it can say anything. It is a list of questions to answer, not a protocol and not a prediction.
+The architecture's central claim is about people: that someone with limited attention can still be accountable for a decision, because the evidence, its gaps and its limits stay in front of them. That is a claim about human behavior, and the checks in this repository cannot test it. This page is a **template of what a study has to define** before it can say anything. It is a list of questions to answer, not a protocol and not a prediction.
 
 The measures named in the paper are evidence actually inspected, decision quality and workload. They still need study-specific definitions: this is open question OQ06 in the [ownership, parameters and tradeoffs reference](../architecture/ownership-and-tradeoffs.md). See [chapter 12](../docs/paper/12-evaluation.md).
 
@@ -26,8 +26,8 @@ State one primary question in a form that a result could contradict. For example
 | **Denominators** | The number of tasks, gold items and inspection opportunities, each declared positive in advance | An empty denominator is NOT ASSESSED, never a pass. |
 | **Sample and uncertainty** | How many participants and tasks, how uncertainty will be reported | No inferred benefit from a small or unrepresentative sample. |
 | **Analysis plan** | Preregistered: comparisons, exclusions, handling of missing data, stopping rules | So the result is not chosen after the fact. |
-| **Scoring** | Who scores, blind to condition where possible, with what rubric | Semantic judgements need explicit rubrics, not impressions. |
-| **Ethics and data** | Consent, privacy, minimisation (`DP047`), whether real data is used, who may see raw records | Reviewers' behaviour is personal data. |
+| **Scoring** | Who scores, blind to condition where possible, with what rubric | Semantic judgments need explicit rubrics, not impressions. |
+| **Ethics and data** | Consent, privacy, minimization (`DP047`), whether real data is used, who may see raw records | Reviewers' behaviour is personal data. |
 | **Independence** | Who runs, who analyses, who has an interest in the outcome | |
 | **Reporting** | Raw counts, denominators, coverage and uncertainty; negative and null results | |
 

@@ -58,8 +58,8 @@ def run(root: Path, only, verbose: bool):
                 valid += r.expected_valid
                 invalid += (not r.expected_valid)
                 if not r.ok:
-                    findings.append(Finding("SCH003", "embedded example %s (%s) does not behave as labelled: %s" % (r.case_id, "valid" if r.expected_valid else "invalid", r.detail), rel(Path(schema.get("$id", ""))) or "schemas/contracts-v1.schema.json", doc="schemas/README.md"))
-        return findings, "bundle is a valid Draft 2020-12 schema; %d valid and %d invalid embedded examples behave as labelled" % (valid, invalid)
+                    findings.append(Finding("SCH003", "embedded example %s (%s) does not behave as labeled: %s" % (r.case_id, "valid" if r.expected_valid else "invalid", r.detail), rel(Path(schema.get("$id", ""))) or "schemas/contracts-v1.schema.json", doc="schemas/README.md"))
+        return findings, "bundle is a valid Draft 2020-12 schema; %d valid and %d invalid embedded examples behave as labeled" % (valid, invalid)
 
     model, load_findings = load_model(root)
     state = {"schema_ok": True}
