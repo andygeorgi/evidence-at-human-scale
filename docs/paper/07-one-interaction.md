@@ -10,7 +10,7 @@ The distinction matters because the human should not have to reconcile an ungove
 
 Begin with the native or current workflow, deterministic grouping and templates, and simple synthesis with zero specialist agents. A specialist needs a documented task, permission, or isolation need and an evaluated comparison against matched baselines (the same task, risk, scope and acceptance criteria, handled by a simpler alternative). An evidence gap can justify a task, not new authority. Specialist count is not a quality metric, and specialization must not become a prerequisite for basic control.
 
-An optional specialist has bounded inputs, purpose, output contract, fanout, calls, tokens, elapsed time, retries, and spend. These limits apply across the task, not independently per child. Its outputs are untrusted data returned through admission. A deadline, no response, or partial result cannot enlarge authority or turn a retry into a new mandate.
+An optional specialist has bounded inputs, purpose, output contract, fanout, calls, tokens, elapsed time, retries, and spend. These limits apply across the whole task and are shared by its child tasks and specialists, not set independently for each child. Its outputs are untrusted data returned through admission. A deadline, no response, or partial result cannot enlarge authority or turn a retry into a new mandate.
 
 This is a deliberate tradeoff: a governed interaction asks the architecture to manage contracts and limitations instead of asking the owner to infer them from many messages. The cost is explicit coordination and traceability. The proposed benefit is more inspectable context, not a claimed improvement in speed, accuracy, cost, or decision quality.
 

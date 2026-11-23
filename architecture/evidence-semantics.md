@@ -15,7 +15,7 @@ Evidence is an attributable, scoped assertion, not guaranteed truth. A source re
 | Read authorization | Permission for a principal, purpose and scope | Execution authority |
 | Execution receipt | An attempt and its authoritative outcome state | Completion from submission alone |
 
-The governed ProducerRegistry identifies producers, registry versions and permitted kinds. A specialist cannot declare source authority or promote its interpretation to a source assertion. C02 kinds are `source_record_assertion`, `deterministic_finding`, `analytical_result`, `model_inference`, `recommendation`, `decision_record` and `execution_record`. Kind, method, origin, scope and uncertainty must survive transformations and presentation compression.
+The governed ProducerRegistry, the list of registered producers (not a second store of records: the store is the governed registry), identifies producers, registry versions and permitted kinds. A specialist cannot declare source authority or promote its interpretation to a source assertion. C02 kinds are `source_record_assertion`, `deterministic_finding`, `analytical_result`, `model_inference`, `recommendation`, `decision_record` and `execution_record`. Kind, method, origin, scope and uncertainty must survive transformations and presentation compression.
 
 ## Normative notation and reference alternatives
 

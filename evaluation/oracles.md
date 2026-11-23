@@ -449,9 +449,9 @@ In the fixture tables below, gate **ratio 1** means the ratio must equal 1 (100%
 
 Source and domain owners own fidelity and rules; lifecycle and selection owners own lineage, conflict and missingness; access and security owners own disclosure, revocation and injection; obligation and operations owners own continuity; executor and target owners own races and outcomes. These are assignment roles, not invented personnel. In the catalogue every owner field says that the owner is unassigned.
 
-## Editorial checks
+## Publication checks (not evaluation)
 
-Separate from the runtime tests above, a publication has editorial checks. They never turn a runtime NOT RUN into anything else.
+Separate from the runtime tests above, a publication has its own checks. They are not evaluation tests and have no EV identifier, and they never turn a runtime NOT RUN into anything else. The [evaluation guide](README.md#what-this-repository-checks-today) lists the checks this repository runs.
 
 Publication checks use pass, fail or not assessed separately from runtime NOT RUN. Applicable clauses, fields and paths must be covered; figures must be legible, captioned and alt-described; references and contract IDs must agree; claims must be sourced or explicitly proposed; examples illustrative; epistemic types and missingness preserved; the illustrations from one domain coherently removable; independent navigation answerable; the document readable and self-contained. Essential contracts, figures, thresholds and examples remain understandable with supplementary assets closed.
 

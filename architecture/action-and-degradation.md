@@ -20,7 +20,7 @@ Where supported, the executor atomically checks conditions, reserves or consumes
 | `completed_verified` | Authoritative outcome references establish the verified effects within declared method/actor/time/scope. Submission alone is insufficient. |
 | `not_executed_verified` | Terminal only after authoritative rejection, failed-before-effect or cancellation with no business effect. Require reason, verifier/method/time and target/action reference. Timeout is not no-effect evidence. |
 
-Allowance is reconciled or restored only under documented confirmed-effect policy grounded in authoritative reconciliation, including verified no-effect terminal outcomes. Define reservation expiry and reconciliation, but never treat expiry as evidence of no effect. Unresolved effects remain unknown; known partial effects remain separately accounted.
+Allowance is reconciled or restored only under documented confirmed-effect policy grounded in authoritative reconciliation, including the `not_executed_verified` terminal outcome (a verified no-effect). Define reservation expiry and reconciliation, but never treat expiry as evidence of no effect. Unresolved effects remain unknown; known partial effects remain separately accounted.
 
 External targets may not participate in atomic checks and business commit. Document weaker guarantees, race windows, reservation/reconciliation behavior and residual risk; do not imply atomic business effects. Local idempotency is not exactly-once execution. If shared atomic grant-limit enforcement is unsupported, declare the limitation and disable unattended operations beyond domain acceptance. Software rollback cannot undo irreversible business effects.
 

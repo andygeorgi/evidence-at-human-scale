@@ -46,7 +46,7 @@ A data-protection ruling found that drone video monitoring of a fishing vessel l
 A deployment tool reported failure when a ten-minute status window closed, although the application had been answering health checks for about nine minutes; the tool trusted the exit code alone.
 
 - **Evidence and its limits:** IN03: root-cause report, 6 November 2026; demonstrator infrastructure, synthetic data.
-- **Design decision it informed:** An executor's status is not outcome evidence: verify against the authoritative target. Unknown stays unresolved; failure or timeout is never verified no-effect (contract [C07](../../contracts/c07-execution-receipt.md)).
+- **Design decision it informed:** An executor's status is not outcome evidence: verify against the authoritative target. Unknown stays unresolved; failure or timeout is never a verified no-effect, the `not_executed_verified` state (contract [C07](../../contracts/c07-execution-receipt.md)).
 
 ## 7. A request is not permission
 

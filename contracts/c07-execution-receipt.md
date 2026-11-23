@@ -6,7 +6,7 @@
 **Reference:** [action and degradation](../architecture/action-and-degradation.md)
 **Figures:** F05, F06, F07 · **Evaluation tests:** EV11, EV12 (NOT RUN)
 
-A C07 Execution receipt records the verified outcome. Unknown is unresolved; partial effects count. A verified completion requires authoritative evidence of the outcome, and verified no-effect means authoritative confirmation that the action caused no business effect, not merely that a response was absent.
+A C07 Execution receipt records the verified outcome. Unknown is unresolved; partial effects count. A verified completion requires authoritative evidence of the outcome, and `not_executed_verified` (a verified no-effect) means authoritative confirmation that the action caused no business effect, not merely that a response was absent.
 
 | Group / exact type-cardinality | Emitted group and fields | Required semantics |
 | --- | --- | --- |

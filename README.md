@@ -84,7 +84,6 @@ It does **not** mean that any real system, model or process is accountable, safe
 - **All example data is invented.** The buyer, the supplier, the amounts and the systems describe no real organization, person or system.
 - **Case-based, not a client commission.** The design comes from an architecture engagement on a written case about a public-sector fisheries-control authority in Iceland. The authority took no part, and nothing here is a statement by, about or on behalf of it. The observations that came out of the engagement are single dated cases and one internal, AI-assisted test; none measures this architecture's benefit ([claims and limits](docs/claims-and-limits.md) gives their limits).
 - **AI-assisted and not independently reviewed by people.** See [AI assistance](#ai-assistance).
-- **Open questions remain.** Nineteen older consistency questions need an author decision rather than editing; 16 are still open. They are listed in the [changelog](CHANGELOG.md#known-editorial-questions).
 
 The full statement is in [Claims and limits](docs/claims-and-limits.md).
 

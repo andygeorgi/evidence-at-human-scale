@@ -106,15 +106,6 @@ class StatedCounts(unittest.TestCase):
             wrong += ["%s: says %s for %s, the data has %d" % (relative, number, name, expected[name]) for number in found if int(number) != expected[name]]
         self.assertEqual(wrong, [])
 
-    def test_the_editorial_questions_are_counted_the_same_everywhere(self):
-        table = text("CHANGELOG.md").split("## Known editorial questions", 1)[1]
-        rows = [line for line in table.splitlines() if re.match(r"\| \d+ \|", line)]
-        open_rows = [line for line in rows if line.rstrip().endswith("| Open |")]
-        self.assertEqual((len(rows), len(open_rows)), (19, 16))
-        self.assertIn("found %d older consistency questions" % len(rows), text("CHANGELOG.md"))
-        self.assertIn("Sixteen are still open", text("CHANGELOG.md"))
-        self.assertIn("Nineteen older consistency questions need an author decision rather than editing; %d are still open" % len(open_rows), text("README.md"))
-
     def test_the_instance_breakdown_in_the_examples_readme_matches_the_data(self):
         from collections import Counter
         by_contract = Counter(key[0] for key in support.example_model().instances)
@@ -178,6 +169,56 @@ class CodeReference(unittest.TestCase):
     def test_the_commit_reason_codes_are_all_explained_in_example_08(self):
         page = text("examples/08-blocked-action/README.md")
         self.assertEqual([c for c in GATE_CODES if "`%s`" % c not in page], [])
+
+
+class OneVocabulary(unittest.TestCase):
+    """Each concept has one name, a list that appears twice is the same list, and no page carries an authoring backlog."""
+
+    def test_no_page_carries_an_authoring_backlog(self):
+        banned = ("editorial question", "consistency question", "need an author decision", "known editorial")
+        found = []
+        for path in sorted(REPO.rglob("*.md")):
+            if ".git" in path.parts:
+                continue
+            body = path.read_text(encoding="utf-8").lower()
+            found += [(str(path.relative_to(REPO)), phrase) for phrase in banned if phrase in body]
+        self.assertEqual(found, [])
+
+    def test_what_stays_constant_across_domains_is_one_list(self):
+        listed = ("the contracts, selection and lineage, information-flow controls, bounded orchestration, one review interaction, "
+                  "independent mandatory routes, separate action authority (the gateway), degraded modes, and an assurance plan")
+        for page in ("docs/paper/11-costs-and-adaptation.md", "architecture/ownership-and-tradeoffs.md"):
+            self.assertIn(listed, text(page), page)
+
+    def test_the_paper_names_the_rejected_alternatives_as_the_register_does(self):
+        register = text("architecture/ownership-and-tradeoffs.md").split("## Full tradeoff register", 1)[1]
+        names = [line.split("|")[2].strip() for line in register.splitlines() if line.startswith("| ") and not line.startswith(("| Selected", "| ---"))]
+        self.assertEqual(len(names), 11)
+        chapter = text("docs/paper/11-costs-and-adaptation.md").lower()
+        self.assertEqual([name for name in names if name.lower() not in chapter], [])
+
+    def test_the_recovery_owners_in_the_paper_are_the_owners_in_the_failure_table(self):
+        table = text("architecture/action-and-degradation.md").split("## Full failure response and recovery ownership", 1)[1]
+        owners = [line.split("|")[3] for line in table.splitlines() if line.startswith("| ") and not line.startswith(("| Failure", "| ---"))]
+        words = {w.lower() for owner in owners for w in re.split(r"[/ ]", owner) if w and w.lower() != "owner"}
+        chapter = text("docs/paper/10-degraded-operation.md")
+        sentence = chapter[chapter.index("Recovery belongs to"):].split("\n", 1)[0].lower()
+        self.assertGreater(len(words), 8)
+        self.assertEqual(sorted(w for w in words if w not in sentence), [])
+
+    def test_the_glossary_defines_the_terms_that_were_ambiguous(self):
+        glossary = text("docs/glossary.md")
+        for term in ("Accountable approver", "Child task", "Context", "Documentation contract", "Evidence class", "Evidence ledger",
+                     "Qualified", "Recovery owner", "Registry (governed)", "Requestor", "`not_executed_verified`"):
+            self.assertIn("| **%s** |" % term, glossary, term)
+
+    def test_the_requestor_and_the_accountable_approver_are_never_one_field(self):
+        schema = support.schema()
+        context, delegation = json.dumps(schema["$defs"]["context"]), json.dumps(schema["$defs"]["delegation"])
+        self.assertIn('"requesting_principal"', context)
+        self.assertIn('"issuer"', delegation)
+        self.assertNotIn('"requesting_principal"', delegation)
+        self.assertNotIn('"issuer"', context)
 
 
 def excerpt_differences(excerpt, actual, path="$"):

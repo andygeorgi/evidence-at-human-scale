@@ -15,6 +15,7 @@ This repository states what it claims and, as carefully, what it does not. Every
 | **Real public records** | Dated single cases: audit and appeal findings, a data-protection ruling and guidance. Cited with their limits. | Evidence of a systemic failure, or a statement about any authority's staff or current practice. |
 | **Real internal engagement records** | The author's own working records of case research and prototype tests, AI-assisted, described but not published. | Independent evaluations. Prototype tests ran on synthetic data. |
 | **Synthetic illustration** | The three paper scenarios, the 70 defined fixtures, the worked example in [`examples/`](../examples/README.md) and the late-correction illustration. | Results, deployments or customer evidence. |
+| **Repository checks and editorial inspection** | Deterministic checks on invented data (schema, example, link and figure checks) and a reader's inspection of the text. | An evaluation of the architecture. A pass says the documents are consistent, and says nothing about any real system. |
 | **Not available, not claimed** | Any interview, data, approval or outcome from an authority; any customer endorsement; any runtime, human, safety, cost, latency or ROI result for this architecture. | Implied by anything in the repository. |
 
 ## What is not claimed
@@ -34,7 +35,6 @@ This repository states what it claims and, as carefully, what it does not. Every
 - No delivery engagement outside the originating case is cited; the paper does not claim repeated observation across customers.
 - Human-outcome measures are not yet defined (open question OQ06); the [human-outcome evaluation guide](../evaluation/human-outcome-evaluation.md) says what a study must define and defines no result.
 - No independent human architect review of the text is recorded in this repository. Reviews that did take place were AI-assisted and are described in the [references](../references/README.md#how-this-edition-was-produced).
-- The older consistency questions that need an author decision rather than editing are listed in the [changelog](../CHANGELOG.md#known-editorial-questions).
 
 ## Statuses used
 

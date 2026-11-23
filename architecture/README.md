@@ -4,7 +4,7 @@ The [paper](../docs/paper/README.md) carries the argument. This reference holds 
 
 > **Systems produce evidence. AI makes it consumable. People remain accountable.**
 
-All architecture, runtime, safety, performance, cost and human-evaluation results remain NOT RUN. Editorial inspection and structural schema checks are separate evidence classes.
+All architecture, runtime, safety, performance, cost and human-evaluation results remain NOT RUN. Editorial inspection and structural schema checks are a separate evidence class (see [claims and limits](../docs/claims-and-limits.md#evidence-classes-kept-apart)): they show that the documents are consistent, never how the architecture performs, and they never turn a NOT RUN into a result.
 
 ## Contents
 

@@ -4,7 +4,7 @@
 
 ## Adoption depends on evidence, not a polished paper
 
-Adoption requires approved owners and parameters, implemented authorization, established failure and continuity routes, executed fixtures, and recorded deployment acceptance. Unresolved source authority, shared accounting, external-effect guarantees, synchronization, thresholds, or safe states block dependent operations. A published paper is not operational approval.
+Adoption requires approved owners and parameters, implemented authorization, established failure and continuity routes, executed fixtures, and recorded deployment acceptance. Unresolved source authority, shared accounting, external-effect guarantees, synchronization, thresholds, or safe states block the dependent deployment decision or operation. A published paper is not operational approval.
 
 ## On Monday: five things before any agent code
 

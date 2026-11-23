@@ -8,7 +8,7 @@ The first version of this repository. It is offered for review and is not a fina
 
 ### What it contains
 
-- **The paper**: 15 Markdown chapters, from the overview to "Start with one decision, not a platform", with the glossary, [claims and limits](docs/claims-and-limits.md) and an [implementation guide](docs/implementation-guide.md).
+- **The paper**: 15 Markdown chapters, from the overview to "Start with one decision, not a platform", with the glossary, [claims and limits](docs/claims-and-limits.md) and an [implementation guide](docs/implementation-guide.md). The [glossary](docs/glossary.md) gives one name to each concept and keeps legitimate variants apart, such as the three senses of "context".
 - **The technical reference**: the [architecture reference](architecture/README.md) and 7 [contract pages](contracts/README.md), C01–C07, preserving all 41 field groups.
 - **A schema bundle**: [`schemas/contracts-v1.schema.json`](schemas/contracts-v1.schema.json), a documentation-only JSON Schema (Draft 2020-12) with 38 valid and 64 invalid embedded examples. The [contract change record](contracts/CHANGES.md) pins its validation surface and says how a change to it is recorded.
 - **A synthetic worked example**: 13 folders and 37 contract instances telling one invented supplier-payment story, with raw exports, a registry, stored gateway evaluations and an assistant response, and a validation command that is tested on Windows and Linux.
@@ -26,31 +26,5 @@ The first version of this repository. It is offered for review and is not a fina
 - **Reviews were AI-assisted.** No independent human review of the text is recorded here.
 - **Product statements are dated.** Statements about Azure options carry their verification date, 17 November 2026, and may be out of date. Links to public records can move.
 - **The example is one domain.** The supplier-payment story is invented to need no specialist knowledge. It shows the contracts at work; it is not evidence that the architecture works.
-
-## Known editorial questions
-
-A readability review of the text of release candidate 1, done by an AI assistant and not by an independent human reviewer, found 19 older consistency questions that need an author decision rather than rewording. Sixteen are still open; the other three are addressed or partly addressed, as the table says. They are listed so that readers can see them; resolving them is the author's decision. Some questions say "the appendix": that means the technical reference in [`architecture/`](architecture/README.md) and [`contracts/`](contracts/README.md).
-
-| # | Question | Status in this repository |
-|---|---|---|
-| 1 | Is "documentation contracts" the clearest name for C01–C07? | Open |
-| 2 | "Context" carries three meanings. Should they be named separately? | Open |
-| 3 | "Ledger", "registry" and "ProducerRegistry" are used for related things. Are they one concept or several? | Open |
-| 4 | The phrase "per child", as in "independent per-child spending" ([chapter 11](docs/paper/11-costs-and-adaptation.md)). | Open |
-| 5 | The phrase "qualified information". | Open |
-| 6 | Are the requestor and the accountable approver one role or two? | Open |
-| 7 | The phrase "assistant-mediated admission". | Open |
-| 8 | `not_assessed` (a value) and NOT ASSESSED (a status) appear together in one paragraph. | Open |
-| 9 | Prose says "verified no-effect"; the receipt value is `not_executed_verified`. Should one name be used? | Open |
-| 10 | The lineage trace lines had no legend. | Addressed by the redesign: figure F03 labels each relationship and has a text description. |
-| 11 | The schema's URN namespace and the words "preserved source receipts". | Partly addressed: the schema bundle has a new identifier ([change record](contracts/CHANGES.md)), and the Markdown no longer contains the phrase. |
-| 12 | A section mixes checks on the documents with evaluation. | Partly addressed: the [evaluation guide](evaluation/README.md) separates the repository's own checks from the unrun EV01–EV12 programme. The architecture text is unchanged. |
-| 13 | The sentence on "separate evidence classes" was kept on purpose, as an evidence boundary. Should it be reworded? | Open |
-| 14 | What stays constant across domains is listed with seven items in the paper and eight in the technical reference. | Open |
-| 15 | The rejected alternatives are named differently in different places. | Open |
-| 16 | How strongly does an unresolved parameter block a decision? | Open |
-| 17 | "Can block" and "blocks" are both used. | Open |
-| 18 | The lists of recovery roles differ between places. | Open |
-| 19 | The flow of the paper after [Budget the whole task](docs/paper/11-costs-and-adaptation.md#budget-the-whole-task). | Open |
 
 [Claims and limits](docs/claims-and-limits.md) · [README](README.md)

@@ -2,7 +2,7 @@
 
 [← 4. Evidence and lineage](04-evidence-and-lineage.md) · [Paper contents](README.md) · [Next: the decision packet →](06-decision-packet.md)
 
-C01 Context identifies the requesting principal, permitted task and purpose, relevant entities, scope, time, and policy constraints. The workload identity is separate. Retrieval is authorized for that context before evidence enters model context, not merely filtered after an answer has been produced. Selection then records what the system actually considered and retained.
+C01 Context identifies the requesting principal, permitted task and purpose, relevant entities, scope, time, and policy constraints. The workload identity is separate. Retrieval is authorized for that context before evidence enters model context, not merely filtered after an answer has been produced. Selection then records what the system actually considered and retained. In this paper "context" has three meanings, qualified wherever more than one could apply: the *decision context* (the governed, versioned unit selected for one decision), the *C01 Context* contract that records the request, and the *model context* (what is placed in front of a model). The [glossary](../glossary.md) keeps them apart.
 
 C03 Selection binds authorized retrieval coverage to selected evidence, exclusions, grouping reasons, missingness, and constraints. A selected scope is not whole-corpus coverage. The reader must be able to distinguish an input that was expected but absent from one deliberately excluded, inaccessible, or outside the retrieval scope.
 

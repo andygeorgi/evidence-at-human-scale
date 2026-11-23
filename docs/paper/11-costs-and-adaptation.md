@@ -6,19 +6,19 @@ Authorization and coverage checks, versioned state and reference management, inv
 
 Traceability does not eliminate source error; schemas do not replace judgment; a human owner can still misunderstand evidence. Permission synchronization can lag, authority conflicts can persist, and external commits can remain weaker than local reservations. A design that names these limits is more honest than one that makes a product's capability stand in for an end-to-end guarantee.
 
+The rejected alternatives are therefore meaningful. The tradeoff register in the [ownership, parameters and tradeoffs reference](../../architecture/ownership-and-tradeoffs.md#full-tradeoff-register) names eleven: a generalized customer solution, agent-first architecture, default multi-agent debate, agent-specific user experiences, completeness theater, model-only prioritization, convenient autonomous execution, unrestricted delegation, cache-only trust, majority/latest wins and a universal deployable stack. Each would obscure a boundary the design preserves. The register gives the reason and the cost of each rejection, and the same reference holds the unresolved owner and parameter requirements.
+
 ## Budget the whole task
 
 Task cost includes retrieval, storage, telemetry, evaluation, inference, retries, and operations. Token cost is only one component. Bound calls, fanout, retries, elapsed time, and spend across the lifecycle. Budget exhaustion must have an explicit behavior, including a visible partial result or a permitted alternative, never a silent enlargement of authority.
 
 Observability records declared task scope, selected and excluded coverage, consumption, deadlines, partial completion, invalidations, mandatory delivery state, and action outcomes. It does not capture hidden reasoning. Telemetry must be privacy-preserving while still supporting accountable records, and retention should be minimal and appropriate to the authorized purpose.
 
-The rejected alternatives are therefore meaningful: agent-first organization, unrestricted ranking, apparent consensus, a single model dependency, approval-only execution, and independent per-child spending all obscure a boundary the design preserves. The complete 11-row tradeoff set remains in the [ownership, parameters and tradeoffs reference](../../architecture/ownership-and-tradeoffs.md), alongside the unresolved owner and parameter requirements.
-
 ## Adapt the domain, not the architecture
 
-A deployment keeps the evidence and selection contracts, lineage, information-flow controls, bounded orchestration, one review interaction, independent mandatory routes, and separate action authority. It supplies domain parameters: source authority, jurisdiction, obligations, severity, freshness, safe states, thresholds, risk acceptance, and who can approve or execute.
+A deployment keeps the contracts, selection and lineage, information-flow controls, bounded orchestration, one review interaction, independent mandatory routes, separate action authority (the gateway), degraded modes, and an assurance plan. It supplies domain parameters: source authority, jurisdiction, obligations, severity, freshness, safe states, thresholds, risk acceptance, and who can approve or execute.
 
-Each parameter needs an owner, typed value or explicit unresolved state, units and scope, rationale, evidence or policy, review and approval state, and relevant version. An unresolved parameter blocks the decision that depends on it. It does not license an assistant to invent a value. The [domain parameter catalogue](../../evaluation/catalogue/README.md) lists the 47 parameters this architecture leaves to domain owners; all are UNSET.
+Each parameter needs an owner, typed value or explicit unresolved state, units and scope, rationale, evidence or policy, review and approval state, and relevant version. An unresolved parameter blocks the deployment decision or operation that depends on it, not the publication of the reference architecture, and it does not license an assistant to invent a value. The [domain parameter catalogue](../../evaluation/catalogue/README.md) lists the 47 parameters this architecture leaves to domain owners; all are UNSET.
 
 ## Three parallel illustrations
 

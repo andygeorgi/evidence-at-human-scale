@@ -127,7 +127,7 @@ Measure correctness, omissions, evidence actually inspected, decision quality, t
 
 ## Preconditions: 47 parameters nobody has set
 
-A test cannot be run until the domain has said what its thresholds, budgets and authorities are: `B_time`, `B_cost`, workload, required freshness, risk classes, action limits, safe states and 40 more. All 47 are **UNSET**, with owner unassigned. That is deliberate: no illustrative value is promoted to a default, and an unresolved parameter blocks the dependent deployment decision while not blocking publication of the reference architecture.
+A test cannot be run until the domain has said what its thresholds, budgets and authorities are: `B_time`, `B_cost`, workload, required freshness, risk classes, action limits, safe states and 40 more. All 47 are **UNSET**, with owner unassigned. That is deliberate: no illustrative value is promoted to a default, and an unresolved parameter blocks the dependent deployment decision or operation while not blocking publication of the reference architecture.
 
 ## Run it yourself
 

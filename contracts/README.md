@@ -1,6 +1,6 @@
 # Contracts
 
-Seven documentation contracts carry the responsibilities of the architecture: C01 Context, C02 Evidence, C03 Selection, C04 Decision packet, C05 Action proposal, C06 Delegation and C07 Execution receipt. Together they define 41 field groups. This section is the human-readable reference; the machine-readable form is the [JSON Schema bundle](../schemas/README.md).
+Seven documentation contracts carry the responsibilities of the architecture: C01 Context, C02 Evidence, C03 Selection, C04 Decision packet, C05 Action proposal, C06 Delegation and C07 Execution receipt. A documentation contract states what a unit of information must carry and how it is referenced; it is documentation, not a deployable interface. Together they define 41 field groups. This section is the human-readable reference; the machine-readable form is the [JSON Schema bundle](../schemas/README.md).
 
 > **A contract here is documentation with a schema, not an implementation.** Structural validity is not truth, effective authorization or workflow safety.
 
