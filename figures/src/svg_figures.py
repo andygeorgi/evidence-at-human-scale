@@ -236,7 +236,7 @@ def banner(theme):
     for x, kind, head in [(40, "src", "Systems produce evidence"), (460, "pkt", "AI makes it consumable"), (880, "own", "People remain accountable")]:
         c.rect(x, 112, 360, 238, kind, rx=14, stroke_w=2)
         c.text(x + 180, 146, head, 21, True, p[kind][2])
-    for i, (a, b, k) in enumerate([("S01/v1", "source record", "src"), ("F01/v1", "deterministic finding", "sel"), ("M01/v1", "model inference", "warn")]):
+    for i, (a, b, k) in enumerate([("S01/v1", "source record", "src"), ("D01/v1", "deterministic finding", "sel"), ("M01/v1", "model inference", "warn")]):
         y = 166 + i * 52
         c.rect(70, y, 300, 44, k, rx=8)
         c.text(86, y + 28, a, 16, True, p[k][2], anchor="start")

@@ -15,7 +15,7 @@
 <text x="86.0" y="194.0" font-size="16" text-anchor="start" font-weight="700" fill="#CDE4FF">S01/v1</text>
 <text x="170.0" y="194.0" font-size="15" text-anchor="start" fill="#CDE4FF">source record</text>
 <rect x="70.0" y="218.0" width="300.0" height="44.0" rx="8" fill="#0F3A40" stroke="#39C5CF" stroke-width="1.6"/>
-<text x="86.0" y="246.0" font-size="16" text-anchor="start" font-weight="700" fill="#CFF6F9">F01/v1</text>
+<text x="86.0" y="246.0" font-size="16" text-anchor="start" font-weight="700" fill="#CFF6F9">D01/v1</text>
 <text x="170.0" y="246.0" font-size="15" text-anchor="start" fill="#CFF6F9">deterministic finding</text>
 <rect x="70.0" y="270.0" width="300.0" height="44.0" rx="8" fill="#4A3200" stroke="#E3B341" stroke-width="1.6"/>
 <text x="86.0" y="298.0" font-size="16" text-anchor="start" font-weight="700" fill="#FFEBC2">M01/v1</text>

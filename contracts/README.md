@@ -37,7 +37,7 @@ flowchart TB
     C04["<b>C04 Decision packet</b><br/>claims, inferences, gaps"]:::pkt
     C05["<b>C05 Action proposal</b><br/>proposed, not executed"]:::own
     C06["<b>C06 Delegation</b><br/>exact approval or bounded class"]:::own
-    C07["<b>C07 Execution receipt</b><br/>verified outcome"]:::own
+    C07["<b>C07 Execution receipt</b><br/>verified outcome"]:::pkt
     C02["<b>C02 Evidence</b><br/>typed records with lineage<br/>referenced by exact version"]:::src
     C01 -->|"context"| C03
     C03 -->|"context + selection"| C04
@@ -50,12 +50,15 @@ flowchart TB
     C02 -.-> C05
     C02 -.-> C06
     C02 -.-> C07
-    classDef ctx fill:#EFE9F7,stroke:#6A4BA1,color:#24133F
+    classDef ctx fill:#E4F4F6,stroke:#1E7F8C,color:#06323A
     classDef src fill:#E8F1FB,stroke:#2F6DB5,color:#0B2540
     classDef sel fill:#E4F4F6,stroke:#1E7F8C,color:#06323A
     classDef pkt fill:#E6F4EA,stroke:#2E7D4F,color:#0F2E1B
-    classDef own fill:#FFF1D6,stroke:#B26A00,color:#3D2500
+    classDef own fill:#EFE9F7,stroke:#6A4BA1,color:#24133F
 ```
+
+
+*Open at full size: [light](../figures/F11-light.svg) · [dark](../figures/F11-dark.svg).*
 
 <details>
 <summary>Text description of Figure F11</summary>

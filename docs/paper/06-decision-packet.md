@@ -16,6 +16,9 @@ C04 Decision packet is a versioned review object bound to the exact context and 
 </picture>
 </p>
 
+
+*Open at full size: [light](../../figures/F04-light.svg) · [dark](../../figures/F04-dark.svg).*
+
 <details>
 <summary>Text description of Figure F04</summary>
 

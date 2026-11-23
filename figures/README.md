@@ -12,11 +12,11 @@ Each figure has a caption, a short alt text and a long description. They appear 
 | **Hand-drawn SVG** | F02, F04, F06, and the banner | [`figures/src/svg_figures.py`](src/svg_figures.py) | A picture with a light and a dark variant, each on an opaque background, so it stays legible on any page. |
 | **Table** | F07 | [`figures/figures.json`](figures.json) | A Markdown table. |
 
-Mermaid figures also have rendered SVGs (`F01-light.svg`, `F01-dark.svg`, and so on), for this gallery and for anyone who needs a picture. Hand-drawn figures were laid out by script because Mermaid cannot place a nine-step path beside two other paths legibly.
+Mermaid figures also have rendered SVGs (`F01-light.svg`, `F01-dark.svg`, and so on), for this gallery and for anyone who needs a picture. They use HTML labels, so view them in a browser: some non-browser SVG tools draw them without text. Hand-drawn figures were laid out by script because Mermaid cannot place a nine-step path beside two other paths legibly.
 
 All colors are paired with a text label. No meaning is carried by color alone, and every fill is paired with dark text of high contrast.
 
-**On a narrow screen**, tap a figure to open it at full size, or read the text description under it: every figure has one, and the description carries the same content as the picture.
+**On a narrow screen**, use the *Open at full size* link under a figure, which shows the picture on its own page, or read the text description: every figure has one, and the description carries the same content as the picture.
 
 ## Gallery
 
@@ -41,7 +41,7 @@ Source: [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](banne
 <p align="center">
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="F01-dark.svg">
-<img src="F01-light.svg" alt="A wide band of growing records, events, findings and model interpretations narrows through a governed decision context into one accountable Decision Owner with finite attention." width="860">
+<img src="F01-light.svg" alt="A wide band of growing records, events, findings and model interpretations narrows through a governed decision context into one accountable Decision Owner with finite attention." width="598">
 </picture>
 </p>
 
@@ -83,7 +83,7 @@ Source: [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](banne
 </picture>
 </p>
 
-**Caption.** Common-source agreement is not corroboration; conflicts, corrections and the scope of validation stay visible.
+**Caption.** Common-source agreement is not corroboration; conflicts, corrections and the scope of validation stay visible. Solid lines show derivation; dotted lines are assertions about another record.
 
 **Alt text.** Source record S01 version 1 is the single parent of model inferences M01 and M02, which both feed decision packet P01. Dashed arrows show typed relationships that are not ancestry: S02 contradicts S01, S01 version 2 supersedes S01 version 1 and invalidates M01 and M02, and V01 validates S01 version 1 only.
 
@@ -121,11 +121,11 @@ Source: [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](banne
 </picture>
 </p>
 
-**Caption.** Current read permission, accountable approval and execution checks are separate; shared grant capacity and authoritative outcomes bound action.
+**Caption.** Approval is not commit: at commit the gateway rechecks the grant, the evidence, the preconditions and the limits, and an authoritative verification confirms the outcome.
 
 **Alt text.** A sequence from a packet listing a proposal, through approval of the exact proposal or a standing class grant, to the gateway's recheck at commit, reservation of allowance, submission to the target, a receipt, and authoritative verification. If any check fails, the receipt records a not-executed outcome with the reasons.
 
-**Description.** Five participants: the Decision Owner, the approver or grant issuer, the gateway and executor, the target system and the receipt (C07). The packet lists a proposal as proposed, not executed. The Decision Owner asks the approver to approve this exact proposal version, or a standing class grant already covers it; the approval or grant (C06) names scope, limits and expiry. Approval is not commit: at commit the gateway rechecks that the grant is current and not revoked, the evidence is current and fresh, the preconditions hold, the parameters and target are permitted, and the per-action and cumulative limits hold, counting consumed plus reserved capacity. If every check passes, it reserves allowance, submits the exact action to the target, receives an outcome or a timeout and records a receipt: completed, unknown or partial. If any check fails, it records a receipt that says not executed, with the reasons. An authoritative verifier then confirms or reconciles the outcome.
+**Description.** Five participants: the Decision Owner, the approver or grant issuer, the gateway and executor, the target system and the receipt (C07). The packet lists a proposal as proposed, not executed. The Decision Owner asks the approver to approve this exact proposal version, or a standing class grant already covers it; the approval or grant (C06) names scope, limits and expiry. Approval is not commit: at commit the gateway rechecks that the grant is current and not revoked, the evidence is current and fresh, the preconditions hold, the parameters and target are permitted, and the per-action and cumulative limits hold, counting consumed plus reserved capacity. If every check passes, it reserves allowance, submits the exact action to the target, receives an outcome or a timeout and records a receipt: completed, unknown or partial. If any check fails, it records a receipt that says not executed, with the reasons. An authoritative verification against the target then confirms or reconciles the outcome.
 
 **Used in:** [9. Authority remains a separate boundary](../docs/paper/09-authority.md); [07 Authority and delegation](../examples/07-authority-and-delegation/README.md).
 
@@ -152,20 +152,20 @@ Source: [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](banne
 
 ### F07 Degraded information, closed execution
 
-| Information state | What the reader sees | Review | Execution, authority valid and current | Execution, authority invalid or uncertain |
-|---|---|---|---|---|
-| Current and sufficient | The full packet | Normal review | Eligible, after the commit checks | **Closed** |
-| Qualified: stale, partial, or a source unavailable | The packet with labeled gaps; never a clean negative | Limited review, limits visible | Eligible only if the action's own evidence and precondition checks still pass | **Closed** |
-| Assistant model unavailable | A qualified deterministic template, or a native or manual route; unsupported synthesis is not released as advice | Review from the template | As in the row above | **Closed** |
-| Authorization or revocation cannot be established | Dependent disclosure withheld | Blocked for what depends on it | **Closed** | **Closed** |
+| Information state | What the reader sees | Review | Execution |
+|---|---|---|---|
+| Current and sufficient | The full packet | Normal review | Eligible, after the commit checks |
+| Qualified: stale, partial, or a source unavailable | The packet with labeled gaps; never a clean negative | Limited review, limits visible | Eligible only if the action's own evidence and precondition checks still pass |
+| Assistant model unavailable | A qualified deterministic template, or a native or manual route; unsupported synthesis is not released as advice | Review from the template | As in the row above |
+| Authorization or revocation cannot be established | Dependent disclosure withheld | Blocked for what depends on it | **Closed** |
 
-In every row, urgent continuity (independent deterministic notification, queue, acknowledgement and escalation) uses its own authorized channel. If that channel fails, the failure is exposed and the approved continuity or escalation route is followed.
+In every row, execution is **Closed** whenever the authority is invalid or uncertain, however good the information is. The Execution column states what is possible when the authority is valid and current. Also in every row, urgent continuity (independent deterministic notification, queue, acknowledgement and escalation) uses its own authorized channel. If that channel fails, the failure is exposed and the approved continuity or escalation route is followed.
 
 **Caption.** Information limitations are explicit, while invalid authority blocks execution in every state; urgent continuity uses its own authorized route.
 
-**Alt text.** A table with four rows of information state and four columns: what the reader sees, review, execution with valid current authority, and execution with invalid or uncertain authority. Execution is closed in the last column in every row.
+**Alt text.** A table with four rows of information state and four columns: information state, what the reader sees, review, and execution. Execution is closed in every row whenever authority is invalid or uncertain.
 
-**Description.** Information availability and authority validity are separate axes. The table lists four information states and, for each, what the reader sees, what review is possible, and whether execution is open when authority is valid and current or closed when authority is invalid or uncertain. Execution is closed whenever authority is invalid or uncertain, even when information is available and the recommendation sounds compelling. Urgent continuity runs on its own channel in every row.
+**Description.** Information availability and authority validity are separate axes. The table lists four information states and, for each, what the reader sees, what review is possible, and whether execution is eligible when authority is valid and current. Execution is closed whenever authority is invalid or uncertain, in every row, even when information is available and the recommendation sounds compelling; in the last row it is closed outright, because authorization or revocation cannot be established. Urgent continuity runs on its own channel in every row.
 
 **Used in:** [10. Information can degrade without widening authority](../docs/paper/10-degraded-operation.md); [10 Degraded modes](../examples/10-degraded-modes/README.md).
 
@@ -176,7 +176,7 @@ In every row, urgent continuity (independent deterministic notification, queue, 
 <p align="center">
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="F08-dark.svg">
-<img src="F08-light.svg" alt="Four steps in order: native or current workflow, deterministic grouping and templates, simple synthesis with zero specialists, optional specialists. Each step is compared with the one before on matched tasks. A note lists the measures and says every comparison is not run." width="860">
+<img src="F08-light.svg" alt="Four steps in order: native or current workflow, deterministic grouping and templates, simple synthesis with zero specialists, optional specialists. Each step is compared with the one before on matched tasks. A note lists the measures and says every comparison is not run." width="408">
 </picture>
 </p>
 
@@ -233,7 +233,7 @@ In every row, urgent continuity (independent deterministic notification, queue, 
 <p align="center">
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="F11-dark.svg">
-<img src="F11-light.svg" alt="Contracts C01 context, C03 selection, C04 decision packet, C05 action proposal, C06 delegation and C07 execution receipt chain downward, each referencing the ones before it. C02 evidence is referenced by exact version from C03, C04, C05, C06 and C07 with dotted lines." width="860">
+<img src="F11-light.svg" alt="Contracts C01 context, C03 selection, C04 decision packet, C05 action proposal, C06 delegation and C07 execution receipt chain downward, each referencing the ones before it. C02 evidence is referenced by exact version from C03, C04, C05, C06 and C07 with dotted lines." width="563">
 </picture>
 </p>
 

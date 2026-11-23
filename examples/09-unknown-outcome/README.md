@@ -20,6 +20,9 @@ Sometimes the system cannot tell whether an action happened. A timeout is not a 
 </picture>
 </p>
 
+
+*Open at full size: [light](../../figures/F06-light.svg) · [dark](../../figures/F06-dark.svg).*
+
 <details>
 <summary>Text description of Figure F06</summary>
 

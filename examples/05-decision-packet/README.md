@@ -20,6 +20,9 @@ A decision packet ([C04](../../contracts/c04-decision-packet.md)) is what the re
 </picture>
 </p>
 
+
+*Open at full size: [light](../../figures/F04-light.svg) · [dark](../../figures/F04-dark.svg).*
+
 <details>
 <summary>Text description of Figure F04</summary>
 

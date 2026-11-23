@@ -54,6 +54,17 @@ def picture(doc: Path, fig, width=860) -> str:
             % (relpath(doc, dark), relpath(doc, light), alt, width))
 
 
+def natural_width(fig, limit=860) -> int:
+    """The drawn width of a figure's picture, up to `limit`, so a small figure is not stretched to the page width."""
+    match = re.search(r'viewBox="\s*-?[\d.]+[\s,]+-?[\d.]+[\s,]+([\d.]+)', (REPO / fig["images"]["light"]).read_text(encoding="utf-8")[:2000])
+    return min(limit, int(float(match.group(1)))) if match else limit
+
+
+def full_size_links(doc: Path, fig) -> str:
+    """A link to each picture itself: GitHub shows an SVG file on its own page, where a reader can zoom."""
+    return "*Open at full size: [light](%s) · [dark](%s).*" % (relpath(doc, REPO / fig["images"]["light"]), relpath(doc, REPO / fig["images"]["dark"]))
+
+
 def table_md(fig) -> str:
     t = fig["table"]
     lines = ["| " + " | ".join(t["columns"]) + " |", "|" + "---|" * len(t["columns"])]
@@ -79,7 +90,7 @@ def block(doc: Path, fig) -> str:
     return "\n".join([
         GENERATED, "",
         "**Figure %s.** %s" % (fig["id"], fig["caption"]), "",
-        body(doc, fig), "",
+        body(doc, fig), ""] + (["", full_size_links(doc, fig), ""] if fig["kind"] != "table" else []) + [
         "<details>", "<summary>Text description of Figure %s</summary>" % fig["id"], "",
         fig["description"], "",
         "[All figures and their descriptions](%s)" % gallery, "",
@@ -104,7 +115,7 @@ def gallery_md(figures, banner) -> str:
         if fig["kind"] == "table":
             out += [table_md(fig), ""]
         else:
-            out += [picture(GALLERY, fig), ""]
+            out += [picture(GALLERY, fig, natural_width(fig)), ""]
         out += ["**Caption.** " + fig["caption"], "", "**Alt text.** " + fig["alt"], "", "**Description.** " + fig["description"], ""]
         used = ["[%s](%s)" % (title_of(REPO / p), relpath(GALLERY, REPO / p)) for p in fig["used_in"]]
         out += ["**Used in:** " + "; ".join(used) + ".", ""]

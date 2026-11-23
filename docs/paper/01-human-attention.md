@@ -30,6 +30,9 @@ flowchart TB
     classDef own fill:#EFE9F7,stroke:#6A4BA1,color:#24133F
 ```
 
+
+*Open at full size: [light](../../figures/F01-light.svg) · [dark](../../figures/F01-dark.svg).*
+
 <details>
 <summary>Text description of Figure F01</summary>
 

@@ -26,7 +26,7 @@
     {
       "id": "F03",
       "title": "Common-source agreement is not corroboration",
-      "caption": "Common-source agreement is not corroboration; conflicts, corrections and the scope of validation stay visible.",
+      "caption": "Common-source agreement is not corroboration; conflicts, corrections and the scope of validation stay visible. Solid lines show derivation; dotted lines are assertions about another record.",
       "alt": "Source record S01 version 1 is the single parent of model inferences M01 and M02, which both feed decision packet P01. Dashed arrows show typed relationships that are not ancestry: S02 contradicts S01, S01 version 2 supersedes S01 version 1 and invalidates M01 and M02, and V01 validates S01 version 1 only.",
       "description": "Solid arrows are derivation ancestry. Source record S01/v1 is the only parent of two model inferences, M01/v1 from Agent A and M02/v1 from Agent B, which together form one origin. Both feed the decision packet P01/v1. A conflicting source record, S02/v1, also reaches the packet, so the conflict stays visible. Dashed arrows are typed relationships, not ancestry, and each names the actor who asserted it: S02/v1 contradicts S01/v1; a correction, S01/v2, supersedes S01/v1 and invalidates what was derived from it; and a scoped validation, V01/v1, assesses S01/v1 only. In the worked example, S01 is the goods receipt, S02 the invoice, and M01 and M02 the two model summaries.",
       "kind": "mermaid",
@@ -48,9 +48,9 @@
     {
       "id": "F05",
       "title": "From proposal to commit",
-      "caption": "Current read permission, accountable approval and execution checks are separate; shared grant capacity and authoritative outcomes bound action.",
+      "caption": "Approval is not commit: at commit the gateway rechecks the grant, the evidence, the preconditions and the limits, and an authoritative verification confirms the outcome.",
       "alt": "A sequence from a packet listing a proposal, through approval of the exact proposal or a standing class grant, to the gateway's recheck at commit, reservation of allowance, submission to the target, a receipt, and authoritative verification. If any check fails, the receipt records a not-executed outcome with the reasons.",
-      "description": "Five participants: the Decision Owner, the approver or grant issuer, the gateway and executor, the target system and the receipt (C07). The packet lists a proposal as proposed, not executed. The Decision Owner asks the approver to approve this exact proposal version, or a standing class grant already covers it; the approval or grant (C06) names scope, limits and expiry. Approval is not commit: at commit the gateway rechecks that the grant is current and not revoked, the evidence is current and fresh, the preconditions hold, the parameters and target are permitted, and the per-action and cumulative limits hold, counting consumed plus reserved capacity. If every check passes, it reserves allowance, submits the exact action to the target, receives an outcome or a timeout and records a receipt: completed, unknown or partial. If any check fails, it records a receipt that says not executed, with the reasons. An authoritative verifier then confirms or reconciles the outcome.",
+      "description": "Five participants: the Decision Owner, the approver or grant issuer, the gateway and executor, the target system and the receipt (C07). The packet lists a proposal as proposed, not executed. The Decision Owner asks the approver to approve this exact proposal version, or a standing class grant already covers it; the approval or grant (C06) names scope, limits and expiry. Approval is not commit: at commit the gateway rechecks that the grant is current and not revoked, the evidence is current and fresh, the preconditions hold, the parameters and target are permitted, and the per-action and cumulative limits hold, counting consumed plus reserved capacity. If every check passes, it reserves allowance, submits the exact action to the target, receives an outcome or a timeout and records a receipt: completed, unknown or partial. If any check fails, it records a receipt that says not executed, with the reasons. An authoritative verification against the target then confirms or reconciles the outcome.",
       "kind": "mermaid",
       "source": "figures/src/F05.mmd",
       "images": {"light": "figures/F05-light.svg", "dark": "figures/F05-dark.svg"},
@@ -71,19 +71,19 @@
       "id": "F07",
       "title": "Degraded information, closed execution",
       "caption": "Information limitations are explicit, while invalid authority blocks execution in every state; urgent continuity uses its own authorized route.",
-      "alt": "A table with four rows of information state and four columns: what the reader sees, review, execution with valid current authority, and execution with invalid or uncertain authority. Execution is closed in the last column in every row.",
-      "description": "Information availability and authority validity are separate axes. The table lists four information states and, for each, what the reader sees, what review is possible, and whether execution is open when authority is valid and current or closed when authority is invalid or uncertain. Execution is closed whenever authority is invalid or uncertain, even when information is available and the recommendation sounds compelling. Urgent continuity runs on its own channel in every row.",
+      "alt": "A table with four rows of information state and four columns: information state, what the reader sees, review, and execution. Execution is closed in every row whenever authority is invalid or uncertain.",
+      "description": "Information availability and authority validity are separate axes. The table lists four information states and, for each, what the reader sees, what review is possible, and whether execution is eligible when authority is valid and current. Execution is closed whenever authority is invalid or uncertain, in every row, even when information is available and the recommendation sounds compelling; in the last row it is closed outright, because authorization or revocation cannot be established. Urgent continuity runs on its own channel in every row.",
       "kind": "table",
       "source": null,
       "table": {
-        "columns": ["Information state", "What the reader sees", "Review", "Execution, authority valid and current", "Execution, authority invalid or uncertain"],
+        "columns": ["Information state", "What the reader sees", "Review", "Execution"],
         "rows": [
-          ["Current and sufficient", "The full packet", "Normal review", "Eligible, after the commit checks", "**Closed**"],
-          ["Qualified: stale, partial, or a source unavailable", "The packet with labeled gaps; never a clean negative", "Limited review, limits visible", "Eligible only if the action's own evidence and precondition checks still pass", "**Closed**"],
-          ["Assistant model unavailable", "A qualified deterministic template, or a native or manual route; unsupported synthesis is not released as advice", "Review from the template", "As in the row above", "**Closed**"],
-          ["Authorization or revocation cannot be established", "Dependent disclosure withheld", "Blocked for what depends on it", "**Closed**", "**Closed**"]
+          ["Current and sufficient", "The full packet", "Normal review", "Eligible, after the commit checks"],
+          ["Qualified: stale, partial, or a source unavailable", "The packet with labeled gaps; never a clean negative", "Limited review, limits visible", "Eligible only if the action's own evidence and precondition checks still pass"],
+          ["Assistant model unavailable", "A qualified deterministic template, or a native or manual route; unsupported synthesis is not released as advice", "Review from the template", "As in the row above"],
+          ["Authorization or revocation cannot be established", "Dependent disclosure withheld", "Blocked for what depends on it", "**Closed**"]
         ],
-        "footnote": "In every row, urgent continuity (independent deterministic notification, queue, acknowledgement and escalation) uses its own authorized channel. If that channel fails, the failure is exposed and the approved continuity or escalation route is followed."
+        "footnote": "In every row, execution is **Closed** whenever the authority is invalid or uncertain, however good the information is. The Execution column states what is possible when the authority is valid and current. Also in every row, urgent continuity (independent deterministic notification, queue, acknowledgement and escalation) uses its own authorized channel. If that channel fails, the failure is exposed and the approved continuity or escalation route is followed."
       },
       "images": null,
       "used_in": ["docs/paper/10-degraded-operation.md", "examples/10-degraded-modes/README.md"]

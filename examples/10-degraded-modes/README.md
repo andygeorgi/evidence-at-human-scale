@@ -13,19 +13,19 @@ Real systems are partly broken most of the time. A source is down, a model is un
 
 **Figure F07.** Information limitations are explicit, while invalid authority blocks execution in every state; urgent continuity uses its own authorized route.
 
-| Information state | What the reader sees | Review | Execution, authority valid and current | Execution, authority invalid or uncertain |
-|---|---|---|---|---|
-| Current and sufficient | The full packet | Normal review | Eligible, after the commit checks | **Closed** |
-| Qualified: stale, partial, or a source unavailable | The packet with labeled gaps; never a clean negative | Limited review, limits visible | Eligible only if the action's own evidence and precondition checks still pass | **Closed** |
-| Assistant model unavailable | A qualified deterministic template, or a native or manual route; unsupported synthesis is not released as advice | Review from the template | As in the row above | **Closed** |
-| Authorization or revocation cannot be established | Dependent disclosure withheld | Blocked for what depends on it | **Closed** | **Closed** |
+| Information state | What the reader sees | Review | Execution |
+|---|---|---|---|
+| Current and sufficient | The full packet | Normal review | Eligible, after the commit checks |
+| Qualified: stale, partial, or a source unavailable | The packet with labeled gaps; never a clean negative | Limited review, limits visible | Eligible only if the action's own evidence and precondition checks still pass |
+| Assistant model unavailable | A qualified deterministic template, or a native or manual route; unsupported synthesis is not released as advice | Review from the template | As in the row above |
+| Authorization or revocation cannot be established | Dependent disclosure withheld | Blocked for what depends on it | **Closed** |
 
-In every row, urgent continuity (independent deterministic notification, queue, acknowledgement and escalation) uses its own authorized channel. If that channel fails, the failure is exposed and the approved continuity or escalation route is followed.
+In every row, execution is **Closed** whenever the authority is invalid or uncertain, however good the information is. The Execution column states what is possible when the authority is valid and current. Also in every row, urgent continuity (independent deterministic notification, queue, acknowledgement and escalation) uses its own authorized channel. If that channel fails, the failure is exposed and the approved continuity or escalation route is followed.
 
 <details>
 <summary>Text description of Figure F07</summary>
 
-Information availability and authority validity are separate axes. The table lists four information states and, for each, what the reader sees, what review is possible, and whether execution is open when authority is valid and current or closed when authority is invalid or uncertain. Execution is closed whenever authority is invalid or uncertain, even when information is available and the recommendation sounds compelling. Urgent continuity runs on its own channel in every row.
+Information availability and authority validity are separate axes. The table lists four information states and, for each, what the reader sees, what review is possible, and whether execution is eligible when authority is valid and current. Execution is closed whenever authority is invalid or uncertain, in every row, even when information is available and the recommendation sounds compelling; in the last row it is closed outright, because authorization or revocation cannot be established. Urgent continuity runs on its own channel in every row.
 
 [All figures and their descriptions](../../figures/README.md#f07-degraded-information-closed-execution)
 

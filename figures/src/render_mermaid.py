@@ -19,12 +19,34 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 FIGURES = Path(__file__).resolve().parents[1]
 SRC = FIGURES / "src"
 MANIFEST = FIGURES / "render-manifest.json"
 THEMES = {"light": ("default", "white"), "dark": ("dark", "#0d1117")}
+FONT = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+# Colors for what a source cannot set per node: arrow labels, notes, participants. They match the hand-drawn figures,
+# keep text at 4.5:1 or better against its background, and give the sequence diagrams the same palette as the rest.
+VARIABLES = {
+    "light": {
+        "fontFamily": FONT, "textColor": "#1B1F24", "lineColor": "#57606A", "edgeLabelBackground": "#FFFFFF",
+        "noteBkgColor": "#F4F4F4", "noteBorderColor": "#777777", "noteTextColor": "#222222",
+        "actorBkg": "#E8F1FB", "actorBorder": "#2F6DB5", "actorTextColor": "#0B2540", "actorLineColor": "#8C959F",
+        "signalColor": "#57606A", "signalTextColor": "#1B1F24",
+        "labelBoxBkgColor": "#F6F8FA", "labelBoxBorderColor": "#57606A", "labelTextColor": "#1B1F24", "loopTextColor": "#1B1F24",
+        "clusterBkg": "#F6F8FA", "clusterBorder": "#D0D7DE", "titleColor": "#1B1F24",
+    },
+    "dark": {
+        "fontFamily": FONT, "textColor": "#E6EDF3", "lineColor": "#8B949E", "edgeLabelBackground": "#30363D",
+        "noteBkgColor": "#21262D", "noteBorderColor": "#8B949E", "noteTextColor": "#E6EDF3",
+        "actorBkg": "#12304F", "actorBorder": "#58A6FF", "actorTextColor": "#CDE4FF", "actorLineColor": "#8B949E",
+        "signalColor": "#C9D1D9", "signalTextColor": "#E6EDF3",
+        "labelBoxBkgColor": "#161B22", "labelBoxBorderColor": "#8B949E", "labelTextColor": "#E6EDF3", "loopTextColor": "#E6EDF3",
+        "clusterBkg": "#161B22", "clusterBorder": "#30363D", "titleColor": "#E6EDF3",
+    },
+}
 
 
 def sha(path: Path) -> str:
@@ -39,11 +61,15 @@ def sources():
 def render(src: Path, theme: str, mmdc, puppeteer):
     out = FIGURES / ("%s-%s.svg" % (src.stem, theme))
     mm_theme, background = THEMES[theme]
-    cmd = mmdc + ["-i", str(src), "-o", str(out), "-t", mm_theme, "-b", background, "-q"]
-    cmd[0] = shutil.which(cmd[0]) or cmd[0]  # npx is npx.cmd on Windows
-    if puppeteer:
-        cmd += ["-p", str(puppeteer)]
-    done = subprocess.run(cmd, capture_output=True, text=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        config = Path(tmp) / "mermaid-config.json"
+        config.write_text(json.dumps({"theme": mm_theme, "themeVariables": VARIABLES[theme],
+                                      "sequence": {"actorFontFamily": FONT, "messageFontFamily": FONT, "noteFontFamily": FONT}}), encoding="utf-8")
+        cmd = mmdc + ["-i", str(src), "-o", str(out), "-t", mm_theme, "-b", background, "-c", str(config), "-q"]
+        cmd[0] = shutil.which(cmd[0]) or cmd[0]  # npx is npx.cmd on Windows
+        if puppeteer:
+            cmd += ["-p", str(puppeteer)]
+        done = subprocess.run(cmd, capture_output=True, text=True)
     if done.returncode != 0 or not out.exists():
         raise SystemExit("mermaid-cli failed for %s (%s): %s" % (src.name, theme, (done.stderr or done.stdout).strip()))
     return out

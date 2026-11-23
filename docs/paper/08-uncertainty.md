@@ -60,6 +60,9 @@ flowchart TB
     classDef result fill:#FFF1D6,stroke:#B26A00,color:#3D2500
 ```
 
+
+*Open at full size: [light](../../figures/F09-light.svg) · [dark](../../figures/F09-dark.svg).*
+
 <details>
 <summary>Text description of Figure F09</summary>
 

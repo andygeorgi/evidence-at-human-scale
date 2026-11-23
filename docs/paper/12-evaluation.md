@@ -16,10 +16,10 @@ Compare the native/current workflow, deterministic grouping and templates, and s
 flowchart TB
     accTitle: Complexity must earn its place against simpler baselines
     accDescr: Four steps, each compared with the one before on matched tasks. First the native or current workflow, then deterministic grouping and templates, then simple synthesis with zero specialists, and only then optional specialists, which are justified only by a measured, matched need for permission or isolation. The measures are correctness, omissions, evidence actually inspected, decision quality, time and workload, not fluency or how many agents agree. No evaluation result is claimed: all of this is not run.
-    B1["<b>1 Native or current workflow</b>"]:::src
-    B2["<b>2 Deterministic grouping and templates</b>"]:::sel
-    B3["<b>3 Simple synthesis, zero specialists</b><br/>a complete architecture on its own"]:::pkt
-    B4["<b>4 Optional specialists</b><br/>admitted only for a documented task, permission or isolation need"]:::own
+    B1["<b>1 Native or current workflow</b>"]:::plain
+    B2["<b>2 Deterministic grouping and templates</b>"]:::plain
+    B3["<b>3 Simple synthesis, zero specialists</b><br/>a complete architecture on its own"]:::plain
+    B4["<b>4 Optional specialists</b><br/>admitted only for a documented task, permission or isolation need"]:::plain
     B1 -->|"is the next step better on matched tasks?"| B2
     B2 -->|"better on matched tasks?"| B3
     B3 -->|"a measured, matched need?"| B4
@@ -34,6 +34,9 @@ flowchart TB
     classDef warn fill:#FFF1D6,stroke:#B26A00,color:#3D2500
     classDef plain fill:#F4F4F4,stroke:#777777,color:#222222
 ```
+
+
+*Open at full size: [light](../../figures/F08-light.svg) · [dark](../../figures/F08-dark.svg).*
 
 <details>
 <summary>Text description of Figure F08</summary>

@@ -9,8 +9,8 @@ flowchart LR
         M02["<b>M02/v1</b> model inference<br/>Agent B"]:::inf
     end
     P01["<b>P01/v1</b><br/>decision packet<br/>the conflict stays visible"]:::pkt
-    S02["<b>S02/v1</b><br/>source record<br/>conflicting assertion"]:::src
-    S01b["<b>S01/v2</b><br/>correction"]:::warn
+    S02["<b>S02/v1</b><br/>source record<br/>conflicting assertion"]:::warn
+    S01b["<b>S01/v2</b><br/>correction"]:::src
     V01["<b>V01/v1</b><br/>scoped validation<br/>of S01/v1 only"]:::plain
     S01 --> M01
     S01 --> M02

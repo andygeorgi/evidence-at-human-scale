@@ -18,6 +18,9 @@ Bounded orchestration and synthesis turn that selection into a candidate decisio
 </picture>
 </p>
 
+
+*Open at full size: [light](../../figures/F02-light.svg) · [dark](../../figures/F02-dark.svg).*
+
 <details>
 <summary>Text description of Figure F02</summary>
 

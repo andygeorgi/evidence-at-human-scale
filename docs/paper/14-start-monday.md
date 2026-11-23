@@ -34,24 +34,26 @@ The same shape is available as data. The repository's [synthetic late-correction
 sequenceDiagram
     accTitle: A late correction reaches a pending approval
     accDescr: After an approval is queued, a corrected source record is admitted. It supersedes the earlier version and invalidates what was derived from it. The packet that rested on those derivatives is invalidated, a revised packet is produced and the pending approval is revoked. When the queued action reaches the gateway it is refused because the grant is revoked and the evidence is no longer current, and a not-executed receipt records why. A new proposal on the revised packet needs a new approval.
-    autonumber
     participant S as Source owner
     participant E as Registry (C02)
     participant L as Lineage
-    participant P as Packets (C04) and approvals (C06)
+    participant P as Packets (C04)<br/>and approvals (C06)
     participant G as Gateway
     Note over P,G: An approval is queued for a later run
     S->>E: Correction admitted as a new version
     E->>L: Supersedes the earlier version
     L->>E: Invalidates findings and summaries derived from it
     L->>P: The packet that rested on them is invalidated
-    P->>P: Revised packet produced, prior version linked
+    Note over P: Revised packet produced,<br/>prior version linked
     L->>P: Pending approval revoked
     G->>P: Queued action reaches commit: recheck
     P-->>G: Grant revoked, evidence no longer current
     Note over G: Refused<br/>Receipt (C07): not executed,<br/>with reasons
     Note over P,G: A new proposal on the revised packet<br/>needs a new approval
 ```
+
+
+*Open at full size: [light](../../figures/F10-light.svg) · [dark](../../figures/F10-dark.svg).*
 
 <details>
 <summary>Text description of Figure F10</summary>
