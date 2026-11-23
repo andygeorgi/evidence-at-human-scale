@@ -7,7 +7,7 @@
     "issuer": "role:ap-controller",
     "grantee": "workload:ap-assistant",
     "tenant": "tenant:calder-works",
-    "issuance_time": "2026-11-23T06:00:00Z",
+    "issuance_time": "2026-11-23T07:45:00Z",
     "authority_basis": {
       "record_id": "BASIS-AP-POLICY-V3",
       "version": "v1"
@@ -114,7 +114,7 @@
         "version": "v1"
       },
       "checked_by": "workload:grant-service",
-      "checked_at": "2026-11-23T06:00:00Z"
+      "checked_at": "2026-11-23T07:45:00Z"
     },
     "per_action_limits": [
       {

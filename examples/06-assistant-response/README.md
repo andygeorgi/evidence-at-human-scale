@@ -18,7 +18,7 @@ The reasoning is in [chapter 7, one interaction](../../docs/paper/07-one-interac
 | File | Written by | Status |
 |---|---|---|
 | [`response-PKT-0417-v1-template.json`](response-PKT-0417-v1-template.json) · [`.md`](response-PKT-0417-v1-template.md) | the template, from packet v1 | `withdrawn`: packet v1 was invalidated at 13:45 |
-| [`response-PKT-0417-v1-model-style.json`](response-PKT-0417-v1-model-style.json) | the maintainers, by hand, to show a paraphrasing response that still conforms. **It is not model output.** | `withdrawn`, for the same reason |
+| [`response-PKT-0417-v1-model-style.json`](response-PKT-0417-v1-model-style.json) | the author, by hand, to show a paraphrasing response that still conforms. **It is not model output.** | `withdrawn`, for the same reason |
 | [`response-PKT-0417-v2-template.json`](response-PKT-0417-v2-template.json) · [`.md`](response-PKT-0417-v2-template.md) | the template, from packet v2 | `current` |
 
 A response is a list of statements. Each has a `kind` (`claim`, `inference`, `conflict`, `gap`, `recommendation`, `proposal`, `obligation`, `limitation`), a text, and `refs`: JSON pointers into the packet. The Markdown files are the human-readable rendering. An excerpt of the current one:

@@ -176,8 +176,8 @@
   },
   "lifecycle": {
     "state": "superseded",
-    "effective_time": "2026-11-23T13:45:00Z",
-    "reason": "Its input GR-5521 v1 was superseded; recomputed as v2.",
+    "effective_time": "2026-11-23T13:51:00Z",
+    "reason": "Its input GR-5521 v1 was superseded; recomputed as v2, admitted at 13:51.",
     "replacement_reference": {
       "record_id": "M3W-0417",
       "version": "v2"

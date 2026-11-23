@@ -1,6 +1,6 @@
 # Examples
 
-One synthetic story, told in thirteen folders. It walks a single decision through the [reference architecture](../architecture/README.md): a supplier invoice that should be paid, a goods receipt that disagrees with it, two assistants that appear to agree, a correction that arrives after an approval, a payment whose outcome is unknown, and a limit that is lowered while work is in flight.
+One synthetic story, told in thirteen folders. It walks a single decision through the [reference architecture](../architecture/README.md): a supplier invoice that should be paid, a goods receipt that disagrees with it, two assistants that appear to agree, a correction that arrives after an approval, a payment whose outcome is unknown, and a limit that is lowered between a proposal and its payment run.
 
 **Everything here is invented.** The buyer (Calder Works), the supplier (Fenwick Components, `S-1042`), the invoice, the amounts, the dates, the people and the systems do not describe any real organization, person or system. The examples illustrate the [contracts](../contracts/README.md) and give the repository's checks something to run on. They are not evidence that the architecture works. See [Claims and limits](../docs/claims-and-limits.md).
 
@@ -29,7 +29,7 @@ Synthetic data only. A pass is not evidence about any real system.
 All 6 stages passed.
 ```
 
-It works the same on Windows, macOS and Linux. Add `--verbose` to see what each stage covered, `--only schema,semantics` to run some stages, or `--json` for a machine-readable result. Exit code 0 means everything passed.
+It is tested on Windows and Linux; nothing in it is platform-specific, so macOS should work too. Add `--verbose` to see what each stage covered, `--only schema,semantics` to run some stages, or `--json` for a machine-readable result. Exit code 0 means everything passed.
 
 | Stage | What it checks |
 |---|---|
@@ -54,7 +54,8 @@ All times are UTC on 2026-11-23 unless stated.
 |---|---|---|
 | 11-18 14:05 | Goods receipt `GR-5521` v1 records 60 units for purchase order `PO-77231` (100 ordered) | [01](01-source-records/README.md) |
 | 07:30 | Invoice `INV-2026-0417` arrives: 100 units at EUR 184.00, total EUR 18,400.00 | [01](01-source-records/README.md) |
-| 09:35 | The three-way match `M3W-0417` v1 fails: 100 invoiced against 60 received, 40% over a 2% tolerance | [03](03-lineage-and-common-origin/README.md) |
+| 07:45 | The controller issues two standing class grants for the day's payment work: place payment holds, and release low-value payments | [07](07-authority-and-delegation/README.md) · [12](12-controlled-change/README.md) |
+| 09:35 | The three-way match `M3W-0417` v1 fails: 100 units invoiced against 60 received, a variance of 40% against a tolerance of 2% | [03](03-lineage-and-common-origin/README.md) |
 | 09:41–09:44 | Two model summaries both say "probably a receiving delay". Both rest on `GR-5521` v1 alone | [03](03-lineage-and-common-origin/README.md) |
 | 09:45–09:59 | Retrieval for the review. The treasury service returns HTTP 503. One source is outside the reviewer's permissions | [04](04-selection-and-missingness/README.md) |
 | 10:00 | Context `CTX-0417` v1, selection `SEL-0417` v1 and decision packet `PKT-0417` v1 are produced. A first response is written from the packet | [02](02-context-and-normalization/README.md) · [05](05-decision-packet/README.md) · [06](06-assistant-response/README.md) |
@@ -62,7 +63,7 @@ All times are UTC on 2026-11-23 unless stated.
 | 10:40 | The controller gives an exact approval for a conditional release at the 16:00 payment run | [07](07-authority-and-delegation/README.md) |
 | 13:30 | Supplier screening is re-run (`SCR-S1042` v2) | [11](11-late-correction/README.md) |
 | 13:40 | The warehouse scans the second pallet it received on 11-20. `GR-5521` v2 supersedes v1: 100 units received | [11](11-late-correction/README.md) |
-| 13:45 | Everything built on v1 stops being current: the match result, both summaries, the packet. The first approval is revoked | [11](11-late-correction/README.md) |
+| 13:45 | Both summaries and the packet built on v1 stop being current, and the first approval is revoked. The match result is recomputed and replaced at 13:51 | [11](11-late-correction/README.md) |
 | 14:10 | Context v2, selection v2, packet v2 and proposal v2 are produced from the corrected record | [11](11-late-correction/README.md) |
 | 14:30 | The controller lowers the per-payment limit of a low-value release class from EUR 5,000 to EUR 2,500 | [12](12-controlled-change/README.md) |
 | 15:20 | A second exact approval, bound to proposal v2 | [11](11-late-correction/README.md) |
@@ -98,7 +99,8 @@ The set holds 37 contract instances: 19 evidence records (C02), 2 contexts (C01)
 
 - **Files.** Contract instances are named `<contract>-<id>-<version>.json`, for example `c02-INV-2026-0417-v1.json`. Every instance carries `contract_id` and `schema_version`.
 - **Snapshots, not event logs.** Each file shows its record as it stands at the end of the day. `GR-5521` v1 therefore shows `superseded`, packet v1 shows `invalidated` and the first approval shows `revoked`. The timestamps inside each record say when each state began. A real store would append the changes as history.
-- **Versions.** A reference always names an exact version. A newer version never replaces an older one; it supersedes it.
+- **Versions.** A reference always names an exact version. A newer version never replaces an older one; it supersedes it. A version's content never changes; only its lifecycle state does (for example from `current` to `superseded`).
+- **People.** Two roles recur. The *reviewer* (`person:ap-reviewer-02`) asks for packets and reads them through the assistant. The *controller* (`person:ap-controller-01`) is the accountable approver: the controller owns the review obligation and gives every exact approval. The paper's "Decision Owner" is the controller here. Whether the requestor and the accountable approver should be one role or two is [an open editorial question](../CHANGELOG.md#known-editorial-questions) (number 6).
 - **Registry.** [`registry.json`](registry.json) is the domain's side of the story: registered producers and the evidence kinds each may submit, the external records the contracts name but do not define (access decisions, authority bases, accounting references), the policies with their freshness limits, the commit-time precondition rules, the relationship vocabulary, the terms this reviewer may not see, and the state of the target system over time. It is domain configuration, not part of the contracts.
 - **Generated data.** The JSON is generated from one definition by [`scripts/build_example_data.py`](../scripts/build_example_data.py). `python scripts/build_example_data.py --check` fails if a committed file differs from a fresh build, so an edit by hand shows up. The READMEs are written by hand.
 
@@ -114,3 +116,4 @@ The paper uses short labels in its figures and text. In this story:
 | `V01/v1`, a scoped validation | `V-M3W-0417-01` and `V-GR-5521-01`, inside the records they assess |
 | `S01/v2`, the correction | `GR-5521` v2 |
 | `P01` | `PKT-0417` v1, then v2 |
+| the Decision Owner | the controller, `person:ap-controller-01` (see *Conventions*) |

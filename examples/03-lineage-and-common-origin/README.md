@@ -73,7 +73,7 @@ In the paper's notation `S01/v1` is the goods receipt `GR-5521` v1, `S02/v1` is 
 4. **Uncertainty.** The match result says it is exactly as reliable as its inputs ("rule_output"); the summaries say "model_generated: not verified against any source".
 5. **Common origin.** Agents A and B agree, and a reader might count two sources. Follow each summary's ancestry to its leaves: both end at `GR-5521` v1. They are one source seen twice. The [packet](../05-decision-packet/README.md) lists them as two inferences, and each says so in its limitations.
 6. **Scoped validation.** `V-M3W-0417-01` says a reviewer recomputed the arithmetic. Its scope: the arithmetic of the variance only, not the correctness of the input records.
-7. **Lifecycle (snapshot).** The match result v1 shows `superseded` and both summaries show `withdrawn`. They stopped being current at 13:45, when their shared origin was corrected ([11](../11-late-correction/README.md)).
+7. **Lifecycle (snapshot).** The match result v1 shows `superseded` and both summaries show `withdrawn`. The summaries stopped being current at 13:45, when their shared origin was corrected, and the match result at 13:51, when its recomputed replacement was admitted ([11](../11-late-correction/README.md)).
 
 ## Checks that run here
 

@@ -13,7 +13,7 @@ Authority changes. A controller lowers a limit after a risk review. In this arch
 | File | What it is |
 |---|---|
 | [`c02-CHG-LOWVAL-0001-v1.json`](c02-CHG-LOWVAL-0001-v1.json) | A `decision_record`: at 14:30 the AP controller lowered the per-payment limit of the low-value release class from EUR 5,000 to EUR 2,500, following the quarterly payment-risk review. A decision record documents a choice. It validates no observation. |
-| [`c06-GRT-CLASS-LOWVAL-v1.json`](c06-GRT-CLASS-LOWVAL-v1.json) | The standing class grant for low-value releases, as issued at 06:00: up to EUR 5,000 per payment and EUR 25,000 a day. |
+| [`c06-GRT-CLASS-LOWVAL-v1.json`](c06-GRT-CLASS-LOWVAL-v1.json) | The standing class grant for low-value releases, as issued at 07:45: up to EUR 5,000 per payment and EUR 25,000 a day. |
 | [`c06-GRT-CLASS-LOWVAL-v2.json`](c06-GRT-CLASS-LOWVAL-v2.json) | The new version, issued at 14:30: EUR 2,500 per payment, EUR 25,000 a day. Its authority basis is the decision record. |
 | [`gateway-scenarios.json`](gateway-scenarios.json) | Four stored evaluations around the change. |
 
@@ -21,7 +21,7 @@ Authority changes. A controller lowers a limit after a risk review. In this arch
 
 | | v1 | v2 |
 |---|---|---|
-| Issued | 06:00 | 14:30 |
+| Issued | 07:45 | 14:30 |
 | Authority basis | the AP policy (an external record) | the decision record `CHG-LOWVAL-0001` v1 (a C02 record) |
 | Per-payment limit | EUR 5,000 | EUR 2,500 |
 | Daily limit | EUR 25,000 | EUR 25,000 |

@@ -312,7 +312,7 @@ def build_evidence(S: Scenario):
         scope_=scope(TASK, "units"), method_=method("src:rules-engine", "producer:rules-engine", rule="M3W-2.0", tool="rules-engine-7.1"),
         parents=[("INV-2026-0417", "v1"), ("PO-77231", "v1"), ("GR-5521", "v1")], validation=m3w_val,
         uncertainty=("rule-output", "Reports the declared rule over the stated inputs; the inputs are not independently verified."),
-        lifecycle={"state": "superseded", "effective_time": T_INVALIDATE, "reason": "Its input GR-5521 v1 was superseded; recomputed as v2.", "replacement_reference": rref("M3W-0417", "v2")},
+        lifecycle={"state": "superseded", "effective_time": "2026-11-23T13:51:00Z", "reason": "Its input GR-5521 v1 was superseded; recomputed as v2, admitted at 13:51.", "replacement_reference": rref("M3W-0417", "v2")},
         coverage="One invoice; rule M3W 2.0 with a 2% quantity tolerance."))
     sum_a = S.add(F3, evidence(
         "SUM-A-0417", "v1", "model_inference", "producer:agent-a",
@@ -840,14 +840,14 @@ def build_grants(S, proposals):
     pol4 = R[("AP-POLICY-4", "v1")]
     out = {}
     out["hold"] = build_grant(
-        "GRT-CLASS-HOLD", "v1", "role:ap-controller", "workload:ap-assistant", "2026-11-23T06:00:00Z", rref("BASIS-AP-POLICY-V3"),
+        "GRT-CLASS-HOLD", "v1", "role:ap-controller", "workload:ap-assistant", "2026-11-23T07:45:00Z", rref("BASIS-AP-POLICY-V3"),
         ["hold_payment"], [{"entity_type": "invoice", "entity_id": "*"}],
         [{"name": "reason_code", "data_type": "string", "constraint": "An AP hold reason code (QTY-MISMATCH, PRICE-MISMATCH, DUPLICATE-SUSPECTED)", "policy_reference": pol("POL-AP-PAY", "v3")},
          {"name": "block_code", "data_type": "string", "constraint": "Payment block B-1 only", "policy_reference": pol("POL-AP-PAY", "v3")}],
         "Place invoices on payment hold pending review",
         {"binding_type": "bounded_class", "class_id": "CLASS-AP-HOLD", "class_version": "1", "bounds": "Reversible payment holds on open invoices; no funds move; at most 20 holds per day."},
         [support(pol4, "c1")], [pol("POL-AP-PAY", "v3")], "2026-11-24T00:00:00Z",
-        revocation("not_revoked", "REVCHK-GRT-CLASS-HOLD", "workload:grant-service", "2026-11-23T06:00:00Z"),
+        revocation("not_revoked", "REVCHK-GRT-CLASS-HOLD", "workload:grant-service", "2026-11-23T07:45:00Z"),
         [limit("LIM-HOLD-PER", 1, "holds", "tenant:calder-works/GRT-CLASS-HOLD", "Reject beyond one hold per action.")],
         [limit("LIM-HOLD-DAY", 20, "holds", "tenant:calder-works/GRT-CLASS-HOLD", "Reject beyond the daily hold allowance.")],
         atomic("ACCT-AP-HOLDS", "shared_atomic"),
@@ -888,7 +888,7 @@ def build_grants(S, proposals):
             [{"recipient": "role:ap-controller", "condition": "Any payment is released under this class", "channel": "ap-review-queue"}],
             {"owner": "role:ap-reconciliation", "policy_reference": pol("POL-RECOVERY-AP"), "conditions": ["Outcome unknown or partial: reconcile against the bank statement before any retry."]})
 
-    out["lowval1"] = lowval("v1", "2026-11-23T06:00:00Z", rref("BASIS-AP-POLICY-V3"), 5000)
+    out["lowval1"] = lowval("v1", "2026-11-23T07:45:00Z", rref("BASIS-AP-POLICY-V3"), 5000)
     out["lowval2"] = lowval("v2", T_CHANGE, rref("CHG-LOWVAL-0001"), 2500)
     # the class grants' revocation checks are named per version
     out["lowval2"]["limits_lifecycle"]["revocation"]["check_basis"] = rref("REVCHK-GRT-CLASS-LOWVAL", "v2")
@@ -1352,6 +1352,8 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    for _stream in (sys.stdout, sys.stderr):  # a legacy console code page must not break the output
+        getattr(_stream, "reconfigure", lambda **_: None)(encoding="utf-8", errors="replace")
     sys.exit(main())
 
 
