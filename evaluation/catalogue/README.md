@@ -34,6 +34,6 @@ assert all(f["status"] == "NOT RUN" for f in fixtures)
 
 ## Provenance
 
-The tables are an export from the author's evaluation workbook, with references to the author's internal specification and package files removed or rewritten to repository paths, and legacy diagram identifiers replaced. Status values are preserved exactly. The repository does not regenerate the tables, and nothing here is computed by its checks. One test, [`tests/test_catalogue.py`](../../tests/test_catalogue.py), confirms the row counts and that no row carries a result. The workbook's open questions are not part of the catalogue: the open questions of the architecture are in the [ownership, parameters and tradeoffs reference](../../architecture/ownership-and-tradeoffs.md).
+The tables are an export from the author's evaluation workbook. Cross-references were rewritten to point at pages and files in this repository. Status values are preserved exactly. The repository does not regenerate the tables, and nothing here is computed by its checks. One test, [`tests/test_catalogue.py`](../../tests/test_catalogue.py), confirms the row counts and that no row carries a result. The workbook's open questions are not part of the catalogue: the open questions of the architecture are in the [ownership, parameters and tradeoffs reference](../../architecture/ownership-and-tradeoffs.md).
 
 [← Evaluation guide](../README.md) · [Evaluation oracles](../oracles.md)

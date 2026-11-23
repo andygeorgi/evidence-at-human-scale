@@ -10,8 +10,8 @@ The first version of this repository. It is offered for review and is not a fina
 
 - **The paper**: 15 Markdown chapters, from the overview to "Start with one decision, not a platform", with the glossary, [claims and limits](docs/claims-and-limits.md) and an [implementation guide](docs/implementation-guide.md).
 - **The technical reference**: the [architecture reference](architecture/README.md) and 7 [contract pages](contracts/README.md), C01–C07, preserving all 41 field groups.
-- **A schema bundle**: [`schemas/contracts-v1.schema.json`](schemas/contracts-v1.schema.json), a documentation-only JSON Schema (Draft 2020-12) with 38 valid and 64 invalid embedded examples. [What changed from earlier forms](contracts/CHANGES.md): identity and annotations only; what validates did not change.
-- **A synthetic worked example**: 13 folders and 37 contract instances telling one invented supplier-payment story, with raw exports, a registry, stored gateway evaluations and an assistant response, and a validation command that runs the same on Windows, macOS and Linux.
+- **A schema bundle**: [`schemas/contracts-v1.schema.json`](schemas/contracts-v1.schema.json), a documentation-only JSON Schema (Draft 2020-12) with 38 valid and 64 invalid embedded examples. The [contract change record](contracts/CHANGES.md) pins its validation surface and says how a change to it is recorded.
+- **A synthetic worked example**: 13 folders and 37 contract instances telling one invented supplier-payment story, with raw exports, a registry, stored gateway evaluations and an assistant response, and a validation command that is tested on Windows and Linux.
 - **Evaluation guidance**: the [evaluation guide](evaluation/README.md), the oracles, human-outcome guidance and a catalogue of 12 tests, 12 matched baseline records, 70 fixtures and 47 domain parameters. Every status is NOT RUN or UNSET.
 - **A figure set**: 11 figures and a banner, each with a caption, alt text and a text description, in light and dark variants, with their sources.
 - **Tooling**: [`scripts/check_all.py`](scripts/check_all.py) and the checks behind it (examples, unit tests, link and anchor check, page-structure check, figure and hygiene checks), an optional external-URL check, and a GitHub Actions workflow that runs them on Ubuntu and Windows.
@@ -29,7 +29,7 @@ The first version of this repository. It is offered for review and is not a fina
 
 ## Known editorial questions
 
-A readability review of release candidate 1's Word and PDF editions, done by an AI assistant and not an independent human reviewer, found 19 older consistency questions that need an author decision rather than rewording. They are carried over here **unresolved**, except where a status says otherwise, so that reviewers can see them; resolving them is the author's decision. Where a question mentions "the appendix", read the technical reference in [`architecture/`](architecture/README.md) and [`contracts/`](contracts/README.md).
+A readability review of the text of release candidate 1, done by an AI assistant and not by an independent human reviewer, found 19 older consistency questions that need an author decision rather than rewording. Sixteen are still open; the other three are addressed or partly addressed, as the table says. They are listed so that readers can see them; resolving them is the author's decision. Some questions say "the appendix": that means the technical reference in [`architecture/`](architecture/README.md) and [`contracts/`](contracts/README.md).
 
 | # | Question | Status in this repository |
 |---|---|---|

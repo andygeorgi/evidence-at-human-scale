@@ -5,7 +5,7 @@ Andy Georgi · public repository candidate 1.0.0-rc.1 · 23 November 2026
 
 > **Systems produce evidence. AI makes it consumable. People remain accountable.**
 
-The paper is the main thought-leadership argument. Each chapter stands on its own, links to the contract or reference page that carries the exhaustive detail, and points to a worked example where one exists.
+The paper is the main argument. Each chapter stands on its own, links to the contract or reference page that carries the exhaustive detail, and points to a worked example where one exists.
 
 | # | Chapter | Takeaway |
 | --- | --- | --- |

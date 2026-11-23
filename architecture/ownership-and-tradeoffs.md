@@ -34,7 +34,7 @@ The [domain parameter catalogue](../evaluation/catalogue/README.md) records requ
 | OQ05 Source authority | Source/domain | Authority ordering and scoped supersession basis | Before conflict-policy use; unresolved |
 | OQ06 Human review | Decision/governance | Actual inspection, dissent, recourse and adequate scrutiny | Before domain acceptance; NOT RUN |
 | OQ07 External races | Gateway/target | Atomicity support, race windows, shared capacity and reconciliation | Before unattended action; NOT RUN |
-| OQ08 Publication requirements | Author | Applicable disclosure, submission and publication rules | Before publication; unverified |
+| OQ08 Disclosure and publication requirements of a venue | Author | Applicable disclosure, submission and publication rules of any venue beyond this repository (the repository states its AI assistance in the README) | Before any submission to a venue; unverified |
 
 ## Full tradeoff register
 

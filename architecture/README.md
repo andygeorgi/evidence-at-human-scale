@@ -17,7 +17,7 @@ All architecture, runtime, safety, performance, cost and human-evaluation result
 | [Implementation options](azure-implementation-options.md) | Optional product mapping, with qualifications | [13. Implementation options](../docs/paper/13-implementation-options.md) |
 | [Reviewer navigation](reviewer-navigation.md) | Reviewer questions mapped to chapters, reference pages, figures and evaluation tests | all |
 
-Related references: the [contract reference](../contracts/README.md) (all 41 field groups of the seven contracts), the [evaluation oracles](../evaluation/oracles.md) (A5), the [sources](../references/README.md) and the [figures](../figures/README.md).
+Related references: the [contract reference](../contracts/README.md) (all 41 field groups of the seven contracts), the [evaluation oracles](../evaluation/oracles.md), the [sources](../references/README.md) and the [figures](../figures/README.md).
 
 ## How the layers relate
 

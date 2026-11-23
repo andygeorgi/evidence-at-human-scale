@@ -1,6 +1,6 @@
 # Scripts
 
-Everything here is plain Python 3.9 or later. The checks use the standard library and one package, `jsonschema` ([`requirements.txt`](../requirements.txt)). They run the same on Windows, macOS and Linux, need no network (except one optional check) and never evaluate or execute file content. See the [security policy](../SECURITY.md).
+Everything here is plain Python 3.9 or later. The checks use the standard library and one package, `jsonschema` ([`requirements.txt`](../requirements.txt)). They are tested on Windows and Linux (nothing in them is platform-specific), need no network (except one optional check) and never evaluate or execute file content. See the [security policy](../SECURITY.md).
 
 ```bash
 python -m pip install -r requirements.txt

@@ -12,7 +12,7 @@ The design comes from a case-based architecture engagement on a public-sector fi
 
 This paper is an architecture proposition, not a deployment or benefit claim. Runtime and human evaluation have not been run. The [architecture reference](../../architecture/README.md) and the [contract reference](../../contracts/README.md) carry the exhaustive controls; this paper carries the argument and their essential architectural meaning.
 
-## How the paper is organised
+## How the paper is organized
 
 | Question | Chapter |
 | --- | --- |

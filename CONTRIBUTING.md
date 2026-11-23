@@ -34,7 +34,7 @@ python -m pip install -r requirements.txt
 python scripts/check_all.py
 ```
 
-It needs Python 3.9 or later and runs the same on Windows, macOS and Linux. Continuous integration runs it on Ubuntu and Windows. Each check can also run alone; [`scripts/README.md`](scripts/README.md) lists them. If you change a count, a code or a status, a check tells you which sentence in the documents to update.
+It needs Python 3.9 or later. Continuous integration runs it on Ubuntu and Windows; nothing in it is platform-specific, so macOS should work too. Each check can also run alone; [`scripts/README.md`](scripts/README.md) lists them. If you change a count, a code or a status, a check tells you which sentence in the documents to update.
 
 ## Pull requests
 

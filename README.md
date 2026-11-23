@@ -54,7 +54,7 @@ python scripts/validate_examples.py         # validate the synthetic examples
 python scripts/check_all.py                 # every repository check, as CI runs them
 ```
 
-You need Python 3.9 or later. It works the same on Windows, macOS and Linux, uses no network, and starts no service or model. The first command should print:
+You need Python 3.9 or later. It is tested on Windows and Linux (nothing in it is platform-specific, so macOS should work too), uses no network, and starts no service or model. The first command should print:
 
 ```text
 Evidence at Human Scale 1.0.0-rc.1: example validation
@@ -80,11 +80,11 @@ It does **not** mean that any real system, model or process is accountable, safe
 
 ## Status and limits
 
-- **No evaluation has been run.** EV01–EV12, the 70 fixtures and the 12 matched baseline records are NOT RUN; the 47 domain parameters are UNSET. Nothing here reports a result, and the proposed benefit is more inspectable context, not a measured gain in speed, accuracy, cost or decision quality.
+- **No evaluation has been run.** EV01–EV12 (the twelve evaluation tests), their 70 fixtures and the 12 matched baseline records (a comparison framework of four measures against three simpler baselines) are NOT RUN, which means execution was not attempted. The 47 domain parameters are UNSET, which means no approved value exists. Nothing here reports a result of evaluating the architecture, and the proposed benefit is more inspectable context, not a measured gain in speed, accuracy, cost or decision quality.
 - **All example data is invented.** The buyer, the supplier, the amounts and the systems describe no real organization, person or system.
-- **Case-based, not a client commission.** The design comes from an architecture engagement on a written case about a public-sector fisheries-control authority in Iceland. The authority took no part, and nothing here is a statement by, about or on behalf of it.
+- **Case-based, not a client commission.** The design comes from an architecture engagement on a written case about a public-sector fisheries-control authority in Iceland. The authority took no part, and nothing here is a statement by, about or on behalf of it. The observations that came out of the engagement are single dated cases and one internal, AI-assisted test; none measures this architecture's benefit ([claims and limits](docs/claims-and-limits.md) gives their limits).
 - **AI-assisted and not independently reviewed by people.** See [AI assistance](#ai-assistance).
-- **Open questions remain.** A few older consistency questions need an author decision rather than editing; they are listed in the [changelog](CHANGELOG.md#known-editorial-questions).
+- **Open questions remain.** Nineteen older consistency questions need an author decision rather than editing; 16 are still open. They are listed in the [changelog](CHANGELOG.md#known-editorial-questions).
 
 The full statement is in [Claims and limits](docs/claims-and-limits.md).
 
@@ -116,6 +116,6 @@ The full statement is in [Claims and limits](docs/claims-and-limits.md).
 
 ## AI assistance
 
-AI assistance supported drafting, cross-checking and publication production. Andy Georgi is the author and is accountable for this repository; reviewers contribute comments, not coauthorship. This repository was assembled with the help of an AI coding assistant (GitHub Copilot) under the author's direction: Markdown conversion, figures, examples and validation scripts. The reviews that took place were AI-assisted and are not independent human reviews.
+AI assistance supported drafting, cross-checking and publication production. Andy Georgi is the author and is accountable for this repository. Anyone who reviews it contributes comments, not coauthorship. This repository was assembled with the help of an AI coding assistant (GitHub Copilot) under the author's direction: Markdown conversion, figures, examples and validation scripts. The reviews that took place were AI-assisted and are not independent human reviews.
 
 Author: **Andy Georgi**.

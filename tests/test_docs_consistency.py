@@ -86,6 +86,10 @@ class StatedCounts(unittest.TestCase):
         ("evaluation/oracles.md", r"the (\d+) matched baseline records", "baselines"),
         ("evaluation/oracles.md", r"the (\d+) concrete synthetic fixtures", "fixtures"),
         ("evaluation/oracles.md", r"the (\d+) unresolved domain parameters", "parameters"),
+        ("architecture/evidence-semantics.md", r"bundle's (\d+) embedded examples", "embedded examples"),
+        ("architecture/evidence-semantics.md", r"\((\d+) valid, \d+ invalid\)", "valid examples"),
+        ("architecture/evidence-semantics.md", r"\(\d+ valid, (\d+) invalid\)", "invalid examples"),
+        ("architecture/evidence-semantics.md", r"and the (\d+) synthetic example instances", "instances"),
         ("evaluation/catalogue/README.md", r"\| Evaluation tests \| (\d+) \|", "tests"),
         ("evaluation/catalogue/README.md", r"\| Matched baselines \| (\d+) \|", "baselines"),
         ("evaluation/catalogue/README.md", r"\| Fixtures \| (\d+) \|", "fixtures"),
@@ -101,6 +105,15 @@ class StatedCounts(unittest.TestCase):
                 wrong.append("%s: no statement matching %r (was a sentence reworded?)" % (relative, pattern))
             wrong += ["%s: says %s for %s, the data has %d" % (relative, number, name, expected[name]) for number in found if int(number) != expected[name]]
         self.assertEqual(wrong, [])
+
+    def test_the_editorial_questions_are_counted_the_same_everywhere(self):
+        table = text("CHANGELOG.md").split("## Known editorial questions", 1)[1]
+        rows = [line for line in table.splitlines() if re.match(r"\| \d+ \|", line)]
+        open_rows = [line for line in rows if line.rstrip().endswith("| Open |")]
+        self.assertEqual((len(rows), len(open_rows)), (19, 16))
+        self.assertIn("found %d older consistency questions" % len(rows), text("CHANGELOG.md"))
+        self.assertIn("Sixteen are still open", text("CHANGELOG.md"))
+        self.assertIn("Nineteen older consistency questions need an author decision rather than editing; %d are still open" % len(open_rows), text("README.md"))
 
     def test_the_instance_breakdown_in_the_examples_readme_matches_the_data(self):
         from collections import Counter
