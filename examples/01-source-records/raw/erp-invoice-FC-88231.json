@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "system": "erp (synthetic)",
+  "export": "invoice",
+  "revision": 3,
+  "document": "INV-2026-0417",
+  "supplier_invoice_no": "FC-88231",
+  "supplier": "S-1042",
+  "purchase_order": "PO-77231",
+  "invoice_date": "2026-11-22",
+  "due_date": "2026-11-30",
+  "status": "OPEN",
+  "lines": [
+    {
+      "line": 1,
+      "quantity": "100",
+      "unit_price": "184.00",
+      "amount": "18400.00",
+      "currency": "EUR"
+    }
+  ],
+  "total": "18400.00",
+  "last_changed": "2026-11-23T08:30:00+01:00"
+}

@@ -1,0 +1,199 @@
+{
+  "response_id": "RESP-0417-v1-template",
+  "synthetic": true,
+  "packet_reference": {
+    "contract_id": "C04",
+    "id": "PKT-0417",
+    "version": "v1"
+  },
+  "as_of": "2026-11-23T10:00:00Z",
+  "produced_by": "template-fallback-1",
+  "status": "withdrawn",
+  "statements": [
+    {
+      "kind": "claim",
+      "label": "PC-1",
+      "text": "Invoice INV-2026-0417 from supplier S-1042 (supplier invoice FC-88231, dated 2026-11-22) states 100 units delivered at EUR 184.00 per unit, total EUR 18,400.00, payable by 2026-11-30.",
+      "refs": [
+        "/supported_claims_references/0"
+      ]
+    },
+    {
+      "kind": "claim",
+      "label": "PC-2",
+      "text": "Purchase order PO-77231 authorizes up to 100 units at EUR 184.00 per unit, total EUR 18,400.00.",
+      "refs": [
+        "/supported_claims_references/1"
+      ]
+    },
+    {
+      "kind": "claim",
+      "label": "PC-3",
+      "text": "Goods receipt GR-5521 records 60 units received on 2026-11-18.",
+      "refs": [
+        "/supported_claims_references/2"
+      ]
+    },
+    {
+      "kind": "claim",
+      "label": "PC-4",
+      "text": "Three-way match M3W 2.0 on INV-2026-0417: FAIL (invoiced 100 units, received 60 units, variance 40.0%, tolerance 2%).",
+      "refs": [
+        "/supported_claims_references/3"
+      ]
+    },
+    {
+      "kind": "claim",
+      "label": "PC-5",
+      "text": "Supplier S-1042 was screened against the sanctions and watch lists on 2026-11-21: no match.",
+      "refs": [
+        "/supported_claims_references/4"
+      ]
+    },
+    {
+      "kind": "claim",
+      "label": "PC-6",
+      "text": "No invoice with supplier S-1042, number FC-88231 and amount EUR 18,400.00 exists in the ledger between 2025-11-24 and 2026-11-23 (exact match).",
+      "refs": [
+        "/supported_claims_references/5"
+      ]
+    },
+    {
+      "kind": "claim",
+      "label": "PC-7",
+      "text": "Policy AP-4: an invoice with an open quantity or price discrepancy may be placed on payment hold by the accounts-payable team; releasing it requires a passing three-way match.",
+      "refs": [
+        "/supported_claims_references/6"
+      ]
+    },
+    {
+      "kind": "inference",
+      "label": "M01",
+      "text": "Inference (model-generated, not verified): Model A infers: The goods receipt is probably incomplete: the 40 missing units were probably delivered on a later date and not yet scanned. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source.",
+      "refs": [
+        "/labeled_inferences/0"
+      ]
+    },
+    {
+      "kind": "inference",
+      "label": "M02",
+      "text": "Inference (model-generated, not verified): Model B infers: The quantity difference is probably a receiving delay; the invoice quantity is consistent with the purchase order. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source.",
+      "refs": [
+        "/labeled_inferences/1"
+      ]
+    },
+    {
+      "kind": "conflict",
+      "label": "CONF-QTY",
+      "text": "Unresolved conflict CONF-QTY: The invoice states 100 units delivered; the goods receipt records 60 units received. Materiality: decision changing.",
+      "refs": [
+        "/conflicts_uncertainty/conflicts/0"
+      ]
+    },
+    {
+      "kind": "gap",
+      "label": "gap 1 (missing)",
+      "text": "Missing: Carrier proof of delivery for a second pallet of 40 units. No carrier or warehouse record of a second delivery exists in the readable sources.",
+      "refs": [
+        "/coverage_omissions_gaps/missingness/0"
+      ]
+    },
+    {
+      "kind": "gap",
+      "label": "gap 2 (not_retrieved)",
+      "text": "Not retrieved: Open credit notes for supplier S-1042 in the last 90 days. Retrieval RETR-CREDIT-0417 completed with 0 relevant records; an empty result does not prove absence.",
+      "refs": [
+        "/coverage_omissions_gaps/missingness/1"
+      ]
+    },
+    {
+      "kind": "gap",
+      "label": "gap 3 (inaccessible)",
+      "text": "Inaccessible: Coverage is limited by access permissions; no protected source identity or content is disclosed.",
+      "refs": [
+        "/coverage_omissions_gaps/missingness/2"
+      ]
+    },
+    {
+      "kind": "gap",
+      "label": "gap 4 (unavailable)",
+      "text": "Unavailable: Treasury cash position for 2026-11-23. The cash-position service returned HTTP 503 and did not recover during the retrieval window. Nothing was read or assumed.",
+      "refs": [
+        "/coverage_omissions_gaps/missingness/3"
+      ]
+    },
+    {
+      "kind": "gap",
+      "label": "gap 5 (negative)",
+      "text": "Checked, none found: An earlier invoice with the same supplier, number and amount. Method: DUPCHECK-EXACT-1.0 over the invoice ledger; coverage complete for: Supplier S-1042; invoice number FC-88231; amount EUR 18,400.00; 2025-11-24 to 2026-11-23.",
+      "refs": [
+        "/coverage_omissions_gaps/missingness/4"
+      ]
+    },
+    {
+      "kind": "gap",
+      "label": "gap 6 (not_assessed)",
+      "text": "Not assessed: Eligibility for the early-payment discount. No assessment was performed.",
+      "refs": [
+        "/coverage_omissions_gaps/missingness/5"
+      ]
+    },
+    {
+      "kind": "gap",
+      "label": "gap 7 (stale)",
+      "text": "Stale: SCR-S1042 v1 is out of date. Record is 50.0 h old at evaluation; policy allows 24 h.",
+      "refs": [
+        "/coverage_omissions_gaps/missingness/6"
+      ]
+    },
+    {
+      "kind": "recommendation",
+      "label": "REC-0417-1",
+      "text": "Recommendation (for review, not a decision): Place INV-2026-0417 on payment hold until the quantity difference is resolved. Basis: Open quantity discrepancy (CONF-QTY) between invoice and goods receipt; policy AP-4; screening is stale. Requires: A hold is within the AP team's standing class authority; the AP reviewer is notified.",
+      "refs": [
+        "/recommendations/0"
+      ]
+    },
+    {
+      "kind": "recommendation",
+      "label": "REC-0417-1B",
+      "text": "Recommendation (for review, not a decision): Release payment at the 16:00 run only if the match passes, screening is current and the invoice is held when the run starts. Basis: Policy AP-4 requires a passing three-way match; the commit-time preconditions enforce it. Requires: Exact approval by the AP controller, bound to ACT-REL-0417 v1.",
+      "refs": [
+        "/recommendations/1"
+      ]
+    },
+    {
+      "kind": "proposal",
+      "label": "ACT-HOLD-0417 v1",
+      "text": "Proposed (not executed or approved): ACT-HOLD-0417 v1, hold_payment on invoice INV-2026-0417.",
+      "refs": [
+        "/action_proposals/0"
+      ]
+    },
+    {
+      "kind": "proposal",
+      "label": "ACT-REL-0417 v1",
+      "text": "Proposed (not executed or approved): ACT-REL-0417 v1, release_payment on invoice INV-2026-0417.",
+      "refs": [
+        "/action_proposals/1"
+      ]
+    },
+    {
+      "kind": "obligation",
+      "label": "OBL-0417-REVIEW",
+      "text": "Obligation OBL-0417-REVIEW: due 2026-11-23T15:30:00Z, owner role:ap-controller.",
+      "refs": [
+        "/priority_mandatory_obligations/obligation_references/0"
+      ]
+    },
+    {
+      "kind": "limitation",
+      "label": "limits",
+      "text": "Selected sources for this invoice and supplier only; sources outside this principal's permissions and the treasury cash position are not covered.",
+      "refs": [
+        "/coverage_omissions_gaps/visible_scoped_limitation_summary"
+      ]
+    }
+  ],
+  "status_reason": "Packet PKT-0417 v1 was invalidated at 2026-11-23T13:45:00Z because GR-5521 v1 was superseded by GR-5521 v2."
+}

@@ -1,0 +1,619 @@
+{
+  "contract_id": "C03",
+  "schema_version": "1",
+  "identity_scope": {
+    "selection_id": "SEL-0417",
+    "version": "v2",
+    "context_reference": {
+      "contract_id": "C01",
+      "id": "CTX-0417",
+      "version": "v2"
+    },
+    "permitted_source_scope": "ERP invoices, purchase orders and payments; warehouse receipts; policy library; supplier screening; invoice ledger; treasury service; derived records for INV-2026-0417",
+    "time_scope": {
+      "start": "2025-11-24T00:00:00Z",
+      "end": "2026-11-23T14:10:00Z"
+    },
+    "as_of": "2026-11-23T14:10:00Z",
+    "policy_references": [
+      {
+        "policy_id": "POL-AP-READ",
+        "version": "v1"
+      },
+      {
+        "policy_id": "POL-AP-PAY",
+        "version": "v3"
+      }
+    ]
+  },
+  "retrieval": [
+    {
+      "retrieval_unit_id": "RETR-ERP-0417",
+      "authorized_scope": "ERP invoices and purchase orders for supplier S-1042",
+      "authorization_reference": {
+        "record_id": "AUTHZ-READ-CTX-0417",
+        "version": "v2"
+      },
+      "status": "completed",
+      "attempted_at": {
+        "state": "known",
+        "value": "2026-11-23T13:50:00Z"
+      },
+      "completed_at": {
+        "state": "known",
+        "value": "2026-11-23T13:50:00Z"
+      },
+      "reason": "Retrieved by entity and period.",
+      "summary_visibility": "detailed",
+      "summary": "Invoice INV-2026-0417 and purchase order PO-77231 retrieved."
+    },
+    {
+      "retrieval_unit_id": "RETR-WMS-0417",
+      "authorized_scope": "Warehouse receipts for PO-77231",
+      "authorization_reference": {
+        "record_id": "AUTHZ-READ-CTX-0417",
+        "version": "v2"
+      },
+      "status": "completed",
+      "attempted_at": {
+        "state": "known",
+        "value": "2026-11-23T13:50:00Z"
+      },
+      "completed_at": {
+        "state": "known",
+        "value": "2026-11-23T13:50:00Z"
+      },
+      "reason": "Retrieved by purchase order.",
+      "summary_visibility": "detailed",
+      "summary": "Goods receipt GR-5521 v2 retrieved."
+    },
+    {
+      "retrieval_unit_id": "RETR-POLICY-0417",
+      "authorized_scope": "Policy library: AP-4",
+      "authorization_reference": {
+        "record_id": "AUTHZ-READ-CTX-0417",
+        "version": "v2"
+      },
+      "status": "completed",
+      "attempted_at": {
+        "state": "known",
+        "value": "2026-11-23T13:50:00Z"
+      },
+      "completed_at": {
+        "state": "known",
+        "value": "2026-11-23T13:50:00Z"
+      },
+      "reason": "Retrieved by policy identifier. Carried over from SEL-0417 v1.",
+      "summary_visibility": "detailed",
+      "summary": "Accounts-payable policy AP-4 retrieved."
+    },
+    {
+      "retrieval_unit_id": "RETR-SCREEN-0417",
+      "authorized_scope": "Supplier screening for S-1042",
+      "authorization_reference": {
+        "record_id": "AUTHZ-READ-CTX-0417",
+        "version": "v2"
+      },
+      "status": "completed",
+      "attempted_at": {
+        "state": "known",
+        "value": "2026-11-23T13:50:00Z"
+      },
+      "completed_at": {
+        "state": "known",
+        "value": "2026-11-23T13:50:00Z"
+      },
+      "reason": "Retrieved the latest screening result for the supplier.",
+      "summary_visibility": "detailed",
+      "summary": "Screening result SCR-S1042 v2 retrieved."
+    },
+    {
+      "retrieval_unit_id": "RETR-LEDGER-0417",
+      "authorized_scope": "Invoice ledger, 2025-11-24 to 2026-11-23",
+      "authorization_reference": {
+        "record_id": "AUTHZ-READ-CTX-0417",
+        "version": "v2"
+      },
+      "status": "completed",
+      "attempted_at": {
+        "state": "known",
+        "value": "2026-11-23T09:51:00Z"
+      },
+      "completed_at": {
+        "state": "known",
+        "value": "2026-11-23T09:51:00Z"
+      },
+      "reason": "Exact-match duplicate query over the declared window. Carried over from SEL-0417 v1.",
+      "summary_visibility": "detailed",
+      "summary": "Duplicate check DUP-0417 retrieved."
+    },
+    {
+      "retrieval_unit_id": "RETR-CREDIT-0417",
+      "authorized_scope": "Credit-note ledger for supplier S-1042",
+      "authorization_reference": {
+        "record_id": "AUTHZ-READ-CTX-0417",
+        "version": "v2"
+      },
+      "status": "completed",
+      "attempted_at": {
+        "state": "known",
+        "value": "2026-11-23T09:52:00Z"
+      },
+      "completed_at": {
+        "state": "known",
+        "value": "2026-11-23T09:52:00Z"
+      },
+      "reason": "Credit-note ledger query for supplier S-1042, last 90 days. Carried over from SEL-0417 v1.",
+      "summary_visibility": "detailed",
+      "summary": "The credit-note ledger query completed and returned no relevant records."
+    },
+    {
+      "retrieval_unit_id": "RETR-TREASURY-0417",
+      "authorized_scope": "Treasury cash-position service",
+      "authorization_reference": {
+        "record_id": "AUTHZ-READ-CTX-0417",
+        "version": "v2"
+      },
+      "status": "failed",
+      "attempted_at": {
+        "state": "known",
+        "value": "2026-11-23T09:58:00Z"
+      },
+      "completed_at": {
+        "state": "unknown",
+        "reason": "The service returned HTTP 503; the retrieval did not complete."
+      },
+      "reason": "Dependency unavailable. Carried over from SEL-0417 v1.",
+      "summary_visibility": "detailed",
+      "summary": "Cash-position service unavailable; nothing was read."
+    },
+    {
+      "retrieval_unit_id": "RETR-RESTRICTED-0417",
+      "authorized_scope": "Outside this principal's read scope",
+      "authorization_reference": {
+        "record_id": "AUTHZ-DENY-RESTRICTED-0417",
+        "version": "v1"
+      },
+      "status": "not_permitted",
+      "attempted_at": {
+        "state": "not_applicable",
+        "reason": "Not attempted: outside this principal's permissions."
+      },
+      "completed_at": {
+        "state": "not_applicable",
+        "reason": "Not attempted: outside this principal's permissions."
+      },
+      "reason": "Access decision denies this principal. Carried over from SEL-0417 v1.",
+      "summary_visibility": "permission_safe",
+      "summary": "Coverage is limited by access permissions; no protected source identity or content is disclosed."
+    },
+    {
+      "retrieval_unit_id": "RETR-DERIVED-0417",
+      "authorized_scope": "Derived records for INV-2026-0417",
+      "authorization_reference": {
+        "record_id": "AUTHZ-READ-CTX-0417",
+        "version": "v2"
+      },
+      "status": "completed",
+      "attempted_at": {
+        "state": "known",
+        "value": "2026-11-23T13:55:00Z"
+      },
+      "completed_at": {
+        "state": "known",
+        "value": "2026-11-23T13:55:00Z"
+      },
+      "reason": "Derived records for the invoice.",
+      "summary_visibility": "detailed",
+      "summary": "Three-way match result M3W-0417 v2 retrieved."
+    }
+  ],
+  "disposition": [
+    {
+      "record_reference": {
+        "record_id": "INV-2026-0417",
+        "version": "v1"
+      },
+      "state": "included",
+      "reason": "The document under review."
+    },
+    {
+      "record_reference": {
+        "record_id": "PO-77231",
+        "version": "v1"
+      },
+      "state": "included",
+      "reason": "States the ordered quantity and price."
+    },
+    {
+      "record_reference": {
+        "record_id": "GR-5521",
+        "version": "v2"
+      },
+      "state": "included",
+      "reason": "States the received quantity."
+    },
+    {
+      "record_reference": {
+        "record_id": "M3W-0417",
+        "version": "v2"
+      },
+      "state": "included",
+      "reason": "Deterministic comparison of invoice, order and receipt."
+    },
+    {
+      "record_reference": {
+        "record_id": "SCR-S1042",
+        "version": "v2"
+      },
+      "state": "included",
+      "reason": "Supplier screening required for payment release."
+    },
+    {
+      "record_reference": {
+        "record_id": "DUP-0417",
+        "version": "v1"
+      },
+      "state": "included",
+      "reason": "Rules out a duplicate invoice."
+    },
+    {
+      "record_reference": {
+        "record_id": "AP-POLICY-4",
+        "version": "v1"
+      },
+      "state": "included",
+      "reason": "Policy that bounds hold and release."
+    },
+    {
+      "record_reference": {
+        "record_id": "ANL-S1042-OTD",
+        "version": "v1"
+      },
+      "state": "excluded",
+      "reason": "Delivery reliability is not a payment-release criterion under POL-AP-PAY v3; the record remains retrievable."
+    },
+    {
+      "record_reference": {
+        "record_id": "GR-5521",
+        "version": "v1"
+      },
+      "state": "excluded",
+      "reason": "Superseded by GR-5521 v2."
+    },
+    {
+      "record_reference": {
+        "record_id": "M3W-0417",
+        "version": "v1"
+      },
+      "state": "excluded",
+      "reason": "Superseded by M3W-0417 v2; its input was corrected."
+    },
+    {
+      "record_reference": {
+        "record_id": "SCR-S1042",
+        "version": "v1"
+      },
+      "state": "excluded",
+      "reason": "Superseded by SCR-S1042 v2."
+    },
+    {
+      "record_reference": {
+        "record_id": "SUM-A-0417",
+        "version": "v1"
+      },
+      "state": "excluded",
+      "reason": "Withdrawn: its only basis, GR-5521 v1, was superseded."
+    },
+    {
+      "record_reference": {
+        "record_id": "SUM-B-0417",
+        "version": "v1"
+      },
+      "state": "excluded",
+      "reason": "Withdrawn: its only basis, GR-5521 v1, was superseded."
+    }
+  ],
+  "obligations": [
+    {
+      "obligation_id": "OBL-0417-REVIEW",
+      "policy_basis": {
+        "policy_id": "POL-AP-PAY",
+        "version": "v3"
+      },
+      "priority": "high",
+      "deadline": "2026-11-23T15:30:00Z",
+      "owner": "role:ap-controller",
+      "delivery_state": "delivered",
+      "acknowledgement_state": "acknowledged",
+      "escalation_state": "not_escalated"
+    }
+  ],
+  "conflicts_gaps": {
+    "conflicts": [],
+    "missingness": [
+      {
+        "state": "missing",
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Carrier proof of delivery for the second pallet",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "known",
+            "value": "units"
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "expected_evidence": "Carrier proof of delivery for a second pallet of 40 units",
+        "materiality": "supporting_detail",
+        "reason": {
+          "state": "known",
+          "value": "No carrier or warehouse record of a second delivery exists in the readable sources."
+        },
+        "assessment_basis": "Expected under the receiving procedure for a multi-pallet order and not present in any source in scope. Search coverage is not established, so this is recorded as missing, not as a negative."
+      },
+      {
+        "state": "not_retrieved",
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Open credit notes for supplier S-1042",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "known",
+            "value": "EUR"
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "expected_evidence": "Open credit notes for supplier S-1042 in the last 90 days",
+        "materiality": "could_change_payable_amount",
+        "reason": {
+          "state": "known",
+          "value": "Retrieval RETR-CREDIT-0417 completed and returned no relevant records."
+        },
+        "assessment_basis": "A completed retrieval with an empty result does not prove there are none: it covered the credit-note ledger only, not disputes held elsewhere.",
+        "retrieval_reference": {
+          "record_id": "RETR-CREDIT-0417",
+          "version": "v2"
+        },
+        "retrieval_completed": true,
+        "relevant_record_count": 0,
+        "completed_at": "2026-11-23T09:52:00Z"
+      },
+      {
+        "state": "inaccessible",
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Evidence outside this principal's read scope",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "not_applicable",
+            "reason": "No unit applies to this statement."
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "expected_evidence": "Evidence not readable by this principal",
+        "materiality": "unknown",
+        "reason": {
+          "state": "known",
+          "value": "The current principal lacks permission to read this source."
+        },
+        "assessment_basis": "Access decision AUTHZ-DENY-RESTRICTED-0417 applies. The source and its content are not disclosed to this principal.",
+        "permission_decision_reference": {
+          "record_id": "AUTHZ-DENY-RESTRICTED-0417",
+          "version": "v1"
+        },
+        "permission_safe_summary": "Coverage is limited by access permissions; no protected source identity or content is disclosed."
+      },
+      {
+        "state": "unavailable",
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Treasury cash position for the payment date",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "known",
+            "value": "EUR"
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "expected_evidence": "Treasury cash position for 2026-11-23",
+        "materiality": "informs_timing_not_validity",
+        "reason": {
+          "state": "known",
+          "value": "The cash-position service returned HTTP 503 and did not recover during the retrieval window."
+        },
+        "assessment_basis": "Dependency failure recorded in MON-TREASURY-0001 v1. No cash position was read or assumed.",
+        "dependency_failure_reference": {
+          "record_id": "MON-TREASURY-0001",
+          "version": "v1"
+        }
+      },
+      {
+        "state": "negative",
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Duplicate-invoice check",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "known",
+            "value": "EUR"
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Exact match on supplier, invoice number and amount within the stated window."
+          }
+        },
+        "expected_evidence": "An earlier invoice with the same supplier, number and amount",
+        "materiality": "could_block_payment",
+        "reason": {
+          "state": "known",
+          "value": "The exact-match duplicate check found no earlier invoice in the declared window."
+        },
+        "assessment_basis": "Complete coverage of the declared window and of the exact-match rule; near-duplicates are out of scope.",
+        "observation_reference": {
+          "record_id": "DUP-0417",
+          "version": "v1",
+          "original_locator": {
+            "source_id": "src:erp-ledger",
+            "record_locator": "ledger:dupcheck/FC-88231",
+            "original_version": "run-1"
+          },
+          "scope": {
+            "entity_references": [
+              {
+                "entity_type": "invoice",
+                "entity_id": "INV-2026-0417"
+              },
+              {
+                "entity_type": "supplier",
+                "entity_id": "S-1042"
+              }
+            ],
+            "task": "Duplicate-invoice check",
+            "jurisdiction": {
+              "state": "not_applicable",
+              "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+            },
+            "units": {
+              "state": "known",
+              "value": "EUR"
+            },
+            "interpretation": {
+              "state": "known",
+              "value": "Exact match on supplier, invoice number and amount within the stated window."
+            }
+          },
+          "evidence_kind": "deterministic_finding",
+          "reference_type": "claim_reference",
+          "claim_id": "c1"
+        },
+        "method": "DUPCHECK-EXACT-1.0 over the invoice ledger",
+        "time": "2026-11-23T09:50:00Z",
+        "coverage": {
+          "declared_scope": "Supplier S-1042; invoice number FC-88231; amount EUR 18,400.00; 2025-11-24 to 2026-11-23",
+          "status": "complete",
+          "limitations": [
+            "Exact match only."
+          ]
+        }
+      },
+      {
+        "state": "not_assessed",
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Early-payment discount eligibility",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "known",
+            "value": "EUR"
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "expected_evidence": "Eligibility for the early-payment discount",
+        "materiality": "outside_decision",
+        "reason": {
+          "state": "known",
+          "value": "Not part of the release decision; no assessment was requested."
+        },
+        "assessment_basis": "No rule or model was run for this question in this selection.",
+        "assessment_performed": false
+      }
+    ]
+  },
+  "coverage": {
+    "declared_scope": "Invoice INV-2026-0417 and supplier S-1042 for the payment-release question only",
+    "status": "partial",
+    "limitations": [
+      "Not a whole-corpus assessment.",
+      "Sources outside this principal's permissions are not covered.",
+      "The treasury cash position was not read."
+    ]
+  }
+}

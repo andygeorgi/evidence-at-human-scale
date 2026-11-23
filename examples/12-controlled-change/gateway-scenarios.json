@@ -1,0 +1,126 @@
+{
+  "scenario_id": "GW-CHANGE-0417",
+  "title": "A lowered limit takes effect at the next commit check",
+  "evaluations": [
+    {
+      "label": "EUR 4,200 at 14:20, before the change",
+      "why": "Within the original EUR 5,000 limit of version 1.",
+      "at": "2026-11-23T14:20:00Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-CLASS-LOWVAL",
+        "version": "v1"
+      },
+      "overrides": [
+        {
+          "on": "proposal",
+          "path": "/action/typed_parameters/0/value",
+          "value": 4200
+        }
+      ],
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "ALLOW",
+        "codes": [],
+        "reasons": []
+      }
+    },
+    {
+      "label": "The same payment at 14:40 with the old version presented",
+      "why": "Version 2 has been in force since 14:30; version 1 can no longer be used.",
+      "at": "2026-11-23T14:40:00Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-CLASS-LOWVAL",
+        "version": "v1"
+      },
+      "overrides": [
+        {
+          "on": "proposal",
+          "path": "/action/typed_parameters/0/value",
+          "value": 4200
+        }
+      ],
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "GRANT_SUPERSEDED"
+        ],
+        "reasons": [
+          {
+            "code": "GRANT_SUPERSEDED",
+            "message": "grant version v2 is in force; v1 is no longer usable"
+          }
+        ]
+      }
+    },
+    {
+      "label": "The same payment at 14:40 under version 2",
+      "why": "EUR 4,200 exceeds the new per-payment limit of EUR 2,500.",
+      "at": "2026-11-23T14:40:00Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-CLASS-LOWVAL",
+        "version": "v2"
+      },
+      "overrides": [
+        {
+          "on": "proposal",
+          "path": "/action/typed_parameters/0/value",
+          "value": 4200
+        }
+      ],
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "PER_ACTION_LIMIT"
+        ],
+        "reasons": [
+          {
+            "code": "PER_ACTION_LIMIT",
+            "message": "4200 EUR exceeds the per-action limit of 2500 EUR"
+          }
+        ]
+      }
+    },
+    {
+      "label": "EUR 2,000 at 14:40 under version 2",
+      "why": "A smaller payment still fits inside the new class.",
+      "at": "2026-11-23T14:40:00Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-CLASS-LOWVAL",
+        "version": "v2"
+      },
+      "overrides": [
+        {
+          "on": "proposal",
+          "path": "/action/typed_parameters/0/value",
+          "value": 2000
+        }
+      ],
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "ALLOW",
+        "codes": [],
+        "reasons": []
+      }
+    }
+  ],
+  "synthetic": true,
+  "note": "Stored what-if evaluations of the reference commit check. Overrides are applied in memory only; nothing is executed."
+}

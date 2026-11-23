@@ -1,0 +1,146 @@
+{
+  "contract_id": "C02",
+  "schema_version": "1",
+  "identity_schema": {
+    "record_id": "SCR-S1042",
+    "version": "v2",
+    "kind": "deterministic_finding"
+  },
+  "producer_admission": {
+    "producer_id": "producer:screening-service",
+    "registry_version": "producer-registry-v1",
+    "permitted_kind_reference": {
+      "record_id": "registered-kind-deterministic_finding",
+      "version": "v1"
+    },
+    "admission_status": "admitted",
+    "admission_time": "2026-11-23T13:31:00Z"
+  },
+  "content": {
+    "content_type": "claims",
+    "claims": [
+      {
+        "claim_id": "c1",
+        "text": "Supplier S-1042 was screened against the sanctions and watch lists on 2026-11-23: no match.",
+        "supporting_references": []
+      }
+    ]
+  },
+  "scope": {
+    "entity_references": [
+      {
+        "entity_type": "invoice",
+        "entity_id": "INV-2026-0417"
+      },
+      {
+        "entity_type": "supplier",
+        "entity_id": "S-1042"
+      }
+    ],
+    "task": "Supplier screening for payment release",
+    "jurisdiction": {
+      "state": "not_applicable",
+      "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+    },
+    "units": {
+      "state": "not_applicable",
+      "reason": "No unit applies to this statement."
+    },
+    "interpretation": {
+      "state": "known",
+      "value": "Result of a screening run on the stated date."
+    }
+  },
+  "original_source": {
+    "source_id": "src:screening",
+    "record_locator": "screening:S-1042/2026-11-23",
+    "original_version": "run-97"
+  },
+  "method": {
+    "source_id": "src:screening",
+    "producer_id": "producer:screening-service",
+    "rule_version": {
+      "state": "known",
+      "value": "SCREEN-LISTS-2026-11-23"
+    },
+    "model_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "prompt_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "tool_version": {
+      "state": "known",
+      "value": "screening-svc-3.4"
+    },
+    "analytical_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    }
+  },
+  "times": {
+    "event": {
+      "state": "known",
+      "value": "2026-11-23T13:30:00Z"
+    },
+    "effective": {
+      "state": "known",
+      "value": "2026-11-23T13:30:00Z"
+    },
+    "source_update": {
+      "state": "known",
+      "value": "2026-11-23T13:30:00Z"
+    },
+    "ingestion": "2026-11-23T13:31:00Z",
+    "retrieval": {
+      "state": "known",
+      "value": "2026-11-23T13:31:00Z"
+    },
+    "clock_basis": "UTC, source-system clock",
+    "freshness": {
+      "policy_reference": {
+        "policy_id": "POL-FRESH-SCREEN",
+        "version": "v1"
+      },
+      "evaluated_at": "2026-11-23T13:31:00Z",
+      "state": "within_policy",
+      "basis": "Record is 0.0 h old at evaluation; policy allows 24 h."
+    }
+  },
+  "lineage": {
+    "parent_references": [],
+    "typed_relationships": []
+  },
+  "coverage_uncertainty": {
+    "coverage_statement": "Single record; no claim about other records.",
+    "uncertainty": {
+      "state": "rule_output",
+      "basis": "Reports the screening run as executed on its date."
+    },
+    "limitations": []
+  },
+  "validation": [],
+  "disclosure_permissions": {
+    "tenant": "tenant:calder-works",
+    "classification": "synthetic-internal",
+    "purpose": "Accounts-payable payment-release review",
+    "disclosure_restrictions": [],
+    "permission_policy_references": [
+      {
+        "policy_id": "POL-AP-READ",
+        "version": "v1"
+      }
+    ]
+  },
+  "lifecycle": {
+    "state": "current",
+    "effective_time": "2026-11-23T13:31:00Z",
+    "reason": "Initial admitted version."
+  },
+  "integrity": {
+    "state": "absent",
+    "reason": "The synthetic source supplies no hash or signature."
+  }
+}

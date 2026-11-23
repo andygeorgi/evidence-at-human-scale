@@ -1,0 +1,73 @@
+{
+  "contract_id": "C07",
+  "schema_version": "1",
+  "identity_binding": {
+    "receipt_id": "RCP-REL-0417-B",
+    "version": "v1",
+    "proposal_reference": {
+      "contract_id": "C05",
+      "id": "ACT-REL-0417",
+      "version": "v2"
+    },
+    "grant_reference": {
+      "contract_id": "C06",
+      "id": "GRT-APPR-0417-B",
+      "version": "v1"
+    },
+    "execution_attempt_id": "ATT-REL-0417-B-1",
+    "executor": "workload:payment-executor",
+    "target": {
+      "entity_type": "invoice",
+      "entity_id": "INV-2026-0417"
+    }
+  },
+  "outcome": {
+    "state": "unknown",
+    "observed_effects": [],
+    "unresolved_conditions": [
+      "The bank interface timed out after submission; whether the instruction was accepted is not known."
+    ],
+    "timestamps": {
+      "submitted": "2026-11-23T16:00:05Z",
+      "observed": {
+        "state": "unknown",
+        "reason": "The bank interface timed out; no response was received."
+      }
+    }
+  },
+  "verification_recovery": {
+    "verification": {
+      "state": "pending",
+      "reason": "Await authoritative reconciliation against the bank statement.",
+      "authoritative_outcome_references": []
+    },
+    "reconciliation": {
+      "state": "required",
+      "owner": "role:ap-reconciliation",
+      "policy_reference": {
+        "policy_id": "POL-RECOVERY-AP",
+        "version": "v1"
+      }
+    },
+    "recovery_state": "awaiting_authoritative_reconciliation",
+    "retry_disposition": "blocked_pending_reconciliation",
+    "accounting": {
+      "state": "reserved",
+      "shared_accounting_reference": {
+        "record_id": "ACCT-AP-PAYMENTS",
+        "version": "v1"
+      },
+      "known_partial_effects_charged": true,
+      "confirmed_effect_policy": {
+        "policy_reference": {
+          "policy_id": "POL-CONFIRMED-EFFECT",
+          "version": "v1"
+        },
+        "authoritative_reconciliation_required": true,
+        "timeout_alone_restores_allowance": false,
+        "lease_expiry_alone_restores_allowance": false,
+        "partial_effects_remain_charged": true
+      }
+    }
+  }
+}

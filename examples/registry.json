@@ -1,0 +1,218 @@
+{
+  "synthetic": true,
+  "description": "Domain registry for the synthetic supplier-payment scenario: registered producers, external references that the contracts name but do not define, domain policies, commit-time precondition rules, and the target system's state. All content is invented.",
+  "producers": {
+    "producer:agent-a": {
+      "permitted_kinds": [
+        "model_inference"
+      ]
+    },
+    "producer:agent-b": {
+      "permitted_kinds": [
+        "model_inference"
+      ]
+    },
+    "producer:analytics-ap": {
+      "permitted_kinds": [
+        "analytical_result"
+      ]
+    },
+    "producer:bank-api": {
+      "permitted_kinds": [
+        "source_record_assertion"
+      ]
+    },
+    "producer:change-control": {
+      "permitted_kinds": [
+        "decision_record"
+      ]
+    },
+    "producer:erp-invoices": {
+      "permitted_kinds": [
+        "source_record_assertion"
+      ]
+    },
+    "producer:erp-payments": {
+      "permitted_kinds": [
+        "source_record_assertion"
+      ]
+    },
+    "producer:erp-purchasing": {
+      "permitted_kinds": [
+        "source_record_assertion"
+      ]
+    },
+    "producer:ledger-check": {
+      "permitted_kinds": [
+        "deterministic_finding"
+      ]
+    },
+    "producer:payment-gateway": {
+      "permitted_kinds": [
+        "execution_record"
+      ]
+    },
+    "producer:policy-library": {
+      "permitted_kinds": [
+        "source_record_assertion"
+      ]
+    },
+    "producer:rules-engine": {
+      "permitted_kinds": [
+        "deterministic_finding"
+      ]
+    },
+    "producer:screening-service": {
+      "permitted_kinds": [
+        "deterministic_finding"
+      ]
+    },
+    "producer:service-monitor": {
+      "permitted_kinds": [
+        "source_record_assertion"
+      ]
+    },
+    "producer:wms-receiving": {
+      "permitted_kinds": [
+        "source_record_assertion"
+      ]
+    }
+  },
+  "external_records": {
+    "ACCEPT-AP-BANK-INTERFACE@v1": "Domain owner's acceptance of the weaker guarantees at the bank interface.",
+    "ACCT-AP-HOLDS@v1": "Shared accounting ledger for holds.",
+    "ACCT-AP-PAYMENTS@v1": "Shared accounting ledger for payment releases.",
+    "ACCT-CHARGE-HOLD-0417@v1": "Allowance charge recorded for the hold.",
+    "ACCT-CHARGE-REL-0417-B@v1": "Allowance charge recorded for the second release.",
+    "AUTHZ-DENY-RESTRICTED-0417@v1": "Permission decision: one restricted vendor-master source is not readable by this principal.",
+    "AUTHZ-READ-CTX-0417@v1": "Read-scope decision for the first context (principal, purpose, scope).",
+    "AUTHZ-READ-CTX-0417@v2": "Read-scope decision for the revised context.",
+    "BASIS-AP-CONTROLLER-APPROVAL@v1": "Authority basis: the AP controller may approve payment releases.",
+    "BASIS-AP-POLICY-V3@v1": "Authority basis: accounts-payable policy v3 delegates holds to the AP team.",
+    "REVCHK-GRT-APPR-0417-A@v1": "Latest revocation check for the first exact approval (revoked at 13:45).",
+    "REVCHK-GRT-APPR-0417-B@v1": "Latest revocation check for the second exact approval.",
+    "REVCHK-GRT-CLASS-HOLD@v1": "Latest revocation check for the hold class grant.",
+    "REVCHK-GRT-CLASS-LOWVAL@v1": "Latest revocation check for the low-value release class grant v1.",
+    "REVCHK-GRT-CLASS-LOWVAL@v2": "Latest revocation check for the low-value release class grant v2.",
+    "SCHEMA-M3W-RESULT@v1": "Payload schema of a three-way-match result.",
+    "registered-kind-analytical_result@v1": "Registered evidence kind analytical_result.",
+    "registered-kind-decision_record@v1": "Registered evidence kind decision_record.",
+    "registered-kind-deterministic_finding@v1": "Registered evidence kind deterministic_finding.",
+    "registered-kind-execution_record@v1": "Registered evidence kind execution_record.",
+    "registered-kind-model_inference@v1": "Registered evidence kind model_inference.",
+    "registered-kind-source_record_assertion@v1": "Registered evidence kind source_record_assertion."
+  },
+  "policies": {
+    "POL-AP-READ": {
+      "v1": {
+        "type": "read_purpose",
+        "summary": "Accounts-payable staff may read records of an invoice under review."
+      }
+    },
+    "POL-AP-PAY": {
+      "v3": {
+        "type": "payment_policy",
+        "summary": "Payment release needs a passing three-way match, current screening and an approval or a class grant."
+      }
+    },
+    "POL-FRESH-SCREEN": {
+      "v1": {
+        "type": "freshness",
+        "max_age_hours": 24,
+        "summary": "Supplier screening must be at most 24 hours old when payment is released."
+      }
+    },
+    "POL-FRESH-RECORDS": {
+      "v1": {
+        "type": "freshness",
+        "max_age_hours": 720,
+        "summary": "Ordinary source records are fresh for 30 days."
+      }
+    },
+    "POL-FRESH-REFERENCE": {
+      "v1": {
+        "type": "freshness",
+        "max_age_hours": 8760,
+        "summary": "Policy and reference documents are fresh for one year."
+      }
+    },
+    "POL-RESERVATION": {
+      "v1": {
+        "type": "reservation",
+        "summary": "A reservation is held until authoritative reconciliation."
+      }
+    },
+    "POL-RECOVERY-AP": {
+      "v1": {
+        "type": "recovery",
+        "summary": "Unknown or partial outcomes go to AP reconciliation."
+      }
+    },
+    "POL-CONFIRMED-EFFECT": {
+      "v1": {
+        "type": "confirmed_effect",
+        "summary": "Allowance is restored only on authoritative reconciliation."
+      }
+    }
+  },
+  "preconditions": {
+    "PRE-INVOICE-OPEN": {
+      "type": "target_state_equals",
+      "entity_id": "INV-2026-0417",
+      "key": "status",
+      "equals": "open"
+    },
+    "PRE-INVOICE-HELD": {
+      "type": "target_state_equals",
+      "entity_id": "INV-2026-0417",
+      "key": "status",
+      "equals": "held"
+    },
+    "PRE-MATCH-PASS": {
+      "type": "evidence_payload_equals",
+      "record_prefix": "M3W-",
+      "pointer": "/result",
+      "equals": "PASS"
+    },
+    "PRE-SCREEN-FRESH": {
+      "type": "evidence_fresh",
+      "record_prefix": "SCR-",
+      "max_age_hours": 24
+    }
+  },
+  "relationship_types": [
+    "contradiction",
+    "supersession",
+    "validation",
+    "invalidation"
+  ],
+  "protected_terms": [
+    "bank-detail",
+    "bank detail",
+    "BA-S1042",
+    "bank account"
+  ],
+  "target_states": [
+    {
+      "entity_id": "INV-2026-0417",
+      "at": "2026-11-23T07:30:00Z",
+      "state": {
+        "status": "open"
+      }
+    },
+    {
+      "entity_id": "INV-2026-0417",
+      "at": "2026-11-23T10:03:20Z",
+      "state": {
+        "status": "held"
+      }
+    },
+    {
+      "entity_id": "INV-2026-0417",
+      "at": "2026-11-23T16:20:00Z",
+      "state": {
+        "status": "paid"
+      }
+    }
+  ]
+}

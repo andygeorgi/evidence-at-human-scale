@@ -1,0 +1,104 @@
+{
+  "response_id": "RESP-0417-v1-model-style",
+  "synthetic": true,
+  "packet_reference": {
+    "contract_id": "C04",
+    "id": "PKT-0417",
+    "version": "v1"
+  },
+  "as_of": "2026-11-23T10:00:00Z",
+  "produced_by": "illustration-written-by-the-maintainers (not model output)",
+  "status": "withdrawn",
+  "status_reason": "Packet PKT-0417 v1 was invalidated at 2026-11-23T13:45:00Z because GR-5521 v1 was superseded by GR-5521 v2.",
+  "statements": [
+    {
+      "kind": "claim",
+      "label": "PC-1",
+      "text": "The invoice asks for EUR 18,400.00: 100 units at EUR 184.00.",
+      "refs": [
+        "/supported_claims_references/0"
+      ]
+    },
+    {
+      "kind": "claim",
+      "label": "PC-3",
+      "text": "The goods receipt shows only 60 units received.",
+      "refs": [
+        "/supported_claims_references/2"
+      ]
+    },
+    {
+      "kind": "claim",
+      "label": "PC-4",
+      "text": "The automated three-way match fails: the variance between invoiced and received quantity is 40.0%, against a tolerance of 2%.",
+      "refs": [
+        "/supported_claims_references/3"
+      ]
+    },
+    {
+      "kind": "conflict",
+      "label": "CONF-QTY",
+      "text": "The invoice and the goods receipt disagree on quantity (100 against 60) and nobody has resolved it yet.",
+      "refs": [
+        "/conflicts_uncertainty/conflicts/0"
+      ]
+    },
+    {
+      "kind": "inference",
+      "label": "M01, M02",
+      "text": "Inference (model-generated, not verified): both model summaries suggest a receiving delay, but they share one origin, the goods receipt, so they do not corroborate each other.",
+      "refs": [
+        "/labeled_inferences/0",
+        "/labeled_inferences/1"
+      ]
+    },
+    {
+      "kind": "gap",
+      "label": "gaps 1-7",
+      "text": "Several things could not be checked: no record of a second delivery; credit notes (the query returned nothing, which does not prove there are none); one source outside your permissions; the treasury cash position (service unavailable); early-payment discount (not assessed); and supplier screening is stale. A duplicate check found nothing in its declared window.",
+      "refs": [
+        "/coverage_omissions_gaps/missingness/0",
+        "/coverage_omissions_gaps/missingness/1",
+        "/coverage_omissions_gaps/missingness/2",
+        "/coverage_omissions_gaps/missingness/3",
+        "/coverage_omissions_gaps/missingness/4",
+        "/coverage_omissions_gaps/missingness/5",
+        "/coverage_omissions_gaps/missingness/6"
+      ]
+    },
+    {
+      "kind": "recommendation",
+      "label": "REC-0417-1, REC-0417-1B",
+      "text": "Recommendation (for review, not a decision): hold the invoice now; release at the 16:00 run only if the match passes, screening is current and the invoice is held.",
+      "refs": [
+        "/recommendations/0",
+        "/recommendations/1"
+      ]
+    },
+    {
+      "kind": "proposal",
+      "label": "ACT-HOLD-0417 v1, ACT-REL-0417 v1",
+      "text": "Proposed (not executed or approved): a payment hold and a conditional release at the 16:00 run.",
+      "refs": [
+        "/action_proposals/0",
+        "/action_proposals/1"
+      ]
+    },
+    {
+      "kind": "obligation",
+      "label": "OBL-0417-REVIEW",
+      "text": "Obligation OBL-0417-REVIEW: the AP controller must review before 15:30.",
+      "refs": [
+        "/priority_mandatory_obligations/obligation_references/0"
+      ]
+    },
+    {
+      "kind": "limitation",
+      "label": "limits",
+      "text": "This covers selected sources for this invoice and supplier only.",
+      "refs": [
+        "/coverage_omissions_gaps/visible_scoped_limitation_summary"
+      ]
+    }
+  ]
+}

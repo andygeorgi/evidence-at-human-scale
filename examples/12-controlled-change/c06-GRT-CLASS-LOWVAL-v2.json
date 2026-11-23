@@ -1,0 +1,199 @@
+{
+  "contract_id": "C06",
+  "schema_version": "1",
+  "identity_principals": {
+    "grant_id": "GRT-CLASS-LOWVAL",
+    "version": "v2",
+    "issuer": "role:ap-controller",
+    "grantee": "workload:ap-assistant",
+    "tenant": "tenant:calder-works",
+    "issuance_time": "2026-11-23T14:30:00Z",
+    "authority_basis": {
+      "record_id": "CHG-LOWVAL-0001",
+      "version": "v1"
+    }
+  },
+  "scope_binding": {
+    "permitted_actions": [
+      "release_payment"
+    ],
+    "permitted_targets": [
+      {
+        "entity_type": "invoice",
+        "entity_id": "*"
+      }
+    ],
+    "permitted_parameters": [
+      {
+        "name": "amount_eur",
+        "data_type": "number",
+        "constraint": "At most the per-action limit of this class",
+        "policy_reference": {
+          "policy_id": "POL-AP-PAY",
+          "version": "v3"
+        }
+      },
+      {
+        "name": "currency",
+        "data_type": "string",
+        "constraint": "EUR only",
+        "policy_reference": {
+          "policy_id": "POL-AP-PAY",
+          "version": "v3"
+        }
+      },
+      {
+        "name": "payment_run",
+        "data_type": "string",
+        "constraint": "Any scheduled payment run on the same day",
+        "policy_reference": {
+          "policy_id": "POL-AP-PAY",
+          "version": "v3"
+        }
+      }
+    ],
+    "purpose": "Release low-value payments with a passing three-way match",
+    "binding": {
+      "binding_type": "bounded_class",
+      "class_id": "CLASS-AP-LOWVAL-RELEASE",
+      "class_version": "2",
+      "bounds": "Release of payments up to EUR 2,500 per payment and EUR 25,000 per day for invoices with a passing three-way match."
+    },
+    "evidence_constraints": [
+      {
+        "record_id": "AP-POLICY-4",
+        "version": "v1",
+        "original_locator": {
+          "source_id": "src:policy-library",
+          "record_locator": "policy:AP-4",
+          "original_version": "2026.1"
+        },
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Accounts-payable policy that bounds the hold and release actions",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "not_applicable",
+            "reason": "No unit applies to this statement."
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "evidence_kind": "source_record_assertion",
+        "reference_type": "claim_reference",
+        "claim_id": "c1"
+      }
+    ],
+    "policy_constraints": [
+      {
+        "policy_id": "POL-AP-PAY",
+        "version": "v3"
+      }
+    ]
+  },
+  "limits_lifecycle": {
+    "expiry": "2026-11-24T00:00:00Z",
+    "revocation": {
+      "state": "not_revoked",
+      "check_basis": {
+        "record_id": "REVCHK-GRT-CLASS-LOWVAL",
+        "version": "v2"
+      },
+      "checked_by": "workload:grant-service",
+      "checked_at": "2026-11-23T14:30:00Z"
+    },
+    "per_action_limits": [
+      {
+        "limit_id": "LIM-LOWVAL-PER",
+        "quantity": 2500,
+        "units": "EUR",
+        "accounting_scope": "tenant:calder-works/GRT-CLASS-LOWVAL",
+        "accounting_window": {
+          "start": "2026-11-23T00:00:00Z",
+          "end": "2026-11-24T00:00:00Z"
+        },
+        "exhaustion_behavior": "Reject any payment above the per-payment limit."
+      }
+    ],
+    "cumulative_limits": [
+      {
+        "limit_id": "LIM-LOWVAL-DAY",
+        "quantity": 25000,
+        "units": "EUR",
+        "accounting_scope": "tenant:calder-works/GRT-CLASS-LOWVAL",
+        "accounting_window": {
+          "start": "2026-11-23T00:00:00Z",
+          "end": "2026-11-24T00:00:00Z"
+        },
+        "exhaustion_behavior": "Reject beyond the daily allowance."
+      }
+    ],
+    "atomic_reservation_accounting": {
+      "shared_accounting_reference": {
+        "record_id": "ACCT-AP-PAYMENTS",
+        "version": "v1"
+      },
+      "enforcement": "unsupported",
+      "reservation_expiry_policy": {
+        "policy_id": "POL-RESERVATION",
+        "version": "v1"
+      },
+      "unknown_outcome_policy": "retain_reservation",
+      "confirmed_effect_policy": {
+        "policy_reference": {
+          "policy_id": "POL-CONFIRMED-EFFECT",
+          "version": "v1"
+        },
+        "authoritative_reconciliation_required": true,
+        "timeout_alone_restores_allowance": false,
+        "lease_expiry_alone_restores_allowance": false,
+        "partial_effects_remain_charged": true
+      },
+      "weaker_guarantees": [
+        "The AP allowance ledger and the bank interface cannot be updated in one atomic step."
+      ],
+      "race_windows": [
+        "Between the local reservation and the bank's acceptance of the instruction."
+      ],
+      "residual_risk": [
+        "A bank-side effect can exist while the ledger still shows only a reservation."
+      ],
+      "unattended_operation_constraint": "Unattended release is limited to the exact approved amount; unknown outcomes stop retries until reconciliation.",
+      "domain_acceptance_reference": {
+        "record_id": "ACCEPT-AP-BANK-INTERFACE",
+        "version": "v1"
+      }
+    },
+    "notifications": [
+      {
+        "recipient": "role:ap-controller",
+        "condition": "Any payment is released under this class",
+        "channel": "ap-review-queue"
+      }
+    ],
+    "recovery": {
+      "owner": "role:ap-reconciliation",
+      "policy_reference": {
+        "policy_id": "POL-RECOVERY-AP",
+        "version": "v1"
+      },
+      "conditions": [
+        "Outcome unknown or partial: reconcile against the bank statement before any retry."
+      ]
+    }
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "contract_id": "C07",
+  "schema_version": "1",
+  "identity_binding": {
+    "receipt_id": "RCP-REL-0417-B",
+    "version": "v2",
+    "proposal_reference": {
+      "contract_id": "C05",
+      "id": "ACT-REL-0417",
+      "version": "v2"
+    },
+    "grant_reference": {
+      "contract_id": "C06",
+      "id": "GRT-APPR-0417-B",
+      "version": "v1"
+    },
+    "execution_attempt_id": "ATT-REL-0417-B-1",
+    "executor": "workload:payment-executor",
+    "target": {
+      "entity_type": "invoice",
+      "entity_id": "INV-2026-0417"
+    }
+  },
+  "outcome": {
+    "state": "completed_verified",
+    "observed_effects": [
+      {
+        "effect_id": "EFF-REL-0417-B",
+        "description": "Payment PAY-88421 of EUR 18,400.00 booked for supplier S-1042.",
+        "target": {
+          "entity_type": "invoice",
+          "entity_id": "INV-2026-0417"
+        },
+        "action_reference": {
+          "contract_id": "C05",
+          "id": "ACT-REL-0417",
+          "version": "v2"
+        },
+        "quantity": 18400,
+        "units": "EUR",
+        "observed_at": "2026-11-23T16:07:00Z",
+        "accounting_reference": {
+          "record_id": "ACCT-CHARGE-REL-0417-B",
+          "version": "v1"
+        }
+      }
+    ],
+    "unresolved_conditions": [],
+    "timestamps": {
+      "submitted": "2026-11-23T16:00:05Z",
+      "observed": {
+        "state": "known",
+        "value": "2026-11-23T16:07:00Z"
+      }
+    }
+  },
+  "verification_recovery": {
+    "verification": {
+      "state": "authoritatively_verified",
+      "authoritative_outcome_references": [
+        {
+          "reference": {
+            "record_id": "BANK-STMT-0042",
+            "version": "v1"
+          },
+          "original_locator": {
+            "source_id": "src:bank-api",
+            "record_locator": "bank:statement/2026-11-23/42",
+            "original_version": "v1"
+          },
+          "target": {
+            "entity_type": "invoice",
+            "entity_id": "INV-2026-0417"
+          },
+          "action_reference": {
+            "contract_id": "C05",
+            "id": "ACT-REL-0417",
+            "version": "v2"
+          }
+        }
+      ],
+      "method": "Bank statement line match",
+      "actor": "role:ap-reconciliation",
+      "time": "2026-11-23T16:20:00Z",
+      "scope": "Declared target and action only",
+      "target": {
+        "entity_type": "invoice",
+        "entity_id": "INV-2026-0417"
+      },
+      "action_reference": {
+        "contract_id": "C05",
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      }
+    },
+    "reconciliation": {
+      "state": "reconciled",
+      "owner": "role:ap-reconciliation",
+      "policy_reference": {
+        "policy_id": "POL-RECOVERY-AP",
+        "version": "v1"
+      }
+    },
+    "recovery_state": "resolved",
+    "retry_disposition": "not_applicable_completed",
+    "accounting": {
+      "state": "reconciled",
+      "shared_accounting_reference": {
+        "record_id": "ACCT-AP-PAYMENTS",
+        "version": "v1"
+      },
+      "known_partial_effects_charged": true,
+      "confirmed_effect_policy": {
+        "policy_reference": {
+          "policy_id": "POL-CONFIRMED-EFFECT",
+          "version": "v1"
+        },
+        "authoritative_reconciliation_required": true,
+        "timeout_alone_restores_allowance": false,
+        "lease_expiry_alone_restores_allowance": false,
+        "partial_effects_remain_charged": true
+      },
+      "authoritative_reconciliation_reference": {
+        "record_id": "BANK-STMT-0042",
+        "version": "v1"
+      }
+    }
+  }
+}

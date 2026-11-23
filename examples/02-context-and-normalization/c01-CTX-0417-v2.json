@@ -1,0 +1,55 @@
+{
+  "contract_id": "C01",
+  "schema_version": "1",
+  "identity_principal": {
+    "context_id": "CTX-0417",
+    "version": "v2",
+    "tenant": "tenant:calder-works",
+    "requesting_principal": "person:ap-reviewer-02",
+    "workload_identity": "workload:ap-assistant"
+  },
+  "task_purpose_entity": {
+    "task": "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)",
+    "permitted_purpose": "Accounts-payable payment-release review",
+    "entity_references": [
+      {
+        "entity_type": "invoice",
+        "entity_id": "INV-2026-0417"
+      },
+      {
+        "entity_type": "supplier",
+        "entity_id": "S-1042"
+      }
+    ]
+  },
+  "time_risk_policy": {
+    "time_interval": {
+      "start": "2025-11-24T00:00:00Z",
+      "end": "2026-11-23T14:10:00Z"
+    },
+    "as_of": "2026-11-23T14:10:00Z",
+    "risk_class": "payment-release-medium",
+    "policy_references": [
+      {
+        "policy_id": "POL-AP-READ",
+        "version": "v1"
+      },
+      {
+        "policy_id": "POL-AP-PAY",
+        "version": "v3"
+      }
+    ]
+  },
+  "authorization": {
+    "decision_reference": {
+      "record_id": "AUTHZ-READ-CTX-0417",
+      "version": "v2"
+    },
+    "actor": "policy-engine:read-scope",
+    "time": "2026-11-23T14:10:00Z",
+    "version": "v2",
+    "restrictions": [
+      "Sources outside the accounts-payable read scope are not readable by this principal."
+    ]
+  }
+}

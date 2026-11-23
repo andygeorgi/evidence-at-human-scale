@@ -1,0 +1,324 @@
+{
+  "contract_id": "C05",
+  "schema_version": "1",
+  "identity_binding": {
+    "proposal_id": "ACT-REL-0417",
+    "version": "v1",
+    "context_reference": {
+      "contract_id": "C01",
+      "id": "CTX-0417",
+      "version": "v1"
+    },
+    "packet_reference": {
+      "contract_id": "C04",
+      "id": "PKT-0417",
+      "version": "v1"
+    }
+  },
+  "action": {
+    "action_kind": "release_payment",
+    "exact_target": {
+      "entity_type": "invoice",
+      "entity_id": "INV-2026-0417"
+    },
+    "typed_parameters": [
+      {
+        "name": "amount_eur",
+        "data_type": "number",
+        "value": 18400
+      },
+      {
+        "name": "currency",
+        "data_type": "string",
+        "value": "EUR"
+      },
+      {
+        "name": "payment_run",
+        "data_type": "string",
+        "value": "RUN-2026-11-23-1600"
+      }
+    ],
+    "evidence_references": [
+      {
+        "record_id": "INV-2026-0417",
+        "version": "v1",
+        "original_locator": {
+          "source_id": "src:erp-invoices",
+          "record_locator": "erp:invoice/FC-88231",
+          "original_version": "rev-3"
+        },
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "known",
+            "value": "EUR"
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "evidence_kind": "source_record_assertion",
+        "reference_type": "claim_reference",
+        "claim_id": "c1"
+      },
+      {
+        "record_id": "PO-77231",
+        "version": "v1",
+        "original_locator": {
+          "source_id": "src:erp-purchasing",
+          "record_locator": "erp:po/77231",
+          "original_version": "rev-1"
+        },
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "known",
+            "value": "EUR"
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "evidence_kind": "source_record_assertion",
+        "reference_type": "claim_reference",
+        "claim_id": "c1"
+      },
+      {
+        "record_id": "GR-5521",
+        "version": "v1",
+        "original_locator": {
+          "source_id": "src:wms-receiving",
+          "record_locator": "wms:receipt/5521",
+          "original_version": "rev-1"
+        },
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "known",
+            "value": "units"
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "evidence_kind": "source_record_assertion",
+        "reference_type": "claim_reference",
+        "claim_id": "c1"
+      },
+      {
+        "record_id": "M3W-0417",
+        "version": "v1",
+        "original_locator": {
+          "source_id": "src:rules-engine",
+          "record_locator": "rules:m3w/INV-2026-0417",
+          "original_version": "run-1"
+        },
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "known",
+            "value": "units"
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "evidence_kind": "deterministic_finding",
+        "reference_type": "payload_reference",
+        "payload_location": "/value/result"
+      },
+      {
+        "record_id": "SCR-S1042",
+        "version": "v1",
+        "original_locator": {
+          "source_id": "src:screening",
+          "record_locator": "screening:S-1042/2026-11-21",
+          "original_version": "run-88"
+        },
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Supplier screening for payment release",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "not_applicable",
+            "reason": "No unit applies to this statement."
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Result of a screening run on the stated date."
+          }
+        },
+        "evidence_kind": "deterministic_finding",
+        "reference_type": "claim_reference",
+        "claim_id": "c1"
+      },
+      {
+        "record_id": "DUP-0417",
+        "version": "v1",
+        "original_locator": {
+          "source_id": "src:erp-ledger",
+          "record_locator": "ledger:dupcheck/FC-88231",
+          "original_version": "run-1"
+        },
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Duplicate-invoice check",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "known",
+            "value": "EUR"
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Exact match on supplier, invoice number and amount within the stated window."
+          }
+        },
+        "evidence_kind": "deterministic_finding",
+        "reference_type": "claim_reference",
+        "claim_id": "c1"
+      }
+    ],
+    "policy_references": [
+      {
+        "policy_id": "POL-AP-PAY",
+        "version": "v3"
+      },
+      {
+        "policy_id": "POL-FRESH-SCREEN",
+        "version": "v1"
+      }
+    ],
+    "preconditions": [
+      {
+        "condition_id": "PRE-MATCH-PASS",
+        "condition": "A current three-way match result for the invoice is PASS.",
+        "policy_reference": {
+          "policy_id": "POL-AP-PAY",
+          "version": "v3"
+        }
+      },
+      {
+        "condition_id": "PRE-SCREEN-FRESH",
+        "condition": "Supplier screening is at most 24 hours old.",
+        "policy_reference": {
+          "policy_id": "POL-FRESH-SCREEN",
+          "version": "v1"
+        }
+      },
+      {
+        "condition_id": "PRE-INVOICE-HELD",
+        "condition": "The invoice is held: release proceeds only from the controlled hold state.",
+        "policy_reference": {
+          "policy_id": "POL-AP-PAY",
+          "version": "v3"
+        }
+      }
+    ],
+    "accounting": {
+      "units": "EUR",
+      "accounting_scope": "tenant:calder-works/GRT-APPR-0417-A",
+      "accounting_window": {
+        "start": "2026-11-23T00:00:00Z",
+        "end": "2026-11-24T00:00:00Z"
+      },
+      "exhaustion_behavior": "Reject beyond the approved amount."
+    }
+  },
+  "assessment": {
+    "risk": "medium: irreversible once the bank accepts the instruction",
+    "expected_effects": [
+      "EUR 18,400.00 is paid to supplier S-1042 in the 16:00 payment run."
+    ],
+    "limitations": [
+      "Release is conditional on the commit-time preconditions; it does not assert that they hold now."
+    ],
+    "recovery_conditions": [
+      "If the outcome is unknown, no retry until authoritative reconciliation against the bank statement."
+    ],
+    "status": "proposed"
+  }
+}

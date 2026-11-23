@@ -1,0 +1,180 @@
+{
+  "contract_id": "C06",
+  "schema_version": "1",
+  "identity_principals": {
+    "grant_id": "GRT-CLASS-HOLD",
+    "version": "v1",
+    "issuer": "role:ap-controller",
+    "grantee": "workload:ap-assistant",
+    "tenant": "tenant:calder-works",
+    "issuance_time": "2026-11-23T06:00:00Z",
+    "authority_basis": {
+      "record_id": "BASIS-AP-POLICY-V3",
+      "version": "v1"
+    }
+  },
+  "scope_binding": {
+    "permitted_actions": [
+      "hold_payment"
+    ],
+    "permitted_targets": [
+      {
+        "entity_type": "invoice",
+        "entity_id": "*"
+      }
+    ],
+    "permitted_parameters": [
+      {
+        "name": "reason_code",
+        "data_type": "string",
+        "constraint": "An AP hold reason code (QTY-MISMATCH, PRICE-MISMATCH, DUPLICATE-SUSPECTED)",
+        "policy_reference": {
+          "policy_id": "POL-AP-PAY",
+          "version": "v3"
+        }
+      },
+      {
+        "name": "block_code",
+        "data_type": "string",
+        "constraint": "Payment block B-1 only",
+        "policy_reference": {
+          "policy_id": "POL-AP-PAY",
+          "version": "v3"
+        }
+      }
+    ],
+    "purpose": "Place invoices on payment hold pending review",
+    "binding": {
+      "binding_type": "bounded_class",
+      "class_id": "CLASS-AP-HOLD",
+      "class_version": "1",
+      "bounds": "Reversible payment holds on open invoices; no funds move; at most 20 holds per day."
+    },
+    "evidence_constraints": [
+      {
+        "record_id": "AP-POLICY-4",
+        "version": "v1",
+        "original_locator": {
+          "source_id": "src:policy-library",
+          "record_locator": "policy:AP-4",
+          "original_version": "2026.1"
+        },
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Accounts-payable policy that bounds the hold and release actions",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "not_applicable",
+            "reason": "No unit applies to this statement."
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "evidence_kind": "source_record_assertion",
+        "reference_type": "claim_reference",
+        "claim_id": "c1"
+      }
+    ],
+    "policy_constraints": [
+      {
+        "policy_id": "POL-AP-PAY",
+        "version": "v3"
+      }
+    ]
+  },
+  "limits_lifecycle": {
+    "expiry": "2026-11-24T00:00:00Z",
+    "revocation": {
+      "state": "not_revoked",
+      "check_basis": {
+        "record_id": "REVCHK-GRT-CLASS-HOLD",
+        "version": "v1"
+      },
+      "checked_by": "workload:grant-service",
+      "checked_at": "2026-11-23T06:00:00Z"
+    },
+    "per_action_limits": [
+      {
+        "limit_id": "LIM-HOLD-PER",
+        "quantity": 1,
+        "units": "holds",
+        "accounting_scope": "tenant:calder-works/GRT-CLASS-HOLD",
+        "accounting_window": {
+          "start": "2026-11-23T00:00:00Z",
+          "end": "2026-11-24T00:00:00Z"
+        },
+        "exhaustion_behavior": "Reject beyond one hold per action."
+      }
+    ],
+    "cumulative_limits": [
+      {
+        "limit_id": "LIM-HOLD-DAY",
+        "quantity": 20,
+        "units": "holds",
+        "accounting_scope": "tenant:calder-works/GRT-CLASS-HOLD",
+        "accounting_window": {
+          "start": "2026-11-23T00:00:00Z",
+          "end": "2026-11-24T00:00:00Z"
+        },
+        "exhaustion_behavior": "Reject beyond the daily hold allowance."
+      }
+    ],
+    "atomic_reservation_accounting": {
+      "shared_accounting_reference": {
+        "record_id": "ACCT-AP-HOLDS",
+        "version": "v1"
+      },
+      "enforcement": "shared_atomic",
+      "reservation_expiry_policy": {
+        "policy_id": "POL-RESERVATION",
+        "version": "v1"
+      },
+      "unknown_outcome_policy": "retain_reservation",
+      "confirmed_effect_policy": {
+        "policy_reference": {
+          "policy_id": "POL-CONFIRMED-EFFECT",
+          "version": "v1"
+        },
+        "authoritative_reconciliation_required": true,
+        "timeout_alone_restores_allowance": false,
+        "lease_expiry_alone_restores_allowance": false,
+        "partial_effects_remain_charged": true
+      },
+      "weaker_guarantees": [],
+      "race_windows": [],
+      "residual_risk": [],
+      "unattended_operation_constraint": "No constraint beyond the limits of the grant."
+    },
+    "notifications": [
+      {
+        "recipient": "role:ap-controller",
+        "condition": "Any hold is placed under this class",
+        "channel": "ap-review-queue"
+      }
+    ],
+    "recovery": {
+      "owner": "role:ap-controller",
+      "policy_reference": {
+        "policy_id": "POL-RECOVERY-AP",
+        "version": "v1"
+      },
+      "conditions": [
+        "Hold not confirmed by an ERP status query within 10 minutes."
+      ]
+    }
+  }
+}

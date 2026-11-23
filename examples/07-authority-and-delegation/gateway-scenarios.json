@@ -1,0 +1,106 @@
+{
+  "scenario_id": "GW-AUTHORITY-0417",
+  "title": "What a standing class grant does and does not cover",
+  "evaluations": [
+    {
+      "label": "Hold at 10:03 under the standing hold grant",
+      "why": "The hold is inside the class: permitted action, any invoice, permitted parameters, allowance unused.",
+      "at": "2026-11-23T10:03:00Z",
+      "proposal": {
+        "id": "ACT-HOLD-0417",
+        "version": "v1"
+      },
+      "grant": {
+        "id": "GRT-CLASS-HOLD",
+        "version": "v1"
+      },
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "ALLOW",
+        "codes": [],
+        "reasons": []
+      }
+    },
+    {
+      "label": "A second hold of the same invoice at 10:10",
+      "why": "The first hold already moved the invoice out of the open state, so the precondition no longer holds.",
+      "at": "2026-11-23T10:10:00Z",
+      "proposal": {
+        "id": "ACT-HOLD-0417",
+        "version": "v1"
+      },
+      "grant": {
+        "id": "GRT-CLASS-HOLD",
+        "version": "v1"
+      },
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "PRECONDITION_FAILED"
+        ],
+        "reasons": [
+          {
+            "code": "PRECONDITION_FAILED",
+            "message": "PRE-INVOICE-OPEN is not satisfied: Invoice INV-2026-0417 is open (not already held or paid)."
+          }
+        ]
+      }
+    },
+    {
+      "label": "The hold grant used to release a payment",
+      "why": "A grant covers exactly what it names. Release is not a hold, and its parameters are not the grant's parameters.",
+      "at": "2026-11-23T10:45:00Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v1"
+      },
+      "grant": {
+        "id": "GRT-CLASS-HOLD",
+        "version": "v1"
+      },
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "ACTION_NOT_PERMITTED",
+          "PARAMETER_NOT_PERMITTED",
+          "EVIDENCE_STALE",
+          "PRECONDITION_FAILED"
+        ],
+        "reasons": [
+          {
+            "code": "ACTION_NOT_PERMITTED",
+            "message": "action release_payment is outside the grant"
+          },
+          {
+            "code": "PARAMETER_NOT_PERMITTED",
+            "message": "parameter amount_eur (number) is not permitted by the grant"
+          },
+          {
+            "code": "PARAMETER_NOT_PERMITTED",
+            "message": "parameter currency (string) is not permitted by the grant"
+          },
+          {
+            "code": "PARAMETER_NOT_PERMITTED",
+            "message": "parameter payment_run (string) is not permitted by the grant"
+          },
+          {
+            "code": "EVIDENCE_STALE",
+            "message": "SCR-S1042 v1 is 50.8 h old; policy allows 24 h"
+          },
+          {
+            "code": "PRECONDITION_FAILED",
+            "message": "PRE-MATCH-PASS is not satisfied: A current three-way match result for the invoice is PASS."
+          },
+          {
+            "code": "PRECONDITION_FAILED",
+            "message": "PRE-SCREEN-FRESH is not satisfied: Supplier screening is at most 24 hours old."
+          }
+        ]
+      }
+    }
+  ],
+  "synthetic": true,
+  "note": "Stored what-if evaluations of the reference commit check. Overrides are applied in memory only; nothing is executed."
+}

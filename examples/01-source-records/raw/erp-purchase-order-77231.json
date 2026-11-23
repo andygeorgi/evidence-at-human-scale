@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "system": "erp (synthetic)",
+  "export": "purchase_order",
+  "revision": 1,
+  "document": "PO-77231",
+  "supplier": "S-1042",
+  "status": "APPROVED",
+  "created": "2026-11-10T10:00:00+01:00",
+  "lines": [
+    {
+      "line": 1,
+      "quantity_ordered": "100",
+      "unit_price": "184.00",
+      "currency": "EUR"
+    }
+  ],
+  "total": "18400.00"
+}

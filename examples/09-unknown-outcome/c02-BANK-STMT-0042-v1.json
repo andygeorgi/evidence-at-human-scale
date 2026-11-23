@@ -1,0 +1,148 @@
+{
+  "contract_id": "C02",
+  "schema_version": "1",
+  "identity_schema": {
+    "record_id": "BANK-STMT-0042",
+    "version": "v1",
+    "kind": "source_record_assertion"
+  },
+  "producer_admission": {
+    "producer_id": "producer:bank-api",
+    "registry_version": "producer-registry-v1",
+    "permitted_kind_reference": {
+      "record_id": "registered-kind-source_record_assertion",
+      "version": "v1"
+    },
+    "admission_status": "admitted",
+    "admission_time": "2026-11-23T16:20:00Z"
+  },
+  "content": {
+    "content_type": "claims",
+    "claims": [
+      {
+        "claim_id": "c1",
+        "text": "Bank statement line 42 of 2026-11-23: payment PAY-88421 of EUR 18,400.00 to supplier S-1042 booked at 2026-11-23T16:07:00Z.",
+        "supporting_references": []
+      }
+    ]
+  },
+  "scope": {
+    "entity_references": [
+      {
+        "entity_type": "invoice",
+        "entity_id": "INV-2026-0417"
+      },
+      {
+        "entity_type": "supplier",
+        "entity_id": "S-1042"
+      }
+    ],
+    "task": "Authoritative booking of the payment",
+    "jurisdiction": {
+      "state": "not_applicable",
+      "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+    },
+    "units": {
+      "state": "known",
+      "value": "EUR"
+    },
+    "interpretation": {
+      "state": "known",
+      "value": "Statement of a source system or analysis as recorded; not independently verified."
+    }
+  },
+  "original_source": {
+    "source_id": "src:bank-api",
+    "record_locator": "bank:statement/2026-11-23/42",
+    "original_version": "v1"
+  },
+  "method": {
+    "source_id": "src:bank-api",
+    "producer_id": "producer:bank-api",
+    "rule_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "model_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "prompt_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "tool_version": {
+      "state": "known",
+      "value": "bank-api-1.8"
+    },
+    "analytical_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    }
+  },
+  "times": {
+    "event": {
+      "state": "known",
+      "value": "2026-11-23T16:07:00Z"
+    },
+    "effective": {
+      "state": "known",
+      "value": "2026-11-23T16:07:00Z"
+    },
+    "source_update": {
+      "state": "known",
+      "value": "2026-11-23T16:07:00Z"
+    },
+    "ingestion": "2026-11-23T16:20:00Z",
+    "retrieval": {
+      "state": "known",
+      "value": "2026-11-23T16:20:00Z"
+    },
+    "clock_basis": "UTC, source-system clock",
+    "freshness": {
+      "policy_reference": {
+        "policy_id": "POL-FRESH-RECORDS",
+        "version": "v1"
+      },
+      "evaluated_at": "2026-11-23T16:20:00Z",
+      "state": "within_policy",
+      "basis": "Record is 0.2 h old at evaluation; policy allows 720 h."
+    }
+  },
+  "lineage": {
+    "parent_references": [],
+    "typed_relationships": []
+  },
+  "coverage_uncertainty": {
+    "coverage_statement": "Single record; no claim about other records.",
+    "uncertainty": {
+      "state": "unquantified",
+      "basis": "Source assertion; accuracy is not independently established."
+    },
+    "limitations": []
+  },
+  "validation": [],
+  "disclosure_permissions": {
+    "tenant": "tenant:calder-works",
+    "classification": "synthetic-internal",
+    "purpose": "Accounts-payable payment-release review",
+    "disclosure_restrictions": [],
+    "permission_policy_references": [
+      {
+        "policy_id": "POL-AP-READ",
+        "version": "v1"
+      }
+    ]
+  },
+  "lifecycle": {
+    "state": "current",
+    "effective_time": "2026-11-23T16:20:00Z",
+    "reason": "Initial admitted version."
+  },
+  "integrity": {
+    "state": "present",
+    "hash": "sha256:e76b30ff0c97ea440fd31467b7cd17de779aa9f03f79c0777342b6531ec27a6d",
+    "algorithm": "sha-256",
+    "origin_metadata": "Computed over the admitted content when the record was ingested."
+  }
+}

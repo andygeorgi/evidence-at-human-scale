@@ -1,0 +1,129 @@
+{
+  "contract_id": "C07",
+  "schema_version": "1",
+  "identity_binding": {
+    "receipt_id": "RCP-HOLD-0417",
+    "version": "v1",
+    "proposal_reference": {
+      "contract_id": "C05",
+      "id": "ACT-HOLD-0417",
+      "version": "v1"
+    },
+    "grant_reference": {
+      "contract_id": "C06",
+      "id": "GRT-CLASS-HOLD",
+      "version": "v1"
+    },
+    "execution_attempt_id": "ATT-HOLD-0417-1",
+    "executor": "workload:payment-executor",
+    "target": {
+      "entity_type": "invoice",
+      "entity_id": "INV-2026-0417"
+    }
+  },
+  "outcome": {
+    "state": "completed_verified",
+    "observed_effects": [
+      {
+        "effect_id": "EFF-HOLD-0417",
+        "description": "Payment block B-1 set on invoice INV-2026-0417.",
+        "target": {
+          "entity_type": "invoice",
+          "entity_id": "INV-2026-0417"
+        },
+        "action_reference": {
+          "contract_id": "C05",
+          "id": "ACT-HOLD-0417",
+          "version": "v1"
+        },
+        "quantity": 1,
+        "units": "holds",
+        "observed_at": "2026-11-23T10:03:20Z",
+        "accounting_reference": {
+          "record_id": "ACCT-CHARGE-HOLD-0417",
+          "version": "v1"
+        }
+      }
+    ],
+    "unresolved_conditions": [],
+    "timestamps": {
+      "submitted": "2026-11-23T10:03:00Z",
+      "observed": {
+        "state": "known",
+        "value": "2026-11-23T10:03:20Z"
+      }
+    }
+  },
+  "verification_recovery": {
+    "verification": {
+      "state": "authoritatively_verified",
+      "authoritative_outcome_references": [
+        {
+          "reference": {
+            "record_id": "ERP-HOLD-QUERY-0417",
+            "version": "v1"
+          },
+          "original_locator": {
+            "source_id": "src:erp-payments",
+            "record_locator": "erp:invoice-status/INV-2026-0417",
+            "original_version": "q-1"
+          },
+          "target": {
+            "entity_type": "invoice",
+            "entity_id": "INV-2026-0417"
+          },
+          "action_reference": {
+            "contract_id": "C05",
+            "id": "ACT-HOLD-0417",
+            "version": "v1"
+          }
+        }
+      ],
+      "method": "ERP invoice-status query",
+      "actor": "workload:verifier",
+      "time": "2026-11-23T10:04:00Z",
+      "scope": "Declared target and action only",
+      "target": {
+        "entity_type": "invoice",
+        "entity_id": "INV-2026-0417"
+      },
+      "action_reference": {
+        "contract_id": "C05",
+        "id": "ACT-HOLD-0417",
+        "version": "v1"
+      }
+    },
+    "reconciliation": {
+      "state": "complete",
+      "owner": "role:ap-reconciliation",
+      "policy_reference": {
+        "policy_id": "POL-RECOVERY-AP",
+        "version": "v1"
+      }
+    },
+    "recovery_state": "none_required",
+    "retry_disposition": "not_applicable_completed",
+    "accounting": {
+      "state": "reconciled",
+      "shared_accounting_reference": {
+        "record_id": "ACCT-AP-HOLDS",
+        "version": "v1"
+      },
+      "known_partial_effects_charged": true,
+      "confirmed_effect_policy": {
+        "policy_reference": {
+          "policy_id": "POL-CONFIRMED-EFFECT",
+          "version": "v1"
+        },
+        "authoritative_reconciliation_required": true,
+        "timeout_alone_restores_allowance": false,
+        "lease_expiry_alone_restores_allowance": false,
+        "partial_effects_remain_charged": true
+      },
+      "authoritative_reconciliation_reference": {
+        "record_id": "ERP-HOLD-QUERY-0417",
+        "version": "v1"
+      }
+    }
+  }
+}

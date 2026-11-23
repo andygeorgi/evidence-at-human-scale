@@ -1,0 +1,188 @@
+{
+  "contract_id": "C05",
+  "schema_version": "1",
+  "identity_binding": {
+    "proposal_id": "ACT-HOLD-0417",
+    "version": "v1",
+    "context_reference": {
+      "contract_id": "C01",
+      "id": "CTX-0417",
+      "version": "v1"
+    },
+    "packet_reference": {
+      "contract_id": "C04",
+      "id": "PKT-0417",
+      "version": "v1"
+    }
+  },
+  "action": {
+    "action_kind": "hold_payment",
+    "exact_target": {
+      "entity_type": "invoice",
+      "entity_id": "INV-2026-0417"
+    },
+    "typed_parameters": [
+      {
+        "name": "reason_code",
+        "data_type": "string",
+        "value": "QTY-MISMATCH"
+      },
+      {
+        "name": "block_code",
+        "data_type": "string",
+        "value": "B-1"
+      }
+    ],
+    "evidence_references": [
+      {
+        "record_id": "INV-2026-0417",
+        "version": "v1",
+        "original_locator": {
+          "source_id": "src:erp-invoices",
+          "record_locator": "erp:invoice/FC-88231",
+          "original_version": "rev-3"
+        },
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "known",
+            "value": "EUR"
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "evidence_kind": "source_record_assertion",
+        "reference_type": "claim_reference",
+        "claim_id": "c1"
+      },
+      {
+        "record_id": "GR-5521",
+        "version": "v1",
+        "original_locator": {
+          "source_id": "src:wms-receiving",
+          "record_locator": "wms:receipt/5521",
+          "original_version": "rev-1"
+        },
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "known",
+            "value": "units"
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "evidence_kind": "source_record_assertion",
+        "reference_type": "claim_reference",
+        "claim_id": "c1"
+      },
+      {
+        "record_id": "M3W-0417",
+        "version": "v1",
+        "original_locator": {
+          "source_id": "src:rules-engine",
+          "record_locator": "rules:m3w/INV-2026-0417",
+          "original_version": "run-1"
+        },
+        "scope": {
+          "entity_references": [
+            {
+              "entity_type": "invoice",
+              "entity_id": "INV-2026-0417"
+            },
+            {
+              "entity_type": "supplier",
+              "entity_id": "S-1042"
+            }
+          ],
+          "task": "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)",
+          "jurisdiction": {
+            "state": "not_applicable",
+            "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+          },
+          "units": {
+            "state": "known",
+            "value": "units"
+          },
+          "interpretation": {
+            "state": "known",
+            "value": "Statement of a source system or analysis as recorded; not independently verified."
+          }
+        },
+        "evidence_kind": "deterministic_finding",
+        "reference_type": "payload_reference",
+        "payload_location": "/value/result"
+      }
+    ],
+    "policy_references": [
+      {
+        "policy_id": "POL-AP-PAY",
+        "version": "v3"
+      }
+    ],
+    "preconditions": [
+      {
+        "condition_id": "PRE-INVOICE-OPEN",
+        "condition": "Invoice INV-2026-0417 is open (not already held or paid).",
+        "policy_reference": {
+          "policy_id": "POL-AP-PAY",
+          "version": "v3"
+        }
+      }
+    ],
+    "accounting": {
+      "units": "holds",
+      "accounting_scope": "tenant:calder-works/GRT-CLASS-HOLD",
+      "accounting_window": {
+        "start": "2026-11-23T00:00:00Z",
+        "end": "2026-11-24T00:00:00Z"
+      },
+      "exhaustion_behavior": "Reject beyond the daily hold allowance."
+    }
+  },
+  "assessment": {
+    "risk": "low: reversible administrative block",
+    "expected_effects": [
+      "Payment block B-1 is set on invoice INV-2026-0417; no funds move."
+    ],
+    "limitations": [
+      "Does not resolve the quantity discrepancy."
+    ],
+    "recovery_conditions": [
+      "Remove block B-1 when the discrepancy is resolved."
+    ],
+    "status": "proposed"
+  }
+}

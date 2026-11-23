@@ -1,0 +1,191 @@
+{
+  "contract_id": "C02",
+  "schema_version": "1",
+  "identity_schema": {
+    "record_id": "SUM-B-0417",
+    "version": "v1",
+    "kind": "model_inference"
+  },
+  "producer_admission": {
+    "producer_id": "producer:agent-b",
+    "registry_version": "producer-registry-v1",
+    "permitted_kind_reference": {
+      "record_id": "registered-kind-model_inference",
+      "version": "v1"
+    },
+    "admission_status": "admitted",
+    "admission_time": "2026-11-23T09:44:00Z"
+  },
+  "content": {
+    "content_type": "claims",
+    "claims": [
+      {
+        "claim_id": "c1",
+        "text": "The quantity difference is probably a receiving delay; the invoice quantity is consistent with the purchase order.",
+        "supporting_references": [
+          {
+            "record_id": "GR-5521",
+            "version": "v1",
+            "original_locator": {
+              "source_id": "src:wms-receiving",
+              "record_locator": "wms:receipt/5521",
+              "original_version": "rev-1"
+            },
+            "scope": {
+              "entity_references": [
+                {
+                  "entity_type": "invoice",
+                  "entity_id": "INV-2026-0417"
+                },
+                {
+                  "entity_type": "supplier",
+                  "entity_id": "S-1042"
+                }
+              ],
+              "task": "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)",
+              "jurisdiction": {
+                "state": "not_applicable",
+                "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+              },
+              "units": {
+                "state": "known",
+                "value": "units"
+              },
+              "interpretation": {
+                "state": "known",
+                "value": "Statement of a source system or analysis as recorded; not independently verified."
+              }
+            },
+            "evidence_kind": "source_record_assertion",
+            "reference_type": "claim_reference",
+            "claim_id": "c1"
+          }
+        ]
+      }
+    ]
+  },
+  "scope": {
+    "entity_references": [
+      {
+        "entity_type": "invoice",
+        "entity_id": "INV-2026-0417"
+      },
+      {
+        "entity_type": "supplier",
+        "entity_id": "S-1042"
+      }
+    ],
+    "task": "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)",
+    "jurisdiction": {
+      "state": "not_applicable",
+      "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+    },
+    "units": {
+      "state": "not_applicable",
+      "reason": "No unit applies to this statement."
+    },
+    "interpretation": {
+      "state": "known",
+      "value": "Interpretation produced by a model; not a source assertion."
+    }
+  },
+  "original_source": {
+    "source_id": "src:agent-b",
+    "record_locator": "agent:summary/B/INV-2026-0417",
+    "original_version": "run-1"
+  },
+  "method": {
+    "source_id": "src:agent-b",
+    "producer_id": "producer:agent-b",
+    "rule_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "model_version": {
+      "state": "known",
+      "value": "model-y-2026-08"
+    },
+    "prompt_version": {
+      "state": "known",
+      "value": "prompt-summary-3"
+    },
+    "tool_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "analytical_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    }
+  },
+  "times": {
+    "event": {
+      "state": "known",
+      "value": "2026-11-23T09:43:00Z"
+    },
+    "effective": {
+      "state": "known",
+      "value": "2026-11-23T09:43:00Z"
+    },
+    "source_update": {
+      "state": "known",
+      "value": "2026-11-23T09:43:00Z"
+    },
+    "ingestion": "2026-11-23T09:44:00Z",
+    "retrieval": {
+      "state": "known",
+      "value": "2026-11-23T09:44:00Z"
+    },
+    "clock_basis": "UTC, source-system clock",
+    "freshness": {
+      "policy_reference": {
+        "policy_id": "POL-FRESH-RECORDS",
+        "version": "v1"
+      },
+      "evaluated_at": "2026-11-23T09:44:00Z",
+      "state": "within_policy",
+      "basis": "Record is 0.0 h old at evaluation; policy allows 720 h."
+    }
+  },
+  "lineage": {
+    "parent_references": [
+      {
+        "record_id": "GR-5521",
+        "version": "v1"
+      }
+    ],
+    "typed_relationships": []
+  },
+  "coverage_uncertainty": {
+    "coverage_statement": "Single record; no claim about other records.",
+    "uncertainty": {
+      "state": "model_generated",
+      "basis": "Interpretation produced by a model; not verified against any source."
+    },
+    "limitations": [
+      "Rests on goods receipt GR-5521 v1 alone."
+    ]
+  },
+  "validation": [],
+  "disclosure_permissions": {
+    "tenant": "tenant:calder-works",
+    "classification": "synthetic-internal",
+    "purpose": "Accounts-payable payment-release review",
+    "disclosure_restrictions": [],
+    "permission_policy_references": [
+      {
+        "policy_id": "POL-AP-READ",
+        "version": "v1"
+      }
+    ]
+  },
+  "lifecycle": {
+    "state": "withdrawn",
+    "effective_time": "2026-11-23T13:45:00Z",
+    "reason": "Its basis GR-5521 v1 was superseded."
+  },
+  "integrity": {
+    "state": "absent",
+    "reason": "The synthetic source supplies no hash or signature."
+  }
+}

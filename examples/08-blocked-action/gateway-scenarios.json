@@ -1,0 +1,165 @@
+{
+  "scenario_id": "GW-BLOCKED-0417",
+  "title": "The queued release is blocked at commit",
+  "evaluations": [
+    {
+      "label": "Job A at the 16:00 run",
+      "why": "The approval was revoked, and the evidence it relied on has been superseded; each reason is independent.",
+      "at": "2026-11-23T16:00:00Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v1"
+      },
+      "grant": {
+        "id": "GRT-APPR-0417-A",
+        "version": "v1"
+      },
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "GRANT_REVOKED",
+          "EVIDENCE_NOT_CURRENT",
+          "EVIDENCE_STALE",
+          "PRECONDITION_FAILED"
+        ],
+        "reasons": [
+          {
+            "code": "GRANT_REVOKED",
+            "message": "grant GRT-APPR-0417-A v1 was revoked at 2026-11-23T13:45:00Z"
+          },
+          {
+            "code": "EVIDENCE_NOT_CURRENT",
+            "message": "GR-5521 v1 was superseded at 2026-11-23T13:40:00Z"
+          },
+          {
+            "code": "EVIDENCE_NOT_CURRENT",
+            "message": "M3W-0417 v1 was superseded at 2026-11-23T13:45:00Z"
+          },
+          {
+            "code": "EVIDENCE_NOT_CURRENT",
+            "message": "SCR-S1042 v1 was superseded at 2026-11-23T13:30:00Z"
+          },
+          {
+            "code": "EVIDENCE_STALE",
+            "message": "SCR-S1042 v1 is 56.0 h old; policy allows 24 h"
+          },
+          {
+            "code": "PRECONDITION_FAILED",
+            "message": "PRE-MATCH-PASS is not satisfied: A current three-way match result for the invoice is PASS."
+          },
+          {
+            "code": "PRECONDITION_FAILED",
+            "message": "PRE-SCREEN-FRESH is not satisfied: Supplier screening is at most 24 hours old."
+          }
+        ]
+      }
+    },
+    {
+      "label": "Counterfactual: job A had its approval not been revoked",
+      "why": "Revocation is only one protection: the superseded and stale evidence still blocks the action.",
+      "at": "2026-11-23T16:00:00Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v1"
+      },
+      "grant": {
+        "id": "GRT-APPR-0417-A",
+        "version": "v1"
+      },
+      "overrides": [
+        {
+          "on": "grant",
+          "path": "/limits_lifecycle/revocation/state",
+          "value": "not_revoked"
+        }
+      ],
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "EVIDENCE_NOT_CURRENT",
+          "EVIDENCE_STALE",
+          "PRECONDITION_FAILED"
+        ],
+        "reasons": [
+          {
+            "code": "EVIDENCE_NOT_CURRENT",
+            "message": "GR-5521 v1 was superseded at 2026-11-23T13:40:00Z"
+          },
+          {
+            "code": "EVIDENCE_NOT_CURRENT",
+            "message": "M3W-0417 v1 was superseded at 2026-11-23T13:45:00Z"
+          },
+          {
+            "code": "EVIDENCE_NOT_CURRENT",
+            "message": "SCR-S1042 v1 was superseded at 2026-11-23T13:30:00Z"
+          },
+          {
+            "code": "EVIDENCE_STALE",
+            "message": "SCR-S1042 v1 is 56.0 h old; policy allows 24 h"
+          },
+          {
+            "code": "PRECONDITION_FAILED",
+            "message": "PRE-MATCH-PASS is not satisfied: A current three-way match result for the invoice is PASS."
+          },
+          {
+            "code": "PRECONDITION_FAILED",
+            "message": "PRE-SCREEN-FRESH is not satisfied: Supplier screening is at most 24 hours old."
+          }
+        ]
+      }
+    },
+    {
+      "label": "Approval A presented for the corrected proposal",
+      "why": "An approval is bound to one exact proposal version. It cannot be carried over to the corrected proposal.",
+      "at": "2026-11-23T16:00:10Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-APPR-0417-A",
+        "version": "v1"
+      },
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "GRANT_REVOKED",
+          "GRANT_NOT_BOUND",
+          "EVIDENCE_NOT_CURRENT",
+          "EVIDENCE_STALE"
+        ],
+        "reasons": [
+          {
+            "code": "GRANT_REVOKED",
+            "message": "grant GRT-APPR-0417-A v1 was revoked at 2026-11-23T13:45:00Z"
+          },
+          {
+            "code": "GRANT_NOT_BOUND",
+            "message": "approval is bound to ACT-REL-0417 v1, not to ACT-REL-0417 v2"
+          },
+          {
+            "code": "EVIDENCE_NOT_CURRENT",
+            "message": "GR-5521 v1 was superseded at 2026-11-23T13:40:00Z"
+          },
+          {
+            "code": "EVIDENCE_NOT_CURRENT",
+            "message": "M3W-0417 v1 was superseded at 2026-11-23T13:45:00Z"
+          },
+          {
+            "code": "EVIDENCE_NOT_CURRENT",
+            "message": "SCR-S1042 v1 was superseded at 2026-11-23T13:30:00Z"
+          },
+          {
+            "code": "EVIDENCE_STALE",
+            "message": "SCR-S1042 v1 is 56.0 h old; policy allows 24 h"
+          }
+        ]
+      }
+    }
+  ],
+  "synthetic": true,
+  "note": "Stored what-if evaluations of the reference commit check. Overrides are applied in memory only; nothing is executed."
+}

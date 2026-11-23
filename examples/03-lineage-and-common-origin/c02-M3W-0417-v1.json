@@ -1,0 +1,190 @@
+{
+  "contract_id": "C02",
+  "schema_version": "1",
+  "identity_schema": {
+    "record_id": "M3W-0417",
+    "version": "v1",
+    "kind": "deterministic_finding"
+  },
+  "producer_admission": {
+    "producer_id": "producer:rules-engine",
+    "registry_version": "producer-registry-v1",
+    "permitted_kind_reference": {
+      "record_id": "registered-kind-deterministic_finding",
+      "version": "v1"
+    },
+    "admission_status": "admitted",
+    "admission_time": "2026-11-23T09:36:00Z"
+  },
+  "content": {
+    "content_type": "typed_payload",
+    "payload": {
+      "data_type": "object",
+      "payload_schema_reference": {
+        "record_id": "SCHEMA-M3W-RESULT",
+        "version": "v1"
+      },
+      "value": {
+        "rule": "M3W",
+        "rule_version": "2.0",
+        "invoice_id": "INV-2026-0417",
+        "quantity_invoiced": 100,
+        "quantity_received": 60,
+        "tolerance_pct": 2,
+        "variance_pct": 40.0,
+        "result": "FAIL"
+      }
+    }
+  },
+  "scope": {
+    "entity_references": [
+      {
+        "entity_type": "invoice",
+        "entity_id": "INV-2026-0417"
+      },
+      {
+        "entity_type": "supplier",
+        "entity_id": "S-1042"
+      }
+    ],
+    "task": "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)",
+    "jurisdiction": {
+      "state": "not_applicable",
+      "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+    },
+    "units": {
+      "state": "known",
+      "value": "units"
+    },
+    "interpretation": {
+      "state": "known",
+      "value": "Statement of a source system or analysis as recorded; not independently verified."
+    }
+  },
+  "original_source": {
+    "source_id": "src:rules-engine",
+    "record_locator": "rules:m3w/INV-2026-0417",
+    "original_version": "run-1"
+  },
+  "method": {
+    "source_id": "src:rules-engine",
+    "producer_id": "producer:rules-engine",
+    "rule_version": {
+      "state": "known",
+      "value": "M3W-2.0"
+    },
+    "model_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "prompt_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "tool_version": {
+      "state": "known",
+      "value": "rules-engine-7.1"
+    },
+    "analytical_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    }
+  },
+  "times": {
+    "event": {
+      "state": "known",
+      "value": "2026-11-23T09:35:00Z"
+    },
+    "effective": {
+      "state": "known",
+      "value": "2026-11-23T09:35:00Z"
+    },
+    "source_update": {
+      "state": "known",
+      "value": "2026-11-23T09:35:00Z"
+    },
+    "ingestion": "2026-11-23T09:36:00Z",
+    "retrieval": {
+      "state": "known",
+      "value": "2026-11-23T09:36:00Z"
+    },
+    "clock_basis": "UTC, source-system clock",
+    "freshness": {
+      "policy_reference": {
+        "policy_id": "POL-FRESH-RECORDS",
+        "version": "v1"
+      },
+      "evaluated_at": "2026-11-23T09:36:00Z",
+      "state": "within_policy",
+      "basis": "Record is 0.0 h old at evaluation; policy allows 720 h."
+    }
+  },
+  "lineage": {
+    "parent_references": [
+      {
+        "record_id": "INV-2026-0417",
+        "version": "v1"
+      },
+      {
+        "record_id": "PO-77231",
+        "version": "v1"
+      },
+      {
+        "record_id": "GR-5521",
+        "version": "v1"
+      }
+    ],
+    "typed_relationships": []
+  },
+  "coverage_uncertainty": {
+    "coverage_statement": "One invoice; rule M3W 2.0 with a 2% quantity tolerance.",
+    "uncertainty": {
+      "state": "rule_output",
+      "basis": "Reports the declared rule over the stated inputs; the inputs are not independently verified."
+    },
+    "limitations": []
+  },
+  "validation": [
+    {
+      "validation_id": "V-M3W-0417-01",
+      "version": "v1",
+      "target": {
+        "record_id": "M3W-0417",
+        "version": "v1"
+      },
+      "method": "Independent recomputation of the arithmetic",
+      "actor": "person:ap-reviewer-02",
+      "time": "2026-11-23T09:40:00Z",
+      "scope": "Arithmetic of the variance only; not the correctness of the input records",
+      "outcome": "arithmetic_confirmed",
+      "limitations": [
+        "Does not validate the goods receipt or the invoice."
+      ]
+    }
+  ],
+  "disclosure_permissions": {
+    "tenant": "tenant:calder-works",
+    "classification": "synthetic-internal",
+    "purpose": "Accounts-payable payment-release review",
+    "disclosure_restrictions": [],
+    "permission_policy_references": [
+      {
+        "policy_id": "POL-AP-READ",
+        "version": "v1"
+      }
+    ]
+  },
+  "lifecycle": {
+    "state": "superseded",
+    "effective_time": "2026-11-23T13:45:00Z",
+    "reason": "Its input GR-5521 v1 was superseded; recomputed as v2.",
+    "replacement_reference": {
+      "record_id": "M3W-0417",
+      "version": "v2"
+    }
+  },
+  "integrity": {
+    "state": "absent",
+    "reason": "The synthetic source supplies no hash or signature."
+  }
+}

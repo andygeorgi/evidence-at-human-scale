@@ -1,0 +1,107 @@
+{
+  "scenario_id": "GW-DEGRADED-0417",
+  "title": "The commit check fails closed when it cannot be sure",
+  "evaluations": [
+    {
+      "label": "Revocation state cannot be established",
+      "why": "If the check cannot show that the grant is unrevoked, the action does not proceed.",
+      "at": "2026-11-23T16:00:05Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-APPR-0417-B",
+        "version": "v1"
+      },
+      "overrides": [
+        {
+          "on": "grant",
+          "path": "/limits_lifecycle/revocation/state",
+          "value": "check_unavailable"
+        }
+      ],
+      "ledger": "empty",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "REVOCATION_UNVERIFIED"
+        ],
+        "reasons": [
+          {
+            "code": "REVOCATION_UNVERIFIED",
+            "message": "revocation state is 'check_unavailable', so the grant cannot be shown to be unrevoked"
+          }
+        ]
+      }
+    },
+    {
+      "label": "An evidence record named by the proposal cannot be resolved",
+      "why": "Evidence that cannot be resolved is not evidence that is current.",
+      "at": "2026-11-23T16:00:05Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-APPR-0417-B",
+        "version": "v1"
+      },
+      "overrides": [
+        {
+          "on": "proposal",
+          "path": "/action/evidence_references/3/version",
+          "value": "v9"
+        }
+      ],
+      "ledger": "empty",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "EVIDENCE_UNRESOLVED"
+        ],
+        "reasons": [
+          {
+            "code": "EVIDENCE_UNRESOLVED",
+            "message": "evidence M3W-0417 v9 does not exist"
+          }
+        ]
+      }
+    },
+    {
+      "label": "The run starts after the approval has expired",
+      "why": "An approval is time-bound; a delayed executor does not extend it.",
+      "at": "2026-11-23T16:00:05Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-APPR-0417-B",
+        "version": "v1"
+      },
+      "overrides": [
+        {
+          "on": "grant",
+          "path": "/limits_lifecycle/expiry",
+          "value": "2026-11-23T16:00:00Z"
+        }
+      ],
+      "ledger": "empty",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "GRANT_EXPIRED"
+        ],
+        "reasons": [
+          {
+            "code": "GRANT_EXPIRED",
+            "message": "grant expired at 2026-11-23T16:00:00Z"
+          }
+        ]
+      }
+    }
+  ],
+  "synthetic": true,
+  "note": "Stored what-if evaluations of the reference commit check. Overrides are applied in memory only; nothing is executed."
+}

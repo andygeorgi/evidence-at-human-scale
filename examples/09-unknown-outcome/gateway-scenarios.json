@@ -1,0 +1,84 @@
+{
+  "scenario_id": "GW-UNKNOWN-0417",
+  "title": "No blind retry while the outcome is unknown",
+  "evaluations": [
+    {
+      "label": "Job B at the 16:00 run",
+      "why": "Every check passes, so the gateway allows the action and reserves the allowance.",
+      "at": "2026-11-23T16:00:05Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-APPR-0417-B",
+        "version": "v1"
+      },
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "ALLOW",
+        "codes": [],
+        "reasons": []
+      }
+    },
+    {
+      "label": "A retry at 16:10 while the outcome is unknown",
+      "why": "The reservation from the unknown attempt still counts: a timeout does not restore the allowance.",
+      "at": "2026-11-23T16:10:00Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-APPR-0417-B",
+        "version": "v1"
+      },
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "CUMULATIVE_LIMIT"
+        ],
+        "reasons": [
+          {
+            "code": "CUMULATIVE_LIMIT",
+            "message": "18400 already counted plus 18400 would exceed 18400 EUR in the window"
+          }
+        ]
+      }
+    },
+    {
+      "label": "A retry at 16:30 after reconciliation",
+      "why": "The payment is confirmed: the allowance is consumed and the invoice is no longer held.",
+      "at": "2026-11-23T16:30:00Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-APPR-0417-B",
+        "version": "v1"
+      },
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "PRECONDITION_FAILED",
+          "CUMULATIVE_LIMIT"
+        ],
+        "reasons": [
+          {
+            "code": "PRECONDITION_FAILED",
+            "message": "PRE-INVOICE-HELD is not satisfied: The invoice is held: release proceeds only from the controlled hold state."
+          },
+          {
+            "code": "CUMULATIVE_LIMIT",
+            "message": "18400 already counted plus 18400 would exceed 18400 EUR in the window"
+          }
+        ]
+      }
+    }
+  ],
+  "synthetic": true,
+  "note": "Stored what-if evaluations of the reference commit check. Overrides are applied in memory only; nothing is executed."
+}

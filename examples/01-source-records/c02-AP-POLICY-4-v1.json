@@ -1,0 +1,146 @@
+{
+  "contract_id": "C02",
+  "schema_version": "1",
+  "identity_schema": {
+    "record_id": "AP-POLICY-4",
+    "version": "v1",
+    "kind": "source_record_assertion"
+  },
+  "producer_admission": {
+    "producer_id": "producer:policy-library",
+    "registry_version": "producer-registry-v1",
+    "permitted_kind_reference": {
+      "record_id": "registered-kind-source_record_assertion",
+      "version": "v1"
+    },
+    "admission_status": "admitted",
+    "admission_time": "2026-01-15T09:05:00Z"
+  },
+  "content": {
+    "content_type": "claims",
+    "claims": [
+      {
+        "claim_id": "c1",
+        "text": "Policy AP-4: an invoice with an open quantity or price discrepancy may be placed on payment hold by the accounts-payable team; releasing it requires a passing three-way match.",
+        "supporting_references": []
+      }
+    ]
+  },
+  "scope": {
+    "entity_references": [
+      {
+        "entity_type": "invoice",
+        "entity_id": "INV-2026-0417"
+      },
+      {
+        "entity_type": "supplier",
+        "entity_id": "S-1042"
+      }
+    ],
+    "task": "Accounts-payable policy that bounds the hold and release actions",
+    "jurisdiction": {
+      "state": "not_applicable",
+      "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+    },
+    "units": {
+      "state": "not_applicable",
+      "reason": "No unit applies to this statement."
+    },
+    "interpretation": {
+      "state": "known",
+      "value": "Statement of a source system or analysis as recorded; not independently verified."
+    }
+  },
+  "original_source": {
+    "source_id": "src:policy-library",
+    "record_locator": "policy:AP-4",
+    "original_version": "2026.1"
+  },
+  "method": {
+    "source_id": "src:policy-library",
+    "producer_id": "producer:policy-library",
+    "rule_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "model_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "prompt_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "tool_version": {
+      "state": "known",
+      "value": "policy-portal-1.0"
+    },
+    "analytical_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    }
+  },
+  "times": {
+    "event": {
+      "state": "known",
+      "value": "2026-01-15T09:00:00Z"
+    },
+    "effective": {
+      "state": "known",
+      "value": "2026-01-15T09:00:00Z"
+    },
+    "source_update": {
+      "state": "known",
+      "value": "2026-01-15T09:00:00Z"
+    },
+    "ingestion": "2026-01-15T09:05:00Z",
+    "retrieval": {
+      "state": "known",
+      "value": "2026-01-15T09:05:00Z"
+    },
+    "clock_basis": "UTC, source-system clock",
+    "freshness": {
+      "policy_reference": {
+        "policy_id": "POL-FRESH-REFERENCE",
+        "version": "v1"
+      },
+      "evaluated_at": "2026-01-15T09:05:00Z",
+      "state": "within_policy",
+      "basis": "Record is 0.1 h old at evaluation; policy allows 8760 h."
+    }
+  },
+  "lineage": {
+    "parent_references": [],
+    "typed_relationships": []
+  },
+  "coverage_uncertainty": {
+    "coverage_statement": "Policy text as published; not a statement about how it is applied.",
+    "uncertainty": {
+      "state": "unquantified",
+      "basis": "Source assertion; accuracy is not independently established."
+    },
+    "limitations": []
+  },
+  "validation": [],
+  "disclosure_permissions": {
+    "tenant": "tenant:calder-works",
+    "classification": "synthetic-internal",
+    "purpose": "Accounts-payable payment-release review",
+    "disclosure_restrictions": [],
+    "permission_policy_references": [
+      {
+        "policy_id": "POL-AP-READ",
+        "version": "v1"
+      }
+    ]
+  },
+  "lifecycle": {
+    "state": "current",
+    "effective_time": "2026-01-15T09:05:00Z",
+    "reason": "Initial admitted version."
+  },
+  "integrity": {
+    "state": "absent",
+    "reason": "The synthetic source supplies no hash or signature."
+  }
+}

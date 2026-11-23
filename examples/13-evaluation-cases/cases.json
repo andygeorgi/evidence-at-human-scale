@@ -1,0 +1,890 @@
+{
+  "synthetic": true,
+  "note": "Each case copies the example set in memory, applies the mutation and requires exactly the listed codes. These are deterministic functional checks on synthetic data; they are not the EV01-EV12 evaluation programme, which has not been run.",
+  "cases": [
+    {
+      "case_id": "CASE-SCH-01",
+      "family": "schema",
+      "title": "A required group is removed",
+      "why": "Every contract group is required; a record without a lifecycle is not an evidence record.",
+      "expect": [
+        "SCH002"
+      ],
+      "mutations": [
+        {
+          "target": "C02 GR-5521 v1",
+          "ops": [
+            {
+              "op": "remove",
+              "path": "/lifecycle"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-SCH-02",
+      "family": "schema",
+      "title": "A timestamp without a time zone",
+      "why": "Timestamps must be complete RFC 3339 date-times; a bare local time is ambiguous.",
+      "expect": [
+        "SCH002"
+      ],
+      "mutations": [
+        {
+          "target": "C02 INV-2026-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/times/ingestion",
+              "value": "2026-11-23T07:31:00"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-SCH-03",
+      "family": "schema",
+      "title": "An outcome state outside the vocabulary",
+      "why": "A receipt has five outcome states; 'probably done' is not one of them.",
+      "expect": [
+        "SCH002"
+      ],
+      "mutations": [
+        {
+          "target": "C07 RCP-REL-0417-B v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/outcome/state",
+              "value": "probably_done"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-SCH-04",
+      "family": "schema",
+      "title": "A timeout that restores the allowance",
+      "why": "An unknown outcome must keep its reservation; claiming reconciliation without an authoritative reference is not allowed.",
+      "expect": [
+        "SCH002"
+      ],
+      "mutations": [
+        {
+          "target": "C07 RCP-REL-0417-B v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/verification_recovery/accounting/state",
+              "value": "reconciled"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-REF-01",
+      "family": "references",
+      "title": "A reference names a version that does not exist",
+      "why": "References name an exact version, never 'latest'; a missing version cannot be resolved.",
+      "expect": [
+        "REF001"
+      ],
+      "mutations": [
+        {
+          "target": "C04 PKT-0417 v2",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/supported_claims_references/2/supporting_references/0/version",
+              "value": "v3"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-REF-02",
+      "family": "references",
+      "title": "A reference changes the original locator",
+      "why": "A reference must carry the original locator of the record it names, so a reader can go back to the source.",
+      "expect": [
+        "REF002"
+      ],
+      "mutations": [
+        {
+          "target": "C04 PKT-0417 v2",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/supported_claims_references/0/supporting_references/0/original_locator/record_locator",
+              "value": "erp:invoice/FC-99999"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-REF-03",
+      "family": "references",
+      "title": "A payload pointer that points nowhere",
+      "why": "A payload reference must resolve inside the typed payload it names.",
+      "expect": [
+        "REF003"
+      ],
+      "mutations": [
+        {
+          "target": "C04 PKT-0417 v2",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/supported_claims_references/3/supporting_references/0/payload_location",
+              "value": "/value/outcome"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-REF-04",
+      "family": "references",
+      "title": "A packet lists a proposal that does not exist",
+      "why": "Contract-to-contract references must resolve to the exact version.",
+      "expect": [
+        "REF004"
+      ],
+      "mutations": [
+        {
+          "target": "C04 PKT-0417 v2",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/action_proposals/0/proposal_reference/version",
+              "value": "v9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-REF-05",
+      "family": "references",
+      "title": "A policy that is not defined",
+      "why": "Policy references name a policy and version the domain has defined.",
+      "expect": [
+        "REF007"
+      ],
+      "mutations": [
+        {
+          "target": "C05 ACT-REL-0417 v2",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/action/policy_references/0/policy_id",
+              "value": "POL-AP-PAY-DRAFT"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-LIN-01",
+      "family": "lineage",
+      "title": "A derivation that cycles back to itself",
+      "why": "Derivation ancestry must be acyclic; a record cannot rest on something that rests on it.",
+      "expect": [
+        "LIN001"
+      ],
+      "mutations": [
+        {
+          "target": "C02 GR-5521 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/lineage/parent_references",
+              "value": [
+                {
+                  "record_id": "M3W-0417",
+                  "version": "v1"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-LIN-02",
+      "family": "lineage",
+      "title": "A relationship type outside the vocabulary",
+      "why": "Typed relationships use the domain's declared vocabulary (contradiction, supersession, validation, invalidation).",
+      "expect": [
+        "LIN002"
+      ],
+      "mutations": [
+        {
+          "target": "C02 GR-5521 v2",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/lineage/typed_relationships/0/relationship_type",
+              "value": "superseded_by"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-LIN-03",
+      "family": "lineage",
+      "title": "A supersession the older record does not acknowledge",
+      "why": "If a newer version supersedes an older one, the older one must say so and name its replacement.",
+      "expect": [
+        "LIN003"
+      ],
+      "mutations": [
+        {
+          "target": "C02 GR-5521 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/lifecycle",
+              "value": {
+                "state": "current",
+                "effective_time": "2026-11-18T14:06:00Z",
+                "reason": "Initial admitted version."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-KIND-01",
+      "family": "kinds",
+      "title": "A producer submits a kind it is not registered for",
+      "why": "A producer cannot promote its output to another kind: an ERP export is not a model inference, and the reverse.",
+      "expect": [
+        "KIND001"
+      ],
+      "mutations": [
+        {
+          "target": "C02 INV-2026-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/producer_admission/producer_id",
+              "value": "producer:agent-a"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-KIND-02",
+      "family": "kinds",
+      "title": "A model inference cited as a supported claim",
+      "why": "Model inferences are listed and labelled as inferences; they never support a 'supported claim'.",
+      "expect": [
+        "KIND002"
+      ],
+      "mutations": [
+        {
+          "target": "C04 PKT-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/supported_claims_references/1/text",
+              "value": "The goods receipt is probably incomplete: the 40 missing units were probably delivered on a later date and not yet scanned."
+            },
+            {
+              "op": "replace",
+              "path": "/supported_claims_references/1/supporting_references/0",
+              "value": {
+                "record_id": "SUM-A-0417",
+                "version": "v1",
+                "original_locator": {
+                  "source_id": "src:agent-a",
+                  "record_locator": "agent:summary/A/INV-2026-0417",
+                  "original_version": "run-1"
+                },
+                "scope": {
+                  "entity_references": [
+                    {
+                      "entity_type": "invoice",
+                      "entity_id": "INV-2026-0417"
+                    },
+                    {
+                      "entity_type": "supplier",
+                      "entity_id": "S-1042"
+                    }
+                  ],
+                  "task": "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)",
+                  "jurisdiction": {
+                    "state": "not_applicable",
+                    "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+                  },
+                  "units": {
+                    "state": "not_applicable",
+                    "reason": "No unit applies to this statement."
+                  },
+                  "interpretation": {
+                    "state": "known",
+                    "value": "Interpretation produced by a model; not a source assertion."
+                  }
+                },
+                "evidence_kind": "model_inference",
+                "reference_type": "claim_reference",
+                "claim_id": "c1"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-COR-01",
+      "family": "corroboration",
+      "title": "Two inferences share one origin and do not say so",
+      "why": "Agreement between derivations that share a root is not independent corroboration; each must say it has a common origin.",
+      "expect": [
+        "COR002"
+      ],
+      "mutations": [
+        {
+          "target": "C04 PKT-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/labeled_inferences/0/limitations",
+              "value": [
+                "Model output; not verified against any source."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-COR-02",
+      "family": "corroboration",
+      "title": "Agreement presented as independent corroboration",
+      "why": "A claim of independent corroboration needs at least two records with different origins.",
+      "expect": [
+        "COR001"
+      ],
+      "mutations": [
+        {
+          "target": "C04 PKT-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/labeled_inferences/0/text",
+              "value": "Independently corroborated: the goods receipt is probably incomplete."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-LIFE-01",
+      "family": "lifecycle",
+      "title": "A late correction that does not reach a derived record",
+      "why": "When a record is superseded, every derivation that rests on it must stop being current.",
+      "expect": [
+        "LIFE002"
+      ],
+      "mutations": [
+        {
+          "target": "C02 M3W-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/lifecycle",
+              "value": {
+                "state": "current",
+                "effective_time": "2026-11-23T09:36:00Z",
+                "reason": "Initial admitted version."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-LIFE-02",
+      "family": "lifecycle",
+      "title": "A newer packet exists but the old one still looks active",
+      "why": "A packet that cites superseded records, or has a newer version, must not stay active.",
+      "expect": [
+        "LIFE003",
+        "LIFE004"
+      ],
+      "mutations": [
+        {
+          "target": "C04 PKT-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/review_version_history/state",
+              "value": "reviewed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-LIFE-03",
+      "family": "lifecycle",
+      "title": "A pending approval survives the invalidation of its basis",
+      "why": "An approval cannot outlive the packet it relied on: when the basis is invalidated, the approval is revoked.",
+      "expect": [
+        "LIFE005"
+      ],
+      "mutations": [
+        {
+          "target": "C06 GRT-APPR-0417-A v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/limits_lifecycle/revocation/state",
+              "value": "not_revoked"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-MISS-01",
+      "family": "missingness",
+      "title": "Labelled stale although it is fresh",
+      "why": "A stale label must be justified by the freshness policy; a fresh record cannot be called stale.",
+      "expect": [
+        "MISS003"
+      ],
+      "mutations": [
+        {
+          "target": "C03 SEL-0417 v2",
+          "ops": [
+            {
+              "op": "add",
+              "path": "/conflicts_gaps/missingness/-",
+              "value": {
+                "state": "stale",
+                "scope": {
+                  "entity_references": [
+                    {
+                      "entity_type": "invoice",
+                      "entity_id": "INV-2026-0417"
+                    },
+                    {
+                      "entity_type": "supplier",
+                      "entity_id": "S-1042"
+                    }
+                  ],
+                  "task": "Supplier screening for payment release",
+                  "jurisdiction": {
+                    "state": "not_applicable",
+                    "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+                  },
+                  "units": {
+                    "state": "not_applicable",
+                    "reason": "No unit applies to this statement."
+                  },
+                  "interpretation": {
+                    "state": "known",
+                    "value": "Result of a screening run on the stated date."
+                  }
+                },
+                "expected_evidence": "Supplier screening no older than 24 hours",
+                "materiality": "decision_changing",
+                "reason": {
+                  "state": "known",
+                  "value": "Labelled stale in error."
+                },
+                "assessment_basis": "Counterfactual: the record is under one hour old.",
+                "available_record": {
+                  "record_id": "SCR-S1042",
+                  "version": "v2"
+                },
+                "freshness": {
+                  "policy_reference": {
+                    "policy_id": "POL-FRESH-SCREEN",
+                    "version": "v1"
+                  },
+                  "evaluated_at": "2026-11-23T14:10:00Z",
+                  "state": "fails_policy",
+                  "basis": "Record is 0.7 h old at evaluation; policy allows 24 h."
+                }
+              }
+            }
+          ]
+        },
+        {
+          "target": "C04 PKT-0417 v2",
+          "ops": [
+            {
+              "op": "add",
+              "path": "/coverage_omissions_gaps/missingness/-",
+              "value": {
+                "state": "stale",
+                "scope": {
+                  "entity_references": [
+                    {
+                      "entity_type": "invoice",
+                      "entity_id": "INV-2026-0417"
+                    },
+                    {
+                      "entity_type": "supplier",
+                      "entity_id": "S-1042"
+                    }
+                  ],
+                  "task": "Supplier screening for payment release",
+                  "jurisdiction": {
+                    "state": "not_applicable",
+                    "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+                  },
+                  "units": {
+                    "state": "not_applicable",
+                    "reason": "No unit applies to this statement."
+                  },
+                  "interpretation": {
+                    "state": "known",
+                    "value": "Result of a screening run on the stated date."
+                  }
+                },
+                "expected_evidence": "Supplier screening no older than 24 hours",
+                "materiality": "decision_changing",
+                "reason": {
+                  "state": "known",
+                  "value": "Labelled stale in error."
+                },
+                "assessment_basis": "Counterfactual: the record is under one hour old.",
+                "available_record": {
+                  "record_id": "SCR-S1042",
+                  "version": "v2"
+                },
+                "freshness": {
+                  "policy_reference": {
+                    "policy_id": "POL-FRESH-SCREEN",
+                    "version": "v1"
+                  },
+                  "evaluated_at": "2026-11-23T14:10:00Z",
+                  "state": "fails_policy",
+                  "basis": "Record is 0.7 h old at evaluation; policy allows 24 h."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-MISS-02",
+      "family": "missingness",
+      "title": "A negative without complete coverage",
+      "why": "'Checked and none found' needs complete coverage of its declared scope; otherwise it is only 'not retrieved' or 'missing'.",
+      "expect": [
+        "MISS002"
+      ],
+      "mutations": [
+        {
+          "target": "C03 SEL-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/conflicts_gaps/missingness/4/coverage/status",
+              "value": "partial"
+            }
+          ]
+        },
+        {
+          "target": "C04 PKT-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/coverage_omissions_gaps/missingness/4/coverage/status",
+              "value": "partial"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-MISS-03",
+      "family": "missingness",
+      "title": "An empty result from a retrieval that never completed",
+      "why": "'Not retrieved' means a completed retrieval returned nothing; an interrupted retrieval is not an empty result.",
+      "expect": [
+        "MISS001",
+        "REF006"
+      ],
+      "mutations": [
+        {
+          "target": "C03 SEL-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/retrieval/5/status",
+              "value": "failed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-MISS-04",
+      "family": "missingness",
+      "title": "The packet drops a gap its selection recorded",
+      "why": "Every gap in the selection must stay visible in the packet.",
+      "expect": [
+        "MISS005"
+      ],
+      "mutations": [
+        {
+          "target": "C04 PKT-0417 v1",
+          "ops": [
+            {
+              "op": "remove",
+              "path": "/coverage_omissions_gaps/missingness/2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-PKT-01",
+      "family": "packets",
+      "title": "A supported claim that says more than its record",
+      "why": "A supported claim says what its record says, no more.",
+      "expect": [
+        "PKT001"
+      ],
+      "mutations": [
+        {
+          "target": "C04 PKT-0417 v2",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/supported_claims_references/2/text",
+              "value": "Goods receipt GR-5521 records 100 units received on 2026-11-18."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-PKT-02",
+      "family": "packets",
+      "title": "A packet and its selection disagree on the as-of time",
+      "why": "The packet and its selection are one snapshot: they must share the as-of time.",
+      "expect": [
+        "PKT002"
+      ],
+      "mutations": [
+        {
+          "target": "C04 PKT-0417 v2",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/decision_context_as_of/as_of",
+              "value": "2026-11-23T14:11:00Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-AUTH-01",
+      "family": "authority",
+      "title": "A receipt says the action ran although the gateway would have blocked it",
+      "why": "A receipt must agree with what the commit check decides at the time of the attempt.",
+      "expect": [
+        "AUTH004"
+      ],
+      "mutations": [
+        {
+          "target": "C07 RCP-REL-0417-A v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/outcome/state",
+              "value": "completed_verified"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-AUTH-02",
+      "family": "authority",
+      "title": "A rejection that does not say why",
+      "why": "A not-executed receipt must name the blocking checks.",
+      "expect": [
+        "AUTH005"
+      ],
+      "mutations": [
+        {
+          "target": "C07 RCP-REL-0417-A v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/outcome/reason",
+              "value": "Rejected."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-AUTH-03",
+      "family": "authority",
+      "title": "A receipt cites a check that does not fail",
+      "why": "A rejection that cites a check the gateway passes is wrong, or the check has been changed since.",
+      "expect": [
+        "AUTH007"
+      ],
+      "mutations": [
+        {
+          "target": "C07 RCP-HOLD-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/outcome",
+              "value": {
+                "state": "not_executed_verified",
+                "observed_effects": [],
+                "unresolved_conditions": [],
+                "timestamps": {
+                  "submitted": "2026-11-23T10:03:00Z",
+                  "observed": {
+                    "state": "known",
+                    "value": "2026-11-23T10:03:20Z"
+                  }
+                },
+                "reason": "Blocked at commit: PRECONDITION_FAILED.",
+                "no_effect_basis": "rejection",
+                "no_business_effect": true
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-AUTH-04",
+      "family": "authority",
+      "title": "A grant that no longer covers the target",
+      "why": "An attempt outside the grant's targets must be blocked; a receipt that says otherwise disagrees with the grant.",
+      "expect": [
+        "AUTH004"
+      ],
+      "mutations": [
+        {
+          "target": "C06 GRT-APPR-0417-B v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/scope_binding/permitted_targets/0/entity_id",
+              "value": "INV-2026-9999"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-ACC-01",
+      "family": "accounting",
+      "title": "A later receipt version that describes a different attempt",
+      "why": "Versions of one receipt describe the same attempt; a different attempt needs its own receipt.",
+      "expect": [
+        "ACC004"
+      ],
+      "mutations": [
+        {
+          "target": "C07 RCP-REL-0417-B v2",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/identity_binding/execution_attempt_id",
+              "value": "ATT-REL-0417-B-2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-ACC-02",
+      "family": "accounting",
+      "title": "A verified outcome whose accounting is still only reserved",
+      "why": "A reservation becomes settled only on authoritative reconciliation.",
+      "expect": [
+        "ACC002",
+        "ACC003"
+      ],
+      "mutations": [
+        {
+          "target": "C07 RCP-REL-0417-B v2",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/verification_recovery/accounting",
+              "value": {
+                "state": "reserved",
+                "shared_accounting_reference": {
+                  "record_id": "ACCT-AP-PAYMENTS",
+                  "version": "v1"
+                },
+                "known_partial_effects_charged": true,
+                "confirmed_effect_policy": {
+                  "policy_reference": {
+                    "policy_id": "POL-CONFIRMED-EFFECT",
+                    "version": "v1"
+                  },
+                  "authoritative_reconciliation_required": true,
+                  "timeout_alone_restores_allowance": false,
+                  "lease_expiry_alone_restores_allowance": false,
+                  "partial_effects_remain_charged": true
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-DISC-01",
+      "family": "disclosure",
+      "title": "A summary that names what the principal may not see",
+      "why": "A permission-safe summary must not name the withheld detail; a derived output can disclose what its source withholds.",
+      "expect": [
+        "DISC001"
+      ],
+      "mutations": [
+        {
+          "target": "C03 SEL-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/conflicts_gaps/missingness/2/permission_safe_summary",
+              "value": "Vendor bank account change history is not readable by this principal."
+            }
+          ]
+        },
+        {
+          "target": "C04 PKT-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/coverage_omissions_gaps/missingness/2/permission_safe_summary",
+              "value": "Vendor bank account change history is not readable by this principal."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

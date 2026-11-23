@@ -1,0 +1,146 @@
+{
+  "contract_id": "C02",
+  "schema_version": "1",
+  "identity_schema": {
+    "record_id": "PO-77231",
+    "version": "v1",
+    "kind": "source_record_assertion"
+  },
+  "producer_admission": {
+    "producer_id": "producer:erp-purchasing",
+    "registry_version": "producer-registry-v1",
+    "permitted_kind_reference": {
+      "record_id": "registered-kind-source_record_assertion",
+      "version": "v1"
+    },
+    "admission_status": "admitted",
+    "admission_time": "2026-11-10T09:01:00Z"
+  },
+  "content": {
+    "content_type": "claims",
+    "claims": [
+      {
+        "claim_id": "c1",
+        "text": "Purchase order PO-77231 authorizes up to 100 units at EUR 184.00 per unit, total EUR 18,400.00.",
+        "supporting_references": []
+      }
+    ]
+  },
+  "scope": {
+    "entity_references": [
+      {
+        "entity_type": "invoice",
+        "entity_id": "INV-2026-0417"
+      },
+      {
+        "entity_type": "supplier",
+        "entity_id": "S-1042"
+      }
+    ],
+    "task": "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)",
+    "jurisdiction": {
+      "state": "not_applicable",
+      "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+    },
+    "units": {
+      "state": "known",
+      "value": "EUR"
+    },
+    "interpretation": {
+      "state": "known",
+      "value": "Statement of a source system or analysis as recorded; not independently verified."
+    }
+  },
+  "original_source": {
+    "source_id": "src:erp-purchasing",
+    "record_locator": "erp:po/77231",
+    "original_version": "rev-1"
+  },
+  "method": {
+    "source_id": "src:erp-purchasing",
+    "producer_id": "producer:erp-purchasing",
+    "rule_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "model_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "prompt_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    },
+    "tool_version": {
+      "state": "known",
+      "value": "erp-export-4.2"
+    },
+    "analytical_version": {
+      "state": "not_applicable",
+      "reason": "Not applicable to this producer."
+    }
+  },
+  "times": {
+    "event": {
+      "state": "known",
+      "value": "2026-11-10T09:00:00Z"
+    },
+    "effective": {
+      "state": "known",
+      "value": "2026-11-10T09:00:00Z"
+    },
+    "source_update": {
+      "state": "known",
+      "value": "2026-11-10T09:00:00Z"
+    },
+    "ingestion": "2026-11-10T09:01:00Z",
+    "retrieval": {
+      "state": "known",
+      "value": "2026-11-10T09:01:00Z"
+    },
+    "clock_basis": "UTC, source-system clock",
+    "freshness": {
+      "policy_reference": {
+        "policy_id": "POL-FRESH-RECORDS",
+        "version": "v1"
+      },
+      "evaluated_at": "2026-11-10T09:01:00Z",
+      "state": "within_policy",
+      "basis": "Record is 0.0 h old at evaluation; policy allows 720 h."
+    }
+  },
+  "lineage": {
+    "parent_references": [],
+    "typed_relationships": []
+  },
+  "coverage_uncertainty": {
+    "coverage_statement": "Single record; no claim about other records.",
+    "uncertainty": {
+      "state": "unquantified",
+      "basis": "Source assertion; accuracy is not independently established."
+    },
+    "limitations": []
+  },
+  "validation": [],
+  "disclosure_permissions": {
+    "tenant": "tenant:calder-works",
+    "classification": "synthetic-internal",
+    "purpose": "Accounts-payable payment-release review",
+    "disclosure_restrictions": [],
+    "permission_policy_references": [
+      {
+        "policy_id": "POL-AP-READ",
+        "version": "v1"
+      }
+    ]
+  },
+  "lifecycle": {
+    "state": "current",
+    "effective_time": "2026-11-10T09:01:00Z",
+    "reason": "Initial admitted version."
+  },
+  "integrity": {
+    "state": "absent",
+    "reason": "The synthetic source supplies no hash or signature."
+  }
+}

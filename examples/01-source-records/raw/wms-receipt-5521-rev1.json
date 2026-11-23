@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "system": "wms (synthetic)",
+  "export": "goods_receipt",
+  "revision": 1,
+  "receipt": "5521",
+  "purchase_order": "PO-77231",
+  "supplier": "S-1042",
+  "scans": [
+    {
+      "pallet": "P-1",
+      "units": 60,
+      "scanned_at": "2026-11-18T15:05:00+01:00",
+      "scanner": "dock-3"
+    }
+  ],
+  "total_units": 60,
+  "recorded_at": "2026-11-18T15:06:00+01:00"
+}
