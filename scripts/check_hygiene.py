@@ -10,6 +10,13 @@ untracked and not ignored), or every file under the folder when Git is not avail
 
 A finding is a reason to look, not a verdict. If a flagged line is legitimate, change the wording; if it cannot change
 (for example a quoted public source), add a narrow waiver to ``RULES`` below, with the reason, in a reviewed commit.
+
+Private terms. The names that identify the private origin of the material cannot be listed in a public repository, because
+the list would publish them. Rule HYG105 therefore reads them from outside the repository: one regular expression per
+line in a file named ``.hygiene-private-terms`` in the repository folder (Git ignores that name), or in the environment
+variable ``EAHS_PRIVATE_TERMS``, which holds either a path to such a file or the lines themselves. Continuous integration
+has no such list, so a maintainer who has one runs the scan locally before a release. Without a list the scan still runs,
+says so, and looks only for confidentiality-label wording.
 """
 from __future__ import annotations
 
@@ -21,13 +28,18 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
 
 REPO = Path(__file__).resolve().parents[1]
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache"}
 # These two files quote the very patterns they look for.
 SELF_FILES = {"scripts/check_hygiene.py", "tests/test_hygiene.py"}
 MAX_BYTES = 1024 * 1024
+PRIVATE_TERMS_FILE = ".hygiene-private-terms"
+PRIVATE_TERMS_ENV = "EAHS_PRIVATE_TERMS"
+NO_MATCH = r"(?!)"
+# Confidentiality-label wording that survives when text is copied out of a labeled document.
+LABEL_MARKERS = r"Internal [Uu]se [Oo]nly|(?:Highly|Strictly) Confidential|MSIP_"
 
 
 @dataclass(frozen=True)
@@ -62,9 +74,9 @@ RULES: Tuple[Rule, ...] = (
     Rule("HYG104", "e-mail address", r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+",
          "Use a role link or the repository's issue tracker, not a personal address.",
          ignore_match=r"(?i:[^@]+@(?:users\.noreply\.github\.com|example\.(?:com|org|net))|git@github\.com)"),
-    Rule("HYG105", "internal vocabulary",
-         r"Zebracorp|Project Aurora|Internal [Uu]se [Oo]nly|(?:Highly|Strictly) Confidential|MSIP_",
-         "This names the private origin of the material. Use the public wording.",
+    Rule("HYG105", "internal vocabulary or confidentiality label",
+         LABEL_MARKERS,
+         "This names the private origin of the material or carries a confidentiality label. Use the public wording.",
          waivers=(("references/", r"https?://[^\s>]+\.is/|Ríkisendurskoðun"),), on_names=True),
     Rule("HYG106", "hidden or direction-changing character", "[\u200b-\u200d\u2060\ufeff\u202a-\u202e\u2066-\u2069]",
          "Zero-width, byte-order-mark and bidirectional control characters can hide or reorder text. Remove it."),
@@ -112,6 +124,40 @@ def _compiled(rule: Rule):
 
 
 _COMPILED = {rule.code: _compiled(rule) for rule in RULES}
+_PRIVATE: List["re.Pattern[str]"] = []  # the patterns from the private term list, which HYG105 also looks for
+
+
+def _term_lines(text: str) -> List[str]:
+    return [line.strip() for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+
+
+def load_private_terms(root: Path = REPO, environ: Optional[Mapping[str, str]] = None) -> List[str]:
+    """The private-term patterns: those in the environment variable first, then those in the file in the folder."""
+    environ = os.environ if environ is None else environ
+    terms: List[str] = []
+    value = environ.get(PRIVATE_TERMS_ENV, "").strip()
+    if value:
+        try:
+            from_file = "\n" not in value and Path(value).is_file()
+        except OSError:
+            from_file = False
+        terms += _term_lines(Path(value).read_text(encoding="utf-8") if from_file else value)
+    local = root / PRIVATE_TERMS_FILE
+    if local.is_file():
+        terms += _term_lines(local.read_text(encoding="utf-8"))
+    return terms
+
+
+def use_private_terms(terms: Sequence[str]) -> List[int]:
+    """Make HYG105 look for these patterns as well. Returns the 1-based numbers of those that are not regular expressions."""
+    _PRIVATE.clear()
+    invalid = []
+    for number, term in enumerate(terms, 1):
+        try:
+            _PRIVATE.append(re.compile(term))
+        except re.error:
+            invalid.append(number)
+    return invalid
 
 
 def _waived(rule: Rule, rel: str, line: str) -> bool:
@@ -124,10 +170,11 @@ def apply_rule(rule: Rule, rel: str, line: str) -> Optional[str]:
         return None
     if _waived(rule, rel, line):
         return None
-    for match in _COMPILED[rule.code].finditer(line):
-        if rule.ignore_match and re.fullmatch(rule.ignore_match, match.group(0)):
-            continue
-        return match.group(0)
+    for pattern in [_COMPILED[rule.code]] + (_PRIVATE if rule.code == "HYG105" else []):
+        for match in pattern.finditer(line):
+            if rule.ignore_match and re.fullmatch(rule.ignore_match, match.group(0)):
+                continue
+            return match.group(0)
     return None
 
 
@@ -157,6 +204,8 @@ def check_names(paths: Iterable[str]) -> List[Finding]:
         name = rel.rsplit("/", 1)[-1]
         low = name.lower()
         suffix = ("." + low.rsplit(".", 1)[-1]) if "." in low else ""
+        if rel == PRIVATE_TERMS_FILE:
+            findings.append(Finding("HYG207", rel, 0, "the private term list is part of what would be published, and it names the private origin of the material. Keep it out of Git (add it to .gitignore)"))
         if rel not in ALLOWED_FILES:
             if suffix in BLOCKED_SUFFIXES:
                 findings.append(Finding("HYG201", rel, 0, "file type that does not belong in the repository (Office, PDF, archive, key, database, log or binary)"))
@@ -190,7 +239,7 @@ def scan_file(root: Path, rel: str) -> List[Finding]:
     path = root / rel
     if path.stat().st_size > MAX_BYTES and rel not in ALLOWED_FILES:
         findings.append(Finding("HYG202", rel, 0, "larger than 1 MiB (%d bytes); the repository is for text and small figures" % path.stat().st_size))
-    if rel in SELF_FILES:
+    if rel in SELF_FILES or rel == PRIVATE_TERMS_FILE:
         return findings
     for rule in RULES:
         if rule.on_names:
@@ -213,14 +262,22 @@ def scan_file(root: Path, rel: str) -> List[Finding]:
     return findings
 
 
-def scan(root: Path = REPO, files: Optional[Sequence[str]] = None) -> Tuple[List[Finding], List[str], int]:
-    """Scan; returns (findings, notices, number of files scanned)."""
+def scan(root: Path = REPO, files: Optional[Sequence[str]] = None, private_terms: Optional[Sequence[str]] = None) -> Tuple[List[Finding], List[str], int]:
+    """Scan; returns (findings, notices, number of files scanned).
+
+    ``private_terms`` replaces the list that would otherwise be read from the environment and from the folder.
+    """
+    terms = load_private_terms(root) if private_terms is None else list(private_terms)
+    invalid = use_private_terms(terms)
     names = list(files) if files is not None else candidate_files(root)
     findings = check_names(names)
+    findings += [Finding("HYG206", PRIVATE_TERMS_FILE, 0, "private term number %d is not a valid regular expression, so it was not used" % number) for number in invalid]
     for rel in names:
         if (root / rel).is_file():
             findings += scan_file(root, rel)
     notices = []
+    if not terms:
+        notices.append("The scan for private terms is off: no list was found. Put one regular expression per line in %s (Git ignores it) or set %s. Only confidentiality-label wording was looked for." % (PRIVATE_TERMS_FILE, PRIVATE_TERMS_ENV))
     if not any(n.lower() in LICENSE_NAMES for n in names if "/" not in n):
         notices.append("No LICENSE file: the license decision is still open. Nothing in this repository grants one.")
     findings.sort(key=lambda f: (f.path, f.line, f.code))
@@ -234,12 +291,17 @@ def describe_rules() -> str:
         lines.append("          %s" % rule.advice)
         for prefix, rx in rule.waivers:
             lines.append("          waived under %s for lines matching: %s" % (prefix, rx))
+    lines += ["", "HYG105 also looks for every pattern in the private term list: one regular expression per line in %s" % PRIVATE_TERMS_FILE,
+              "(Git ignores that file) or in the environment variable %s. The list is not part of the repository, because it would" % PRIVATE_TERMS_ENV,
+              "publish the terms. Without a list, HYG105 looks only for confidentiality-label wording and the scan says so."]
     lines += ["", "File rules:",
               "  HYG201  blocked file type or editor/OS file (%s ...)" % ", ".join(sorted(BLOCKED_SUFFIXES)[:6]),
               "  HYG202  file larger than 1 MiB",
               "  HYG203  not UTF-8 text",
               "  HYG204  file name Windows cannot create, or a path over 200 characters",
               "  HYG205  two files that differ only by case",
+              "  HYG206  an entry in the private term list is not a valid regular expression",
+              "  HYG207  the private term list is among the files that would be published",
               "", "Skipped: %s. Two files that quote the patterns are not read: %s." % (", ".join(sorted(SKIP_DIRS)), ", ".join(sorted(SELF_FILES)))]
     return "\n".join(lines)
 
@@ -253,9 +315,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.rules:
         print(describe_rules())
         return 0
-    findings, notices, count = scan(Path(args.root).resolve())
+    root = Path(args.root).resolve()
+    terms = load_private_terms(root)
+    findings, notices, count = scan(root, private_terms=terms)
     if args.json:
-        print(json.dumps({"files": count, "findings": [f.as_dict() for f in findings], "notices": notices}, indent=2, ensure_ascii=False))
+        print(json.dumps({"files": count, "private_terms": len(terms), "findings": [f.as_dict() for f in findings], "notices": notices}, indent=2, ensure_ascii=False))
         return 1 if findings else 0
     for finding in findings:
         print(finding.format())
@@ -264,7 +328,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if findings:
         print("\n%d finding(s) in %d file(s) scanned. Run with --rules to see what is looked for." % (len(findings), count))
         return 1
-    print("Hygiene scan clean: %d files, no private link, local path, credential, e-mail address, internal term, hidden character, draft marker or claim of finality." % count)
+    internal = "internal term, " if terms else ""
+    print("Hygiene scan clean: %d files, no private link, local path, credential, e-mail address, %sconfidentiality label, hidden character, draft marker or claim of finality." % (count, internal))
     return 0
 
 

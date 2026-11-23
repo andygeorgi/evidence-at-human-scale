@@ -12,6 +12,9 @@ venv/
 .env.*
 !.env.example
 
+# The private term list for scripts/check_hygiene.py. It names the private origin of the material, so it is never committed.
+.hygiene-private-terms
+
 # Scratch output
 tmp/
 scratch/

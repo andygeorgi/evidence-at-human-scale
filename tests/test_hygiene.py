@@ -11,8 +11,11 @@ import support  # noqa: F401  (puts scripts/ on the path)
 import check_hygiene as hyg
 
 
-def codes_for(files):
-    """Scan a throwaway folder holding {relative path: text or bytes}; return the sorted set of finding codes."""
+def codes_for(files, terms=()):
+    """Scan a throwaway folder holding {relative path: text or bytes}; return the sorted set of finding codes.
+
+    ``terms`` is the private term list. The tests never depend on the environment of whoever runs them.
+    """
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         for name, content in files.items():
@@ -22,12 +25,15 @@ def codes_for(files):
                 target.write_bytes(content)
             else:
                 target.write_text(content, encoding="utf-8")
-        findings, _notices, _count = hyg.scan(root)
+        findings, _notices, _count = hyg.scan(root, private_terms=list(terms))
     return sorted({f.code for f in findings})
 
 
-def codes_for_text(text, name="docs/page.md"):
-    return codes_for({name: text})
+def codes_for_text(text, name="docs/page.md", terms=()):
+    return codes_for({name: text}, terms)
+
+
+SYNTHETIC_TERMS = ("Zebracorp", r"Project Aurora\b")
 
 
 class TheRepository(unittest.TestCase):
@@ -35,6 +41,15 @@ class TheRepository(unittest.TestCase):
         findings, _notices, count = hyg.scan(support.REPO)
         self.assertGreater(count, 100)
         self.assertEqual([f.format() for f in findings], [])
+
+    def test_git_ignores_the_private_term_list(self):
+        if not (support.REPO / ".git").exists():
+            self.skipTest("not a git checkout")
+        try:
+            done = subprocess.run(["git", "-C", str(support.REPO), "check-ignore", "-q", hyg.PRIVATE_TERMS_FILE])
+        except OSError:
+            self.skipTest("git is not available")
+        self.assertEqual(done.returncode, 0, "add %s to .gitignore: the list names the private origin of the material" % hyg.PRIVATE_TERMS_FILE)
 
     def test_no_file_is_committed_with_windows_line_endings(self):
         if not (support.REPO / ".git").exists():
@@ -70,15 +85,20 @@ class Detection(unittest.TestCase):
             self.assertEqual(codes_for_text(text), [], text)
 
     def test_internal_vocabulary_is_found_in_text_and_in_names(self):
-        self.assertEqual(codes_for_text("This came from Zebracorp's notes."), ["HYG105"])
-        self.assertEqual(codes_for_text("The Project Aurora kickoff."), ["HYG105"])
-        self.assertEqual(codes_for({"docs/Zebracorp_notes.md": "plain text"}), ["HYG105"])
+        self.assertEqual(codes_for_text("This came from Zebracorp's notes.", terms=SYNTHETIC_TERMS), ["HYG105"])
+        self.assertEqual(codes_for_text("The Project Aurora kickoff.", terms=SYNTHETIC_TERMS), ["HYG105"])
+        self.assertEqual(codes_for({"docs/Zebracorp_notes.md": "plain text"}, SYNTHETIC_TERMS), ["HYG105"])
+        self.assertEqual(codes_for_text("This came from Zebracorp's notes."), [], "with no list, nothing is private")
+
+    def test_confidentiality_labels_are_found_without_any_list(self):
+        for text in ("Internal Use Only", "marked Highly Confidential", "MSIP_Label_abc_Enabled=true"):
+            self.assertEqual(codes_for_text(text), ["HYG105"], text)
 
     def test_the_citation_waiver_is_narrow(self):
         cited = "- **URL:** <https://www.stjornarradid.is/gogn/urskurdir/Akvordun-Zebracorp/>"
-        self.assertEqual(codes_for({"references/public-records.md": cited}), [])
-        self.assertEqual(codes_for({"references/public-records.md": "We worked with Zebracorp."}), ["HYG105"])
-        self.assertEqual(codes_for({"docs/page.md": cited}), ["HYG105"])
+        self.assertEqual(codes_for({"references/public-records.md": cited}, SYNTHETIC_TERMS), [])
+        self.assertEqual(codes_for({"references/public-records.md": "We worked with Zebracorp."}, SYNTHETIC_TERMS), ["HYG105"])
+        self.assertEqual(codes_for({"docs/page.md": cited}, SYNTHETIC_TERMS), ["HYG105"])
 
     def test_hidden_characters(self):
         for text in ("a\u202eb", "\ufeffhello", "zero\u200bwidth"):
@@ -93,6 +113,43 @@ class Detection(unittest.TestCase):
             self.assertEqual(codes_for_text(text), ["HYG108"], text)
         for text in ("This is a release candidate, not a final version.", "Nothing here is the canonical release."):
             self.assertEqual(codes_for_text(text), [], text)
+
+
+class PrivateTerms(unittest.TestCase):
+    """The list of private terms lives outside the repository, so the scanner must find it and must never publish it."""
+
+    def test_terms_come_from_the_folder_file_and_from_the_environment(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / hyg.PRIVATE_TERMS_FILE).write_text("# a comment\n\nZebracorp\n  Project Aurora\\b  \n", encoding="utf-8")
+            self.assertEqual(hyg.load_private_terms(root, environ={}), ["Zebracorp", r"Project Aurora\b"])
+            self.assertEqual(hyg.load_private_terms(root, environ={hyg.PRIVATE_TERMS_ENV: "Borealis\nQuartz"}), ["Borealis", "Quartz", "Zebracorp", r"Project Aurora\b"])
+            listing = root / "elsewhere.txt"
+            listing.write_text("Borealis\n", encoding="utf-8")
+            empty = root / "empty"
+            self.assertEqual(hyg.load_private_terms(empty, environ={hyg.PRIVATE_TERMS_ENV: str(listing)}), ["Borealis"])
+            self.assertEqual(hyg.load_private_terms(empty, environ={}), [])
+
+    def test_a_list_in_the_folder_is_used_but_is_itself_a_finding(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "page.md").write_text("Notes from Zebracorp.\n", encoding="utf-8")
+            (root / hyg.PRIVATE_TERMS_FILE).write_text("Zebracorp\n", encoding="utf-8")
+            findings, _, _ = hyg.scan(root)
+        self.assertEqual(sorted((f.code, f.path) for f in findings), [("HYG105", "page.md"), ("HYG207", hyg.PRIVATE_TERMS_FILE)])
+
+    def test_a_scan_without_a_list_says_so(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "page.md").write_text("A page.\n", encoding="utf-8")
+            self.assertTrue(any("private terms is off" in n for n in hyg.scan(Path(tmp), private_terms=[])[1]))
+            self.assertFalse(any("private terms is off" in n for n in hyg.scan(Path(tmp), private_terms=["Zebracorp"])[1]))
+
+    def test_an_invalid_term_is_reported_and_the_others_still_work(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "page.md").write_text("Notes from Zebracorp.\n", encoding="utf-8")
+            findings, _, _ = hyg.scan(Path(tmp), private_terms=["(unclosed", "Zebracorp"])
+        self.assertEqual(sorted(f.code for f in findings), ["HYG105", "HYG206"])
+        self.assertIn("number 1", next(f.message for f in findings if f.code == "HYG206"))
 
 
 class Files(unittest.TestCase):
@@ -120,11 +177,11 @@ class Files(unittest.TestCase):
     def test_a_missing_license_is_a_notice_not_a_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp) / "README.md").write_text("A page.\n", encoding="utf-8")
-            findings, notices, _ = hyg.scan(Path(tmp))
+            findings, notices, _ = hyg.scan(Path(tmp), private_terms=[])
             self.assertEqual(findings, [])
-            self.assertEqual(len(notices), 1)
+            self.assertEqual(len([n for n in notices if "LICENSE" in n]), 1)
             (Path(tmp) / "LICENSE").write_text("A license text.\n", encoding="utf-8")
-            self.assertEqual(hyg.scan(Path(tmp))[1], [])
+            self.assertEqual([n for n in hyg.scan(Path(tmp), private_terms=[])[1] if "LICENSE" in n], [])
 
 
 class CommandLine(unittest.TestCase):
@@ -148,7 +205,7 @@ class CommandLine(unittest.TestCase):
     def test_rules_listing(self):
         done = self.run_cli(support.REPO, "--rules")
         self.assertEqual(done.returncode, 0)
-        for code in ("HYG101", "HYG108", "HYG205"):
+        for code in ("HYG101", "HYG108", "HYG205", "HYG206", "HYG207"):
             self.assertIn(code, done.stdout)
 
     def test_output_is_utf8_even_when_the_console_uses_a_legacy_code_page(self):

@@ -70,12 +70,14 @@ The [figures](../figures/README.md) have one source of truth, [`figures/figures.
 
 - `sync_figures.py` writes the figure blocks into the pages that use them, between `<!-- figure:Fxx:start -->` and `<!-- figure:Fxx:end -->` markers, and writes the gallery. `--check` writes nothing and fails if a block is out of date.
 - `check_figures.py` checks that every figure has a caption, alt text, a long description and a place in the documents, that every picture exists, and that the blocks are in sync.
-- `figures/src/svg_figures.py` draws F02, F04, F06 and the banner, in light and dark. It is deterministic. `--check` fails if a committed SVG differs.
+- `figures/src/svg_figures.py` draws F02, F04, F06, F09 and the banner, in light and dark. It is deterministic. `--check` fails if a committed SVG differs.
 - `figures/src/render_mermaid.py` renders the Mermaid sources to light and dark SVG with the Mermaid CLI and records what it rendered in `figures/render-manifest.json`. Mermaid does not render byte for byte reproducibly (it generates element ids), so the rendered SVGs are committed and checked against the manifest, not rebuilt on every check. It is the only script that needs anything beyond Python (Node.js, the Mermaid CLI and a Chromium-based browser), so it is not part of `check_all.py`; `--check` compares the sources with the manifest (it fails if a rendered SVG is missing or older than its source) and needs none of them.
 
 ### check_hygiene.py
 
-A pre-publication scan for what must not reach a public repository: private or tenant links, local paths, credentials, e-mail addresses, vocabulary that names the material's private origin, hidden or direction-changing characters, draft markers, claims of finality, Office, PDF, archive and key files, oversized files, and file names that do not survive a clone on Windows or macOS (reserved names, case-only duplicates, paths over 200 characters). It also notes that no license file exists. `--rules` lists every rule and waiver; `--json` prints a machine-readable result. A waiver is a narrow, reviewed line in the script, such as the one for cited public records.
+A pre-publication scan for what must not reach a public repository: private or tenant links, local paths, credentials, e-mail addresses, vocabulary that names the material's private origin, confidentiality-label wording, hidden or direction-changing characters, draft markers, claims of finality, Office, PDF, archive and key files, oversized files, and file names that do not survive a clone on Windows or macOS (reserved names, case-only duplicates, paths over 200 characters). It also notes that no license file exists. `--rules` lists every rule and waiver; `--json` prints a machine-readable result. A waiver is a narrow, reviewed line in the script, such as the one for cited public records.
+
+**The private term list is not in this repository.** A list of the names that identify the private origin of the material would publish them, so `check_hygiene.py` reads it from outside: one regular expression per line, in a file named `.hygiene-private-terms` in the repository folder (Git ignores that name, and `HYG207` fails if it is ever among the files to publish) or in the environment variable `EAHS_PRIVATE_TERMS`, which holds a path to such a file or the lines themselves. Continuous integration has no list, so it cannot scan for private terms; a maintainer who has one runs the scan locally before every release. Without a list the scan still runs and says that the private-term scan is off; it then looks only for confidentiality-label wording.
 
 ### check_urls.py
 
@@ -124,7 +126,7 @@ Each finding has a code. The page named in a finding explains the rule. The [eva
 | `RESP001`–`RESP007` | A stored response uses an unknown statement kind, cites figures the packet lacks, does not label an inference, drops a conflict, gap or recommendation, words a proposal as done, is not withdrawn with its packet, or cites a missing packet. |
 | `GW001`, `GW002` | A stored gateway evaluation no longer gives its recorded decision, or cannot be evaluated. |
 | `CASE001`–`CASE003` | An evaluation case produces other codes than it declares, repeats an id, or has a mutation that cannot be applied. |
-| `HYG101`–`HYG108`, `HYG201`–`HYG205` | The [hygiene](#check_hygienepy) rules; see `check_hygiene.py --rules`. |
+| `HYG101`–`HYG108`, `HYG201`–`HYG207` | The [hygiene](#check_hygienepy) rules; see `check_hygiene.py --rules`. |
 | `STR001`–`STR004` | The [structure](#check_structurepy) rules: one H1, no skipped heading level, no generic link text, no empty table header. |
 
 The sixteen reason codes of the commit check itself (for example `GRANT_REVOKED`, `EVIDENCE_STALE`, `CUMULATIVE_LIMIT`) are explained in [example 08](../examples/08-blocked-action/README.md#the-commit-time-reason-codes) and exercised by the stored evaluations in examples [07](../examples/07-authority-and-delegation/README.md), [08](../examples/08-blocked-action/README.md), [09](../examples/09-unknown-outcome/README.md), [10](../examples/10-degraded-modes/README.md) and [12](../examples/12-controlled-change/README.md).
