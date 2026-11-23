@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Scratch output
+tmp/
+scratch/
+*.log
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+~$*
+.idea/
+.vscode/

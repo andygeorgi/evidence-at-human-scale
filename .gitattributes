@@ -1,0 +1,20 @@
+# Normalize line endings so checks, generated files and byte-for-byte comparisons agree on every platform.
+* text=auto eol=lf
+
+*.md text eol=lf
+*.json text eol=lf
+*.csv text eol=lf
+*.py text eol=lf
+*.mmd text eol=lf
+*.svg text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.cff text eol=lf
+*.txt text eol=lf
+
+# Hide generated files from language statistics and mark them in diffs.
+figures/*.svg linguist-generated=true
+examples/**/*.json linguist-generated=true
+evaluation/catalogue/*.json linguist-generated=true
+evaluation/catalogue/*.csv linguist-generated=true
+figures/render-manifest.json linguist-generated=true
