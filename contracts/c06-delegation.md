@@ -20,7 +20,7 @@ A grant is not a standing permission to act: at commit the executor rechecks per
 
 ## Examples
 
-- [07 Authority and delegation](../examples/07-authority-and-delegation/README.md): a bounded class grant and two exact approvals.
+- [07 Authority and delegation](../examples/07-authority-and-delegation/README.md): a bounded class grant and an exact approval (the second exact approval is in 11).
 - [12 Controlled change](../examples/12-controlled-change/README.md): a new grant version with a lower limit, and its effect on a pending proposal.
 
 [← C05 Action proposal](c05-action-proposal.md) · [Contracts](README.md) · [Next: C07 Execution receipt →](c07-execution-receipt.md)
