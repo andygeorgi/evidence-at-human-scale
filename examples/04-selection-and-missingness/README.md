@@ -16,17 +16,14 @@ A selection ([C03](../../contracts/c03-selection.md)) is the manifest of what wa
 <p align="center">
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="../../figures/F09-dark.svg">
-<img src="../../figures/F09-light.svg" alt="A decision tree. A stale record gives stale. Otherwise a check not performed gives not_assessed, a principal not permitted gives inaccessible, no answer from the source gives unavailable, no completed scoped retrieval gives missing, an observed absence with method, time and complete coverage gives negative, and otherwise not_retrieved." width="860">
+<img src="../../figures/F09-light.svg" alt="A decision list. A stale record gives stale. Otherwise a check not performed gives not_assessed, a principal not permitted gives inaccessible, no answer from the source gives unavailable, no completed scoped retrieval gives missing, an observed absence with method, time and complete coverage gives negative, and otherwise not_retrieved." width="400">
 </picture>
 </p>
-
-
-*Open at full size: [light](../../figures/F09-light.svg) · [dark](../../figures/F09-dark.svg).*
 
 <details>
 <summary>Text description of Figure F09</summary>
 
-For an expected input that is not in front of the reader, ask six questions in order. One: is a record available but failing the freshness requirement? If yes, the label is stale. Two: was the check or assessment performed? If not, not_assessed. Three: may the reader's principal read the source? If not, inaccessible, and the reason and existence are disclosed only when permitted. Four: did the source or dependency answer? If not, unavailable, which is not the same as denied. Five: did a scoped retrieval complete? If not, missing: expected, not obtained, reason may be unknown. Six: was absence observed with method, time and complete coverage? If yes, negative. If not, not_retrieved: a completed retrieval found nothing, which is not evidence of absence. Only negative is evidence of absence: it is drawn in green, and the other six labels in amber.
+For an expected input that is not in front of the reader, ask six questions in order. One: is a record available but failing the freshness requirement? If yes, the label is stale. Two: was the check or assessment performed? If not, not_assessed. Three: may the reader's principal read the source? If not, inaccessible, and the reason and existence are disclosed only when permitted. Four: did the source or dependency answer? If not, unavailable, which is not the same as denied. Five: did a scoped retrieval complete? If not, missing: expected, not obtained, reason may be unknown. Six: was absence observed with method, time and complete coverage? If yes, negative. If not, not_retrieved: a completed retrieval found nothing, which is not evidence of absence. Only negative is evidence of absence: its label is drawn in green, and the other six labels in amber.
 
 [All figures and their descriptions](../../figures/README.md#f09-which-missingness-label-applies)
 

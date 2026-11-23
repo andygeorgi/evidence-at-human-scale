@@ -26,8 +26,8 @@ python scripts/check_all.py --skip tests
 | `schema-hash` | `schema_surface_hash.py --check` | The schema's validation surface is unchanged since it was recorded. |
 | `links` | `check_links.py --orphans` | Relative links, anchors, images and alt text resolve, and every page is linked from another. |
 | `structure` | `check_structure.py` | Every page has one H1, no skipped heading levels, no empty table headers and no generic link text. |
-| `figures` | `check_figures.py` | Every figure is complete, accessible, rendered and in sync with the documents. |
-| `svg` | `figures/src/svg_figures.py --check` | The hand-drawn SVGs are what their generator draws. |
+| `figures` | `check_figures.py` | Every figure is complete, accessible, readable at a phone's width and in sync with the documents. |
+| `svg` | `figures/src/svg_figures.py --check` | The SVGs are what their generator draws. |
 | `hygiene` | `check_hygiene.py` | No private link, local path, credential, e-mail address, internal term or unfinished marker, and no file that would not survive a clone. |
 
 A pass says the repository is consistent with itself. It says nothing about any real system ([README](../README.md#what-a-pass-means-and-what-it-does-not)).
@@ -68,10 +68,9 @@ Checks the structure a screen-reader user navigates by, on every Markdown page: 
 
 The [figures](../figures/README.md) have one source of truth, [`figures/figures.json`](../figures/figures.json) plus the files in `figures/src/`.
 
-- `sync_figures.py` writes the figure blocks into the pages that use them, between `<!-- figure:Fxx:start -->` and `<!-- figure:Fxx:end -->` markers, and writes the gallery. `--check` writes nothing and fails if a block is out of date.
-- `check_figures.py` checks that every figure has a caption, alt text, a long description and a place in the documents, that every picture exists, and that the blocks are in sync.
-- `figures/src/svg_figures.py` draws F02, F04, F06, F09 and the banner, in light and dark. It is deterministic. `--check` fails if a committed SVG differs.
-- `figures/src/render_mermaid.py` renders the Mermaid sources to light and dark SVG with the Mermaid CLI and records what it rendered in `figures/render-manifest.json`. Mermaid does not render byte for byte reproducibly (it generates element ids), so the rendered SVGs are committed and checked against the manifest, not rebuilt on every check. It is the only script that needs anything beyond Python (Node.js, the Mermaid CLI and a Chromium-based browser), so it is not part of `check_all.py`; `--check` compares the sources with the manifest (it fails if a rendered SVG is missing or older than its source) and needs none of them.
+- `sync_figures.py` writes the figure blocks into the pages that use them, between `<!-- figure:Fxx:start -->` and `<!-- figure:Fxx:end -->` markers, the banner at the top of the README, between `<!-- banner:start -->` and `<!-- banner:end -->`, and the gallery. `--check` writes nothing and fails if one of them is out of date.
+- `check_figures.py` checks that every figure has a caption, alt text, a long description and a place in the documents, that every picture exists and has a title and a description, that a default drawing is at most 380 px wide and a wide drawing 800 to 900 px, that no text is smaller than 13 px, that no document contains a Mermaid block, and that the blocks are in sync.
+- `figures/src/svg_figures.py` draws every figure and the banner, in light and dark, with the helpers in `figures/src/kit.py`. It is deterministic. `--check` fails if a committed SVG differs. It takes the title and the description inside each file from `figures/figures.json`. It needs nothing beyond Python.
 
 ### check_hygiene.py
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Check the figures: metadata, sources, rendered pictures, accessibility and sync with the documents.
+"""Check the figures: metadata, drawings, readability on a phone, accessibility and sync with the documents.
 
     python scripts/check_figures.py
 
-Exit code 0 means every figure has what it needs and every block in the documents matches its source.
+Exit code 0 means every figure has what it needs, every drawing is readable at the size a phone shows it, and every block in
+the documents matches its source.
 """
 from __future__ import annotations
 
-import json
 import os
 import re
 import subprocess
@@ -19,8 +19,13 @@ import sync_figures  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 REQUIRED = ("id", "title", "caption", "alt", "description", "kind", "used_in")
-# A classDef with one of these names would restyle Mermaid's own elements, for example the labels on arrows.
-MERMAID_CLASSES = {"label", "edgelabel", "node", "nodes", "cluster", "edge", "edgepath", "edgepaths", "marker", "root", "output", "flowchart", "labelbkg", "nodelabel", "default", "note", "actor", "messagetext", "loopline", "section"}
+# A phone is about 360 to 430 px wide, and a page leaves it about 330 to 360 for a picture. A drawing wider than NARROW_MAX
+# would be scaled down there, and its smallest text with it.
+NARROW_MAX = 380
+WIDE_RANGE = (800, 900)
+# The smallest text, in drawing pixels. At the scale of a phone (about 0.9 to 1.0) it stays near 12 px.
+MIN_FONT = 13
+DISPLAY_WIDTH_RANGE = (300, 480)
 
 
 def run_tool(args):
@@ -29,37 +34,56 @@ def run_tool(args):
     return done.returncode, (done.stdout + done.stderr).strip()
 
 
-def lint_mermaid(fid, name, text):
-    """What a Mermaid source needs to be accessible and legible in both color schemes."""
+def svg_facts(svg: str):
+    """The width and height of an SVG's viewBox and its smallest font size, read from its text; None for what is not there."""
+    box = re.search(r'viewBox="\s*-?[\d.]+[\s,]+-?[\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)\s*"', svg[:3000])
+    sizes = [float(s) for s in re.findall(r'font-size="([\d.]+)"', svg)]
+    return (float(box.group(1)) if box else None, float(box.group(2)) if box else None, min(sizes) if sizes else None)
+
+
+def drawing_problems(fid, name, svg, wide):
+    """What a drawing needs to be accessible, safe and readable at the size it is shown."""
     problems = []
-    for needle in ("accTitle:", "accDescr:"):
-        if needle not in text:
-            problems.append("%s: %s has no %s" % (fid, name, needle))
-    if re.search(r"^\s*(click|href)\b", text, re.M):
-        problems.append("%s: %s uses click or href, which GitHub does not allow" % (fid, name))
-    for line in text.splitlines():
-        if line.strip().startswith("classDef") and not all(k in line for k in ("fill:", "stroke:", "color:")):
-            problems.append("%s: %s has a classDef without fill, stroke and text color, which is unsafe in dark mode: %s" % (fid, name, line.strip()))
-        named = re.match(r"\s*classDef\s+(\w+)", line)
-        if named and named.group(1).lower() in MERMAID_CLASSES:
-            problems.append("%s: %s names a class %r, which is also a CSS class Mermaid uses for its own elements; the colors would leak into edge labels and clusters" % (fid, name, named.group(1)))
+    if "<title" not in svg or "<desc" not in svg:
+        problems.append("%s: %s has no <title> and <desc>" % (fid, name))
+    if re.search(r"<script|on\w+\s*=|href=\"https?:", svg):
+        problems.append("%s: %s contains a script, an event handler or an external link" % (fid, name))
+    if re.search(r"<foreignObject|<image\b", svg):
+        problems.append("%s: %s contains a foreignObject or an embedded image, which some viewers draw without text" % (fid, name))
+    width, _height, smallest = svg_facts(svg)
+    if width is None:
+        problems.append("%s: %s has no viewBox" % (fid, name))
+        return problems
+    if wide and not WIDE_RANGE[0] <= width <= WIDE_RANGE[1]:
+        problems.append("%s: %s is %d px wide; a wide drawing is %d to %d px, to fit a window of 900 px or more" % ((fid, name, width) + WIDE_RANGE))
+    if not wide and width > NARROW_MAX:
+        problems.append("%s: %s is %d px wide; a default drawing is at most %d px, so that a phone shows it without shrinking its text" % (fid, name, width, NARROW_MAX))
+    if smallest is None or smallest < MIN_FONT:
+        problems.append("%s: %s has text of %s px; the smallest allowed is %s px" % (fid, name, smallest, MIN_FONT))
     return problems
 
 
-def kind_table_problems(figures):
-    """The 'How the figures are made' table in figures/README.md must list every figure under the kind figures.json gives it."""
-    text = (REPO / "figures" / "README.md").read_text(encoding="utf-8")
+def table_problems(fid, table):
+    """The data of a figure drawn from a table: rows that match the columns, and one execution color and at least one note."""
     problems = []
-    for kind, label in (("mermaid", "Mermaid"), ("svg", "Hand-drawn SVG"), ("table", "Table")):
-        row = re.search(r"^\|\s*\*\*%s\*\*\s*\|([^|]*)\|" % re.escape(label), text, re.M)
-        if not row:
-            problems.append("figures/README.md: the 'How the figures are made' table has no %s row" % label)
+    columns, rows = table.get("columns"), table.get("rows")
+    if not columns or not rows or any(len(r) != len(columns) for r in rows):
+        problems.append("%s: table rows must match the columns" % fid)
+    elif len(table.get("execution_kinds", [])) != len(rows):
+        problems.append("%s: table needs one execution_kinds entry per row" % fid)
+    if not table.get("notes"):
+        problems.append("%s: table needs its notes, the rules that hold in every row" % fid)
+    return problems
+
+
+def mermaid_problems():
+    """Every figure is a drawn SVG: a Mermaid block would take its colors, its text size and its layout from the reader's renderer."""
+    problems = []
+    for doc in sorted(REPO.rglob("*.md")):
+        if any(part in (".git", "node_modules") for part in doc.parts):
             continue
-        listed = set(re.findall(r"F\d\d", row.group(1)))
-        expected = {f["id"] for f in figures if f.get("kind") == kind}
-        if listed != expected:
-            problems.append("figures/README.md: the table lists %s as %s, but figures.json says %s" % (
-                label, ", ".join(sorted(listed)) or "nothing", ", ".join(sorted(expected)) or "nothing"))
+        if re.search(r"^\s*```+\s*mermaid", doc.read_text(encoding="utf-8"), re.M | re.I):
+            problems.append("%s has a Mermaid block; draw the figure in figures/src/svg_figures.py instead" % doc.relative_to(REPO).as_posix())
     return problems
 
 
@@ -69,47 +93,50 @@ def check():
     ids = [f["id"] for f in figures]
     if len(ids) != len(set(ids)):
         problems.append("duplicate figure ids in figures.json")
-    for fig in figures:
+    for fig in figures + ([dict(banner, id="banner")] if banner else []):
         fid = fig["id"]
-        for key in REQUIRED:
+        is_banner = fid == "banner"
+        for key in REQUIRED if not is_banner else ("title", "alt", "source", "images"):
             if not fig.get(key):
                 problems.append("%s: %s is missing" % (fid, key))
         if len(fig.get("alt", "")) < 40:
             problems.append("%s: alt text is too short to describe the figure" % fid)
         if len(fig.get("alt", "")) > 420:
             problems.append("%s: alt text is long; keep it short and put detail in the description" % fid)
-        if not fig.get("caption", "").endswith((".", "?")):
+        if not is_banner and not fig.get("caption", "").endswith((".", "?")):
             problems.append("%s: caption should be a sentence ending in a full stop" % fid)
-        kind = fig.get("kind")
-        if kind not in ("mermaid", "svg", "table"):
-            problems.append("%s: kind must be mermaid, svg or table" % fid)
+        if fig.get("kind", "svg") != "svg":
+            problems.append("%s: kind must be svg; every figure is a drawn SVG" % fid)
             continue
-        if kind == "table":
-            t = fig.get("table", {})
-            if not t.get("columns") or not t.get("rows") or any(len(r) != len(t["columns"]) for r in t["rows"]):
-                problems.append("%s: table rows must match the columns" % fid)
-            continue
-        source = REPO / fig.get("source", "")
-        if not source.exists():
+        if fig.get("table"):
+            problems += table_problems(fid, fig["table"])
+        if not (REPO / fig.get("source", "")).is_file():
             problems.append("%s: source %s does not exist" % (fid, fig.get("source")))
-        for theme in ("light", "dark"):
-            image = REPO / fig.get("images", {}).get(theme, "")
-            if not image.is_file():
-                problems.append("%s: %s picture is missing" % (fid, theme))
+        for label, images, wide in (("", fig.get("images") or {}, False), ("wide ", fig.get("wide") or {}, True)):
+            if wide and not images:
                 continue
-            svg = image.read_text(encoding="utf-8")
-            if "<title" not in svg or "<desc" not in svg:
-                problems.append("%s: %s has no <title> and <desc>" % (fid, image.name))
-            if re.search(r"<script|on\w+\s*=|href=\"https?:", svg):
-                problems.append("%s: %s contains a script, an event handler or an external link" % (fid, image.name))
-        if kind == "mermaid" and source.exists():
-            problems += lint_mermaid(fid, source.name, source.read_text(encoding="utf-8"))
+            sizes = []
+            for theme in ("light", "dark"):
+                image = REPO / images.get(theme, "")
+                if not image.is_file():
+                    problems.append("%s: %s%s picture is missing" % (fid, label, theme))
+                    continue
+                svg = image.read_text(encoding="utf-8")
+                problems += drawing_problems(fid, image.name, svg, wide)
+                sizes.append(svg_facts(svg)[:2])
+            if len(sizes) == 2 and sizes[0] != sizes[1]:
+                problems.append("%s: the %slight and dark drawings differ in size" % (fid, label))
+        shown = fig.get("display_width")
+        if shown is not None:
+            if fig.get("wide"):
+                problems.append("%s: a figure with a wide drawing must not set display_width, which would shrink the wide drawing too" % fid)
+            elif not DISPLAY_WIDTH_RANGE[0] <= shown <= DISPLAY_WIDTH_RANGE[1]:
+                problems.append("%s: display_width %s is outside %d to %d" % ((fid, shown) + DISPLAY_WIDTH_RANGE))
     problems += ["gallery/documents: " + p for p in sync_figures.sync(check=True)]
-    problems += kind_table_problems(figures)
-    for label, args in (("Mermaid renders", ["figures/src/render_mermaid.py", "--check"]), ("hand-drawn SVGs", ["figures/src/svg_figures.py", "--check"])):
-        code, out = run_tool(args)
-        if code:
-            problems.append("%s: %s" % (label, out.replace("\n", " ")))
+    problems += mermaid_problems()
+    code, out = run_tool(["figures/src/svg_figures.py", "--check"])
+    if code:
+        problems.append("drawn SVGs: " + out.replace("\n", " "))
     return problems
 
 
@@ -120,7 +147,7 @@ def main():
     if problems:
         print("\n%d figure problem(s)." % len(problems))
         return 1
-    print("Figures are complete, accessible, rendered and in sync (%d figures and a banner)." % len(sync_figures.load()[0]))
+    print("Figures are complete, accessible, readable on a phone and in sync (%d figures and a banner)." % len(sync_figures.load()[0]))
     return 0
 
 

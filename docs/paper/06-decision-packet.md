@@ -12,17 +12,14 @@ C04 Decision packet is a versioned review object bound to the exact context and 
 <p align="center">
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="../../figures/F04-dark.svg">
-<img src="../../figures/F04-light.svg" alt="The Decision Owner reviews a decision packet made of eight groups, G02 to G09. Claims, inferences and conflicts point to evidence records; coverage and obligations point to the selection manifest; action proposals point to action proposal records." width="860">
+<img src="../../figures/F04-light.svg" alt="The Decision Owner reviews a decision packet of nine groups, G01 to G09. Tags show that claims, inferences and conflicts point to evidence records (C02), coverage and obligations to the selection manifest (C03), and action proposals to action proposal records (C05)." width="400">
 </picture>
 </p>
-
-
-*Open at full size: [light](../../figures/F04-light.svg) · [dark](../../figures/F04-dark.svg).*
 
 <details>
 <summary>Text description of Figure F04</summary>
 
-The Decision Owner reviews one decision packet (C04), bound to an exact context, selection and as-of time (group G01). The packet has eight further groups: G02 supported claims, each citing an exact record version; G03 labeled inferences, with method and limits, never claims; G04 recommendations, with the accountable review requirement; G05 conflicts and uncertainty, visible and never settled by majority; G06 coverage, omissions and gaps, with seven missingness labels; G07 obligations, priority and mandatory items; G08 action proposals, proposed and not executed; and G09 review and version history. Claims, inferences and conflicts point to evidence records (C02) by exact version, claim or payload pointer and original locator. Coverage and obligations come from the selection manifest (C03). Action proposals point to action proposal records (C05).
+The Decision Owner reviews one decision packet (C04). It has nine groups: G01, which binds it to one context, selection and as-of time; G02 supported claims, each citing an exact record version; G03 labeled inferences, with method and limits, never claims; G04 recommendations, with the accountable review requirement; G05 conflicts and uncertainty, visible and never settled by majority; G06 coverage, omissions and gaps, with seven missingness labels; G07 obligations, priority and mandatory items; G08 action proposals, proposed and not executed; and G09 review and version history, where revised versions stay distinguishable. A tag on a group names what it points to: G02, G03 and G05 to evidence records (C02), by exact version, claim or payload pointer, original locator, scope, method and lifecycle; G06 and G07 to the selection manifest (C03), which records what was retrieved, kept, excluded and missing; and G08 to action proposal records (C05), with evidence, preconditions and accounting. A band under the packet shows the three contracts that the tags name.
 
 [All figures and their descriptions](../../figures/README.md#f04-anatomy-of-a-decision-packet)
 

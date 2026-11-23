@@ -33,8 +33,8 @@ CHECKS: Tuple[Tuple[str, str, Tuple[str, ...]], ...] = (
     ("schema-hash", "the schema's validation surface is unchanged since it was recorded", ("scripts/schema_surface_hash.py", "--check")),
     ("links", "relative links, anchors, images and alt text resolve, and every page is linked from another", ("scripts/check_links.py", "--orphans")),
     ("structure", "every page has one H1, no skipped heading levels, no empty table headers and no generic link text", ("scripts/check_structure.py",)),
-    ("figures", "every figure is complete, accessible, rendered and in sync with the documents", ("scripts/check_figures.py",)),
-    ("svg", "the hand-drawn SVGs are what their generator draws", ("figures/src/svg_figures.py", "--check")),
+    ("figures", "every figure is complete, accessible, readable at a phone's width and in sync with the documents", ("scripts/check_figures.py",)),
+    ("svg", "the SVGs are what their generator draws", ("figures/src/svg_figures.py", "--check")),
     ("hygiene", "no private link, local path, credential, e-mail address, internal term or unfinished marker", ("scripts/check_hygiene.py",)),
 )
 

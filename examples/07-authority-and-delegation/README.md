@@ -13,39 +13,17 @@ A packet is not an approval. Authority to act comes from a **grant** ([C06](../.
 
 **Figure F05.** Approval is not commit: at commit the gateway rechecks the grant, the evidence, the preconditions and the limits, and an authoritative verification confirms the outcome.
 
-```mermaid
-%%{init: {"sequence": {"actorMargin": 40, "width": 150, "messageMargin": 30, "mirrorActors": false}}}%%
-sequenceDiagram
-    accTitle: From proposal to commit: approval is not commit
-    accDescr: A packet lists an action proposal as proposed, not executed. The Decision Owner asks the approver for approval of the exact proposal version, or a standing class grant already covers it. At commit the gateway and executor recheck the grant, the evidence, the preconditions, the parameters and target, and the per-action and cumulative limits, counting consumed and reserved capacity. If every check passes it reserves allowance, submits the action to the target and records a receipt that is completed, unknown or partial. If any check fails it records a not-executed receipt with the reasons. An authoritative verification against the target then confirms or reconciles the outcome.
-    participant R as Decision Owner
-    participant A as Approver
-    participant G as Gateway
-    participant T as Target
-    participant X as Receipt (C07)
-    Note over R: Packet lists the<br/>proposal: proposed,<br/>not executed
-    R->>A: Approve this exact<br/>proposal version?
-    A-->>G: Exact approval, or a<br/>standing class grant (C06)
-    Note over G: Approval is not commit
-    Note over G,T: Recheck at commit<br/>Grant current, not revoked<br/>Evidence current and fresh<br/>Preconditions hold<br/>Parameters and target match<br/>Per-action and cumulative<br/>limits (consumed + reserved)
-    alt every check passes
-        Note over G: Reserve allowance
-        G->>T: Submit the exact action
-        T-->>G: Outcome, or timeout
-        G->>X: Completed, unknown or partial
-    else any check fails
-        G->>X: Not executed, with the reasons
-    end
-    Note over X,T: Authoritative verification<br/>against the target confirms<br/>or reconciles the outcome
-```
-
-
-*Open at full size: [light](../../figures/F05-light.svg) · [dark](../../figures/F05-dark.svg).*
+<p align="center">
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="../../figures/F05-dark.svg">
+<img src="../../figures/F05-light.svg" alt="A packet lists a proposal. An accountable approver, distinct from the requestor, approves the exact proposal version, or a bounded grant covers it. Approval is not commit: the executor rechecks six conditions. If all pass, it reserves allowance and submits, and the receipt records the outcome; if one fails, the receipt is not_executed_verified. An authoritative verification confirms the outcome." width="400">
+</picture>
+</p>
 
 <details>
 <summary>Text description of Figure F05</summary>
 
-Five participants: the Decision Owner, the approver or grant issuer, the gateway and executor, the target system and the receipt (C07). The packet lists a proposal as proposed, not executed. The Decision Owner asks the approver to approve this exact proposal version, or a standing class grant already covers it; the approval or grant (C06) names scope, limits and expiry. Approval is not commit: at commit the gateway rechecks that the grant is current and not revoked, the evidence is current and fresh, the preconditions hold, the parameters and target are permitted, and the per-action and cumulative limits hold, counting consumed plus reserved capacity. If every check passes, it reserves allowance, submits the exact action to the target, receives an outcome or a timeout and records a receipt: completed, unknown or partial. If any check fails, it records a receipt that says not executed, with the reasons. An authoritative verification against the target then confirms or reconciles the outcome.
+Top to bottom: the packet lists a proposal as proposed, not executed. Either the accountable approver approves this exact proposal version, a role distinct from the requestor, or a bounded grant already covers it; both are recorded in a delegation (C06) that names scope, limits and expiry. A divider says that approval is not commit. At commit, the executor, or action gateway, rechecks six conditions: the grant is current and not revoked, the evidence is current and fresh, the preconditions hold, the parameters and target match, the per-action limit holds, and the cumulative limit holds, counting consumed and reserved capacity. If every check passes, it reserves allowance, submits the exact action to the target and records the outcome or a timeout. If a check fails, nothing is submitted. The receipt (C07) then records the outcome as completed_verified, unknown, partial or not_executed_verified after a pass, and not_executed_verified, with the reasons, after a failed check. An authoritative verification against the target confirms or reconciles the outcome.
 
 [All figures and their descriptions](../../figures/README.md#f05-from-proposal-to-commit)
 

@@ -13,19 +13,28 @@ Real systems are partly broken most of the time. A source is down, a model is un
 
 **Figure F07.** Information limitations are explicit, while invalid authority blocks execution in every state; urgent continuity uses its own authorized route.
 
-| Information state | What the reader sees | Review | Execution |
-|---|---|---|---|
-| Current and sufficient | The full packet | Normal review | Eligible, after the commit checks |
-| Qualified: stale, partial, or a source unavailable | The packet with labeled gaps; never a clean negative | Limited review, limits visible | Eligible only if the action's own evidence and precondition checks still pass |
-| Assistant model unavailable | A qualified deterministic template, or a native or manual route; unsupported synthesis is not released as advice | Review from the template | As in the row above |
-| Authorization or revocation cannot be established | Dependent disclosure withheld | Blocked for what depends on it | **Closed** |
-
-In every row, execution is **Closed** whenever the authority is invalid or uncertain, however good the information is. The Execution column states what is possible when the authority is valid and current. Also in every row, urgent continuity (independent deterministic notification, queue, acknowledgement and escalation) uses its own authorized channel. If that channel fails, the failure is exposed and the approved continuity or escalation route is followed.
+<p align="center">
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="../../figures/F07-dark.svg">
+<img src="../../figures/F07-light.svg" alt="Four information states, each with what the reader sees, what review is possible and whether execution is eligible. Execution is eligible only after the commit checks, and only when authority is valid; it is closed whenever authority is invalid or uncertain, and outright in the last state, where authorization cannot be established." width="400">
+</picture>
+</p>
 
 <details>
 <summary>Text description of Figure F07</summary>
 
-Information availability and authority validity are separate axes. The table lists four information states and, for each, what the reader sees, what review is possible, and whether execution is eligible when authority is valid and current. Execution is closed whenever authority is invalid or uncertain, in every row, even when information is available and the recommendation sounds compelling; in the last row it is closed outright, because authorization or revocation cannot be established. Urgent continuity runs on its own channel in every row.
+Information availability and authority validity are separate axes. Four information states are drawn top to bottom, each with what the reader sees, what review is possible and whether execution is eligible when authority is valid and current; the table below gives the same content. In every state, execution is closed whenever authority is invalid or uncertain, even when information is available and the recommendation sounds compelling; in the last state it is closed outright, because authorization or revocation cannot be established. Urgent continuity runs on its own authorized channel in every state.
+
+| Information state | What the reader sees | Review | Execution |
+|---|---|---|---|
+| Current and sufficient | The full packet | Normal review | Eligible, after the commit checks |
+| Qualified: stale, partial, or a source unavailable | The packet with labeled gaps; never a clean negative | Limited review, limits visible | Eligible only if the action's own evidence and precondition checks still pass |
+| Assistant model unavailable | A qualified deterministic template, or a native or manual route; unsupported synthesis is not released as advice | Review from the template | As in the state above |
+| Authorization or revocation cannot be established | Dependent disclosure withheld | Blocked for what depends on it | **Closed** |
+
+In every state, execution is **Closed** whenever the authority is invalid or uncertain, however good the information is. The Execution entries show what is possible when the authority is valid and current.
+
+Also in every state, urgent continuity (independent deterministic notification, queue, acknowledgement and escalation) uses its own authorized channel. If that channel fails, the failure is exposed and the approved continuity or escalation route is followed.
 
 [All figures and their descriptions](../../figures/README.md#f07-degraded-information-closed-execution)
 

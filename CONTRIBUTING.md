@@ -23,7 +23,7 @@ No license has been chosen, so the author cannot yet accept substantive contribu
 
 1. **Do not turn NOT RUN into a result.** A status changes only when the test was run and the evidence is recorded.
 2. **Keep the evidence classes apart.** Real public records, the author's engagement records, synthetic illustration and "not available" are different things ([claims and limits](docs/claims-and-limits.md)).
-3. **Edit the source, not the output.** The example JSON is written by [`scripts/build_example_data.py`](scripts/build_example_data.py); the figure blocks in the Markdown and the gallery by [`scripts/sync_figures.py`](scripts/sync_figures.py) from [`figures/figures.json`](figures/figures.json); the hand-drawn SVGs by [`figures/src/svg_figures.py`](figures/src/svg_figures.py). A check fails if a generated file is edited by hand.
+3. **Edit the source, not the output.** The example JSON is written by [`scripts/build_example_data.py`](scripts/build_example_data.py); the figure blocks in the Markdown, the README banner and the gallery by [`scripts/sync_figures.py`](scripts/sync_figures.py) from [`figures/figures.json`](figures/figures.json); the figure SVGs by [`figures/src/svg_figures.py`](figures/src/svg_figures.py). A check fails if a generated file is edited by hand.
 4. **Write plainly, in American spelling.** Names that already exist, such as "catalogue" and "programme", stay as they are.
 5. **Say what a figure or an example does not show.** Each example page ends with that.
 

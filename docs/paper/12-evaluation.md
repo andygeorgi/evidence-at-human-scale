@@ -11,37 +11,17 @@ Compare the native/current workflow, deterministic grouping and templates, and s
 
 **Figure F08.** Complexity must earn its place against matched native, deterministic and zero-specialist baselines; no evaluation result is claimed.
 
-```mermaid
-%%{init: {"flowchart": {"wrappingWidth": 360, "htmlLabels": true, "nodeSpacing": 30, "rankSpacing": 46}}}%%
-flowchart TB
-    accTitle: Complexity must earn its place against simpler baselines
-    accDescr: Four steps, each compared with the one before on matched tasks. First the native or current workflow, then deterministic grouping and templates, then simple synthesis with zero specialists, and only then optional specialists, which are justified only by a measured, matched need for permission or isolation. The measures are correctness, omissions, evidence actually inspected, decision quality, time and workload, not fluency or how many agents agree. No evaluation result is claimed: all of this is not run.
-    B1["<b>1 Native or current workflow</b>"]:::plain
-    B2["<b>2 Deterministic grouping and templates</b>"]:::plain
-    B3["<b>3 Simple synthesis, zero specialists</b><br/>a complete architecture on its own"]:::plain
-    B4["<b>4 Optional specialists</b><br/>admitted only for a documented task, permission or isolation need"]:::plain
-    B1 -->|"is the next step better on matched tasks?"| B2
-    B2 -->|"better on matched tasks?"| B3
-    B3 -->|"a measured, matched need?"| B4
-    M["<b>Measure</b> correctness · omissions · evidence actually inspected · decision quality · time · workload<br/>Not fluency. Not how many agents agree."]:::plain
-    N["<b>No evaluation result is claimed.</b> Every comparison here is NOT RUN."]:::warn
-    B4 ~~~ M
-    M ~~~ N
-    classDef src fill:#E8F1FB,stroke:#2F6DB5,color:#0B2540
-    classDef sel fill:#E4F4F6,stroke:#1E7F8C,color:#06323A
-    classDef pkt fill:#E6F4EA,stroke:#2E7D4F,color:#0F2E1B
-    classDef own fill:#EFE9F7,stroke:#6A4BA1,color:#24133F
-    classDef warn fill:#FFF1D6,stroke:#B26A00,color:#3D2500
-    classDef plain fill:#F4F4F4,stroke:#777777,color:#222222
-```
-
-
-*Open at full size: [light](../../figures/F08-light.svg) · [dark](../../figures/F08-dark.svg).*
+<p align="center">
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="../../figures/F08-dark.svg">
+<img src="../../figures/F08-light.svg" alt="Four steps in order: native or current workflow, deterministic grouping and templates, simple synthesis with zero specialists, optional specialists. Each step is compared with the one before on matched tasks. A note lists the measures and says every comparison is not run." width="400">
+</picture>
+</p>
 
 <details>
 <summary>Text description of Figure F08</summary>
 
-Four steps, each compared with the one before on matched tasks, risks, scope and acceptance criteria. First the native or current workflow; then deterministic grouping and templates; then simple synthesis with zero specialists, which is a complete architecture on its own; and only then optional specialists, admitted only for a documented task, permission or isolation need that has been measured on a matched comparison. The measures are correctness, omissions, evidence actually inspected, decision quality, time and workload: not fluency, and not how many agents agree. No evaluation result is claimed; every comparison is not run.
+Four steps in order. Each arrow between two steps asks whether the next step is better on matched tasks, and the last asks whether there is a measured, matched need. First the native or current workflow; then deterministic grouping and templates; then simple synthesis with zero specialists, which is a complete architecture on its own; and only then optional specialists, admitted only for a documented task, permission or isolation need. The measures are correctness, omissions, evidence actually inspected, decision quality, time and workload: not fluency, and not how many agents agree. No evaluation result is claimed; every comparison is not run.
 
 [All figures and their descriptions](../../figures/README.md#f08-complexity-must-earn-its-place)
 

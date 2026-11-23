@@ -1,48 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 420" width="1280" height="420" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
-<title id="t">Evidence at Human Scale: systems produce evidence, AI makes it consumable, people remain accountable</title>
-<desc id="d">A banner in three parts. Systems produce evidence: typed records with versions and lineage. AI makes it consumable: a decision packet that separates claims from labeled inferences and shows conflicts, gaps and unexecuted proposals. People remain accountable: a person approves an exact proposal or holds it. Evidence is not inference, not recommendation, and not authority.</desc>
-<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
-<rect width="1280" height="420" fill="#ffffff"/>
-<text x="640.0" y="50.0" font-size="36" text-anchor="middle" font-weight="700" fill="#1b1f24">Evidence at Human Scale</text>
-<text x="640.0" y="82.0" font-size="18" text-anchor="middle" fill="#57606a">Reference architecture for accountable decisions in agentic systems</text>
-<rect x="40.0" y="112.0" width="360.0" height="238.0" rx="14" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="2"/>
-<text x="220.0" y="146.0" font-size="21" text-anchor="middle" font-weight="700" fill="#0B2540">Systems produce evidence</text>
-<rect x="460.0" y="112.0" width="360.0" height="238.0" rx="14" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="2"/>
-<text x="640.0" y="146.0" font-size="21" text-anchor="middle" font-weight="700" fill="#0F2E1B">AI makes it consumable</text>
-<rect x="880.0" y="112.0" width="360.0" height="238.0" rx="14" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="2"/>
-<text x="1060.0" y="146.0" font-size="21" text-anchor="middle" font-weight="700" fill="#24133F">People remain accountable</text>
-<rect x="70.0" y="166.0" width="300.0" height="44.0" rx="8" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.6"/>
-<text x="86.0" y="194.0" font-size="16" text-anchor="start" font-weight="700" fill="#0B2540">S01/v1</text>
-<text x="170.0" y="194.0" font-size="15" text-anchor="start" fill="#0B2540">source record</text>
-<rect x="70.0" y="218.0" width="300.0" height="44.0" rx="8" fill="#E4F4F6" stroke="#1E7F8C" stroke-width="1.6"/>
-<text x="86.0" y="246.0" font-size="16" text-anchor="start" font-weight="700" fill="#06323A">D01/v1</text>
-<text x="170.0" y="246.0" font-size="15" text-anchor="start" fill="#06323A">deterministic finding</text>
-<rect x="70.0" y="270.0" width="300.0" height="44.0" rx="8" fill="#FFF1D6" stroke="#B26A00" stroke-width="1.6"/>
-<text x="86.0" y="298.0" font-size="16" text-anchor="start" font-weight="700" fill="#3D2500">M01/v1</text>
-<text x="170.0" y="298.0" font-size="15" text-anchor="start" fill="#3D2500">model inference</text>
-<text x="220.0" y="334.0" font-size="13" text-anchor="middle" fill="#57606a">typed · versioned · with lineage</text>
-<rect x="490.0" y="166.0" width="300.0" height="168.0" rx="8" fill="#F4F4F4" stroke="#777777" stroke-width="1.6"/>
-<rect x="500.0" y="176.0" width="280.0" height="30.0" rx="6" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.2"/>
-<text x="510.0" y="196.0" font-size="14" text-anchor="start" font-weight="700" fill="#0F2E1B">Claims</text>
-<text x="770.0" y="196.0" font-size="12.5" text-anchor="end" fill="#0F2E1B">each cites its evidence</text>
-<rect x="500.0" y="214.0" width="280.0" height="30.0" rx="6" fill="#FFF1D6" stroke="#B26A00" stroke-width="1.2"/>
-<text x="510.0" y="234.0" font-size="14" text-anchor="start" font-weight="700" fill="#3D2500">Inferences</text>
-<text x="770.0" y="234.0" font-size="12.5" text-anchor="end" fill="#3D2500">labeled, never claims</text>
-<rect x="500.0" y="252.0" width="280.0" height="30.0" rx="6" fill="#FBE4E4" stroke="#B3261E" stroke-width="1.2"/>
-<text x="510.0" y="272.0" font-size="14" text-anchor="start" font-weight="700" fill="#3D0A07">Conflicts · gaps</text>
-<text x="770.0" y="272.0" font-size="12.5" text-anchor="end" fill="#3D0A07">stay visible</text>
-<rect x="500.0" y="290.0" width="280.0" height="30.0" rx="6" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.2"/>
-<text x="510.0" y="310.0" font-size="14" text-anchor="start" font-weight="700" fill="#24133F">Proposals</text>
-<text x="770.0" y="310.0" font-size="12.5" text-anchor="end" fill="#24133F">not executed</text>
-<circle cx="1060" cy="186" r="15" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="2"/>
-<path d="M1030 232 q0 -30 30 -30 q30 0 30 30 z" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="2"/>
-<rect x="910.0" y="252.0" width="140.0" height="44.0" rx="22" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
-<text x="980.0" y="280.0" font-size="14.5" text-anchor="middle" font-weight="700" fill="#0F2E1B">Approve exactly</text>
-<rect x="1070.0" y="252.0" width="140.0" height="44.0" rx="22" fill="#FFF1D6" stroke="#B26A00" stroke-width="1.6"/>
-<text x="1140.0" y="280.0" font-size="14.5" text-anchor="middle" font-weight="700" fill="#3D2500">Hold</text>
-<text x="1060.0" y="326.0" font-size="13" text-anchor="middle" fill="#57606a">one exact proposal, current checks at commit</text>
-<path d="M400.0 232.0 L458.0 232.0" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<path d="M820.0 232.0 L878.0 232.0" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<rect x="40.0" y="366.0" width="1200.0" height="40.0" rx="10" fill="#F4F4F4" stroke="#777777" stroke-width="1.2"/>
-<text x="640.0" y="393.0" font-size="18" text-anchor="middle" font-weight="700" fill="#1b1f24">evidence  ≠  inference  ≠  recommendation  ≠  authority</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 426" width="360" height="426" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<title id="t">Evidence at Human Scale</title>
+<desc id="d">Evidence at Human Scale. Systems produce evidence, AI makes it consumable, people remain accountable. Evidence is not inference, not recommendation, not authority.</desc>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
+<rect width="360" height="426" fill="#ffffff"/>
+<text x="180.0" y="38.0" font-size="23.5" text-anchor="middle" font-weight="700" fill="#1b1f24">Evidence at Human Scale</text>
+<text x="180.0" y="67.3" font-size="14" text-anchor="middle" fill="#57606a">Reference architecture for accountable</text>
+<text x="180.0" y="85.8" font-size="14" text-anchor="middle" fill="#57606a">decisions in agentic systems</text>
+<rect x="10.0" y="101.0" width="340.0" height="59.9" rx="8" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.6"/>
+<text x="180.0" y="124.9" font-size="15" text-anchor="middle" font-weight="700" fill="#0B2540">Systems produce evidence</text>
+<text x="180.0" y="146.1" font-size="13" text-anchor="middle" fill="#0B2540">typed records with versions and lineage</text>
+<path d="M180.0 160.9 L180.0 181.9" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="10.0" y="182.9" width="340.0" height="77.1" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
+<text x="180.0" y="206.8" font-size="15" text-anchor="middle" font-weight="700" fill="#0F2E1B">AI makes it consumable</text>
+<text x="180.0" y="228.0" font-size="13" text-anchor="middle" fill="#0F2E1B">one decision packet: claims, labeled inferences,</text>
+<text x="180.0" y="245.1" font-size="13" text-anchor="middle" fill="#0F2E1B">conflicts, gaps and unexecuted proposals</text>
+<path d="M180.0 259.9 L180.0 280.9" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="10.0" y="281.9" width="340.0" height="59.9" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
+<text x="180.0" y="305.9" font-size="15" text-anchor="middle" font-weight="700" fill="#24133F">People remain accountable</text>
+<text x="180.0" y="327.0" font-size="13" text-anchor="middle" fill="#24133F">approve one exact proposal, or hold it</text>
+<rect x="10.0" y="355.9" width="340.0" height="60.0" rx="8" fill="#F4F4F4" stroke="#6F6F6F" stroke-width="1.6"/>
+<text x="180.0" y="380.7" font-size="16" text-anchor="middle" font-weight="700" fill="#222222">evidence ≠ inference</text>
+<text x="180.0" y="400.7" font-size="16" text-anchor="middle" font-weight="700" fill="#222222">≠ recommendation ≠ authority</text>
 </svg>

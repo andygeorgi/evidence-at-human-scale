@@ -27,43 +27,17 @@ The group tables below list the local group property and emitted field names or 
 
 **Figure F11.** Context, selection, packet, proposal, delegation and receipt chain forward; evidence is referenced by exact version from the others.
 
-```mermaid
-%%{init: {"flowchart": {"wrappingWidth": 300, "htmlLabels": true, "nodeSpacing": 40, "rankSpacing": 56}}}%%
-flowchart TB
-    accTitle: How the seven contracts refer to each other
-    accDescr: The context C01 is referenced by the selection C03, the decision packet C04 and the action proposal C05. The selection is referenced by the packet. The packet is referenced by the proposal. A delegation C06 is bound to an exact proposal or to a bounded class. An execution receipt C07 references one proposal and one grant. Evidence records C02 are referenced, by exact version, from the selection, the packet, the proposal, the delegation and the receipt.
-    C01["<b>C01 Context</b><br/>who, what, why, as of when"]:::ctx
-    C03["<b>C03 Selection</b><br/>manifest, gaps, obligations"]:::sel
-    C04["<b>C04 Decision packet</b><br/>claims, inferences, gaps"]:::pkt
-    C05["<b>C05 Action proposal</b><br/>proposed, not executed"]:::own
-    C06["<b>C06 Delegation</b><br/>exact approval or bounded class"]:::own
-    C07["<b>C07 Execution receipt</b><br/>verified outcome"]:::pkt
-    C02["<b>C02 Evidence</b><br/>typed records with lineage<br/>referenced by exact version"]:::src
-    C01 -->|"context"| C03
-    C03 -->|"context + selection"| C04
-    C04 -->|"context + packet"| C05
-    C05 -->|"bound to"| C06
-    C05 -->|"proposal"| C07
-    C06 -->|"grant"| C07
-    C02 -.-> C03
-    C02 -.-> C04
-    C02 -.-> C05
-    C02 -.-> C06
-    C02 -.-> C07
-    classDef ctx fill:#E4F4F6,stroke:#1E7F8C,color:#06323A
-    classDef src fill:#E8F1FB,stroke:#2F6DB5,color:#0B2540
-    classDef sel fill:#E4F4F6,stroke:#1E7F8C,color:#06323A
-    classDef pkt fill:#E6F4EA,stroke:#2E7D4F,color:#0F2E1B
-    classDef own fill:#EFE9F7,stroke:#6A4BA1,color:#24133F
-```
-
-
-*Open at full size: [light](../figures/F11-light.svg) · [dark](../figures/F11-dark.svg).*
+<p align="center">
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="../figures/F11-dark.svg">
+<img src="../figures/F11-light.svg" alt="Contracts C01 context, C03 selection, C04 decision packet, C05 action proposal, C06 delegation and C07 execution receipt chain downward, each referencing the ones before it; C07 references one proposal and one grant. C02 evidence is drawn at the top, with dashed arrows to C03, C04, C05, C06 and C07 for references by exact version." width="400">
+</picture>
+</p>
 
 <details>
 <summary>Text description of Figure F11</summary>
 
-C01 context is referenced by C03 selection. C03 is referenced by C04 decision packet, together with the context. C04 is referenced by C05 action proposal, together with the context. A C06 delegation is bound to an exact C05 proposal or to a bounded class. A C07 execution receipt references one proposal and one grant. C02 evidence records are referenced, by exact version, claim or pointer, from the selection, the packet, the proposal, the delegation and the receipt; these references are drawn dotted.
+C01 context is referenced by C03 selection. C03 is referenced by C04 decision packet, together with the context. C04 is referenced by C05 action proposal, together with the context. A C06 delegation is bound to an exact C05 proposal or to a bounded class. A C07 execution receipt references one proposal and one grant: a solid arrow runs from C05 to C07 beside C06, and C06 points to C07. C02 evidence records are referenced, by exact version, claim or pointer, from the selection, the packet, the proposal, the delegation and the receipt; these references are drawn as dashed arrows from the C02 card at the top. Solid arrows carry forward; dashed arrows reference an exact evidence version.
 
 [All figures and their descriptions](../figures/README.md#f11-how-the-seven-contracts-refer-to-each-other)
 

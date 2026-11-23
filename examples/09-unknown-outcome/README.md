@@ -16,17 +16,14 @@ Sometimes the system cannot tell whether an action happened. A timeout is not a 
 <p align="center">
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="../../figures/F06-dark.svg">
-<img src="../../figures/F06-light.svg" alt="A submitted action becomes unknown or partial (amber, unresolved) or completed_verified or not_executed_verified (green, terminal). Unknown becomes completed or not executed, and partial becomes completed, only through reconciliation." width="860">
+<img src="../../figures/F06-light.svg" alt="A submitted action leads to four states. Unknown and partial (amber) are open: allowance stays reserved or charged, and each lists how it can move on. Completed_verified and not_executed_verified (green) are final. Unknown becomes completed or not executed, and partial becomes completed, only through reconciliation or compensation under policy." width="400">
 </picture>
 </p>
-
-
-*Open at full size: [light](../../figures/F06-light.svg) · [dark](../../figures/F06-dark.svg).*
 
 <details>
 <summary>Text description of Figure F06</summary>
 
-An action starts as submitted, after the gateway has passed every check and reserved allowance. It leads to four states. Unknown (a timeout or no response) and partial (some effects verified, others not; known effects stay charged) are unresolved: allowance stays reserved or charged, there is no blind retry, and a timeout or lease expiry never restores allowance. Completed_verified (an authoritative outcome confirms the effect) and not_executed_verified (authoritatively verified: no business effect) are terminal. Unknown leaves only by authoritative reconciliation, to completed_verified or not_executed_verified. Partial leaves by reconciliation or compensation under policy, to completed_verified. Allowance is restored only on authoritative reconciliation, never by assuming that silence means no effect.
+An action starts as submitted, after the gateway has passed every check and reserved allowance. Four cards follow, with an arrow from submitted to each. Unknown (a timeout or no response) and partial (some effects verified, others not; known effects stay charged) are open, tagged open and drawn in amber: allowance stays reserved or charged, there is no blind retry, and a timeout or lease expiry never restores allowance. Completed_verified (an authoritative outcome confirms the effect) and not_executed_verified (authoritatively verified: no business effect) are final, tagged final and drawn in green. Inside the unknown card, green labels show where it can go: only authoritative reconciliation moves it to completed_verified or not_executed_verified. Inside the partial card, a label shows that reconciliation or compensation, under policy, moves it to completed_verified. Allowance is restored only on authoritative reconciliation, never by assuming that silence means no effect.
 
 [All figures and their descriptions](../../figures/README.md#f06-receipt-states-and-recovery)
 

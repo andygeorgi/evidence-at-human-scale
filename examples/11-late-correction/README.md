@@ -13,36 +13,17 @@ A correction arrives after an approval but before execution. The corrected recor
 
 **Figure F10.** A late correction reaches a pending approval: derivatives and approvals stop being current, and the queued action is refused at commit.
 
-```mermaid
-%%{init: {"sequence": {"actorMargin": 40, "width": 160, "messageMargin": 30, "mirrorActors": false}}}%%
-sequenceDiagram
-    accTitle: A late correction reaches a pending approval
-    accDescr: After an approval is queued, a corrected source record is admitted. It supersedes the earlier version and invalidates what was derived from it. The packet that rested on those derivatives is invalidated, a revised packet is produced and the pending approval is revoked. When the queued action reaches the gateway it is refused because the grant is revoked and the evidence is no longer current, and a not-executed receipt records why. A new proposal on the revised packet needs a new approval.
-    participant S as Source owner
-    participant E as Registry (C02)
-    participant L as Lineage
-    participant P as Packets (C04)<br/>and approvals (C06)
-    participant G as Gateway
-    Note over P,G: An approval is queued<br/>for a later run
-    S->>E: Correction admitted<br/>as a new version
-    E->>L: Supersedes the<br/>earlier version
-    L->>E: Invalidates findings and<br/>summaries derived from it
-    L->>P: The packet that rested<br/>on them is invalidated
-    Note over P: Revised packet produced,<br/>prior version linked
-    L->>P: Pending approval revoked
-    G->>P: Queued action reaches<br/>commit: recheck
-    P-->>G: Grant revoked, evidence<br/>no longer current
-    Note over G: Refused<br/>Receipt (C07): not executed,<br/>with reasons
-    Note over P,G: A new proposal on the<br/>revised packet needs<br/>a new approval
-```
-
-
-*Open at full size: [light](../../figures/F10-light.svg) · [dark](../../figures/F10-dark.svg).*
+<p align="center">
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="../../figures/F10-dark.svg">
+<img src="../../figures/F10-light.svg" alt="A vertical timeline in which a correction is admitted, supersedes the earlier record and invalidates what was derived from it; the packet is invalidated, a revised packet is produced and the pending approval is revoked; the queued action is then refused by the executor (action gateway) and a not_executed_verified receipt records why." width="400">
+</picture>
+</p>
 
 <details>
 <summary>Text description of Figure F10</summary>
 
-Five participants: the source owner, the evidence registry (C02), the lineage service, the packets (C04) and approvals (C06), and the gateway. An approval is already queued for a later run. The source owner admits a correction as a new version. The registry records that it supersedes the earlier version. The lineage service invalidates the findings and summaries derived from it, then invalidates the packet that rested on them. A revised packet is produced with its prior version linked, and the pending approval is revoked. When the queued action reaches commit, the gateway rechecks and finds the grant revoked and the evidence no longer current; it refuses, and the receipt (C07) records not executed, with the reasons. A new proposal on the revised packet needs a new approval.
+A vertical timeline in three phases, each event tagged with the actor that performs it. Before: an approval is queued for a later run, held by the packet (C04) and the delegation (C06). The correction cascades: the source owner admits a correction as a new version; the registry (C02) records that it supersedes the earlier version; lineage invalidates the findings and summaries derived from the earlier version, and the packet that rested on them; the packet (C04) is revised, with the prior version linked; and the delegation (C06) revokes the pending approval. At commit: the executor, or action gateway, rechecks the queued action and finds the grant revoked and the evidence no longer current; it refuses, and the receipt (C07) records not_executed_verified, with the reasons. A new proposal on the revised packet needs a new approval.
 
 [All figures and their descriptions](../../figures/README.md#f10-a-late-correction-reaches-a-pending-approval)
 

@@ -13,18 +13,19 @@ Bounded orchestration and synthesis turn that selection into a candidate decisio
 
 <p align="center">
 <picture>
+<source media="(min-width: 900px) and (prefers-color-scheme: dark)" srcset="../../figures/F02-wide-dark.svg">
+<source media="(min-width: 900px)" srcset="../../figures/F02-wide-light.svg">
 <source media="(prefers-color-scheme: dark)" srcset="../../figures/F02-dark.svg">
-<img src="../../figures/F02-light.svg" alt="A main path of nine numbered steps from sources to review of one decision packet, with a separate mandatory continuity path, a separate action path, a reassessment and invalidation loop, and a control plane that constrains every stage." width="860">
+<img src="../../figures/F02-light.svg" alt="A main path of nine numbered steps from sources to review of one decision packet; a separate mandatory continuity path that branches from the registry; a separate action path that starts from the review; a reassessment and invalidation step that receives corrections and outcomes; and a control plane that constrains every stage.">
 </picture>
 </p>
 
-
-*Open at full size: [light](../../figures/F02-light.svg) · [dark](../../figures/F02-dark.svg).*
+*Wide drawing for a large screen: [light](../../figures/F02-wide-light.svg) · [dark](../../figures/F02-wide-dark.svg).*
 
 <details>
 <summary>Text description of Figure F02</summary>
 
-The main path, on the left, has nine steps: sources, admission, the registry of immutable versions (C02), authorized retrieval (C01), relevance and coverage, the selection manifest (C03), bounded synthesis, release validation, and review of the decision packet (C04) by the Decision Owner. A separate mandatory continuity path leaves the registry and runs through deterministic detection and an authorized notification queue to acknowledgement or escalation; acknowledgement is receipt, not resolution, and the path has no LLM dependency. A separate action path starts from the review step: an exact approved proposal (C05) or bounded grant (C06) reaches an executor that performs current checks, then an authoritative target, then a verified receipt (C07). The outcome returns to a reassessment and invalidation step, which also receives corrections, revocations, late evidence and challenges, and returns to the registry. A control plane constrains every stage and path: identity, authorization, purpose, domain policy, inventory, freshness, budgets and delegation.
+The main path has nine steps: sources, admission, the registry of immutable versions (C02), authorized retrieval in a context (C01), relevance and coverage, the selection manifest (C03), bounded synthesis, release validation, and review of the decision packet (C04) by the Decision Owner. A separate mandatory continuity path branches from the registry (step 3) and runs through deterministic detection and an authorized notification queue to acknowledgement or escalation; acknowledgement is receipt, not resolution, and the path has no LLM dependency. A separate action path starts from the review step: an approval of an exact proposal (C05), or a bounded grant (C06), reaches the executor, or action gateway, which checks permission and limits at the time, then an authoritative target, then a verified receipt (C07). The outcome returns to a reassessment and invalidation step, which also receives corrections, revocations, late evidence and challenges, and returns to the registry; the derivatives, packets and pending approvals that it affects stop being current. A control plane constrains every stage and path: identity, authorization, purpose, domain policy, inventory, freshness, budgets and delegation. On a wide screen the two paths sit beside the main path, level with the step they start from, and a key names the colors and the two kinds of line; on a narrow screen the paths are stacked below it.
 
 [All figures and their descriptions](../../figures/README.md#f02-reference-architecture)
 
