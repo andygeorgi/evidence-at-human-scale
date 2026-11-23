@@ -8,7 +8,7 @@ The distinction matters because the human should not have to reconcile an ungove
 
 ## Start with zero specialists
 
-Begin with the native or current workflow, deterministic grouping and templates, and simple synthesis with zero specialist agents. A specialist needs a documented task, permission, or isolation need and an evaluated comparison against matched baselines. An evidence gap can justify a task, not new authority. Specialist count is not a quality metric, and specialization must not become a prerequisite for basic control.
+Begin with the native or current workflow, deterministic grouping and templates, and simple synthesis with zero specialist agents. A specialist needs a documented task, permission, or isolation need and an evaluated comparison against matched baselines (the same task, risk, scope and acceptance criteria, handled by a simpler alternative). An evidence gap can justify a task, not new authority. Specialist count is not a quality metric, and specialization must not become a prerequisite for basic control.
 
 An optional specialist has bounded inputs, purpose, output contract, fanout, calls, tokens, elapsed time, retries, and spend. These limits apply across the task, not independently per child. Its outputs are untrusted data returned through admission. A deadline, no response, or partial result cannot enlarge authority or turn a retry into a new mandate.
 

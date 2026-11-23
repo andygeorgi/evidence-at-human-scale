@@ -65,6 +65,6 @@ Two summaries derived from S01/v1 share a root. Their agreement is not independe
 
 Derivation ancestry is directed and acyclic. Contradiction, supersession, validation, and invalidation are separately typed relationships, not extra ancestry edges; each names the asserting actor. A majority or newer timestamp does not automatically settle an authority conflict. Detailed group, type, cardinality, and field rules are in the [evidence semantics](../../architecture/evidence-semantics.md), the [lineage, selection and disclosure](../../architecture/lineage-selection-disclosure.md) reference and the [contract reference](../../contracts/README.md).
 
-**See it working:** the [worked example](../../examples/README.md) contains a source record, two common-origin summaries, a conflicting record and a late correction, all validated against the schema.
+**See it working:** [example 03](../../examples/03-lineage-and-common-origin/README.md) has a source record, two common-origin summaries and a conflicting record, and [example 11](../../examples/11-late-correction/README.md) adds a late correction. All of it is validated against the schema.
 
 [← 3. A governed context](03-governed-context.md) · [Paper contents](README.md) · [Next: context and attention →](05-context-and-attention.md)

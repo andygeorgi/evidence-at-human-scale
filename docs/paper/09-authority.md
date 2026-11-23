@@ -87,6 +87,6 @@ An action starts as submitted, after the gateway has passed every check and rese
 
 External targets may not support atomic checks and business commit. Declare the weaker guarantees, race windows, reservation and reconciliation behavior, and residual risk. Local idempotency is not exactly-once business execution. If shared atomic grant-limit enforcement is unsupported, disable unattended operations that the domain owner has not explicitly accepted; irreversible effects cannot be undone by software rollback.
 
-**See it working:** the [worked example](../../examples/README.md) includes a bounded delegation, a proposal the delegation does not cover, a blocked action with a verified no-effect receipt, and an unknown outcome that keeps its reservation.
+**See it working:** [example 07](../../examples/07-authority-and-delegation/README.md) has a bounded delegation, an exact approval, and a proposal the delegation does not cover; [example 08](../../examples/08-blocked-action/README.md) has a blocked action with a verified no-effect receipt; and [example 09](../../examples/09-unknown-outcome/README.md) has an unknown outcome that keeps its reservation.
 
 [← 8. Uncertainty](08-uncertainty.md) · [Paper contents](README.md) · [Next: degraded operation →](10-degraded-operation.md)

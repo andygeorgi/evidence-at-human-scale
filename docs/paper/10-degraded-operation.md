@@ -38,6 +38,6 @@ Corrections and revocations invalidate affected current derivatives and pending 
 
 Late evidence and challenges trigger governed reassessment, not automatic ground truth or automatic training. Recovery belongs to named operational roles: source, registry, access, synthesis, executor, reconciliation, and domain owner as applicable. The [action and degradation reference](../../architecture/action-and-degradation.md) retains the full failure table, including partial effects, notification, recovery, and compensation responsibilities.
 
-**See it working:** the [degraded-mode example](../../examples/README.md) runs the same decision with a dependency down and shows what the packet, the assistant and the gateway each do.
+**See it working:** the [degraded-mode example](../../examples/10-degraded-modes/README.md) runs the same decision with a dependency down and shows what the packet, the assistant and the gateway each do.
 
 [← 9. Authority](09-authority.md) · [Paper contents](README.md) · [Next: costs and adaptation →](11-costs-and-adaptation.md)

@@ -75,6 +75,6 @@ For an expected input that is not in front of the reader, ask six questions in o
 
 An explicit uncertainty model also makes recovery accountable. It directs the source owner, access owner, assessor, or operator toward the actual reason for the limitation. That does not guarantee recovery. It prevents a smooth summary from disguising why a consequential choice remains unsupported.
 
-**See it working:** one synthetic decision packet in the [worked example](../../examples/README.md) carries all seven labels, each with the reference the contract requires. The schema rejects, for instance, a `not_retrieved` entry that does not point to a completed retrieval.
+**See it working:** one synthetic decision packet ([example 05](../../examples/05-decision-packet/README.md)) carries all seven labels, each with the reference the contract requires, and the [selection it rests on](../../examples/04-selection-and-missingness/README.md) does too. The schema rejects, for instance, a `not_retrieved` entry that does not point to a completed retrieval.
 
 [← 7. One interaction](07-one-interaction.md) · [Paper contents](README.md) · [Next: authority →](09-authority.md)

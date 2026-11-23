@@ -18,7 +18,7 @@ The rejected alternatives are therefore meaningful: agent-first organization, un
 
 A deployment keeps the evidence and selection contracts, lineage, information-flow controls, bounded orchestration, one review interaction, independent mandatory routes, and separate action authority. It supplies domain parameters: source authority, jurisdiction, obligations, severity, freshness, safe states, thresholds, risk acceptance, and who can approve or execute.
 
-Each parameter needs an owner, typed value or explicit unresolved state, units and scope, rationale, evidence or policy, review and approval state, and relevant version. An unresolved parameter blocks the decision that depends on it. It does not license an assistant to invent a value. The [domain parameter catalogue](../../evaluation/catalogue/README.md) lists the 47 parameters this architecture leaves to domain owners; all are unresolved.
+Each parameter needs an owner, typed value or explicit unresolved state, units and scope, rationale, evidence or policy, review and approval state, and relevant version. An unresolved parameter blocks the decision that depends on it. It does not license an assistant to invent a value. The [domain parameter catalogue](../../evaluation/catalogue/README.md) lists the 47 parameters this architecture leaves to domain owners; all are UNSET.
 
 ## Three parallel illustrations
 
