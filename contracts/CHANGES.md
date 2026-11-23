@@ -23,7 +23,7 @@ First public candidate. The definitions were carried over from an earlier review
 
 ### Validation surface
 
-| | |
+| Property | Value |
 |---|---|
 | File | `schemas/contracts-v1.schema.json` |
 | SHA-256 of the file | `cda846c6af5ceb83deec6a98eee91db4a9797e07c93b3a189abacc72f686a96e` (741,225 bytes) |
