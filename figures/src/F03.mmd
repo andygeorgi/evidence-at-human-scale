@@ -1,0 +1,28 @@
+%%{init: {"flowchart": {"wrappingWidth": 260, "htmlLabels": true, "nodeSpacing": 34, "rankSpacing": 70}}}%%
+flowchart LR
+    accTitle: Common-source agreement is not corroboration
+    accDescr: Source record S01 version 1 is the single parent of two model inferences, M01 from Agent A and M02 from Agent B, and both feed decision packet P01 version 1. Their agreement is common origin, not independent corroboration. A conflicting source record S02 version 1 also reaches the packet. Dashed arrows are typed relationships, not ancestry: S02 contradicts S01, correction S01 version 2 supersedes S01 version 1 and invalidates M01 and M02, and a scoped validation V01 assesses only S01 version 1.
+    S01["<b>S01/v1</b><br/>source record"]:::src
+    subgraph D["Derived from S01/v1: one origin"]
+        direction TB
+        M01["<b>M01/v1</b> model inference<br/>Agent A"]:::inf
+        M02["<b>M02/v1</b> model inference<br/>Agent B"]:::inf
+    end
+    P01["<b>P01/v1</b><br/>decision packet<br/>the conflict stays visible"]:::pkt
+    S02["<b>S02/v1</b><br/>source record<br/>conflicting assertion"]:::src
+    S01b["<b>S01/v2</b><br/>correction"]:::warn
+    V01["<b>V01/v1</b><br/>scoped validation<br/>of S01/v1 only"]:::note
+    S01 --> M01
+    S01 --> M02
+    M01 --> P01
+    M02 --> P01
+    S02 --> P01
+    S02 -. "contradiction" .- S01
+    S01b -. "supersession" .-> S01
+    S01b -. "invalidation" .-> D
+    V01 -. "validation" .-> S01
+    classDef src fill:#E8F1FB,stroke:#2F6DB5,color:#0B2540
+    classDef inf fill:#FFF1D6,stroke:#B26A00,color:#3D2500
+    classDef pkt fill:#E6F4EA,stroke:#2E7D4F,color:#0F2E1B
+    classDef warn fill:#FBE4E4,stroke:#B3261E,color:#3D0A07
+    classDef note fill:#F4F4F4,stroke:#777777,color:#222222
