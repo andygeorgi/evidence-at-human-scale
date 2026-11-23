@@ -1106,6 +1106,11 @@ def scenario_files(model):
                 entry("Hold at 10:03 under the standing hold grant", "The hold is inside the class: permitted action, any invoice, permitted parameters, allowance unused.", T_HOLD_SUBMIT, HOLDP, HOLD),
                 entry("A second hold of the same invoice at 10:10", "The first hold already moved the invoice out of the open state, so the precondition no longer holds.", "2026-11-23T10:10:00Z", HOLDP, HOLD),
                 entry("The hold grant used to release a payment", "A grant covers exactly what it names. Release is not a hold, and its parameters are not the grant's parameters.", "2026-11-23T10:45:00Z", REL1, HOLD),
+                entry("A hold on a purchase order, which the class does not cover", "The class covers invoices. A different kind of target is outside it, even for the same action.", T_HOLD_SUBMIT, HOLDP, HOLD,
+                      [{"on": "proposal", "path": "/action/exact_target/entity_type", "value": "purchase_order"}]),
+                entry("A precondition that nobody defined", "A precondition with no rule cannot be shown to hold, so the action does not proceed.", T_HOLD_SUBMIT, HOLDP, HOLD,
+                      [{"on": "proposal", "path": "/action/preconditions/0/condition_id", "value": "PRE-UNDEFINED-9"}]),
+                entry("An attempt timed before the grant was issued", "A grant is not valid before its issuance time: clock skew or a replayed request.", "2026-11-23T05:59:00Z", HOLDP, HOLD),
             ],
         },
         "08-blocked-action/gateway-scenarios.json": {
