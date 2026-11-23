@@ -216,8 +216,8 @@ def f06(theme):
     a, b = 380 - 230, 0
     c.path([(150, base), (150, base + 38), (626, base + 38), (626, base)])
     c.path([(98, base), (98, base + 76), (866, base + 76), (866, base)])
-    c.text(388, base + 58, "authoritative reconciliation", 12.5, False, c.p["muted"])
-    c.text(482, base + 96, "authoritative reconciliation", 12.5, False, c.p["muted"])
+    c.text(388, base + 58, "authoritative reconciliation: effect confirmed", 12.5, False, c.p["muted"])
+    c.text(482, base + 96, "authoritative reconciliation: no effect confirmed", 12.5, False, c.p["muted"])
     c.text(500, 478, "Amber: unresolved. Allowance stays reserved or charged, there is no blind retry,", 13.5, True, c.p["text"])
     c.text(500, 498, "and a timeout or lease expiry never restores allowance. Green: verified and terminal.", 13.5, True, c.p["text"])
     c.text(500, 522, "Allowance is restored only on authoritative reconciliation, never by assuming that silence means no effect.", 12.5, False, c.p["muted"])

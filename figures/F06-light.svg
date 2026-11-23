@@ -35,8 +35,8 @@
 <path d="M484.0 234.0 L516.0 234.0" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <path d="M150.0 300.0 L150.0 338.0 L626.0 338.0 L626.0 300.0" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <path d="M98.0 300.0 L98.0 376.0 L866.0 376.0 L866.0 300.0" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<text x="388.0" y="358.0" font-size="12.5" text-anchor="middle" fill="#57606a">authoritative reconciliation</text>
-<text x="482.0" y="396.0" font-size="12.5" text-anchor="middle" fill="#57606a">authoritative reconciliation</text>
+<text x="388.0" y="358.0" font-size="12.5" text-anchor="middle" fill="#57606a">authoritative reconciliation: effect confirmed</text>
+<text x="482.0" y="396.0" font-size="12.5" text-anchor="middle" fill="#57606a">authoritative reconciliation: no effect confirmed</text>
 <text x="500.0" y="478.0" font-size="13.5" text-anchor="middle" font-weight="700" fill="#1b1f24">Amber: unresolved. Allowance stays reserved or charged, there is no blind retry,</text>
 <text x="500.0" y="498.0" font-size="13.5" text-anchor="middle" font-weight="700" fill="#1b1f24">and a timeout or lease expiry never restores allowance. Green: verified and terminal.</text>
 <text x="500.0" y="522.0" font-size="12.5" text-anchor="middle" fill="#57606a">Allowance is restored only on authoritative reconciliation, never by assuming that silence means no effect.</text>
