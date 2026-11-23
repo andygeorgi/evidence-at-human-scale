@@ -9,13 +9,13 @@ flowchart TB
     Q4("<b>4</b> Did the source or dependency answer?"):::q
     Q5("<b>5</b> Did a scoped retrieval complete?"):::q
     Q6("<b>6</b> Was absence observed, with method, time and complete coverage?"):::q
-    L1["<b>stale</b>"]:::label
-    L2["<b>not_assessed</b>"]:::label
-    L3["<b>inaccessible</b><br/>reason and existence disclosed only when permitted"]:::label
-    L4["<b>unavailable</b><br/>not the same as denied"]:::label
-    L5["<b>missing</b><br/>expected, not obtained; reason may be unknown"]:::label
-    L6["<b>negative</b><br/>an adequately scoped observation of absence"]:::label
-    L7["<b>not_retrieved</b><br/>a completed retrieval found nothing; not evidence of absence"]:::label
+    L1["<b>stale</b>"]:::result
+    L2["<b>not_assessed</b>"]:::result
+    L3["<b>inaccessible</b><br/>reason and existence disclosed only when permitted"]:::result
+    L4["<b>unavailable</b><br/>not the same as denied"]:::result
+    L5["<b>missing</b><br/>expected, not obtained; reason may be unknown"]:::result
+    L6["<b>negative</b><br/>an adequately scoped observation of absence"]:::result
+    L7["<b>not_retrieved</b><br/>a completed retrieval found nothing; not evidence of absence"]:::result
     Q0 --> Q1
     Q1 -->|"yes"| L1
     Q1 -->|"no"| Q2
@@ -31,4 +31,4 @@ flowchart TB
     Q6 -->|"no"| L7
     classDef start fill:#F4F4F4,stroke:#777777,color:#222222
     classDef q fill:#E8F1FB,stroke:#2F6DB5,color:#0B2540
-    classDef label fill:#FFF1D6,stroke:#B26A00,color:#3D2500
+    classDef result fill:#FFF1D6,stroke:#B26A00,color:#3D2500

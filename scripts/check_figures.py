@@ -18,6 +18,8 @@ import sync_figures  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 REQUIRED = ("id", "title", "caption", "alt", "description", "kind", "used_in")
+# A classDef with one of these names would restyle Mermaid's own elements, for example the labels on arrows.
+MERMAID_CLASSES = {"label", "edgelabel", "node", "nodes", "cluster", "edge", "edgepath", "edgepaths", "marker", "root", "output", "flowchart", "labelbkg", "nodelabel", "default", "note", "actor", "messagetext", "loopline", "section"}
 
 
 def run_tool(args):
@@ -74,6 +76,9 @@ def check():
             for line in text.splitlines():
                 if line.strip().startswith("classDef") and not all(k in line for k in ("fill:", "stroke:", "color:")):
                     problems.append("%s: %s has a classDef without fill, stroke and text color, which is unsafe in dark mode: %s" % (fid, source.name, line.strip()))
+                named = re.match(r"\s*classDef\s+(\w+)", line)
+                if named and named.group(1).lower() in MERMAID_CLASSES:
+                    problems.append("%s: %s names a class %r, which is also a CSS class Mermaid uses for its own elements; the colors would leak into edge labels and clusters" % (fid, source.name, named.group(1)))
     problems += ["gallery/documents: " + p for p in sync_figures.sync(check=True)]
     for label, args in (("Mermaid renders", ["figures/src/render_mermaid.py", "--check"]), ("hand-drawn SVGs", ["figures/src/svg_figures.py", "--check"])):
         code, out = run_tool(args)

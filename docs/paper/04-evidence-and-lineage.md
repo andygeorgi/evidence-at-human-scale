@@ -31,7 +31,7 @@ flowchart LR
     P01["<b>P01/v1</b><br/>decision packet<br/>the conflict stays visible"]:::pkt
     S02["<b>S02/v1</b><br/>source record<br/>conflicting assertion"]:::src
     S01b["<b>S01/v2</b><br/>correction"]:::warn
-    V01["<b>V01/v1</b><br/>scoped validation<br/>of S01/v1 only"]:::note
+    V01["<b>V01/v1</b><br/>scoped validation<br/>of S01/v1 only"]:::plain
     S01 --> M01
     S01 --> M02
     M01 --> P01
@@ -45,7 +45,7 @@ flowchart LR
     classDef inf fill:#FFF1D6,stroke:#B26A00,color:#3D2500
     classDef pkt fill:#E6F4EA,stroke:#2E7D4F,color:#0F2E1B
     classDef warn fill:#FBE4E4,stroke:#B3261E,color:#3D0A07
-    classDef note fill:#F4F4F4,stroke:#777777,color:#222222
+    classDef plain fill:#F4F4F4,stroke:#777777,color:#222222
 ```
 
 <details>

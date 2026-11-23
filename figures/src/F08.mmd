@@ -9,7 +9,7 @@ flowchart TB
     B1 -->|"is the next step better on matched tasks?"| B2
     B2 -->|"better on matched tasks?"| B3
     B3 -->|"a measured, matched need?"| B4
-    M["<b>Measure</b> correctness · omissions · evidence actually inspected · decision quality · time · workload<br/>Not fluency. Not how many agents agree."]:::note
+    M["<b>Measure</b> correctness · omissions · evidence actually inspected · decision quality · time · workload<br/>Not fluency. Not how many agents agree."]:::plain
     N["<b>No evaluation result is claimed.</b> Every comparison here is NOT RUN."]:::warn
     B4 ~~~ M
     M ~~~ N
@@ -18,4 +18,4 @@ flowchart TB
     classDef pkt fill:#E6F4EA,stroke:#2E7D4F,color:#0F2E1B
     classDef own fill:#EFE9F7,stroke:#6A4BA1,color:#24133F
     classDef warn fill:#FFF1D6,stroke:#B26A00,color:#3D2500
-    classDef note fill:#F4F4F4,stroke:#777777,color:#222222
+    classDef plain fill:#F4F4F4,stroke:#777777,color:#222222
