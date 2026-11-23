@@ -46,6 +46,23 @@ def lint_mermaid(fid, name, text):
     return problems
 
 
+def kind_table_problems(figures):
+    """The 'How the figures are made' table in figures/README.md must list every figure under the kind figures.json gives it."""
+    text = (REPO / "figures" / "README.md").read_text(encoding="utf-8")
+    problems = []
+    for kind, label in (("mermaid", "Mermaid"), ("svg", "Hand-drawn SVG"), ("table", "Table")):
+        row = re.search(r"^\|\s*\*\*%s\*\*\s*\|([^|]*)\|" % re.escape(label), text, re.M)
+        if not row:
+            problems.append("figures/README.md: the 'How the figures are made' table has no %s row" % label)
+            continue
+        listed = set(re.findall(r"F\d\d", row.group(1)))
+        expected = {f["id"] for f in figures if f.get("kind") == kind}
+        if listed != expected:
+            problems.append("figures/README.md: the table lists %s as %s, but figures.json says %s" % (
+                label, ", ".join(sorted(listed)) or "nothing", ", ".join(sorted(expected)) or "nothing"))
+    return problems
+
+
 def check():
     problems = []
     figures, banner = sync_figures.load()
@@ -88,6 +105,7 @@ def check():
         if kind == "mermaid" and source.exists():
             problems += lint_mermaid(fid, source.name, source.read_text(encoding="utf-8"))
     problems += ["gallery/documents: " + p for p in sync_figures.sync(check=True)]
+    problems += kind_table_problems(figures)
     for label, args in (("Mermaid renders", ["figures/src/render_mermaid.py", "--check"]), ("hand-drawn SVGs", ["figures/src/svg_figures.py", "--check"])):
         code, out = run_tool(args)
         if code:

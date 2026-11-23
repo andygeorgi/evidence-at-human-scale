@@ -60,6 +60,12 @@ class Metadata(unittest.TestCase):
         for phrase in ("we measured", "improved by", "% faster", "significantly better", "outperforms"):
             self.assertNotIn(phrase, text)
 
+    def test_the_how_made_table_lists_each_figure_under_its_kind(self):
+        figures = sync_figures.load()[0]
+        self.assertEqual(figs.kind_table_problems(figures), [])
+        moved = [dict(f, kind="svg") if f["id"] == "F05" else f for f in figures]
+        self.assertEqual(len(figs.kind_table_problems(moved)), 2, "F05 would be missing from the Mermaid row and extra in the SVG row")
+
 
 if __name__ == "__main__":
     unittest.main()

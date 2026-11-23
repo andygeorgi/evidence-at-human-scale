@@ -8,11 +8,11 @@ Each figure has a caption, a short alt text and a long description. They appear 
 
 | Kind | Figures | Source | In the documents |
 |---|---|---|---|
-| **Mermaid** | F01, F03, F05, F08, F09, F10, F11 | `figures/src/F*.mmd` | The Mermaid source sits in the page, and GitHub renders it, in the reader's light or dark theme. |
-| **Hand-drawn SVG** | F02, F04, F06, and the banner | [`figures/src/svg_figures.py`](src/svg_figures.py) | A picture with a light and a dark variant, each on an opaque background, so it stays legible on any page. |
+| **Mermaid** | F01, F03, F05, F08, F10, F11 | `figures/src/F*.mmd` | The Mermaid source sits in the page, and GitHub renders it, in the reader's light or dark theme. |
+| **Hand-drawn SVG** | F02, F04, F06, F09, and the banner | [`figures/src/svg_figures.py`](src/svg_figures.py) | A picture with a light and a dark variant, each on an opaque background, so it stays legible on any page. |
 | **Table** | F07 | [`figures/figures.json`](figures.json) | A Markdown table. |
 
-Mermaid figures also have rendered SVGs (`F01-light.svg`, `F01-dark.svg`, and so on), for this gallery and for anyone who needs a picture. They use HTML labels, so view them in a browser: some non-browser SVG tools draw them without text. Hand-drawn figures were laid out by script because Mermaid cannot place a nine-step path beside two other paths legibly.
+Mermaid figures also have rendered SVGs (`F01-light.svg`, `F01-dark.svg`, and so on), for this gallery and for anyone who needs a picture. They use HTML labels, so view them in a browser: some non-browser SVG tools draw them without text. Hand-drawn figures were laid out by script because Mermaid cannot place a nine-step path beside two other paths legibly, or keep a six-question decision list on one vertical spine.
 
 All colors are paired with a text label. No meaning is carried by color alone, and every fill is paired with dark text of high contrast.
 
