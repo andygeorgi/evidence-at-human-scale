@@ -1,0 +1,92 @@
+import copy
+import unittest
+
+import support  # noqa: F401
+
+from eahs import semantics
+from eahs.cases import check_cases
+from eahs.gateway import evaluate_commit, ledger_from_receipts, ts
+from eahs.patch import apply_ops
+from eahs.scenarios import evaluate_entry, expectation
+
+
+class Baseline(unittest.TestCase):
+    def test_the_unmutated_example_set_has_no_findings(self):
+        self.assertEqual([f.format() for f in semantics.run_all(support.example_model())], [])
+
+    def test_every_evaluation_case_produces_exactly_its_declared_codes(self):
+        problems, count = check_cases(support.example_model(), support.schema(), support.read_json("13-evaluation-cases/cases.json"), support.EXAMPLES / "13-evaluation-cases" / "cases.json")
+        self.assertEqual([p.format() for p in problems], [])
+        self.assertGreaterEqual(count, 30)
+
+    def test_every_check_family_is_exercised_by_a_case(self):
+        declared = {code for case in support.read_json("13-evaluation-cases/cases.json")["cases"] for code in case["expect"]}
+        needed = {"SCH002", "REF001", "REF002", "REF003", "REF004", "REF007", "LIN001", "LIN002", "LIN003", "KIND001", "KIND002", "COR001", "COR002",
+                  "LIFE002", "LIFE003", "LIFE004", "LIFE005", "MISS001", "MISS002", "MISS003", "MISS005", "PKT001", "PKT002", "AUTH004", "AUTH005",
+                  "AUTH007", "ACC002", "ACC003", "ACC004", "DISC001"}
+        self.assertEqual(sorted(needed - declared), [])
+
+
+class GatewayStory(unittest.TestCase):
+    """The scenario the examples tell, stated as assertions so that a change to the check shows up here."""
+
+    def evaluate(self, proposal, grant, at, overrides=None, ledger="from_receipts"):
+        entry = {"proposal": {"id": proposal[0], "version": proposal[1]}, "grant": {"id": grant[0], "version": grant[1]}, "at": at, "ledger": ledger}
+        if overrides:
+            entry["overrides"] = overrides
+        return expectation(evaluate_entry(support.example_model(), entry))
+
+    def test_the_queued_release_is_blocked_after_the_correction(self):
+        result = self.evaluate(("ACT-REL-0417", "v1"), ("GRT-APPR-0417-A", "v1"), "2026-11-23T16:00:00Z")
+        self.assertEqual(result["decision"], "BLOCK")
+        self.assertEqual(result["codes"], ["GRANT_REVOKED", "EVIDENCE_NOT_CURRENT", "EVIDENCE_STALE", "PRECONDITION_FAILED"])
+
+    def test_the_corrected_release_passes(self):
+        self.assertEqual(self.evaluate(("ACT-REL-0417", "v2"), ("GRT-APPR-0417-B", "v1"), "2026-11-23T16:00:05Z")["decision"], "ALLOW")
+
+    def test_an_unknown_outcome_keeps_its_reservation_so_a_retry_is_blocked(self):
+        result = self.evaluate(("ACT-REL-0417", "v2"), ("GRT-APPR-0417-B", "v1"), "2026-11-23T16:10:00Z")
+        self.assertEqual(result["codes"], ["CUMULATIVE_LIMIT"])
+
+    def test_the_reservation_is_not_released_by_the_passage_of_time(self):
+        result = self.evaluate(("ACT-REL-0417", "v2"), ("GRT-APPR-0417-B", "v1"), "2026-11-23T16:19:59Z")
+        self.assertIn("CUMULATIVE_LIMIT", result["codes"])
+
+    def test_failing_closed_when_revocation_cannot_be_established(self):
+        result = self.evaluate(("ACT-REL-0417", "v2"), ("GRT-APPR-0417-B", "v1"), "2026-11-23T16:00:05Z",
+                               [{"on": "grant", "path": "/limits_lifecycle/revocation/state", "value": "check_unavailable"}], ledger="empty")
+        self.assertEqual(result["codes"], ["REVOCATION_UNVERIFIED"])
+
+    def test_a_lowered_limit_applies_at_the_next_commit_check(self):
+        amount = [{"on": "proposal", "path": "/action/typed_parameters/0/value", "value": 4200}]
+        before = self.evaluate(("ACT-REL-0417", "v2"), ("GRT-CLASS-LOWVAL", "v1"), "2026-11-23T14:20:00Z", amount)
+        after = self.evaluate(("ACT-REL-0417", "v2"), ("GRT-CLASS-LOWVAL", "v2"), "2026-11-23T14:40:00Z", amount)
+        self.assertEqual((before["decision"], after["codes"]), ("ALLOW", ["PER_ACTION_LIMIT"]))
+
+    def test_a_ledger_built_from_receipts_ignores_attempts_not_yet_known(self):
+        model = support.example_model()
+        early = ledger_from_receipts(model, ts("2026-11-23T16:00:05Z"))
+        self.assertEqual([e.grant_id for e in early], ["GRT-CLASS-HOLD"])
+
+    def test_the_decision_has_reasons_a_person_can_read(self):
+        model = support.example_model()
+        proposal, grant = model.get("C05", "ACT-REL-0417", "v1"), model.get("C06", "GRT-APPR-0417-A", "v1")
+        decision = evaluate_commit(model, proposal, grant, ts("2026-11-23T16:00:00Z"), [])
+        self.assertTrue(all(len(r.message) > 20 for r in decision.reasons))
+
+
+class Patch(unittest.TestCase):
+    def test_replace_add_remove_do_not_touch_the_original(self):
+        doc = {"a": [1, 2, {"b": "x"}], "c": {"d": 1}}
+        original = copy.deepcopy(doc)
+        out = apply_ops(doc, [{"op": "replace", "path": "/a/2/b", "value": "y"}, {"op": "add", "path": "/a/-", "value": 9}, {"op": "remove", "path": "/c/d"}])
+        self.assertEqual(out, {"a": [1, 2, {"b": "y"}, 9], "c": {}})
+        self.assertEqual(doc, original)
+
+    def test_a_bad_path_fails_instead_of_silently_doing_nothing(self):
+        with self.assertRaises(KeyError):
+            apply_ops({"a": 1}, [{"op": "replace", "path": "/missing", "value": 1}])
+
+
+if __name__ == "__main__":
+    unittest.main()
