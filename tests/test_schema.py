@@ -44,6 +44,15 @@ class Timestamps(unittest.TestCase):
         instance["times"]["ingestion"] = "2026-11-23T07:31:00"
         self.assertTrue(validate_instance(support.schema(), instance))
 
+    def test_the_message_names_the_bad_timestamp_and_not_an_alternative_the_value_never_aimed_at(self):
+        instance = support.read_json("01-source-records/c02-INV-2026-0417-v1.json")
+        instance["times"]["event"]["value"] = "2026-11-23T07:31:00"
+        findings = validate_instance(support.schema(), instance)
+        self.assertEqual(len(findings), 1)
+        self.assertIn("2026-11-23T07:31:00", findings[0].message)
+        self.assertIn("date-time", findings[0].message)
+        self.assertNotIn("'reason' is a required property", findings[0].message)
+
 
 class CommandLine(unittest.TestCase):
     def test_validate_examples_passes_on_the_committed_examples(self):

@@ -103,6 +103,25 @@ def _group_hint(schema: dict, contract_id: str, parts: list) -> str:
     return ""
 
 
+def _shown_error(error):
+    """For a failed oneOf/anyOf, report the alternative the instance was aiming at.
+
+    An alternative whose fixed property (const or enum, such as "state": "known") does not match was never the one
+    meant, so its complaints (a missing "reason", say) only mislead. If every alternative is ruled out, report as before.
+    """
+    if not error.context:
+        return error
+    by_alternative: dict = {}
+    for item in error.context:
+        by_alternative.setdefault(item.relative_schema_path[0], []).append(item)
+    aimed = []
+    for items in by_alternative.values():
+        ruled_out = any(i.validator in ("const", "enum") and len(i.relative_path) <= 1 for i in items)
+        if not ruled_out:
+            aimed += items
+    return best_match(aimed or list(error.context)) or error
+
+
 def validate_instance(schema: dict, instance, file: str = "", contract_id: Optional[str] = None) -> List[Finding]:
     """Validate one contract instance; return one Finding per distinct problem (empty list means structurally valid)."""
     cid = contract_id or (instance.get("contract_id") if isinstance(instance, dict) else None)
@@ -110,9 +129,7 @@ def validate_instance(schema: dict, instance, file: str = "", contract_id: Optio
         return [Finding("SCH001", "contract_id is missing or not one of C01-C07 (got %r)" % (cid,), file, doc="contracts/README.md")]
     findings: List[Finding] = []
     for error in sorted(validator_for(schema, cid).iter_errors(instance), key=lambda e: [str(p) for p in e.absolute_path]):
-        shown = best_match(error.context) if error.context else error
-        if shown is None:
-            shown = error
+        shown = _shown_error(error)
         parts = list(error.absolute_path)
         detail = shown.message
         if len(detail) > 220:
