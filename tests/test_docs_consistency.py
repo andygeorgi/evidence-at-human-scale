@@ -171,6 +171,23 @@ class CodeReference(unittest.TestCase):
         self.assertEqual([c for c in GATE_CODES if "`%s`" % c not in page], [])
 
 
+class AffiliationDisclosure(unittest.TestCase):
+    SENTENCE = ("The author is employed by Microsoft. The Azure mapping is one implementation example of the product-neutral architecture, "
+                "not a requirement to use Microsoft technology.")
+
+    def test_the_disclosure_is_where_a_reader_meets_the_azure_mapping(self):
+        for page in ("README.md", "architecture/azure-implementation-options.md", "docs/paper/13-implementation-options.md"):
+            body = text(page)
+            self.assertIn(self.SENTENCE, body, page)
+            self.assertIn("not an official Microsoft publication", body, page)
+
+    def test_the_azure_table_names_each_capability_without_a_product_name(self):
+        table = text("architecture/azure-implementation-options.md").split("| Capability needed |", 1)[1].split("\n\n", 1)[0]
+        rows = [line.split("|")[1].strip() for line in table.splitlines()[2:] if line.startswith("|")]
+        self.assertGreaterEqual(len(rows), 8)
+        self.assertEqual([r for r in rows if re.search(r"Azure|Microsoft|Foundry|Entra|Purview|Cosmos", r)], [])
+
+
 class OneVocabulary(unittest.TestCase):
     """Each concept has one name, a list that appears twice is the same list, and no page carries an authoring backlog."""
 

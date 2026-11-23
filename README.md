@@ -84,6 +84,7 @@ It does **not** mean that any real system, model or process is accountable, safe
 - **All example data is invented.** The buyer, the supplier, the amounts and the systems describe no real organization, person or system.
 - **Case-based, not a client commission.** The design comes from an architecture engagement on a written case about a public-sector fisheries-control authority in Iceland. The authority took no part, and nothing here is a statement by, about or on behalf of it. The observations that came out of the engagement are single dated cases and one internal, AI-assisted test; none measures this architecture's benefit ([claims and limits](docs/claims-and-limits.md) gives their limits).
 - **AI-assisted and not independently reviewed by people.** See [AI assistance](#ai-assistance).
+- **Affiliation.** The author is employed by Microsoft, and the optional Azure mapping is one example, not a requirement. See [Disclosure](#disclosure).
 
 The full statement is in [Claims and limits](docs/claims-and-limits.md).
 
@@ -112,6 +113,10 @@ The full statement is in [Claims and limits](docs/claims-and-limits.md).
 ## License
 
 **No license has been chosen yet.** Until the author adds a `LICENSE` file, no permission to copy, modify or redistribute this material is granted beyond what GitHub's Terms of Service allow for viewing and forking a public repository. The decision is open; see the [changelog](CHANGELOG.md#known-limitations-of-this-release-candidate).
+
+## Disclosure
+
+The author is employed by Microsoft. The Azure mapping is one implementation example of the product-neutral architecture, not a requirement to use Microsoft technology. This repository is not an official Microsoft publication, and nothing in it implies Microsoft endorsement. The mapping is in [implementation options](architecture/azure-implementation-options.md) and [chapter 13](docs/paper/13-implementation-options.md); every logical contract and path stands without it.
 
 ## AI assistance
 

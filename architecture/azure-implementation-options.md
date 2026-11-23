@@ -4,9 +4,11 @@
 
 ## Optional product mapping, not architecture
 
-Removing Azure leaves every logical contract and path intact. The following preserves source-scoped product options and qualifications revalidated on 17 November 2026 UTC, not new deployment findings. No tenant, region/model/tool/SDK configuration, permission-sync guarantee, cost, performance, ROI or production readiness has been validated. Product capabilities change; check the cited pages ([sources](../references/azure-sources.md)) before relying on any row.
+**Disclosure.** The author is employed by Microsoft. The Azure mapping is one implementation example of the product-neutral architecture, not a requirement to use Microsoft technology. This repository is not an official Microsoft publication, and nothing in it implies Microsoft endorsement.
 
-| Responsibility | Azure option | Qualification |
+Removing Azure leaves every logical contract and path intact. The first column of the table names the capability the architecture needs, in product-neutral terms; the second names one Azure option for it. A different product with an equivalent capability could fill the row, and it would need its own qualification check. The following preserves source-scoped product options and qualifications revalidated on 17 November 2026 UTC, not new deployment findings. No tenant, region/model/tool/SDK configuration, permission-sync guarantee, cost, performance, ROI or production readiness has been validated. Product capabilities change; check the cited pages ([sources](../references/azure-sources.md)) before relying on any row.
+
+| Capability needed | One Azure option | Qualification |
 | --- | --- | --- |
 | Transport | Event Grid / Event Hubs / Service Bus | Discrete events / streaming / work respectively. Broker/session delivery and transactions do not guarantee exactly-once external business effects; settlement can fail after processing. AZ01. |
 | Compute/synthesis | App Service / Container Apps; Azure OpenAI via Microsoft Foundry | Validate region/model/tool/SDK/network compatibility. Core portal GA does not establish blanket hosted-runtime maturity. AZ02. |
