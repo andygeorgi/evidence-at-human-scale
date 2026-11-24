@@ -30,10 +30,13 @@ class Finding:
     doc: str = ""
     severity: str = ERROR
     extra: dict = field(default_factory=dict)
+    hint: str = ""
 
     def format(self) -> str:
         where = self.file + (" " + self.location if self.location else "")
         text = "[%s] %s%s" % (self.code, self.message, "  (%s)" % where.strip() if where.strip() else "")
+        if self.hint:
+            text += "\n        fix: %s" % self.hint
         if self.doc:
             text += "\n        read: %s" % self.doc
         return text

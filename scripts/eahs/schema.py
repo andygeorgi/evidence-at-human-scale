@@ -128,6 +128,7 @@ def validate_instance(schema: dict, instance, file: str = "", contract_id: Optio
     if cid not in CONTRACT_DEFS:
         return [Finding("SCH001", "contract_id is missing or not one of C01-C07 (got %r)" % (cid,), file, doc="contracts/README.md")]
     findings: List[Finding] = []
+    seen = set()
     for error in sorted(validator_for(schema, cid).iter_errors(instance), key=lambda e: [str(p) for p in e.absolute_path]):
         shown = _shown_error(error)
         parts = list(error.absolute_path)
@@ -137,6 +138,10 @@ def validate_instance(schema: dict, instance, file: str = "", contract_id: Optio
         hint = _group_hint(schema, cid, parts)
         where = _pointer(parts)
         message = detail if not hint else "%s [%s]" % (detail, hint)
+        # The same constraint can be reached through two branches of the schema; report each problem once.
+        if (message, where) in seen:
+            continue
+        seen.add((message, where))
         findings.append(Finding("SCH002", message, file, where, doc_for_contract(cid)))
     return findings
 

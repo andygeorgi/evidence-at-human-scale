@@ -1,3 +1,4 @@
+import re
 import subprocess
 import sys
 import unittest
@@ -54,11 +55,47 @@ class Timestamps(unittest.TestCase):
         self.assertNotIn("'reason' is a required property", findings[0].message)
 
 
+class Diagnostics(unittest.TestCase):
+    def test_no_embedded_invalid_example_reports_the_same_finding_twice(self):
+        schema = support.schema()
+        for entry in schema["x-documentation-examples"]:
+            findings = validate_instance(schema, entry["instance"])
+            keys = [(f.code, f.message, f.location) for f in findings]
+            self.assertEqual(len(keys), len(set(keys)), entry["case_id"])
+            self.assertTrue(findings, "%s is documented as invalid but nothing was reported" % entry["case_id"])
+
+
+class SchemaReadme(unittest.TestCase):
+    """The code in schemas/README.md is documentation that a reader will paste, so it has to run."""
+
+    def snippet(self):
+        text = (support.REPO / "schemas" / "README.md").read_text(encoding="utf-8")
+        blocks = re.findall(r"```python\n(.*?)\n```", text, re.S)
+        self.assertEqual(len(blocks), 1)
+        return blocks[0]
+
+    def run_snippet(self, code):
+        done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, encoding="utf-8", cwd=str(support.REPO))
+        return done.returncode, done.stdout.strip(), done.stderr.strip()
+
+    def test_the_snippet_runs_from_the_repository_root_and_says_valid(self):
+        code, out, err = self.run_snippet(self.snippet())
+        self.assertEqual((code, out), (0, "valid"), err)
+
+    def test_the_snippet_reports_the_first_problem_of_an_invalid_instance(self):
+        # an instance that is not an evidence record at all
+        broken = self.snippet().replace('instance = json.load(open("examples/01-source-records/c02-INV-2026-0417-v1.json", encoding="utf-8"))', 'instance = {"contract_id": "C02"}')
+        self.assertNotEqual(broken, self.snippet())
+        code, out, err = self.run_snippet(broken)
+        self.assertEqual(code, 0, err)
+        self.assertNotEqual(out, "valid")
+
+
 class CommandLine(unittest.TestCase):
     def test_validate_examples_passes_on_the_committed_examples(self):
         done = subprocess.run([sys.executable, str(support.SCRIPTS / "validate_examples.py")], capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("All 6 stages passed.", done.stdout)
+        self.assertIn("Result: PASS. All 6 stages passed", done.stdout)
 
     def test_validate_examples_fails_loudly_on_a_broken_example(self):
         import shutil

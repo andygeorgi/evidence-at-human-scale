@@ -65,6 +65,10 @@ class Registry:
     relationship_types: list = field(default_factory=list)
     protected_terms: list = field(default_factory=list)
     target_states: list = field(default_factory=list)
+    #: what each requester may be told about a source they cannot read ("record_id@version" -> decision)
+    permission_decisions: dict = field(default_factory=dict)
+    #: who holds which role, which roles one person may hold together, and the log of human reviews
+    accountability: dict = field(default_factory=dict)
     raw: dict = field(default_factory=dict)
 
     def policy(self, policy_id: str, version: str) -> Optional[dict]:
@@ -76,6 +80,8 @@ class Model:
     instances: Dict[Key, Instance]
     registry: Registry
     root: Path
+    #: JSON files that were read but are not contract instances (raw exports, scenario files, responses)
+    ignored: List[str] = field(default_factory=list)
 
     def get(self, contract: str, id_: str, version: str) -> Optional[Instance]:
         return self.instances.get((contract, id_, version))
@@ -115,6 +121,8 @@ def registry_from_dict(raw: dict) -> Registry:
         relationship_types=raw.get("relationship_types", []),
         protected_terms=raw.get("protected_terms", []),
         target_states=raw.get("target_states", []),
+        permission_decisions=raw.get("permission_decisions", {}),
+        accountability=raw.get("accountability", {}),
         raw=raw,
     )
 
@@ -122,33 +130,47 @@ def registry_from_dict(raw: dict) -> Registry:
 def load_registry(path: Path) -> Registry:
     if not path.exists():
         return Registry()
-    return registry_from_dict(json.loads(path.read_text(encoding="utf-8")))
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("the registry must be a JSON object")
+    return registry_from_dict(raw)
 
 
 def load_model(root: Path) -> Tuple[Model, List[Finding]]:
-    """Index every contract instance below `root` (any .json whose top-level object has contract_id C01-C07)."""
+    """Index every contract instance below `root` (any .json whose top-level object has contract_id C01-C07).
+
+    A file that cannot be read as JSON, an instance without a readable identity and a duplicate identity are reported as
+    findings: they stop the model from being a faithful picture of the folder, so the stages that need it cannot run.
+    """
     findings: List[Finding] = []
     instances: Dict[Key, Instance] = {}
+    ignored: List[str] = []
     for path in sorted(root.rglob("*.json")):
         if path.name == "registry.json":
             continue
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            findings.append(Finding("ID000", "cannot read JSON: %s" % exc, rel(path)))
+        except (OSError, ValueError) as exc:  # includes JSONDecodeError and UnicodeDecodeError
+            findings.append(Finding("ID000", "cannot read JSON: %s" % exc, rel(path), hint="repair or remove the file; every .json file below the folder must be valid UTF-8 JSON"))
             continue
         if not isinstance(data, dict) or data.get("contract_id") not in CONTRACT_DEFS:
+            ignored.append(rel(path))
             continue
         ident = identity_of(data)
         if ident is None:
-            findings.append(Finding("ID002", "instance has no readable identity (id and version)", rel(path), doc=doc_for_contract(data.get("contract_id"))))
+            findings.append(Finding("ID002", "instance has no readable identity (id and version)", rel(path), doc=doc_for_contract(data.get("contract_id")), hint="give the instance the identity group its contract requires"))
             continue
         inst = Instance(ident[0], ident[1], ident[2], data, path)
         if inst.key in instances:
-            findings.append(Finding("ID001", "duplicate identity %s (also in %s)" % (inst.label(), instances[inst.key].file), inst.file, doc=doc_for_contract(inst.contract)))
+            findings.append(Finding("ID001", "duplicate identity %s (also in %s)" % (inst.label(), instances[inst.key].file), inst.file, doc=doc_for_contract(inst.contract), hint="every contract, id and version may appear once"))
             continue
         instances[inst.key] = inst
-    return Model(instances, load_registry(root / "registry.json"), root), findings
+    try:
+        registry = load_registry(root / "registry.json")
+    except (OSError, ValueError, AttributeError) as exc:
+        findings.append(Finding("ID000", "cannot read the registry: %s" % exc, rel(root / "registry.json"), hint="registry.json must be a JSON object"))
+        registry = Registry()
+    return Model(instances, registry, root, ignored), findings
 
 
 # ---------------------------------------------------------------------------
