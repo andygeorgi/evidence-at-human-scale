@@ -272,6 +272,48 @@ class TheScenarioFiles(Scratch, Actionable):
         self.assertEqual([f.code for f in gateway.findings], ["GW002"])
         self.assertNotIn("KeyError", gateway.findings[0].message)
 
+    def test_a_ledger_mode_the_check_does_not_know_is_an_input_error_and_not_an_empty_ledger(self):
+        """Any other value used to count no capacity at all and pass."""
+        for label, value in (("an object", {}), ("another word", "none"), ("null", None), ("a number", 3), ("a list", ["from_receipts"])):
+            with self.subTest(label):
+                gateway = self.gateway(lambda d: d["evaluations"][0].update(ledger=value))
+                self.assertEqual((gateway.status, [f.code for f in gateway.findings]), (INPUT_ERROR, ["INP002"]))
+                self.assertIn("ledger", gateway.findings[0].message)
+                self.assert_actionable(gateway, "gateway-scenarios.json")
+
+    def test_both_ledger_modes_the_stored_evaluations_use_are_read(self):
+        for mode in ("from_receipts", "empty"):
+            with self.subTest(mode):
+                self.assertEqual(self.gateway(lambda d: d["evaluations"][0].update(ledger=mode)).status in (PASS, FAIL), True)
+
+    def test_an_override_that_acts_on_nothing_is_an_input_error_and_is_not_silently_ignored(self):
+        bad = (("a target that does not exist", [{"on": "neither", "path": "/x", "value": 1}]), ("no target", [{"path": "/x", "value": 1}]),
+               ("no path", [{"on": "grant", "value": 1}]), ("no value", [{"on": "grant", "path": "/x"}]), ("not an object", ["grant"]),
+               ("evidence without its record", [{"on": "evidence", "path": "/x", "value": 1}]),
+               ("evidence with a record that has no version", [{"on": "evidence", "path": "/x", "value": 1, "record": {"id": "M3W-0417"}}]))
+        for label, overrides in bad:
+            with self.subTest(label):
+                gateway = self.gateway(lambda d: d["evaluations"][0].update(overrides=overrides))
+                self.assertEqual((gateway.status, [f.code for f in gateway.findings]), (INPUT_ERROR, ["INP002"]))
+                self.assertIn("override 1", gateway.findings[0].message)
+                self.assert_actionable(gateway, "gateway-scenarios.json")
+        self.assertEqual(self.gateway(lambda d: d["evaluations"][0].update(overrides="grant")).status, INPUT_ERROR, "overrides that are not a list")
+
+    def test_an_expected_result_without_a_decision_or_codes_is_an_input_error_and_not_a_failure(self):
+        for label, expect in (("empty", {}), ("an unknown decision", {"decision": "MAYBE", "codes": []}), ("no codes", {"decision": "ALLOW"}), ("codes that are not a list", {"decision": "ALLOW", "codes": "x"}),
+                              ("a code that is not text", {"decision": "BLOCK", "codes": [7]})):
+            with self.subTest(label):
+                gateway = self.gateway(lambda d: d["evaluations"][0].update(expect=expect))
+                self.assertEqual((gateway.status, [f.code for f in gateway.findings]), (INPUT_ERROR, ["INP002"]))
+                self.assertIn("'expect' object", gateway.findings[0].message)
+
+    def test_a_commit_time_that_is_not_a_time_is_an_input_error(self):
+        for value in ("yesterday", "2026-11-23T10:03:00", "", 7):
+            with self.subTest(repr(value)):
+                gateway = self.gateway(lambda d: d["evaluations"][0].update(at=value))
+                self.assertEqual((gateway.status, [f.code for f in gateway.findings]), (INPUT_ERROR, ["INP002"]))
+                self.assertIn("'at'", gateway.findings[0].message)
+
     def test_the_file_name_is_matched_without_regard_to_case(self):
         self.fresh()
         (self.root / "08-blocked-action" / "gateway-scenarios.json").rename(self.root / "08-blocked-action" / "Gateway-Scenarios.JSON")
@@ -333,6 +375,34 @@ class TheCaseFiles(Scratch, Actionable):
         self.fresh()
         (self.root / self.NAME).write_text("{}", encoding="utf-8")
         self.assertEqual(self.run_stage("cases").status, INPUT_ERROR)
+
+    def test_a_case_with_no_name_and_no_mutation_is_an_input_error_and_not_a_pass(self):
+        """{"cases": [{"expect": [], "mutations": []}]} used to pass: it evaluated the unchanged example set and counted it as a case."""
+        self.fresh()
+        (self.root / self.NAME).write_text(json.dumps({"cases": [{"expect": [], "mutations": []}]}), encoding="utf-8")
+        cases = self.run_stage("cases")
+        self.assertEqual((cases.status, cases.evaluated, [f.code for f in cases.findings]), (INPUT_ERROR, 0, ["INP002"]))
+        self.assertIn("case_id", cases.findings[0].message)
+        self.assert_actionable(cases, "cases.json")
+
+    def test_every_part_a_case_is_judged_by_must_be_there(self):
+        bad = (("no case_id", lambda c: c.pop("case_id"), "case_id"), ("an empty case_id", lambda c: c.update(case_id="  "), "case_id"), ("a case_id that is not text", lambda c: c.update(case_id=5), "case_id"),
+               ("no mutation", lambda c: c.update(mutations=[]), "no mutation"), ("expect that is not a list of text", lambda c: c.update(expect=[1]), "'expect'"),
+               ("a mutation that is not an object", lambda c: c.update(mutations=["x"]), "mutation 1 is not an object"),
+               ("a mutation with no target", lambda c: c["mutations"][0].pop("target"), "no 'target'"), ("a target of the wrong form", lambda c: c["mutations"][0].update(target="C05"), "no 'target'"),
+               ("a mutation with no operations", lambda c: c["mutations"][0].update(ops=[]), "no 'ops'"), ("an operation that does not exist", lambda c: c["mutations"][0]["ops"][0].update(op="move"), "operation 1"),
+               ("an operation with no path", lambda c: c["mutations"][0]["ops"][0].pop("path"), "operation 1"),
+               ("a replacement with no value", lambda c: c["mutations"][0]["ops"][0].update(op="replace") or c["mutations"][0]["ops"][0].pop("value", None), "needs a 'value'"))
+        for label, damage, message in bad:
+            with self.subTest(label):
+                cases = self.cases(lambda d: damage(d["cases"][2]))
+                self.assertEqual((cases.status, [f.code for f in cases.findings]), (INPUT_ERROR, ["INP002"]))
+                self.assertIn(message, cases.findings[0].message)
+                self.assert_actionable(cases, "cases.json")
+
+    def test_a_target_that_does_not_exist_is_still_a_finding_of_the_case_and_not_a_shape(self):
+        cases = self.cases(lambda d: d["cases"][2]["mutations"][0].update(target="C05 ACT-NONE v1"))
+        self.assertEqual((cases.status, [f.code for f in cases.findings]), (FAIL, ["CASE003"]))
 
 
 class TheResponseFiles(Scratch, Actionable):
@@ -456,6 +526,66 @@ class StrictJson(Scratch, Actionable):
         self.assertEqual(loads_strict('{"a": 1, "b": -2.5, "c": 1e3, "d": [true, false, null], "e": {"a": 1}}'), {"a": 1, "b": -2.5, "c": 1000.0, "d": [True, False, None], "e": {"a": 1}})
 
 
+class ADocumentNestedTooDeeplyIsRefusedWhereItIsRead(Scratch, Actionable):
+    """A document nested hundreds of levels deep exhausted the stack of the checks that recurse (the schema check, the search for references) and ended in a traceback.
+    It is refused when it is read, with the file named, and no check ever sees it."""
+
+    INSTANCE = "01-source-records/c02-INV-2026-0417-v1.json"
+
+    def deepen(self, depth):
+        self.fresh()
+        path = self.root / "03-lineage-and-common-origin" / "c02-M3W-0417-v1.json"
+        text = path.read_text(encoding="utf-8")
+        data = json.loads(text)
+        data["content"]["payload"]["value"]["nested"] = "DEEP"
+        path.write_text(json.dumps(data).replace('"DEEP"', "[" * depth + "7" + "]" * depth), encoding="utf-8")
+
+    def test_the_depth_limit_is_far_above_anything_the_examples_need_and_far_below_the_stack(self):
+        from eahs.model import MAX_DEPTH, loads_strict
+        self.assertGreaterEqual(MAX_DEPTH, 3 * 11, "the deepest document of the examples nests 11 levels")
+        self.assertEqual(loads_strict("[" * (MAX_DEPTH - 1) + "]" * (MAX_DEPTH - 1)), loads_strict("[" * (MAX_DEPTH - 1) + "]" * (MAX_DEPTH - 1)))
+        with self.assertRaises(ValueError) as caught:
+            loads_strict("[" * (MAX_DEPTH + 1) + "]" * (MAX_DEPTH + 1))
+        self.assertIn("nested more than %d levels" % MAX_DEPTH, str(caught.exception))
+
+    def test_a_document_nested_six_hundred_levels_deep_is_an_input_error_that_names_the_file(self):
+        self.deepen(600)
+        results = ve.run(self.root, only={"semantics"})
+        instances, semantics_stage = stage(results, "instances"), stage(results, "semantics")
+        self.assertEqual((instances.status, [f.code for f in instances.findings]), (INPUT_ERROR, ["ID000"]))
+        self.assert_actionable(instances, "c02-M3W-0417-v1.json")
+        self.assertIn("nested more than", instances.findings[0].message)
+        self.assertEqual(semantics_stage.status, NOT_ASSESSED)
+
+    def test_the_command_exits_2_with_a_result_and_no_traceback(self):
+        self.deepen(600)
+        done = cli("--examples", str(self.root), "--only", "semantics", "--json")
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertNotIn("Traceback", done.stderr)
+        self.assertNotIn("RecursionError", done.stdout + done.stderr)
+        self.assertEqual(json.loads(done.stdout)["status"], INPUT_ERROR)
+
+    def test_a_document_just_inside_the_limit_is_read_and_does_not_crash_a_check(self):
+        from eahs.model import MAX_DEPTH
+        self.deepen(MAX_DEPTH - 12)
+        for result in ve.run(self.root, only={"semantics"}):
+            self.assertIn(result.status, (PASS, FAIL, INPUT_ERROR, NOT_ASSESSED, SKIPPED), result.stage)
+        done = cli("--examples", str(self.root), "--only", "semantics")
+        self.assertNotIn("Traceback", done.stderr)
+
+    def test_a_recursion_error_raised_by_a_check_is_an_input_error_and_not_a_traceback(self):
+        """The depth limit is the protection; this is the net under it, for a platform with a smaller stack."""
+        self.fresh()
+
+        def check_references(model):
+            raise RecursionError("stack")
+        with mock.patch.object(ve.semantics, "ALL_CHECKS", [check_references]):
+            semantics_stage = self.run_stage("semantics")
+        self.assertEqual(semantics_stage.status, INPUT_ERROR)
+        self.assertIn("nested too deeply", semantics_stage.findings[0].message)
+        self.assertTrue(semantics_stage.findings[0].file, "the diagnostic names where to look")
+
+
 class TheRegistryFile(Scratch, Actionable):
     def test_a_registry_in_another_letter_case_is_still_the_registry(self):
         self.fresh()
@@ -512,6 +642,11 @@ class ARegistrySectionOfTheWrongShape(Scratch, Actionable):
             ("protected terms", lambda d: d.update(protected_terms=[1]), "'protected_terms' must list only strings"),
             ("accountability", lambda d: d.update(accountability=[]), "'accountability' must be an object"),
             ("roles", lambda d: d["accountability"].update(roles=[]), "'accountability.roles'"),
+            ("a role whose holders are not names", lambda d: d["accountability"]["roles"]["decision_owner"].update(holders=[[]]), "role 'decision_owner'"),
+            ("a role whose principals are not a list", lambda d: d["accountability"]["roles"]["executor"].update(principals="workload:payment-executor"), "role 'executor'"),
+            ("roles that may be held together, as numbers", lambda d: d["accountability"].update(may_hold_together=[[1, 2]]), "'accountability.may_hold_together'"),
+            ("a review log entry without its actor", lambda d: d["accountability"]["review_log"][0].pop("actor"), "entry 1 of 'accountability.review_log'"),
+            ("a review log entry with a time that is not a time", lambda d: d["accountability"]["review_log"][0].update(time="after lunch"), "not an RFC 3339 time"),
             ("a review log", lambda d: d["accountability"].update(review_log={}), "'accountability.review_log'"),
         )
         for label, edit, message in cases:

@@ -207,10 +207,20 @@ def registry_problem(raw: dict) -> Optional[str]:
     roles, together, log = accountability.get("roles", {}), accountability.get("may_hold_together", []), accountability.get("review_log", [])
     if not isinstance(roles, dict) or not all(isinstance(role, dict) for role in roles.values()):
         return "'accountability.roles' must be an object that maps each role to an object"
-    if not isinstance(together, list) or not all(isinstance(pair, list) for pair in together):
-        return "'accountability.may_hold_together' must be a list of lists of roles"
+    for role_name, role in roles.items():
+        for key in ("holders", "principals"):
+            if key in role and (not isinstance(role[key], list) or not all(isinstance(who, str) for who in role[key])):
+                return "role %r in 'accountability.roles': '%s' must be a list of principal names (text)" % (role_name, key)
+    if not isinstance(together, list) or not all(isinstance(pair, list) and all(isinstance(name, str) for name in pair) for pair in together):
+        return "'accountability.may_hold_together' must be a list of lists of role names (text)"
     if not isinstance(log, list) or not all(isinstance(entry, dict) for entry in log):
         return "'accountability.review_log' must be a list of objects"
+    from .gateway import parse_time   # imported here: the gateway reads the model, so the model cannot import it at the top
+    for position, entry in enumerate(log):
+        if not all(isinstance(entry.get(key), str) for key in ("packet", "actor", "action", "time")):
+            return "entry %d of 'accountability.review_log' needs text for 'packet', 'actor', 'action' and 'time'" % (position + 1)
+        if parse_time(entry["time"]) is None:
+            return "entry %d of 'accountability.review_log' has a time that is not an RFC 3339 time with a zone: %r" % (position + 1, entry["time"])
     return None
 
 
@@ -243,15 +253,35 @@ def _no_repeated_key(pairs):
     return seen
 
 
+#: How deep a JSON document may nest. The deepest document of the examples nests 11 levels. A reader that recurses (the schema check, the
+#: reference search) would run out of stack long before a document nested hundreds of levels deep had been read, so such a document is refused.
+MAX_DEPTH = 40
+
+
+def _nested_deeper_than(value, limit: int) -> bool:
+    """True if `value` nests more than `limit` levels of objects and lists. Iterative, so that the answer itself cannot exhaust the stack."""
+    stack = [(value, 1)]
+    while stack:
+        item, depth = stack.pop()
+        if depth > limit:
+            return True
+        children = item.values() if isinstance(item, dict) else item if isinstance(item, list) else ()
+        stack.extend((child, depth + 1) for child in children if isinstance(child, (dict, list)))
+    return False
+
+
 def loads_strict(text: str):
     """JSON as RFC 8259 defines it. Python also reads NaN, Infinity and -Infinity, a number too large for a float (a whole number
     as well as a fraction) and an object that repeats a key (the last value silently wins): other parsers do not, so a file that
     depends on them means one thing here and another elsewhere. All of them are refused (ValueError, like any other malformed
-    JSON), and so is a document nested too deeply for the reader."""
+    JSON), and so is a document nested too deeply for the reader (more than MAX_DEPTH levels)."""
     try:
-        return json.loads(text, parse_constant=_no_constant, parse_float=_finite, parse_int=_finite_int, object_pairs_hook=_no_repeated_key)
+        value = json.loads(text, parse_constant=_no_constant, parse_float=_finite, parse_int=_finite_int, object_pairs_hook=_no_repeated_key)
     except RecursionError as exc:
         raise ValueError("the document is nested too deeply to read (more than about a thousand levels)") from exc
+    if _nested_deeper_than(value, MAX_DEPTH):
+        raise ValueError("the document is nested more than %d levels deep, which no contract instance, registry or stage file needs, and which the checks cannot read safely" % MAX_DEPTH)
+    return value
 
 
 def registry_path(root: Path) -> Path:

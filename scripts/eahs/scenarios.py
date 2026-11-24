@@ -11,7 +11,7 @@ from dataclasses import replace
 from typing import List
 
 from .findings import Finding, InputProblem, describe_error, rel
-from .gateway import Decision, attempt_receipt_ids, evaluate_commit, ledger_from_receipts, ts
+from .gateway import Decision, attempt_receipt_ids, evaluate_commit, ledger_from_receipts, parse_time, ts
 from .model import Instance, Model
 from .patch import apply_ops
 
@@ -66,20 +66,51 @@ def expectation(decision: Decision) -> dict:
     return {"decision": "ALLOW" if decision.allow else "BLOCK", "codes": unique(decision.codes), "reasons": [r.as_dict() for r in decision.reasons]}
 
 
+LEDGER_MODES = ("from_receipts", "empty")
+OVERRIDE_TARGETS = ("proposal", "grant", "evidence")
+
+
+def _override_problem(name: str, position: int, item) -> str:
+    where = "%s, override %d" % (name, position + 1)
+    if not isinstance(item, dict):
+        return "%s is not an object" % where
+    if item.get("on") not in OVERRIDE_TARGETS:
+        return "%s acts on %r, which is not one of %s: an override that names no target would be ignored" % (where, item.get("on"), ", ".join(OVERRIDE_TARGETS))
+    if not isinstance(item.get("path"), str) or "value" not in item:
+        return "%s needs a 'path' (a JSON pointer) and a 'value'" % where
+    if item["on"] == "evidence":
+        record = item.get("record")
+        if not (isinstance(record, dict) and isinstance(record.get("id"), str) and isinstance(record.get("version"), str)):
+            return "%s acts on evidence, so it needs a 'record' with the id and the version of that record" % where
+    return ""
+
+
 def _entry_problem(index: int, entry) -> str:
-    """Why an evaluation cannot be run, or an empty string if its shape is usable. A row that is not shaped like an evaluation is
-    malformed input, not an evaluation that failed: there is nothing to evaluate."""
+    """Why an evaluation cannot be run because of its shape, or an empty string. A row that is not shaped like an evaluation is
+    malformed input, not an evaluation that failed: there is nothing to evaluate. Nothing a row says may be ignored silently."""
     if not isinstance(entry, dict):
         return "evaluation %d is not an object" % (index + 1)
-    name = entry.get("label", "evaluation %d" % (index + 1))
+    name = entry["label"] if isinstance(entry.get("label"), str) and entry["label"].strip() else "evaluation %d" % (index + 1)
     for key in ("proposal", "grant"):
         ref = entry.get(key)
         if not (isinstance(ref, dict) and isinstance(ref.get("id"), str) and isinstance(ref.get("version"), str)):
             return "%s has no %r reference with an id and a version" % (name, key)
     if not isinstance(entry.get("at"), str):
         return "%s has no commit time 'at'" % name
-    if not isinstance(entry.get("expect"), dict):
-        return "%s has no 'expect' object with the decision and the codes it must produce" % name
+    if parse_time(entry["at"]) is None:
+        return "%s has a commit time 'at' (%r) that is not an RFC 3339 time with a zone, so the moment of the attempt cannot be established" % (name, entry["at"])
+    if entry.get("ledger", "from_receipts") not in LEDGER_MODES:
+        return "%s names the ledger %r, which this check does not know (use %s): another value would count no capacity at all" % (name, entry.get("ledger"), " or ".join(LEDGER_MODES))
+    overrides = entry.get("overrides", [])
+    if not isinstance(overrides, list):
+        return "%s has an 'overrides' that is not a list" % name
+    for position, item in enumerate(overrides):
+        problem = _override_problem(name, position, item)
+        if problem:
+            return problem
+    expect = entry.get("expect")
+    if not (isinstance(expect, dict) and expect.get("decision") in ("ALLOW", "BLOCK") and isinstance(expect.get("codes"), list) and all(isinstance(code, str) for code in expect["codes"])):
+        return "%s has no 'expect' object with its decision (ALLOW or BLOCK) and the list of codes (text) it must produce" % name
     return ""
 
 

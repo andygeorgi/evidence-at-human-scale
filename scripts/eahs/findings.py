@@ -58,6 +58,8 @@ def describe_error(exc: Exception) -> str:
     """What went wrong, in words, for an exception raised while a check read a malformed document (no Python type names)."""
     if isinstance(exc, InputProblem):
         return exc.message
+    if isinstance(exc, RecursionError):
+        return "a document is nested too deeply for the check to read"
     if isinstance(exc, KeyError):
         return "a field the check needs is missing: %s" % exc
     if isinstance(exc, IndexError):

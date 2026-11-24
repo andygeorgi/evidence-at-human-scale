@@ -48,15 +48,47 @@ def run_case(model: Model, schema: dict, case: dict) -> Tuple[List[str], List[Fi
     return sorted({f.code for f in findings}), findings
 
 
+OPERATIONS = ("replace", "add", "remove")
+
+
+def _mutation_problem(name: str, position: int, mutation) -> str:
+    """Why a mutation cannot be applied because of its shape, or an empty string. A target that does not exist is a finding of the case (CASE003), not a shape."""
+    where = "%s, mutation %d" % (name, position + 1)
+    if not isinstance(mutation, dict):
+        return "%s is not an object" % where
+    target = mutation.get("target")
+    if not isinstance(target, str) or len(target.split()) != 3:
+        return "%s has no 'target' of the form \"C05 ACT-REL-0417 v2\" (a contract, an id and a version)" % where
+    ops = mutation.get("ops")
+    if not isinstance(ops, list) or not ops:
+        return "%s has no 'ops' list of operations" % where
+    for number, op in enumerate(ops):
+        if not isinstance(op, dict) or op.get("op") not in OPERATIONS or not isinstance(op.get("path"), str):
+            return "%s, operation %d needs an 'op' (one of %s) and a 'path' (a JSON pointer)" % (where, number + 1, ", ".join(OPERATIONS))
+        if op["op"] != "remove" and "value" not in op:
+            return "%s, operation %d (%s) needs a 'value'" % (where, number + 1, op["op"])
+    return ""
+
+
 def _case_problem(index: int, case) -> str:
-    """Why a case cannot be run, or an empty string if its shape is usable."""
+    """Why a case cannot be run because of its shape, or an empty string. Every part the case is judged by must be there: nothing is assumed."""
     if not isinstance(case, dict):
         return "case %d is not an object" % (index + 1)
-    name = case.get("case_id", "case %d" % (index + 1))
-    if not isinstance(case.get("expect"), list):
-        return "%s has no 'expect' list of the codes it must produce" % name
-    if not isinstance(case.get("mutations"), list):
+    name = case.get("case_id")
+    if not isinstance(name, str) or not name.strip():
+        return "case %d has no 'case_id' (a text that names it)" % (index + 1)
+    expect = case.get("expect")
+    if not isinstance(expect, list) or not all(isinstance(code, str) for code in expect):
+        return "%s has no 'expect' list of the codes (text) it must produce" % name
+    mutations = case.get("mutations")
+    if not isinstance(mutations, list):
         return "%s has no 'mutations' list" % name
+    if not mutations:
+        return "%s has no mutation: a case that changes nothing is not a mutated copy, and the unchanged example set is what the instance stage already checks" % name
+    for position, mutation in enumerate(mutations):
+        problem = _mutation_problem(name, position, mutation)
+        if problem:
+            return problem
     return ""
 
 
@@ -67,7 +99,7 @@ def check_cases(model: Model, schema: dict, data: dict, path) -> Tuple[List[Find
     for index, case in enumerate(cases):
         reason = _case_problem(index, case)
         if reason:
-            raise InputProblem(reason, "give every case a case_id, an 'expect' list of codes and a 'mutations' list; [] in 'expect' means the case must produce no finding")
+            raise InputProblem(reason, "give every case a case_id, an 'expect' list of codes (a [] means the case must produce no finding) and a non-empty 'mutations' list of {target, ops}; nothing in this file was evaluated")
     seen = set()
     for case in cases:
         case_id = case.get("case_id", "?")

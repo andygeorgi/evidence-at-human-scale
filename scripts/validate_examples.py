@@ -66,7 +66,7 @@ PREREQUISITES = {"semantics": "instances", "gateway": "instances", "responses": 
 #: The stages that read rules from registry.json; without it they have nothing to check against.
 REGISTRY_STAGES = {"semantics", "gateway", "cases"}
 #: What a malformed document typically raises inside a check. These become an INPUT ERROR with a diagnostic, not a traceback.
-DOCUMENT_ERRORS = (KeyError, IndexError, TypeError, ValueError, AttributeError)
+DOCUMENT_ERRORS = (KeyError, IndexError, TypeError, ValueError, AttributeError, RecursionError)
 #: Stage files that are neither contract instances nor raw exports: each is read by the stage named here, not by the instances stage.
 STAGE_FILES = {"gateway-scenarios.json": "gateway", "cases.json": "cases", "response-*.json": "responses"}
 
@@ -274,8 +274,8 @@ class Run:
             except DOCUMENT_ERRORS as exc:
                 if self.debug:
                     raise
-                problems.append(input_finding("INP002", "the semantics stage could not run its %r check: %s" % (check.__name__.replace("check_", ""), describe_error(exc)), "",
-                                              "a document that check reads (registry.json or an instance) is not shaped as the check expects; run with --debug for the traceback"))
+                problems.append(input_finding("INP002", "the semantics stage could not run its %r check: %s" % (check.__name__.replace("check_", ""), describe_error(exc)), rel(self.root),
+                                              "a document that check reads (registry.json or an instance under this folder) is not shaped as the check expects; run with --debug for the traceback"))
         count = len(self.model.instances)
         if problems:
             return self.result("semantics", INPUT_ERROR, count, problems + findings, "%d check(s) could not run" % len(problems))
@@ -323,8 +323,8 @@ class Run:
         except (SchemaError, InputProblem) + DOCUMENT_ERRORS as exc:
             if self.debug and not isinstance(exc, InputProblem):
                 raise
-            result = self.result(stage, INPUT_ERROR, findings=[input_finding("INP002", "the %s stage could not evaluate the input: %s" % (stage, describe_error(exc)), "",
-                                                                             "check the documents the stage reads; run with --debug for the traceback")],
+            result = self.result(stage, INPUT_ERROR, findings=[input_finding("INP002", "the %s stage could not evaluate the input: %s" % (stage, describe_error(exc)), rel(self.root),
+                                                                             "check the documents the stage reads under this folder; run with --debug for the traceback")],
                                  detail="the input cannot support this stage")
         result.seconds = round(time.time() - started, 2)
         result.needed_by = needed_by
