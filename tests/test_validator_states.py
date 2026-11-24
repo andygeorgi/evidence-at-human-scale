@@ -3,6 +3,8 @@
 The five states (PASS, FAIL, SKIPPED, NOT ASSESSED, INPUT ERROR), how they combine, and what the command does with an
 empty folder, a missing prerequisite, a partial stage selection, a malformed document and a mix of good and bad records.
 """
+import contextlib
+import io
 import json
 import shutil
 import subprocess
@@ -11,6 +13,7 @@ import tempfile
 import unittest
 from collections import Counter
 from pathlib import Path
+from unittest import mock
 
 import support  # noqa: F401  (puts scripts/ on the path)
 
@@ -188,6 +191,20 @@ class CheckAll(unittest.TestCase):
         self.assertIn("PASS for the checks that ran: 1 of 10 passed", done.stdout)
         self.assertIn("9 check(s) were skipped and not run", done.stdout)
         self.assertNotIn("All 1 checks passed", done.stdout)
+
+    def test_the_history_option_reaches_only_the_hygiene_check(self):
+        with mock.patch.object(check_all, "run", return_value=(True, 0.0, "")) as run, contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(check_all.main(["--only", "hygiene,structure", "--history"]), 0)
+        commands = {call.args[0]: call.args[1] for call in run.call_args_list}
+        self.assertEqual(sorted(commands), ["hygiene", "structure"])
+        self.assertEqual(commands["hygiene"][-1], "--history")
+        self.assertNotIn("--history", commands["structure"])
+
+    def test_the_history_option_without_the_hygiene_check_is_refused_not_ignored(self):
+        done = self.run_all("--only", "structure", "--history")
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("hygiene", done.stderr)
+        self.assertNotIn("PASS", done.stdout)
 
 
 class StageSelection(Scratch):

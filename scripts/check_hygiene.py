@@ -2,7 +2,7 @@
 """Scan the repository for what must not reach a public repository, and for files that do not survive a clone.
 
     python scripts/check_hygiene.py            # scan, exit 1 on any finding
-    python scripts/check_hygiene.py --history  # also scan every commit: each file version, path, message, author and ref
+    python scripts/check_hygiene.py --history  # also scan every commit: each file version at each path, path, message, author and ref
     python scripts/check_hygiene.py --rules    # list what is looked for, and which lines are pinned
     python scripts/check_hygiene.py --pin PATH:LINE  # print the pin for one line of a file (see below)
     python scripts/check_hygiene.py --json     # machine-readable result
@@ -10,11 +10,17 @@
 Standard library only; works offline and is platform-neutral. It scans every file Git would include (tracked, or
 untracked and not ignored), or every file under the folder when Git is not available, and it also reads file names.
 With --history it also reads everything that a push of the whole history would publish: a term that was removed from the
-tree is still in an old commit, and a commit message or an author's address is published with it.
+tree is still in an old commit, and a commit message or an author's address is published with it. Each file version is
+judged at every path that held it, because what a path allows belongs to the path. The history must be whole: a shallow
+clone is refused, since a scan of it would pass on commits it never read.
 
 A finding is a reason to look, not a verdict. If a flagged line is legitimate, change the wording. The one exception is the
 name of the authority that the paper discusses: it may appear only where a public record's own title or address is quoted
 exactly. Such a line is pinned in ``PUBLIC_SOURCE_LINES`` below, by the SHA-256 of the whole line, in a reviewed commit.
+
+The scanner and its tests have to quote the patterns they look for. They are scanned by every rule like any other file.
+``QUOTED_MATCHES`` excuses only the exact matches of one rule in one exact file, never a whole file or a whole rule, and never
+the same text in another file.
 
 Private terms. The names that identify the private origin of the material cannot be listed in a public repository, because
 the list would publish them. Rule HYG105 therefore reads them from outside the repository: one regular expression per
@@ -36,12 +42,10 @@ import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 REPO = Path(__file__).resolve().parents[1]
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache"}
-# These two files quote the very patterns they look for.
-SELF_FILES = {"scripts/check_hygiene.py", "tests/test_hygiene.py"}
 MAX_BYTES = 1024 * 1024
 PRIVATE_TERMS_FILE = ".hygiene-private-terms"
 PRIVATE_TERMS_ENV = "EAHS_PRIVATE_TERMS"
@@ -80,6 +84,66 @@ PUBLIC_SOURCE_LINES: Tuple[PublicSourceLine, ...] = (
 
 
 @dataclass(frozen=True)
+class QuotedMatches:
+    """The matches that one rule finds in one exact file because the file quotes what the rule looks for.
+
+    The scanner and its tests have to quote the patterns they look for, so a rule that reads them finds its own words. An entry
+    excuses only the listed matches of one rule in one file, each by the SHA-256 of its exact text (the script cannot list the
+    samples themselves: they would be matches too). Every other rule, every other match of that rule and the same text in any
+    other file is still a finding, so a private term, the authority's name, a credential or an address that is pasted into these
+    files is found like anywhere else. An exception never travels with content: it belongs to a path.
+    """
+    path: str
+    rule: str
+    digests: Tuple[str, ...]  # SHA-256 of the exact text of each excused match
+    what: str  # what the file quotes; never a private term
+
+
+QUOTED_MATCHES: Tuple[QuotedMatches, ...] = (
+    QuotedMatches("scripts/check_hygiene.py", "HYG101",
+                  ("304db88cc92969947c8bec7deec655698a94820a8934d9aaf13a8608c83a4cde", "3e357eedba7940c853e6175551bfec65011b86095214708e0d556b76b8cd1c0f"),
+                  "the private-link rule's own pattern"),
+    QuotedMatches("scripts/check_hygiene.py", "HYG102",
+                  ("de85814ad9cb4769a090f611dc4f82e7aa8aca812c00aa095d4ad459e8545880",),
+                  "the local-path rule's own pattern"),
+    QuotedMatches("scripts/check_hygiene.py", "HYG105",
+                  ("55332099d0e58d85f39fc91bb9227e6a3ea9d9fc4003716d4fa9f5fc9d3c7db8",),
+                  "the confidentiality-label rule's own pattern"),
+    QuotedMatches("scripts/check_hygiene.py", "HYG107",
+                  ("337e547a950fc8a98592f10d964c1e79a304961790a8da0ce449a1f000cefabb", "8f2adf96b87e9da120f700d292f446ffe20062d9f57eaa2449ae67a09af970c3",
+                   "9b38b8f5877f2395b4361c1f68c059078ee9c0c8b0cbb22c97d2906e011e40a3", "03626549a59abf648ee59163b3b8acbf66c36513cb1e76d6e277bc044c926e30",
+                   "5e2bf57d3f40c4b6df69daf1936cb766f832374b4fc0259a7cbff06e2f70f269"),
+                  "the draft-marker rule's own pattern"),
+    QuotedMatches("tests/test_hygiene.py", "HYG101",
+                  ("4c4638dbdc781ac06f94db29991f63aff057eef9a146cc00778487b08a35a8d7", "8bed67cbd6506351d90c3d679feb2a1e305bc8c4382495bb9a8da41e661865d5",
+                   "8bf7a1e49ee333291e48184a51e9602eaf3bb83ae0ec8cd45056c72e39439ad1"),
+                  "invented private links that a test expects to be found"),
+    QuotedMatches("tests/test_hygiene.py", "HYG102",
+                  ("58e9952854dee73d52cb6faa21ac8323a5cd32e1443749df8bfc69727fab9be2", "69fa3345a8399f93d75d44f0a73ca6c2e0d1f7a4d461cae0f20836843cbb8c3e",
+                   "3eb068b74fb9957cbccf4cdd4fe9c10d445a32853d884167ba82d9118b2a24f6", "de85814ad9cb4769a090f611dc4f82e7aa8aca812c00aa095d4ad459e8545880"),
+                  "invented local paths that a test expects to be found"),
+    QuotedMatches("tests/test_hygiene.py", "HYG103",
+                  ("9085d9a235d122847e788b0e1c17209bc77c6afc046ea6aed26ba1c2d7c8e950",),
+                  "an invented password that a test expects to be found"),
+    QuotedMatches("tests/test_hygiene.py", "HYG104",
+                  ("164f47fb6c88f01f444a3c2ed32f8ebeac9e140b76f925b3a40313cf588fb1a0",),
+                  "an invented address that a test expects to be found"),
+    QuotedMatches("tests/test_hygiene.py", "HYG105",
+                  ("eceb053c870a941c2071b9bca2278a520c51d8d8ca329496765446a7852c1222", "a7c6853426d3ef744eeea22afcbee78c8d560bfa8417b26252186fa2baa2d157",
+                   "55332099d0e58d85f39fc91bb9227e6a3ea9d9fc4003716d4fa9f5fc9d3c7db8"),
+                  "label wording that a test expects to be found"),
+    QuotedMatches("tests/test_hygiene.py", "HYG107",
+                  ("337e547a950fc8a98592f10d964c1e79a304961790a8da0ce449a1f000cefabb", "03626549a59abf648ee59163b3b8acbf66c36513cb1e76d6e277bc044c926e30",
+                   "a9a66978f378456c818fb8a3e7c6ad3d2c83e62724ccbdea7b36253fb8df5edd", "7f3900ada95f5441fed787ec2618850696162e321a59205f7a1ec0aa67e80454"),
+                  "draft markers that a test expects to be found"),
+    QuotedMatches("tests/test_hygiene.py", "HYG108",
+                  ("7773aaf45064072a2ba3033a1adedc2981e5eea006a34237e8a87146df5a0624", "83a1cf3e6349b5220435edd91e0b7b0bdb64b7301a55f7ed11f88361f3f8ffe9",
+                   "6787232fc83104f290e4f5ba5c2183229357c17e39ce5bfe47516093c4045517"),
+                  "claims of finality that a test expects to be found"),
+)
+
+
+@dataclass(frozen=True)
 class Rule:
     code: str
     label: str
@@ -110,7 +174,7 @@ RULES: Tuple[Rule, ...] = (
          "Remove it and rotate the credential: it must be treated as exposed."),
     Rule("HYG104", "e-mail address", r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+",
          "Use a role link or the repository's issue tracker, not a personal address.",
-         ignore_match=r"(?i:[^@]+@(?:users\.noreply\.github\.com|example\.(?:com|org|net))|git@github\.com)", needle="@"),
+         ignore_match=r"(?i:[^@]+@(?:users\.noreply\.github\.com|example\.(?:com|org|net))|git@github\.com|noreply@github\.com)", needle="@"),
     Rule("HYG105", "internal vocabulary, confidentiality label or the authority's name",
          LABEL_MARKERS,
          "This names the private origin of the material, carries a confidentiality label, or names the authority outside a quoted public record. Use the public wording.",
@@ -240,31 +304,44 @@ def is_public_source_line(rel: str, line: str) -> bool:
     return any(pin.path == rel and pin.digest == digest for pin in PUBLIC_SOURCE_LINES)
 
 
-def _private_match(line: str) -> Optional[str]:
-    """The first private term, or the first word of a name known as a digest, in this line."""
+def is_quoted_match(rel: str, code: str, match: str) -> bool:
+    """True when this exact file is listed as quoting this exact text for this rule. Another file, rule or text is not."""
+    digest = _digest(match)
+    return any(q.path == rel and q.rule == code and digest in q.digests for q in QUOTED_MATCHES)
+
+
+def _private_matches(line: str) -> Iterator[str]:
+    """Every private term, and every word of a name known as a digest, in this line."""
     for pattern in _PRIVATE:
-        found = pattern.search(line)
-        if found:
-            return found.group(0)
-    words = name_words(line)
-    return words[0] if words else None
+        for found in pattern.finditer(line):
+            yield found.group(0)
+    yield from name_words(line)
 
 
-def apply_rule(rule: Rule, rel: str, line: str) -> Optional[str]:
-    """The first match of the rule on this line that is not ignored, or None.
+def find_matches(rule: Rule, rel: str, line: str) -> Iterator[str]:
+    """Every match of the rule on this line that the rule itself does not ignore, in order.
 
-    For HYG105 a private term or a name known as a digest is excused only on a line pinned in PUBLIC_SOURCE_LINES; label wording never is.
+    For HYG105 a private term or a name known as a digest comes after the label wording, and is excused only on a line pinned in
+    PUBLIC_SOURCE_LINES; label wording never is.
     """
     if rule.ignore_line and re.search(rule.ignore_line, line):
-        return None
+        return
     for match in _COMPILED[rule.code].finditer(line):
         if rule.ignore_match and re.fullmatch(rule.ignore_match, match.group(0)):
             continue
-        return match.group(0)
-    if rule.code == "HYG105":
-        hit = _private_match(line)
-        if hit is not None and not is_public_source_line(rel, line):
-            return hit
+        yield match.group(0)
+    if rule.code == "HYG105" and not is_public_source_line(rel, line):
+        yield from _private_matches(line)
+
+
+def apply_rule(rule: Rule, rel: str, line: str) -> Optional[str]:
+    """The first match of the rule on this line that nothing excuses, or None.
+
+    Every match on the line is looked at, so an excused match cannot hide another one beside it.
+    """
+    for match in find_matches(rule, rel, line):
+        if not is_quoted_match(rel, rule.code, match):
+            return match
     return None
 
 
@@ -342,7 +419,8 @@ def scan_bytes(rel: str, data: bytes) -> List[Finding]:
     findings: List[Finding] = []
     if len(data) > MAX_BYTES and rel not in ALLOWED_FILES:
         findings.append(Finding("HYG202", rel, 0, "larger than 1 MiB (%d bytes); the repository is for text and small figures" % len(data)))
-    if rel in SELF_FILES or rel == PRIVATE_TERMS_FILE:
+    if rel == PRIVATE_TERMS_FILE:
+        # Always a finding (HYG207). Its content is not read, so that no finding can print the terms the list holds.
         return findings
     for rule in RULES:
         if rule.on_names:
@@ -422,9 +500,14 @@ def history_commits(root: Path) -> List[str]:
     return _git(root, "rev-list", "--reverse", "--all").decode().split()
 
 
-def history_versions(root: Path, commits: Sequence[str]) -> Dict[str, Tuple[str, str]]:
-    """Every file version that any commit adds or changes: its blob id -> (the first commit that has it, its path there)."""
-    first: Dict[str, Tuple[str, str]] = {}
+def history_versions(root: Path, commits: Sequence[str]) -> Dict[Tuple[str, str], str]:
+    """Every file version that any commit adds or changes: (blob id, path) -> the first commit that has that content at that path.
+
+    The key is the pair, never the blob alone. The same content can sit at several paths, and what a path allows (a pinned line, a
+    quoted match, a permitted file, its own file name) belongs to the path. A version that a path excuses where it was first added
+    must still be judged where it is added again, so each path that ever held the content is judged on its own.
+    """
+    first: Dict[Tuple[str, str], str] = {}
     calls = [("diff-tree", "-r", "-m", "--root", "--no-commit-id", "--no-renames", "--raw", "-z", commit) for commit in commits]
     for commit, output in zip(commits, _git_each(root, calls)):
         raw = output.split(b"\0")
@@ -435,7 +518,7 @@ def history_versions(root: Path, commits: Sequence[str]) -> Dict[str, Tuple[str,
             mode, blob, status = fields[1], fields[3].decode(), fields[4].decode()
             if status.startswith("D") or mode == b"160000" or set(blob) == {"0"}:
                 continue
-            first.setdefault(blob, (commit, path.decode("utf-8", "replace")))
+            first.setdefault((blob, path.decode("utf-8", "replace")), commit)
     return first
 
 
@@ -525,25 +608,35 @@ def history_ref_findings(root: Path) -> Tuple[List[Finding], List[str]]:
 def scan_history(root: Path = REPO, private_terms: Optional[Sequence[str]] = None) -> Tuple[List[Finding], List[str], Dict[str, int]]:
     """Scan everything that a push of the whole history would publish.
 
-    Every file version that any commit ever added or changed is read and scanned as a file is, so a term that was removed from
-    the tree but is still in an old commit is found. So are the names of all paths, every commit message, every author and
-    committer, and every ref. Returns (findings, notices, counts).
+    Every file version that any commit ever added or changed is read and scanned as a file is, at each path that held it, so a term
+    that was removed from the tree but is still in an old commit is found. So are the names of all paths, every commit message,
+    every author and committer, and every ref. Each distinct blob is read once, however many paths held it. Returns
+    (findings, notices, counts).
+
+    A shallow clone has most of the history missing, so a scan of it would pass on commits it never read. It is refused
+    (HistoryError) instead of being reported as clean: fetch the full history first.
     """
     use_private_terms(load_private_terms(root) if private_terms is None else list(private_terms))
     commits = history_commits(root)
+    if _git(root, "rev-parse", "--is-shallow-repository").strip() == b"true":
+        raise HistoryError("this is a shallow clone, so most of the history is missing and a scan would pass on commits it never read. "
+                           "Fetch the whole history (git fetch --unshallow, or check out with fetch-depth 0) and scan again")
     versions = history_versions(root, commits)
+    held_at: Dict[str, List[Tuple[str, str]]] = {}
+    for (blob, path), commit in versions.items():
+        held_at.setdefault(blob, []).append((path, commit))
     findings: List[Finding] = []
     unreadable = 0
-    ids = list(versions)
+    ids = list(held_at)
     for start in range(0, len(ids), 200):
         batch = ids[start:start + 200]
         blobs = read_blobs(root, batch)
         for blob in batch:
-            commit, rel = versions[blob]
             if blob not in blobs:
-                unreadable += 1
+                unreadable += len(held_at[blob])
                 continue
-            findings += _relabel(scan_bytes(rel, blobs[blob]), commit)
+            for rel, commit in held_at[blob]:
+                findings += _relabel(scan_bytes(rel, blobs[blob]), commit)
     names, path_count = history_name_findings(root, commits)
     findings += names
     findings += history_message_findings(root)
@@ -552,12 +645,10 @@ def scan_history(root: Path = REPO, private_terms: Optional[Sequence[str]] = Non
     notices = []
     if unreadable:
         notices.append("%d file version(s) could not be read, so they were not scanned." % unreadable)
-    if _git(root, "rev-parse", "--is-shallow-repository").strip() == b"true":
-        notices.append("This is a shallow clone: only the commits that were fetched were scanned.")
     if others:
         notices.append("Refs other than branches exist (%s). Pushing them publishes what they point to." % ", ".join(others))
     findings.sort(key=lambda f: (f.path, f.line, f.code))
-    return findings, notices, {"commits": len(commits), "file_versions": len(versions), "paths": path_count}
+    return findings, notices, {"commits": len(commits), "file_versions": len(versions), "blobs": len(held_at), "paths": path_count}
 
 
 def describe_rules() -> str:
@@ -584,9 +675,15 @@ def describe_rules() -> str:
               "  HYG205  two files that differ only by case",
               "  HYG206  an entry in the private term list is not a valid regular expression",
               "  HYG207  the private term list is among the files that would be published",
-              "", "With --history, every rule above is also applied to each file version that any commit added or changed (reported as path @ commit),",
-              "to the path names in every commit, to every commit message, to every author and committer, and to every ref.",
-              "", "Skipped: %s. Two files that quote the patterns are not read: %s." % (", ".join(sorted(SKIP_DIRS)), ", ".join(sorted(SELF_FILES)))]
+              "", "With --history, every rule above is also applied to each file version that any commit added or changed, at each path that held it",
+              "(reported as path @ commit), to the path names in every commit, to every commit message, to every author and committer, and to every ref.",
+              "A shallow clone is refused: its missing history would pass unread.",
+              "", "Quoted matches. The scanner and its tests quote the patterns they look for. Exactly these %d matches of one rule in one file are excused," % sum(len(q.digests) for q in QUOTED_MATCHES),
+              "each by the SHA-256 of its exact text (the first 12 characters are shown). Every other rule, every other match and the same text in any",
+              "other file is a finding, in these two files too:"]
+    for quoted in QUOTED_MATCHES:
+        lines.append("  %s  %s  %s  (%s)" % (quoted.path, quoted.rule, " ".join(d[:12] for d in quoted.digests), quoted.what))
+    lines += ["", "Skipped: %s. The private term list is not read, even if it is among the files (HYG207 fails the scan)." % ", ".join(sorted(SKIP_DIRS))]
     return "\n".join(lines)
 
 

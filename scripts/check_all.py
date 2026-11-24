@@ -3,12 +3,15 @@
 
     python scripts/check_all.py               # run everything, show only what fails
     python scripts/check_all.py --verbose     # show each check's own output
+    python scripts/check_all.py --history     # also scan the whole Git history for hygiene (needs the whole history)
     python scripts/check_all.py --list        # name the checks
     python scripts/check_all.py --only links,hygiene
     python scripts/check_all.py --skip tests
 
 Each check is also a script you can run alone. The external URL check is not included: it needs the network and a
 publisher can fail it for reasons that say nothing about this repository (run ``python scripts/check_urls.py``).
+Continuous integration runs ``--history`` on a full checkout. A download without ``.git`` or a shallow clone has no whole
+history, so ``--history`` fails there instead of passing on commits it never read.
 Exit code 0 means every check that ran passed, 1 that a check failed, and 3 that nothing ran. A run that leaves checks
 out says how many and that its result says nothing about them.
 """
@@ -65,12 +68,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--only", help="comma-separated check names to run")
     parser.add_argument("--skip", help="comma-separated check names to leave out")
     parser.add_argument("--verbose", "-v", action="store_true", help="print each check's own output, not only the output of failures")
+    parser.add_argument("--history", action="store_true", help="also scan the whole Git history in the hygiene check (fails on a shallow clone or a download without .git)")
     args = parser.parse_args(argv)
     if args.list:
         for name, what, command in CHECKS:
             print("%-13s %s\n%-13s python %s" % (name, what, "", " ".join(command)))
         return 0
     chosen = select(args.only, args.skip)
+    if args.history:
+        if "hygiene" not in [name for name, _, _ in chosen]:
+            raise SystemExit("--history belongs to the hygiene check, which was not selected, so no history would be scanned.")
+        chosen = [(name, what, command + ("--history",) if name == "hygiene" else command) for name, what, command in chosen]
     print("Evidence at Human Scale %s: repository checks\n" % __version__)
     if not chosen:
         print("Result: NOT ASSESSED. Every check was skipped, so nothing was checked.")

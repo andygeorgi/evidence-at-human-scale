@@ -36,6 +36,8 @@ def codes_for_text(text, name="docs/page.md", terms=()):
 
 
 SYNTHETIC_TERMS = ("Zebracorp", r"Project Aurora\b")
+STRANGER = "other" + "@fabrikam.com"  # an address that no exception covers, written so that this file does not contain it
+PRIVATE_TERM = "Quill" + "feather"  # an invented private term, written so that this file does not contain it
 
 
 class TheRepository(unittest.TestCase):
@@ -49,6 +51,54 @@ class TheRepository(unittest.TestCase):
         findings, _notices, _count = hyg.scan(support.REPO, private_terms=[])
         self.assertEqual([f.format() for f in findings], [])
         self.assertTrue(hyg.NAME_STEMS and all(len(digest) == 64 for _length, digest in hyg.NAME_STEMS))
+
+    SELF = ("scripts/check_hygiene.py", "tests/test_hygiene.py")
+
+    def own_bytes(self, rel):
+        return (support.REPO / rel).read_bytes()
+
+    def test_the_two_files_that_quote_the_patterns_are_scanned_by_every_rule(self):
+        """No whole file is exempt: a leak pasted into the scanner or into its tests is found like one anywhere else."""
+        leaks = {
+            "HYG102": b"\n/Users/" + b"anyone/notes\n",
+            "HYG103": b"\nghp_" + b"a" * 36 + b"\n",
+            "HYG104": b"\n" + STRANGER.encode() + b"\n",
+            "HYG105": b"\n" + PRIVATE_TERM.encode() + b"\n",
+            "HYG106": "\n\u202e\n".encode("utf-8"),
+        }
+        hyg.use_private_terms([PRIVATE_TERM])
+        self.addCleanup(hyg.use_private_terms, [])
+        for rel in self.SELF:
+            data = self.own_bytes(rel)
+            self.assertEqual([f.format() for f in hyg.scan_bytes(rel, data)], [], rel)
+            for code, extra in leaks.items():
+                self.assertEqual(sorted({f.code for f in hyg.scan_bytes(rel, data + extra)}), [code], "%s: %s pasted into the file must be found" % (rel, code))
+
+    def test_the_quoted_matches_are_exactly_what_the_two_files_quote(self):
+        """With no exception at all the two files produce exactly the listed matches, so no entry is stale and no other match is hidden."""
+        hyg.use_private_terms([])
+        listed = {(q.path, q.rule, digest) for q in hyg.QUOTED_MATCHES for digest in q.digests}
+        self.assertEqual({path for path, _rule, _digest in listed}, set(self.SELF))
+        found = set()
+        for rel in self.SELF:
+            for line in self.own_bytes(rel).decode("utf-8").split("\n"):
+                for rule in hyg.RULES:
+                    found.update((rel, rule.code, hyg._digest(match)) for match in hyg.find_matches(rule, rel, line))
+        self.assertEqual(sorted(found), sorted(listed))
+        for quoted in hyg.QUOTED_MATCHES:
+            self.assertTrue(quoted.what.strip() and quoted.digests, quoted)
+            for digest in quoted.digests:
+                self.assertRegex(digest, r"^[0-9a-f]{64}$")
+
+    def test_an_exception_belongs_to_its_path_and_to_its_exact_text(self):
+        hyg.use_private_terms([])
+        quoted = b"Contact someone@contoso.com\n"
+        self.assertEqual([f.code for f in hyg.scan_bytes("tests/test_hygiene.py", quoted)], [])
+        for elsewhere in ("tests/test_other.py", "docs/page.md", "scripts/check_hygiene.py", "x/tests/test_hygiene.py"):
+            self.assertEqual([f.code for f in hyg.scan_bytes(elsewhere, quoted)], ["HYG104"], elsewhere)
+        beside = quoted.rstrip() + b" and " + STRANGER.encode()
+        self.assertEqual([(f.code, f.excerpt) for f in hyg.scan_bytes("tests/test_hygiene.py", beside)], [("HYG104", STRANGER)], "an excused match does not hide another one on its line")
+        self.assertEqual([f.code for f in hyg.scan_bytes("tests/test_hygiene.py", b"Contact a." + b"b" + b"@contoso.com\n")], ["HYG104"], "another text of the same rule")
 
     def test_the_pinned_lines_are_exactly_the_lines_that_name_the_authority(self):
         """With no pin, the scan must flag the pinned lines and nothing else; so no pin is stale, and no other line names the authority."""
@@ -111,7 +161,7 @@ class Detection(unittest.TestCase):
 
     def test_email_addresses(self):
         self.assertEqual(codes_for_text("write to someone@contoso.com"), ["HYG104"])
-        for text in ("12345+someone@users.noreply.github.com", "name@example.com", "git@github.com:owner/repo.git"):
+        for text in ("12345+someone@users.noreply.github.com", "name@example.com", "git@github.com:owner/repo.git", "GitHub <noreply@github.com>"):
             self.assertEqual(codes_for_text(text), [], text)
 
     def test_internal_vocabulary_is_found_in_text_and_in_names(self):
@@ -386,6 +436,13 @@ class CommandLine(unittest.TestCase):
         self.assertIn("exactly these %d lines" % len(hyg.PUBLIC_SOURCE_LINES), done.stdout)
         for pin in hyg.PUBLIC_SOURCE_LINES:
             self.assertIn(pin.digest[:12], done.stdout)
+        self.assertIn("Exactly these %d matches of one rule in one file are excused" % sum(len(q.digests) for q in hyg.QUOTED_MATCHES), done.stdout)
+        for quoted in hyg.QUOTED_MATCHES:
+            self.assertIn(quoted.path, done.stdout)
+            for digest in quoted.digests:
+                self.assertIn(digest[:12], done.stdout)
+        self.assertIn("shallow clone is refused", done.stdout)
+        self.assertNotIn("are not read: scripts/check_hygiene.py", done.stdout, "no file is exempt as a whole any more")
         self.assertNotIn("waived", done.stdout, "there is no waiver by prefix or by pattern any more, only pinned lines")
 
     def test_pin_prints_the_entry_for_one_line_and_refuses_what_is_not_a_line(self):
@@ -489,6 +546,61 @@ class History(unittest.TestCase):
         self.assertEqual([f.format() for f in history], [])
         self.assertEqual(counts["commits"], 2)
         self.assertEqual(notices, [])
+
+    def test_the_same_content_at_another_path_is_judged_at_that_path(self):
+        """What a path excuses belongs to the path: content excused where it was first added is judged again where it is added later."""
+        text = "Contact someone@contoso.com\n"
+        root = self.repository([
+            ("quote it where it is excused", {"tests/test_hygiene.py": text}, NOREPLY),
+            ("copy it elsewhere", {"docs/copy.md": text}, NOREPLY),
+            ("remove the copy", {"docs/copy.md": None}, NOREPLY)])
+        history, _notices, counts = hyg.scan_history(root, private_terms=[])
+        self.assertEqual([(f.code, f.path.split(" @ ")[0]) for f in history], [("HYG104", "docs/copy.md")])
+        self.assertEqual((counts["file_versions"], counts["blobs"]), (2, 1), "one blob, held at two paths, is two file versions")
+
+    def test_a_pinned_line_is_excused_only_at_its_own_path_in_the_history(self):
+        root = self.repository([
+            ("add the record", {RECORDS: TITLE + "\n"}, NOREPLY),
+            ("copy it", {"docs/copy.md": TITLE + "\n"}, NOREPLY),
+            ("remove the copy", {"docs/copy.md": None}, NOREPLY)])
+        with mock.patch.object(hyg, "PUBLIC_SOURCE_LINES", pins(TITLE)):
+            history, _notices, _counts = hyg.scan_history(root, private_terms=list(INVENTED_NAME))
+        self.assertEqual([(f.code, f.path.split(" @ ")[0]) for f in history], [("HYG105", "docs/copy.md")])
+
+    def test_content_that_one_path_does_not_read_is_read_at_the_other_path(self):
+        """A blocked file type is reported by its name and its content is not read. The same content at an ordinary path is read."""
+        text = "Contact " + STRANGER + "\n"
+        root = self.repository([
+            ("add it as a spreadsheet", {"docs/report.xlsx": text}, NOREPLY),
+            ("add it as a page", {"docs/page.md": text}, NOREPLY),
+            ("remove both", {"docs/report.xlsx": None, "docs/page.md": None}, NOREPLY)])
+        history, _notices, _counts = hyg.scan_history(root, private_terms=[])
+        self.assertEqual(sorted({(f.code, f.path.split(" @ ")[0]) for f in history}), [("HYG104", "docs/page.md"), ("HYG201", "docs/report.xlsx")])
+
+    def test_each_blob_is_read_once_however_many_paths_held_it(self):
+        page = "The same page\n"
+        root = self.repository([("add pages", {"a.md": page, "b.md": page, "c/d.md": page}, NOREPLY), ("add another", {"e.md": "A different page\n"}, NOREPLY)])
+        with mock.patch.object(hyg, "read_blobs", wraps=hyg.read_blobs) as reader:
+            _findings, _notices, counts = hyg.scan_history(root, private_terms=[])
+        asked = [blob for call in reader.call_args_list for blob in call.args[1]]
+        self.assertEqual(len(asked), len(set(asked)), "no blob is asked for twice")
+        self.assertEqual((counts["file_versions"], counts["blobs"], len(asked)), (4, 2, 2))
+
+    def test_a_shallow_clone_is_refused_instead_of_reported_clean(self):
+        source = self.repository([("one", {"a.md": "one\n"}, NOREPLY), ("two", {"a.md": "Zebracorp\n"}, NOREPLY), ("three", {"a.md": "three\n"}, NOREPLY)])
+        with tempfile.TemporaryDirectory() as tmp:
+            shallow = Path(tmp) / "shallow"
+            subprocess.run(["git", "clone", "-q", "--depth", "1", source.as_uri(), str(shallow)], check=True, capture_output=True)
+            with self.assertRaises(hyg.HistoryError) as refused:
+                hyg.scan_history(shallow, private_terms=list(SYNTHETIC_TERMS))
+            self.assertIn("shallow", str(refused.exception))
+            done = subprocess.run([sys.executable, str(support.SCRIPTS / "check_hygiene.py"), "--root", str(shallow), "--history"], capture_output=True, text=True, encoding="utf-8")
+            self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+            self.assertIn("shallow", done.stderr)
+            subprocess.run(["git", "-C", str(shallow), "fetch", "-q", "--unshallow"], check=True, capture_output=True)
+            whole, _notices, counts = hyg.scan_history(shallow, private_terms=list(SYNTHETIC_TERMS))
+            self.assertEqual(counts["commits"], 3)
+            self.assertEqual([f.code for f in whole], ["HYG105"], "with the whole history, the term that only an old commit holds is found")
 
     def test_a_tag_is_reported_as_something_a_push_would_publish(self):
         root = self.repository([("add a page", {"docs/page.md": "A clean page\n"}, NOREPLY)])
