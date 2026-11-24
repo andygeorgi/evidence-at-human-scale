@@ -808,7 +808,7 @@
     "scenario": "Exact proposal grant binding",
     "input_definition": "Synthetic fixed snapshot FX11-01. Existing exact instances: VALID-CONTEXT at schemas/contracts-v1.schema.json examples[0]; VALID-EVIDENCE at schemas/contracts-v1.schema.json examples[1]; VALID-SELECTION at schemas/contracts-v1.schema.json examples[2]; VALID-DECISION_PACKET at schemas/contracts-v1.schema.json examples[3]; VALID-ACTION_PROPOSAL at schemas/contracts-v1.schema.json examples[4]; VALID-DELEGATION at schemas/contracts-v1.schema.json examples[5]; VALID-EXECUTION_RECEIPT at schemas/contracts-v1.schema.json examples[6]. Fixed external fixture controls (not contract metadata / production policy): {\"proposal\":\"A01/v1\",\"packet\":\"P01/v1\",\"context\":\"CTX01/v1\",\"grant\":\"G01/v1\",\"granted_target\":\"entity-illustrative\",\"granted_quantity\":1}.",
     "perturbation_or_adversarial_opportunity": "Change candidate proposal version to v2 or target to entity-other while approval stays bound to A01/v1. Exercise ambiguous exact-proposal/bounded-class binding using the supplied negative. Exact supplied negative instances: INVALID-GRANT-AMBIGUOUS-BINDING at schemas/contracts-v1.schema.json x-documentation-examples[37].instance.",
-    "expected_oracle": "Approve exact C05/C04/context versions or bounded class and current C06 parameters, targets, purpose and units.",
+    "expected_oracle": "An approval is valid only for the exact C05, C04 and context versions it names, or for a bounded class, and only within the current C06 parameters, targets, purpose and units.",
     "metric": "Correct prescribed outcomes / assessed opportunities",
     "gate_mode": "ratio",
     "contracts": [

@@ -282,8 +282,10 @@ def finding_json(f: Finding) -> dict:
 
 
 def render_json(results: List[StageResult], state: str, run_findings: Optional[List[Finding]] = None) -> str:
+    complete = bool(results) and all(r.status != SKIPPED for r in results)
     return json.dumps({
-        "version": __version__, "status": state, "passed": state == PASS, "complete": bool(results) and all(r.status != SKIPPED for r in results),
+        # "passed" is true only when every stage ran and passed; "status" is the state of the stages that ran
+        "version": __version__, "status": state, "passed": state == PASS and complete, "complete": complete,
         "skipped_stages": [r.stage for r in results if r.status == SKIPPED], "exit_code": EXIT_CODES[state],
         "findings": [finding_json(f) for f in (run_findings or [])],
         "stages": [{"stage": r.stage, "title": r.title, "status": r.status, "passed": r.passed, "evaluated": r.evaluated, "detail": r.detail,
@@ -326,8 +328,10 @@ def render_text(results: List[StageResult], state: str, verbose: bool) -> str:
     elif state == INPUT_ERROR:
         out.append("Result: INPUT ERROR. %s" % NEXT_STEP[INPUT_ERROR])
     else:
-        why = "Every stage was skipped, so nothing was evaluated." if not ran else "%d stage(s) had no input to evaluate, so nothing could pass or fail there." % states.count(NOT_ASSESSED)
-        out.append("Result: NOT ASSESSED. %s %s" % (why, NEXT_STEP[NOT_ASSESSED]))
+        if not ran:
+            out.append("Result: NOT ASSESSED. Every stage was skipped, so nothing was evaluated. Select at least one stage with --only, or take a stage out of --skip.")
+        else:
+            out.append("Result: NOT ASSESSED. %d stage(s) had no input to evaluate, so nothing could pass or fail there. %s" % (states.count(NOT_ASSESSED), NEXT_STEP[NOT_ASSESSED]))
     return "\n".join(out)
 
 

@@ -191,7 +191,7 @@ Contracts: C01, C02, C03, C04, C05, C06, C07. Status: NOT ASSESSED.
 
 | Fixture | Scenario | Expected oracle | Metric | Gate |
 |---|---|---|---|---|
-| FX11-01 | Exact proposal grant binding | Approve exact C05/C04/context versions or bounded class and current C06 parameters, targets, purpose and units. | Correct prescribed outcomes / assessed opportunities | ratio 1 |
+| FX11-01 | Exact proposal grant binding | An approval is valid only for the exact C05, C04 and context versions it names, or for a bounded class, and only within the current C06 parameters, targets, purpose and units. | Correct prescribed outcomes / assessed opportunities | ratio 1 |
 | FX11-02 | Commit TOCTOU | At commit, current authorization, revocation, evidence, policy and target state are rechecked. An expiry or a missing response never expands a grant. | Correct prescribed outcomes / assessed opportunities | ratio 1 |
 | FX11-03 | Shared atomic grant limits | Per-action and cumulative capacity is checked, reserved and consumed atomically and is shared across concurrent attempts. A compare-and-set on the target version alone is insufficient. | Correct prescribed outcomes / assessed opportunities | ratio 1 |
 | FX11-04 | Concurrent overspend | Concurrent actions cannot double-spend consumed/reserved grant allowance within declared window. | Correct prescribed outcomes / assessed opportunities | ratio 1 |
