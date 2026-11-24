@@ -236,6 +236,12 @@ class Detection(unittest.TestCase):
         for text in ("This is a first release, not a final version.", "Nothing here is the canonical release."):
             self.assertEqual(codes_for_text(text), [], text)
 
+    def test_neither_not_only_nor_a_word_about_time_denies_a_claim(self):
+        """"not only the ... version" adds to a claim, and "before" and "until" say when, not that the claim is false."""
+        for text in ("This is not only the %s version." % FINAL, "It is not just the %s release." % FINAL, "It is not the only %s edition." % OFFICIAL,
+                     "Wait until the %s publication." % OFFICIAL, "It comes before the %s release." % FINAL, "Until then, this is the %s edition." % OFFICIAL):
+            self.assertEqual(codes_for_text(text), ["HYG108"], text)
+
     def test_a_denial_excuses_only_the_claim_it_negates(self):
         """A denial near one claim of finality must not excuse another claim on the same line."""
         excused = ("This is not the %s version." % FINAL, "It is never the %s release." % FINAL, "Nothing here is the %s edition." % OFFICIAL, "This isn't the %s publication." % OFFICIAL,
