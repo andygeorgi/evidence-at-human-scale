@@ -80,12 +80,8 @@ class StatedCounts(unittest.TestCase):
         ("evaluation/README.md", r"\d+ tests, (\d+) synthetic fixtures, \d+ matched baseline records and \d+ domain parameters", "fixtures"),
         ("evaluation/README.md", r"\d+ tests, \d+ synthetic fixtures, (\d+) matched baseline records and \d+ domain parameters", "baselines"),
         ("evaluation/README.md", r"\d+ tests, \d+ synthetic fixtures, \d+ matched baseline records and (\d+) domain parameters", "parameters"),
-        ("evaluation/README.md", r"All (\d+) are \*\*UNSET\*\*", "parameters"),
+        ("evaluation/README.md", r"All (\d+) are UNSET", "parameters"),
         ("evaluation/README.md", r"## Preconditions: (\d+) parameters", "parameters"),
-        ("evaluation/oracles.md", r"lists the (\d+) tests", "tests"),
-        ("evaluation/oracles.md", r"the (\d+) matched baseline records", "baselines"),
-        ("evaluation/oracles.md", r"the (\d+) concrete synthetic fixtures", "fixtures"),
-        ("evaluation/oracles.md", r"the (\d+) unresolved domain parameters", "parameters"),
         ("architecture/evidence-semantics.md", r"bundle's (\d+) embedded examples", "embedded examples"),
         ("architecture/evidence-semantics.md", r"\((\d+) valid, \d+ invalid\)", "valid examples"),
         ("architecture/evidence-semantics.md", r"\(\d+ valid, (\d+) invalid\)", "invalid examples"),
@@ -135,7 +131,7 @@ class StatedCounts(unittest.TestCase):
 class CodeReference(unittest.TestCase):
     """The code table in scripts/README.md must name every code the checks can produce, and no code that does not exist."""
 
-    FAMILIES = r"SCH|REF|LIN|KIND|COR|LIFE|MISS|PKT|AUTH|ACC|DISC|RESP|GW|CASE|HYG|STR"
+    FAMILIES = r"ID|INP|SCH|REF|LIN|KIND|COR|LIFE|MISS|PKT|AUTH|ACC|DISC|ROLE|RESP|GW|CASE|HYG|STR"
 
     def codes_in_scripts(self):
         found = set()
@@ -172,14 +168,35 @@ class CodeReference(unittest.TestCase):
 
 
 class AffiliationDisclosure(unittest.TestCase):
-    SENTENCE = ("The author is employed by Microsoft. The Azure mapping is one implementation example of the product-neutral architecture, "
-                "not a requirement to use Microsoft technology.")
+    """One personal-project statement in the README, one Azure neutrality statement on the Azure page, and no statement of an employer."""
 
-    def test_the_disclosure_is_where_a_reader_meets_the_azure_mapping(self):
-        for page in ("README.md", "architecture/azure-implementation-options.md", "docs/paper/13-implementation-options.md"):
-            body = text(page)
-            self.assertIn(self.SENTENCE, body, page)
-            self.assertIn("not an official Microsoft publication", body, page)
+    PERSONAL = "This is a personal project, not an official Microsoft publication."
+    NEUTRALITY = "Azure is one implementation example of this product-neutral architecture, not a requirement."
+
+    def prose_files(self):
+        for path in sorted(REPO.rglob("*")):
+            if path.is_file() and ".git" not in path.relative_to(REPO).parts and path.suffix in (".md", ".cff", ".yml"):
+                yield path
+
+    def where(self, phrase):
+        return [p.relative_to(REPO).as_posix() for p in self.prose_files() if phrase in p.read_text(encoding="utf-8")]
+
+    def test_no_page_states_the_authors_employer(self):
+        self.assertEqual(self.where("employed by Microsoft"), [])
+        self.assertEqual(self.where("works at Microsoft"), [])
+        self.assertEqual(self.where("Microsoft employee"), [])
+
+    def test_the_readme_says_once_that_this_is_a_personal_project(self):
+        self.assertEqual(self.where(self.PERSONAL), ["README.md"])
+        self.assertEqual(text("README.md").count(self.PERSONAL), 1)
+
+    def test_the_azure_page_says_once_that_azure_is_one_example(self):
+        self.assertEqual(self.where(self.NEUTRALITY), ["architecture/azure-implementation-options.md"])
+        self.assertEqual(text("architecture/azure-implementation-options.md").count(self.NEUTRALITY), 1)
+
+    def test_the_citation_file_carries_no_employer(self):
+        self.assertNotIn("Microsoft", text("CITATION.cff"))
+        self.assertNotRegex(text("CITATION.cff"), r"(?im)^\s*affiliation\s*:")
 
     def test_the_azure_table_names_each_capability_without_a_product_name(self):
         table = text("architecture/azure-implementation-options.md").split("| Capability needed |", 1)[1].split("\n\n", 1)[0]
@@ -225,11 +242,11 @@ class OneVocabulary(unittest.TestCase):
 
     def test_the_glossary_defines_the_terms_that_were_ambiguous(self):
         glossary = text("docs/glossary.md")
-        for term in ("Accountable approver", "Child task", "Context", "Documentation contract", "Evidence class", "Evidence ledger",
+        for term in ("Approver", "Child task", "Context", "Documentation contract", "Evidence class", "Evidence ledger",
                      "Qualified", "Recovery owner", "Registry (governed)", "Requestor", "`not_executed_verified`"):
             self.assertIn("| **%s** |" % term, glossary, term)
 
-    def test_the_requestor_and_the_accountable_approver_are_never_one_field(self):
+    def test_the_requestor_and_the_approver_are_never_one_field(self):
         schema = support.schema()
         context, delegation = json.dumps(schema["$defs"]["context"]), json.dumps(schema["$defs"]["delegation"])
         self.assertIn('"requesting_principal"', context)
@@ -271,9 +288,9 @@ class EngagementWithoutScale(unittest.TestCase):
 
     def test_the_check_notices_what_it_is_for(self):
         counted = re.compile(r"\b%s\b(?:\s+[\w-]+){0,2}?\s+%s\b" % (self.NUMBER_WORD, self.COUNTED), re.I)
-        for sentence in ("The test covered three proposed agents.", "Three autonomous agents were tested.", "Only four carry case records.", "Six such values came from controls."):
+        for sentence in ("The test covered eleven proposed agents.", "Nine autonomous agents were tested.", "Only ten carry case records.", "Twelve such values came from controls."):
             self.assertTrue(counted.search(sentence), sentence)
-        for sentence in ("Seven observations shaped the design.", "A ten-minute status window.", "One internal test within a single case-based engagement."):
+        for sentence in ("Eight observations shaped the design.", "A ten-minute status window.", "One internal test within a single case-based engagement."):
             self.assertFalse(counted.search(sentence), sentence)
 
 

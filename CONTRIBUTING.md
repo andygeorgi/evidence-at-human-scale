@@ -16,14 +16,14 @@ This repository is licensed under the [MIT License](LICENSE). Under GitHub's Ter
 ## What needs discussion first
 
 - A new contract, or a change to what a contract, a check code or the schema means. These change what the paper claims.
-- Any result, benchmark or measurement. The EV01–EV12 programme is NOT RUN. A contribution that reports a result has to say who ran what, on which data and against which denominators, as the [evaluation guide](evaluation/README.md) describes, and it is reviewed as evidence, not as documentation.
+- Any result, benchmark or measurement. No evaluation test has been run: EV01–EV12 are NOT ASSESSED. A contribution that reports a result has to say who ran what, on which data and against which denominators, and it records the command, the input and the output, as the [evaluation guide](evaluation/README.md) describes. It is reviewed as evidence, not as documentation.
 - Real data of any kind. Never. Every name, amount and identifier here is invented; yours must be too.
 
 ## Ground rules
 
-1. **Do not turn NOT RUN into a result.** A status changes only when the test was run and the evidence is recorded.
+1. **Do not turn NOT ASSESSED into a result.** A status changes only when the test was run and the command, input and output are recorded in the row.
 2. **Keep the evidence classes apart.** Real public records, the author's engagement records, synthetic illustration and "not available" are different things ([claims and limits](docs/claims-and-limits.md)).
-3. **Edit the source, not the output.** The example JSON is written by [`scripts/build_example_data.py`](scripts/build_example_data.py); the figure blocks in the Markdown, the README banner and the gallery by [`scripts/sync_figures.py`](scripts/sync_figures.py) from [`figures/figures.json`](figures/figures.json); the figure SVGs by [`figures/src/svg_figures.py`](figures/src/svg_figures.py). A check fails if a generated file is edited by hand.
+3. **Edit the source, not the output.** The example JSON is written by [`scripts/build_example_data.py`](scripts/build_example_data.py); the catalogue's CSV files and the test sections of the oracles page by [`scripts/build_catalogue.py`](scripts/build_catalogue.py) from the catalogue's JSON; the figure blocks in the Markdown, the README banner and the gallery by [`scripts/sync_figures.py`](scripts/sync_figures.py) from [`figures/figures.json`](figures/figures.json); the figure SVGs by [`figures/src/svg_figures.py`](figures/src/svg_figures.py). A check fails if a generated file is edited by hand.
 4. **Write plainly, in American spelling.** Names that already exist, such as "catalogue" and "programme", stay as they are.
 5. **Say what a figure or an example does not show.** Each example page ends with that.
 

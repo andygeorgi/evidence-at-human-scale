@@ -4,7 +4,7 @@
 
 **Paper:** [4. Evidence keeps its type and its ancestry](../docs/paper/04-evidence-and-lineage.md)
 **Reference:** [evidence semantics](../architecture/evidence-semantics.md); [lineage, selection and disclosure](../architecture/lineage-selection-disclosure.md)
-**Figures:** F02, F03 · **Evaluation tests:** EV01, EV02, EV03, EV07, EV12 (NOT RUN)
+**Figures:** F02, F03 · **Evaluation tests:** EV01, EV02, EV03, EV07, EV12 (NOT ASSESSED)
 
 C02 Evidence has a stable identity and immutable version, registered producer and permitted kind, source locator, scope, timing, method, and relevant qualifications. Admission establishes admissibility of the envelope and kind. Scoped validation records who assessed which target, by which method, when, and within what scope. Neither establishes universal correctness.
 

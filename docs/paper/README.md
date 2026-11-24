@@ -1,11 +1,9 @@
 # The paper
 
 **Evidence at Human Scale: Reference Architecture for Accountable Decisions in Agentic Systems**
-Andy Georgi · version 1.0.0 · 24 November 2026
+Andy Georgi · version 1.0.1 · 24 November 2026
 
-> **Systems produce evidence. AI makes it consumable. People remain accountable.**
-
-The paper is the main argument. Each chapter stands on its own, links to the contract or reference page that carries the exhaustive detail, and points to a worked example where one exists.
+The paper is the main argument. Each chapter stands on its own, links to the contract or reference page that carries the exhaustive detail, and points to a worked example where one exists. If you would rather run something first, start with the [examples](../../examples/README.md).
 
 | # | Chapter | Takeaway |
 | --- | --- | --- |

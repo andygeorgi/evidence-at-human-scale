@@ -4,7 +4,7 @@
 
 ## Optional product mapping, not architecture
 
-**Disclosure.** The author is employed by Microsoft. The Azure mapping is one implementation example of the product-neutral architecture, not a requirement to use Microsoft technology. This repository is not an official Microsoft publication, and nothing in it implies Microsoft endorsement.
+Azure is one implementation example of this product-neutral architecture, not a requirement.
 
 Removing Azure leaves every logical contract and path intact. The first column of the table names the capability the architecture needs, in product-neutral terms; the second names one Azure option for it. A different product with an equivalent capability could fill the row, and it would need its own qualification check. The following preserves source-scoped product options and qualifications revalidated on 17 November 2026 UTC, not new deployment findings. No tenant, region/model/tool/SDK configuration, permission-sync guarantee, cost, performance, ROI or production readiness has been validated. Product capabilities change; check the cited pages ([sources](../references/azure-sources.md)) before relying on any row.
 
@@ -21,4 +21,4 @@ Removing Azure leaves every logical contract and path intact. The first column o
 
 The full source URLs and passage scopes for AZ01–AZ05 and REF-JSON01 are on the [sources](../references/azure-sources.md) pages.
 
-[← Ownership and tradeoffs](ownership-and-tradeoffs.md) · [Architecture reference](README.md) · [Next: reviewer navigation →](reviewer-navigation.md)
+[← Ownership and tradeoffs](ownership-and-tradeoffs.md) · [Architecture reference](README.md) · [Next: question index →](question-index.md)

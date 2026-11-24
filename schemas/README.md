@@ -2,7 +2,7 @@
 
 One file: [`contracts-v1.schema.json`](contracts-v1.schema.json), a JSON Schema (Draft 2020-12) bundle that encodes the structure of the seven [contracts](../contracts/README.md) C01–C07.
 
-It checks **structure**. It does not check that a reference points at something that exists, that a derivation is acyclic, or that a correction reached everything built on the corrected record. Those are scenario semantics, and the [validation command](../scripts/README.md) checks them separately on the [synthetic examples](../examples/README.md).
+It checks **structure and local constraints**: required fields, types, enumerations and formats. It does not check that a reference points at something that exists, that a derivation is acyclic, or that a correction reached everything built on the corrected record. Those are scenario semantics, and the [validation command](../scripts/README.md) checks them separately on the [synthetic examples](../examples/README.md). Nothing in this repository can check that the right records were retrieved or that what they say is true, and a schema cannot either.
 
 ## What is in the file
 
@@ -23,7 +23,7 @@ Everything with an `x-` prefix, every `title`, `description`, `examples` and `$c
 |---|---|
 | `$id` | `urn:evidence-at-human-scale:contracts:1` |
 | Instance `schema_version` | `"1"` |
-| Release | `v1.0.0` |
+| Release | `v1.0.1` |
 | Validation-surface hash | recorded in [`contracts/CHANGES.md`](../contracts/CHANGES.md); recompute with `python scripts/schema_surface_hash.py` |
 
 A change that alters what validates needs a new entry in [`contracts/CHANGES.md`](../contracts/CHANGES.md) with the previous form, the new form, the reason, the compatibility impact and the migration. The repository's checks fail if the validation surface changes without that record.

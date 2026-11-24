@@ -4,9 +4,9 @@
 
 **Paper:** [5. Context governs what is selected](../docs/paper/05-context-and-attention.md); [8. Uncertainty is part of the result](../docs/paper/08-uncertainty.md)
 **Reference:** [lineage, selection and disclosure](../architecture/lineage-selection-disclosure.md)
-**Figures:** F02, F03, F04, F09 · **Evaluation tests:** EV03, EV04, EV05, EV06, EV09, EV10, EV12 (NOT RUN)
+**Figures:** F02, F03, F04, F09 · **Evaluation tests:** EV03, EV04, EV05, EV06, EV09, EV10, EV12 (NOT ASSESSED)
 
-C03 Selection binds authorized retrieval coverage to selected evidence, exclusions, grouping reasons, missingness, and constraints. A selected scope is not whole-corpus coverage. The reader must be able to distinguish an input that was expected but absent from one deliberately excluded, inaccessible, or outside the retrieval scope.
+C03 Selection binds authorized retrieval coverage to selected evidence, exclusions, grouping reasons, missingness, and constraints. A selected scope is not whole-corpus coverage. The reader must be able to distinguish an input that was expected but absent from one deliberately excluded, inaccessible, or outside the retrieval scope. Permission is decided first: an input the reader may not know about has no entry at all, and the missingness states below describe only inputs the reader may know about.
 
 | Group / exact type-cardinality | Emitted group and fields | Required semantics |
 | --- | --- | --- |
@@ -33,7 +33,7 @@ Each missingness state requires different supporting fields, which is what keeps
 
 ## What a valid C03 does not establish
 
-A manifest with no dispositions cannot imply whole-corpus absence, and `complete` coverage applies only to the declared assessed scope. Existence of an inaccessible source is disclosed only through a permission-safe summary.
+A manifest with no dispositions cannot imply whole-corpus absence, and `complete` coverage applies only to the declared assessed scope. The schema cannot decide whether a reader may know that a source exists. That decision comes from a permission decision outside the contract, and it comes first: an `inaccessible` entry exists only where the decision allows it, and carries nothing beyond the decision's own wording (no name, type, count, state or age). The check `DISC002` finds an entry that the decision does not allow, and `DISC003` finds wording that says more than it permits.
 
 ## Examples
 

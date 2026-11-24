@@ -5,7 +5,7 @@ This repository states what it claims and, as carefully, what it does not. Every
 ## What the repository is
 
 - A reference architecture and a set of documentation contracts for accountable decisions in agentic systems, with a paper, a technical reference, machine-readable schemas, a synthetic worked example and evaluation guidance.
-- An **architecture proposition, not a deployment or benefit claim**. The mechanisms are deliberate; none is presented as a measured benefit.
+- A reference architecture, not a production deployment or benefit claim. The contracts and synthetic examples are tested; real-world effectiveness has not been evaluated. None of the mechanisms is presented as a measured benefit.
 - Informed by a case-based architecture engagement, not a client commission. See [what the engagement showed](paper/02-engagement.md).
 
 ## Evidence classes kept apart
@@ -18,15 +18,24 @@ This repository states what it claims and, as carefully, what it does not. Every
 | **Repository checks and editorial inspection** | Deterministic checks on invented data (schema, example, link and figure checks) and a reader's inspection of the text. | An evaluation of the architecture. A pass says the documents are consistent, and says nothing about any real system. |
 | **Not available, not claimed** | Any interview, data, approval or outcome from an authority; any customer endorsement; any runtime, human, safety, cost, latency or ROI result for this architecture. | Implied by anything in the repository. |
 
+## What is tested, and what is not evaluated
+
+**Tested.** The schema and contract structure; the synthetic worked example; the deterministic validators; the documented failure fixtures (64 invalid schema examples and 37 mutated copies of the example set); and the repository tooling.
+
+**Not evaluated in the real world.** Human decision quality, operational usability, organizational outcomes, production reliability, customer benefit, production cost and latency, and institutional accountability in practice.
+
+The 12 evaluation tests and their 70 fixtures were reviewed for this. None can be run without an implementation to run it against, and none has been run. All are NOT ASSESSED ([why](../evaluation/README.md#which-tests-can-be-run-today)). The 47 domain parameters are UNSET.
+
 ## What is not claimed
 
-- **No evaluation has been run.** EV01–EV12, the 70 synthetic fixtures, the 12 matched baseline records, and architecture, runtime, safety, human, performance, latency, cost and ROI evaluation are all NOT RUN. See the [evaluation guide](../evaluation/README.md).
+- **No real-world result.** Nothing here reports a result of using the architecture: not in a model, with people, in operation or in production, and not for speed, accuracy, cost, latency, return or decision quality. See the [evaluation guide](../evaluation/README.md).
 - **No measured benefit.** The proposed benefit is more inspectable context, not a claimed improvement in speed, accuracy, cost or decision quality.
 - **No authority involvement.** The authority took no part; no interview, data, approval or outcome from it forms part of this evidence, and nothing here is a statement by, about or on behalf of it.
 - **No systemic claim.** Public records are single dated cases; the repository makes no claim about any authority's staff, systems or current practice.
 - **No claim that structural checks prove more than structure.** Schema validity and the example checks do not establish source truth, factual correctness, legal or regulatory compliance, authorization legitimacy, decision quality, human-review quality, production safety, operational readiness or business value. All of these are NOT ASSESSED.
 - **No truth certification.** The architecture does not establish that sources are true, does not decide or approve, and does not set domain policy, thresholds or safe states.
-- **No unconditional accessibility or format claim.** Accessibility checks on the figures are limited to what [the figure guide](../figures/README.md) lists.
+- **No accessibility conformance claim.** The figure checks are automated checks on the files: alt text, descriptions and drawing limits. They are not an accessibility assessment, so formal accessibility is NOT ASSESSED, and usability on a phone has not been tested with people or devices. See [the figure guide](../figures/README.md).
+- **No relicensing of cited material.** The [MIT License](../LICENSE) covers what this repository's author wrote. It does not relicense the public sources the repository cites; they stay under their own terms ([sources](../references/README.md)).
 - **No new product facts.** Product statements are dated 17 November 2026 UTC and qualified in the [implementation options](../architecture/azure-implementation-options.md); they are not deployment findings.
 
 ## Known limitations
@@ -39,8 +48,9 @@ This repository states what it claims and, as carefully, what it does not. Every
 
 | Status | Meaning |
 | --- | --- |
-| NOT RUN | Execution was not attempted. |
-| NOT ASSESSED | Insufficient declared assessment coverage; never an automatic pass. |
-| UNSET | A domain parameter has no approved value. |
+| RUN / PASS, RUN / FAIL | Executed, with the command, the input and the output recorded. |
+| NOT RUN | Executable with what exists, and not performed. |
+| NOT ASSESSED | The evidence, environment or participants the evaluation needs do not exist. An empty denominator is also NOT ASSESSED, never a pass. |
+| UNSET | The design of the evaluation is undefined, or a domain parameter has no value yet. |
 | unverified | A requirement has not been checked against its authoritative source. |
 | unresolved | An open question that needs an owner's decision. |

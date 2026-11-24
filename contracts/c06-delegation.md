@@ -4,7 +4,7 @@
 
 **Paper:** [9. Authority remains a separate boundary](../docs/paper/09-authority.md)
 **Reference:** [action and degradation](../architecture/action-and-degradation.md)
-**Figures:** F05 · **Evaluation tests:** EV07, EV11 (NOT RUN)
+**Figures:** F05 · **Evaluation tests:** EV07, EV11 (NOT ASSESSED)
 
 A C06 Delegation records what has been authorized: either an **exact approval** of one proposal version, or a **standing grant** for a bounded class of actions. Neither is an instruction to act. Current rights, evidence, policy, target state and shared limits still govern commit, and a grant works only within its current scope and lifecycle.
 
@@ -78,7 +78,7 @@ The exact approval in [example 07](../examples/07-authority-and-delegation/READM
 
 ## What a valid C06 does not establish
 
-The `issuer` is the accountable approver. It is a different field, and a different role, from the requestor that C01 names (`requesting_principal`): no contract treats the two as the same. Where a domain's policy explicitly permits one person to hold both, each field still records its own role.
+The `issuer` is the approver. It is a different field, and a different role, from the requestor that C01 names (`requesting_principal`): no contract treats the two as the same. Where a domain's policy explicitly permits one person to hold both, each field still records its own role. A person who reviews the decision packet, the Decision Owner, may also be the issuer where the policy says so; the record of the review stays in the packet's review history, and the issuer field names the person who approved.
 
 A grant is not a standing permission to act: at commit the executor rechecks permission and revocation, evidence, policy, target state and per-action and cumulative limits, including consumed and reserved capacity. A deadline cannot enlarge a grant, and no response is not approval. Where shared atomic enforcement is unsupported, the grant must declare the weaker guarantees, race windows and residual risk, and unattended operations stay disabled until the domain owner accepts them.
 

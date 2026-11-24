@@ -1,6 +1,6 @@
 # Figures
 
-Eleven figures and a banner. They are simplified views of the architecture, drawn to be read, not alternative specifications: the [contracts](../contracts/README.md) and the prose carry the semantics, and every figure points back to them. No figure shows a result; where a figure mentions evaluation, it says NOT RUN.
+Eleven figures and a banner. They are simplified views of the architecture, drawn to be read, not alternative specifications: the [contracts](../contracts/README.md) and the prose carry the semantics, and every figure points back to them. No figure shows a result; where a figure mentions evaluation, it says that none has been run.
 
 Each figure has a caption, a short alt text and a long description. They appear where they are discussed, in the [paper](../docs/paper/README.md) and in the [examples](../examples/README.md), and are collected here.
 
@@ -28,11 +28,11 @@ All colors are paired with a text label. No meaning is carried by color alone, a
 <source media="(min-width: 900px) and (prefers-color-scheme:dark)" srcset="banner-wide-dark.svg">
 <source media="(min-width: 900px)" srcset="banner-wide-light.svg">
 <source media="(prefers-color-scheme: dark)" srcset="banner-dark.svg">
-<img src="banner-light.svg" alt="Evidence at Human Scale. Systems produce evidence, AI makes it consumable, people remain accountable. Evidence is not inference, not recommendation, not authority.">
+<img src="banner-light.svg" alt="Evidence at Human Scale, a reference architecture for accountable decisions in agentic systems. Three steps: versioned records, one decision packet, and a person who approves one exact proposal or holds it. Every item carries its type: record, finding, inference or proposal.">
 </picture>
 </p>
 
-**Alt text.** Evidence at Human Scale. Systems produce evidence, AI makes it consumable, people remain accountable. Evidence is not inference, not recommendation, not authority.
+**Alt text.** Evidence at Human Scale, a reference architecture for accountable decisions in agentic systems. Three steps: versioned records, one decision packet, and a person who approves one exact proposal or holds it. Every item carries its type: record, finding, inference or proposal.
 
 Source: [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](banner-light.svg) · [dark](banner-dark.svg); wide drawing: [light](banner-wide-light.svg) · [dark](banner-wide-dark.svg).
 
@@ -70,7 +70,7 @@ Source: [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](banne
 
 **Alt text.** A main path of nine numbered steps from sources to review of one decision packet; a separate mandatory continuity path that branches from the registry; a separate action path that starts from the review; a reassessment and invalidation step that receives corrections and outcomes; and a control plane that constrains every stage.
 
-**Description.** The main path has nine steps: sources, admission, the registry of immutable versions (C02), authorized retrieval in a context (C01), relevance and coverage, the selection manifest (C03), bounded synthesis, release validation, and review of the decision packet (C04) by the Decision Owner. A separate mandatory continuity path branches from the registry (step 3) and runs through deterministic detection and an authorized notification queue to acknowledgement or escalation; acknowledgement is receipt, not resolution, and the path has no LLM dependency. A separate action path starts from the review step: an approval of an exact proposal (C05), or a bounded grant (C06), reaches the executor, or action gateway, which checks permission and limits at the time, then an authoritative target, then a verified receipt (C07). The outcome returns to a reassessment and invalidation step, which also receives corrections, revocations, late evidence and challenges, and returns to the registry; the derivatives, packets and pending approvals that it affects stop being current. A control plane constrains every stage and path: identity, authorization, purpose, domain policy, inventory, freshness, budgets and delegation. On a wide screen the two paths sit beside the main path, level with the step they start from, and a key names the colors and the two kinds of line; on a narrow screen the paths are stacked below it.
+**Description.** The main path has nine steps: sources, admission, the registry of immutable versions (C02), authorized retrieval in a context (C01), relevance and coverage, the selection manifest (C03), bounded synthesis, release validation, and review of the decision packet (C04) by the Decision Owner. A separate mandatory continuity path branches from the registry (step 3) and runs through deterministic detection and an authorized notification queue to acknowledgement or escalation; acknowledgement is receipt, not resolution, and the path has no LLM dependency. A separate action path starts from the review step: an exact approval of one proposal (C05), or a bounded grant, both recorded in a delegation (C06), reaches the executor, or action gateway, which rechecks the grant, the evidence, the preconditions and the limits against the current state, then an authoritative target, then a verified receipt (C07). The outcome returns to a reassessment and invalidation step, which also receives corrections, revocations, late evidence and challenges, and returns to the registry; the derivatives, packets and pending approvals that it affects stop being current. A control plane constrains every stage and path: identity, authorization, purpose, domain policy, inventory, freshness, budgets and delegation. On a wide screen the two paths sit beside the main path, level with the step they start from, and a key names the colors and the two kinds of line; on a narrow screen the paths are stacked below it.
 
 **Used in:** [3. A governed context, not an agent hierarchy](../docs/paper/03-governed-context.md).
 
@@ -119,15 +119,15 @@ Source: [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](banne
 <p align="center">
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="F05-dark.svg">
-<img src="F05-light.svg" alt="A packet lists a proposal. An accountable approver, distinct from the requestor, approves the exact proposal version, or a bounded grant covers it. Approval is not commit: the executor rechecks six conditions. If all pass, it reserves allowance and submits, and the receipt records the outcome; if one fails, the receipt is not_executed_verified. An authoritative verification confirms the outcome." width="400">
+<img src="F05-light.svg" alt="A packet lists a proposal. An approver, distinct from the requestor, approves the exact proposal version, or a bounded grant covers it. Approval is not commit: the executor rechecks six conditions. If all pass, it reserves allowance and submits, and the receipt records the outcome; if one fails, the receipt is not_executed_verified. An authoritative verification confirms the outcome." width="400">
 </picture>
 </p>
 
 **Caption.** Approval is not commit: at commit the gateway rechecks the grant, the evidence, the preconditions and the limits, and an authoritative verification confirms the outcome.
 
-**Alt text.** A packet lists a proposal. An accountable approver, distinct from the requestor, approves the exact proposal version, or a bounded grant covers it. Approval is not commit: the executor rechecks six conditions. If all pass, it reserves allowance and submits, and the receipt records the outcome; if one fails, the receipt is not_executed_verified. An authoritative verification confirms the outcome.
+**Alt text.** A packet lists a proposal. An approver, distinct from the requestor, approves the exact proposal version, or a bounded grant covers it. Approval is not commit: the executor rechecks six conditions. If all pass, it reserves allowance and submits, and the receipt records the outcome; if one fails, the receipt is not_executed_verified. An authoritative verification confirms the outcome.
 
-**Description.** Top to bottom: the packet lists a proposal as proposed, not executed. Either the accountable approver approves this exact proposal version, a role distinct from the requestor, or a bounded grant already covers it; both are recorded in a delegation (C06) that names scope, limits and expiry. A divider says that approval is not commit. At commit, the executor, or action gateway, rechecks six conditions: the grant is current and not revoked, the evidence is current and fresh, the preconditions hold, the parameters and target match, the per-action limit holds, and the cumulative limit holds, counting consumed and reserved capacity. If every check passes, it reserves allowance, submits the exact action to the target and records the outcome or a timeout. If a check fails, nothing is submitted. The receipt (C07) then records the outcome as completed_verified, unknown, partial or not_executed_verified after a pass, and not_executed_verified, with the reasons, after a failed check. An authoritative verification against the target confirms or reconciles the outcome.
+**Description.** Top to bottom: the packet lists a proposal as proposed, not executed. Either the approver approves this exact proposal version, a role distinct from the requestor, or a bounded grant already covers it; both are recorded in a delegation (C06) that names scope, limits and expiry. A divider says that approval is not commit. At commit, the executor, or action gateway, rechecks six conditions: the grant is current and not revoked, the evidence is current and fresh, the preconditions hold, the parameters and target match, the per-action limit holds, and the cumulative limit holds, counting consumed and reserved capacity. If every check passes, it reserves allowance, submits the exact action to the target and records the outcome or a timeout. If a check fails, nothing is submitted. The receipt (C07) then records the outcome as completed_verified, unknown, partial or not_executed_verified after a pass, and not_executed_verified, with the reasons, after a failed check. An authoritative verification against the target confirms or reconciles the outcome.
 
 **Used in:** [9. Authority remains a separate boundary](../docs/paper/09-authority.md); [07 Authority and delegation](../examples/07-authority-and-delegation/README.md).
 
@@ -187,15 +187,15 @@ Also in every state, urgent continuity (independent deterministic notification, 
 <p align="center">
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="F08-dark.svg">
-<img src="F08-light.svg" alt="Four steps in order: native or current workflow, deterministic grouping and templates, simple synthesis with zero specialists, optional specialists. Each step is compared with the one before on matched tasks. A note lists the measures and says every comparison is not run." width="400">
+<img src="F08-light.svg" alt="Four steps in order: native or current workflow, deterministic grouping and templates, simple synthesis with zero specialists, optional specialists. Each step is compared with the one before on matched tasks. A note lists the measures and says no comparison has been run." width="400">
 </picture>
 </p>
 
 **Caption.** Complexity must earn its place against matched native, deterministic and zero-specialist baselines; no evaluation result is claimed.
 
-**Alt text.** Four steps in order: native or current workflow, deterministic grouping and templates, simple synthesis with zero specialists, optional specialists. Each step is compared with the one before on matched tasks. A note lists the measures and says every comparison is not run.
+**Alt text.** Four steps in order: native or current workflow, deterministic grouping and templates, simple synthesis with zero specialists, optional specialists. Each step is compared with the one before on matched tasks. A note lists the measures and says no comparison has been run.
 
-**Description.** Four steps in order. Each arrow between two steps asks whether the next step is better on matched tasks, and the last asks whether there is a measured, matched need. First the native or current workflow; then deterministic grouping and templates; then simple synthesis with zero specialists, which is a complete architecture on its own; and only then optional specialists, admitted only for a documented task, permission or isolation need. The measures are correctness, omissions, evidence actually inspected, decision quality, time and workload: not fluency, and not how many agents agree. No evaluation result is claimed; every comparison is not run.
+**Description.** Four steps in order. Each arrow between two steps asks whether the next step is better on matched tasks, and the last asks whether there is a measured, matched need. First the native or current workflow; then deterministic grouping and templates; then simple synthesis with zero specialists, which is a complete architecture on its own; and only then optional specialists, admitted only for a documented task, permission or isolation need. The measures are correctness, omissions, evidence actually inspected, decision quality, time and workload: not fluency, and not how many agents agree. No evaluation result is claimed; no comparison has been run.
 
 **Used in:** [12. Evaluate simpler baselines before multi-agent value](../docs/paper/12-evaluation.md); [Evaluation guide](../evaluation/README.md).
 
@@ -206,15 +206,15 @@ Also in every state, urgent continuity (independent deterministic notification, 
 <p align="center">
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="F09-dark.svg">
-<img src="F09-light.svg" alt="A decision list. A stale record gives stale. Otherwise a check not performed gives not_assessed, a principal not permitted gives inaccessible, no answer from the source gives unavailable, no completed scoped retrieval gives missing, an observed absence with method, time and complete coverage gives negative, and otherwise not_retrieved." width="400">
+<img src="F09-light.svg" alt="Seven questions, asked in order. If the reader's principal may not know the input exists, nothing is shown. If it may not read the input, the label is inaccessible, in the permitted wording only. Otherwise the answers give stale, not_assessed, unavailable, missing or negative, and else not_retrieved." width="400">
 </picture>
 </p>
 
-**Caption.** Seven labels, six questions, asked in order: an expected input that is not in front of the reader gets exactly one label.
+**Caption.** Permission is asked before anything is classified: an input the reader may not know about shows nothing, and an input the reader may not read shows only the permitted wording.
 
-**Alt text.** A decision list. A stale record gives stale. Otherwise a check not performed gives not_assessed, a principal not permitted gives inaccessible, no answer from the source gives unavailable, no completed scoped retrieval gives missing, an observed absence with method, time and complete coverage gives negative, and otherwise not_retrieved.
+**Alt text.** Seven questions, asked in order. If the reader's principal may not know the input exists, nothing is shown. If it may not read the input, the label is inaccessible, in the permitted wording only. Otherwise the answers give stale, not_assessed, unavailable, missing or negative, and else not_retrieved.
 
-**Description.** For an expected input that is not in front of the reader, ask six questions in order. One: is a record available but failing the freshness requirement? If yes, the label is stale. Two: was the check or assessment performed? If not, not_assessed. Three: may the reader's principal read the source? If not, inaccessible, and the reason and existence are disclosed only when permitted. Four: did the source or dependency answer? If not, unavailable, which is not the same as denied. Five: did a scoped retrieval complete? If not, missing: expected, not obtained, reason may be unknown. Six: was absence observed with method, time and complete coverage? If yes, negative. If not, not_retrieved: a completed retrieval found nothing, which is not evidence of absence. Only negative is evidence of absence: its label is drawn in green, and the other six labels in amber.
+**Description.** For an expected input that is not in front of the reader, ask seven questions in order. The first two are about permission and come before any state is worked out. One: may the reader's principal know that the input exists? If not, nothing is shown for it: no entry, no state, no age and no count. It adds nothing to the coverage statement that every output carries. Two: may the principal read it? If not, the label is inaccessible, shown in the wording that the permission decision allows and in no other: no name, type, count, state or age. Only for an input the principal may read do the remaining questions apply. Three: is a record available but failing the freshness requirement? If yes, the label is stale. Four: was the check or assessment performed? If not, not_assessed. Five: did the source or dependency answer? If not, unavailable, which is not the same as denied. Six: did a scoped retrieval complete? If not, missing: expected, not obtained, reason may be unknown. Seven: was absence observed with method, time and complete coverage? If yes, negative. If not, not_retrieved: a completed retrieval found nothing, which is not evidence of absence. Only negative is evidence of absence: its label is drawn in green. The other six labels are drawn in amber, and no entry in red.
 
 **Used in:** [8. Uncertainty is part of the result](../docs/paper/08-uncertainty.md); [04 Selection and missingness](../examples/04-selection-and-missingness/README.md).
 

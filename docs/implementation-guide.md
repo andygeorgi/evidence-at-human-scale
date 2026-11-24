@@ -15,13 +15,14 @@ Good candidates have all of these: the decision recurs; people already struggle 
 | Field | Your entry |
 | --- | --- |
 | Decision question | |
-| Decision Owner (accountable) | |
+| Who asks for the packet (the requestor) | |
+| Decision Owner (reviews the packet and owns the decision) | |
 | Actions that could follow | |
 | Who may **read** which evidence, for which purpose | |
 | Who may **approve** which actions | |
 | Who may **execute** which actions | |
 
-Check: read, approve and execute are three separate columns of people or services. A service identity never grants the requestor rights to every underlying source or the assistant permission to perform every action. A human name in a workflow is not meaningful review; the owner needs time, evidence to inspect, a way to dissent and recourse.
+Check: request, review, approve and execute are separate roles, and read, approve and execute are three separate columns of people or services. One person may hold more than one role only where your policy says so; write that down, as the worked example does for its controller. A service identity never grants the requestor rights to every underlying source or the assistant permission to perform every action. A human name in a workflow is not meaningful review; the owner needs time, evidence to inspect, a way to dissent and recourse.
 
 ## Step 2 · Inventory the sources and mark the mandatory signals
 
@@ -37,7 +38,14 @@ Check: every row has an owner and a freshness requirement (or an explicit "unres
 
 **Maps to:** [C04 Decision packet](../contracts/c04-decision-packet.md). **Example:** [05 Decision packet](../examples/05-decision-packet/README.md), [06 Assistant response](../examples/06-assistant-response/README.md), [04 Missingness](../examples/04-selection-and-missingness/README.md).
 
-Draft it on paper or in a document first. Keep five headings, in this order, and never merge them:
+Draft it on paper or in a document first. Decide what the reader may know before you decide what is missing. For each input the packet could mention, in this order:
+
+1. May the reader's principal know that the input exists? If not, the packet shows nothing about it: no entry, no state, no count.
+2. If the reader may know it exists but may not read it, say so in the wording the permission decision allows, and nothing more.
+3. Only for what the reader may know about, classify it: available, missing, stale, conflicting, not assessed or unavailable.
+4. Show what the reader is authorized to see.
+
+Then keep five headings, in this order, and never merge them:
 
 1. **Supported claims**, each with the exact record version and claim identifier it rests on.
 2. **Labeled inferences**, each marked as an interpretation with its method and limits.
@@ -71,7 +79,7 @@ Run three arms on the same fixed cases before you consider any specialist agent:
 2. a deterministic template (grouping and fixed layout, no model);
 3. a simple synthesis with zero specialists.
 
-Record, for each arm and case: omissions against a gold list, the evidence the owner actually inspected, time and cost, each with its declared denominator. Declare B_time and B_cost first and write the comparison down before you run it. Do not measure fluency or the number of agents. A specialist is justified only by a documented task, permission or isolation need and a matched comparison.
+Record, for each arm and case: omissions against a gold list, the evidence the owner actually inspected, time and cost, each with its declared denominator. Declare B_time and B_cost first and write the comparison down before you run it. Do not measure fluency or the number of agents. A specialist is justified only by a documented task, permission or isolation need and a matched comparison. The evaluation guide defines 12 tests and their fixtures, and none has been run, so your first run would be the first.
 
 ## What to leave out on Monday
 

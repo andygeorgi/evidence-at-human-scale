@@ -4,7 +4,7 @@
 
 **Paper:** [6. The decision packet compresses presentation](../docs/paper/06-decision-packet.md)
 **Reference:** [evidence semantics](../architecture/evidence-semantics.md); [lineage, selection and disclosure](../architecture/lineage-selection-disclosure.md)
-**Figures:** F02, F04 · **Evaluation tests:** EV01, EV03, EV04, EV05, EV06, EV07, EV10, EV12 (NOT RUN)
+**Figures:** F02, F04 · **Evaluation tests:** EV01, EV03, EV04, EV05, EV06, EV07, EV10, EV12 (NOT ASSESSED)
 
 C04 Decision packet is a versioned review object bound to the exact context and selection manifest. It presents supported claims with evidence references, separately labeled inferences, recommendations, conflicts, uncertainty, missingness, limitations, and review requirements. It is not an action authorization and it is not an evidence ledger substitute.
 
@@ -22,7 +22,7 @@ C04 Decision packet is a versioned review object bound to the exact context and 
 
 ## What a valid C04 does not establish
 
-A packet is a versioned review object, not a truth certificate or execution control. Brevity is acceptable only while decision-changing evidence, conflict, uncertainty, omissions and drillback remain visible. A challenged packet is not overwritten: affected lineage is reassessed and revised versions stay distinguishable through `prior_version_references`.
+A packet is a versioned review object, not a truth certificate or execution control. Brevity is acceptable only while decision-changing evidence, conflict, uncertainty, omissions and drillback remain visible. A challenged packet is not overwritten: affected lineage is reassessed and revised versions stay distinguishable through `prior_version_references`. `review_version_history` shows the state of the packet when the snapshot was taken. A later invalidation changes that state; it does not erase that a review happened earlier. The worked example keeps its reviews in a separate `review_log`, in [`registry.json`](../examples/registry.json).
 
 ## Examples
 

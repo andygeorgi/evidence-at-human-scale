@@ -57,7 +57,7 @@ In live-model tests, a request to open source records could be read as permissio
 
 ## Coverage
 
-The demonstrator also taught a lesson about coverage (IN04, synthetic data). Its fleet view could show a whole fleet while case records existed for only part of it; the vessels without case records had to be labeled unassessed so that a fleet-scale picture would not imply a fleet-scale assessment. Coverage and missingness therefore belong to every result in this architecture. Runtime, human, cost and latency evaluation of the architecture remain NOT RUN.
+The demonstrator also taught a lesson about coverage (IN04, synthetic data). Its fleet view could show a whole fleet while case records existed for only part of it; the vessels without case records had to be labeled unassessed so that a fleet-scale picture would not imply a fleet-scale assessment. Coverage and missingness therefore belong to every result in this architecture. Runtime, human, cost and latency evaluation of the architecture have not been done.
 
 ## What is new here
 

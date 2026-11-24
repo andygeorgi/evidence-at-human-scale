@@ -2,7 +2,7 @@
 
 [← 11. Costs and adaptation](11-costs-and-adaptation.md) · [Paper contents](README.md) · [Next: implementation options →](13-implementation-options.md)
 
-The architecture proposes a finite evaluation programme, not completed results. The twelve evaluation tests EV01–EV12 and all 70 synthetic test fixtures remain NOT RUN. Every fixture requires fixed inputs, an explicit expected oracle, accountable owner, metrics, and a gate. Human evaluation, operational performance, cost, latency, and ROI are also NOT RUN.
+The evaluation programme is defined, and none of it has been run. The twelve tests, EV01 to EV12, and their 70 synthetic fixtures are NOT ASSESSED: each applies fixed inputs to an implementation, and none exists. Every fixture has fixed inputs, an expected oracle, metrics and a gate, and it needs an accountable owner, who is not yet assigned. Human evaluation and measures of operational performance, cost, latency and return are NOT ASSESSED as well, because they need participants and an environment that do not exist. What the repository does test is its contracts, its synthetic examples and its tooling; the [evaluation guide](../../evaluation/README.md) keeps the two apart.
 
 Compare the native/current workflow, deterministic grouping and templates, and simple synthesis with zero specialists before measuring additional specialists. Match tasks, risks, scope, and acceptance criteria. Measure correctness, omissions, actual evidence inspection, decision quality, time, and workload rather than fluency or how many agents participated.
 
@@ -14,14 +14,14 @@ Compare the native/current workflow, deterministic grouping and templates, and s
 <p align="center">
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="../../figures/F08-dark.svg">
-<img src="../../figures/F08-light.svg" alt="Four steps in order: native or current workflow, deterministic grouping and templates, simple synthesis with zero specialists, optional specialists. Each step is compared with the one before on matched tasks. A note lists the measures and says every comparison is not run." width="400">
+<img src="../../figures/F08-light.svg" alt="Four steps in order: native or current workflow, deterministic grouping and templates, simple synthesis with zero specialists, optional specialists. Each step is compared with the one before on matched tasks. A note lists the measures and says no comparison has been run." width="400">
 </picture>
 </p>
 
 <details>
 <summary>Text description of Figure F08</summary>
 
-Four steps in order. Each arrow between two steps asks whether the next step is better on matched tasks, and the last asks whether there is a measured, matched need. First the native or current workflow; then deterministic grouping and templates; then simple synthesis with zero specialists, which is a complete architecture on its own; and only then optional specialists, admitted only for a documented task, permission or isolation need. The measures are correctness, omissions, evidence actually inspected, decision quality, time and workload: not fluency, and not how many agents agree. No evaluation result is claimed; every comparison is not run.
+Four steps in order. Each arrow between two steps asks whether the next step is better on matched tasks, and the last asks whether there is a measured, matched need. First the native or current workflow; then deterministic grouping and templates; then simple synthesis with zero specialists, which is a complete architecture on its own; and only then optional specialists, admitted only for a documented task, permission or isolation need. The measures are correctness, omissions, evidence actually inspected, decision quality, time and workload: not fluency, and not how many agents agree. No evaluation result is claimed; no comparison has been run.
 
 [All figures and their descriptions](../../figures/README.md#f08-complexity-must-earn-its-place)
 

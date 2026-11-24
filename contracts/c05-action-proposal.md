@@ -4,7 +4,7 @@
 
 **Paper:** [9. Authority remains a separate boundary](../docs/paper/09-authority.md)
 **Reference:** [action and degradation](../architecture/action-and-degradation.md)
-**Figures:** F04, F05 · **Evaluation tests:** EV07, EV11, EV12 (NOT RUN)
+**Figures:** F04, F05 · **Evaluation tests:** EV07, EV11, EV12 (NOT ASSESSED)
 
 A C05 Action proposal is the exact versioned action to consider. Advice is not approval or commit. Approval binds an exact versioned proposal within stated limits, and neither approval nor delegation substitutes for the executor's current checks.
 

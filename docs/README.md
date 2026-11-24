@@ -25,7 +25,7 @@ Pick the route that matches what you need. Every route ends at something you can
 
 **Implementer path: start building.** [Implementation guide](implementation-guide.md) → [contracts](../contracts/README.md) → [examples](../examples/README.md) (run `python scripts/validate_examples.py`) → [action and degradation](../architecture/action-and-degradation.md).
 
-**Reviewer path: check the claims.** [What the engagement showed](paper/02-engagement.md) → [claims and limits](claims-and-limits.md) → [sources](../references/README.md) → [reviewer navigation](../architecture/reviewer-navigation.md).
+**Claims-checking path: what is claimed and what is not.** [What the engagement showed](paper/02-engagement.md) → [claims and limits](claims-and-limits.md) → [sources](../references/README.md) → [question index](../architecture/question-index.md).
 
 **Evaluator path: how would we know?** [Evaluation guide](../evaluation/README.md) → [oracles](../evaluation/oracles.md) → [human-outcome evaluation](../evaluation/human-outcome-evaluation.md) → [catalogue](../evaluation/catalogue/README.md).
 
@@ -38,7 +38,7 @@ Pick the route that matches what you need. Every route ends at something you can
 | [`contracts/`](../contracts/README.md) | One page per contract with all 41 field groups. |
 | [`schemas/`](../schemas/README.md) | The machine-readable JSON Schema bundle. |
 | [`examples/`](../examples/README.md) | A synthetic scenario that exercises every contract, with expected output and checks. |
-| [`evaluation/`](../evaluation/README.md) | How to evaluate, the oracles, and the catalogue of tests, fixtures and parameters (all NOT RUN / UNSET). |
+| [`evaluation/`](../evaluation/README.md) | How to evaluate, the oracles, and the catalogue of tests, fixtures and parameters (all NOT ASSESSED or UNSET). |
 | [`figures/`](../figures/README.md) | Every figure with its editable source, alt text and caption. |
 | [`references/`](../references/README.md) | Public sources, their limits, and how internal engagement records are treated. |
 | `scripts/`, `tests/` | The validation tooling and its tests. |

@@ -4,7 +4,7 @@
 
 **Paper:** [3. A governed context, not an agent hierarchy](../docs/paper/03-governed-context.md); [5. Context governs what is selected](../docs/paper/05-context-and-attention.md); [9. Authority remains a separate boundary](../docs/paper/09-authority.md)
 **Reference:** [lineage, selection and disclosure](../architecture/lineage-selection-disclosure.md); [action and degradation](../architecture/action-and-degradation.md)
-**Figures:** F02, F03, F05 · **Evaluation tests:** EV06, EV07, EV08 (NOT RUN)
+**Figures:** F02, F03, F05 · **Evaluation tests:** EV06, EV07, EV08 (NOT ASSESSED)
 
 C01 Context identifies the requesting principal, permitted task and purpose, relevant entities, scope, time, and policy constraints. The workload identity is separate. Retrieval is authorized for that context before evidence enters model context, not merely filtered after an answer has been produced.
 

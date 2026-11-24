@@ -2225,7 +2225,7 @@
                 "permission_safe_summary"
               ],
               "additionalProperties": false,
-              "description": "Current principal lacks permission; reason/existence disclosed only when permitted."
+              "description": "Current principal may know the input exists but may not read it; shown only in the wording the permission decision allows."
             },
             {
               "type": "object",
@@ -2360,7 +2360,7 @@
                 "assessment_performed"
               ],
               "additionalProperties": false,
-              "description": "Check/assessment not performed; distinct from evaluation/publication NOT ASSESSED (insufficient assessment coverage)."
+              "description": "Check or assessment of the input was not performed. Not the evaluation status NOT ASSESSED."
             },
             {
               "type": "object",
@@ -5315,7 +5315,7 @@
                 "materiality": "illustrative",
                 "reason": {
                   "state": "known",
-                  "value": "Current principal lacks permission; reason/existence disclosed only when permitted."
+                  "value": "Current principal may know the input exists but may not read it; shown only in the wording the permission decision allows."
                 },
                 "assessment_basis": "Canonical missingness fixture.",
                 "permission_decision_reference": {
@@ -5640,7 +5640,7 @@
                 "materiality": "illustrative",
                 "reason": {
                   "state": "known",
-                  "value": "Check/assessment not performed; distinct from evaluation/publication NOT ASSESSED (insufficient assessment coverage)."
+                  "value": "Check or assessment of the input was not performed. Not the evaluation status NOT ASSESSED."
                 },
                 "assessment_basis": "Canonical missingness fixture.",
                 "assessment_performed": false
@@ -6769,7 +6769,7 @@
                 "materiality": "illustrative",
                 "reason": {
                   "state": "known",
-                  "value": "Current principal lacks permission; reason/existence disclosed only when permitted."
+                  "value": "Current principal may know the input exists but may not read it; shown only in the wording the permission decision allows."
                 },
                 "assessment_basis": "Canonical missingness fixture.",
                 "permission_decision_reference": {
@@ -11147,7 +11147,7 @@
             "materiality": "illustrative",
             "reason": {
               "state": "known",
-              "value": "Current principal lacks permission; reason/existence disclosed only when permitted."
+              "value": "Current principal may know the input exists but may not read it; shown only in the wording the permission decision allows."
             },
             "assessment_basis": "Canonical missingness fixture.",
             "permission_decision_reference": {
@@ -11472,7 +11472,7 @@
             "materiality": "illustrative",
             "reason": {
               "state": "known",
-              "value": "Check/assessment not performed; distinct from evaluation/publication NOT ASSESSED (insufficient assessment coverage)."
+              "value": "Check or assessment of the input was not performed. Not the evaluation status NOT ASSESSED."
             },
             "assessment_basis": "Canonical missingness fixture.",
             "assessment_performed": false
@@ -12447,7 +12447,7 @@
             "materiality": "illustrative",
             "reason": {
               "state": "known",
-              "value": "Current principal lacks permission; reason/existence disclosed only when permitted."
+              "value": "Current principal may know the input exists but may not read it; shown only in the wording the permission decision allows."
             },
             "assessment_basis": "Canonical missingness fixture.",
             "permission_decision_reference": {
@@ -17195,7 +17195,7 @@
               "materiality": "illustrative",
               "reason": {
                 "state": "known",
-                "value": "Current principal lacks permission; reason/existence disclosed only when permitted."
+                "value": "Current principal may know the input exists but may not read it; shown only in the wording the permission decision allows."
               },
               "assessment_basis": "Canonical missingness fixture.",
               "permission_safe_summary": "Coverage limitation; no protected source identity or existence disclosed."
@@ -17497,7 +17497,7 @@
               "materiality": "illustrative",
               "reason": {
                 "state": "known",
-                "value": "Check/assessment not performed; distinct from evaluation/publication NOT ASSESSED (insufficient assessment coverage)."
+                "value": "Check or assessment of the input was not performed. Not the evaluation status NOT ASSESSED."
               },
               "assessment_basis": "Canonical missingness fixture."
             }
@@ -21379,21 +21379,21 @@
   ],
   "x-documentation": {
     "status": "documentation_only",
-    "architecture_evaluation_status": "NOT RUN",
+    "architecture_evaluation_status": "NOT ASSESSED",
     "source": {
       "qualification": "Documentation contracts; not implementation, operational validation or acceptance evidence",
       "scope": "Normative logical architecture and contracts C01–C07",
       "source_date": "2026-11-17",
-      "source_type": "Author's architecture specification, not published",
+      "source_type": "Architecture documentation of this repository",
       "title": "Evidence at Human Scale architecture specification"
     },
     "canonical_missingness_definitions": {
       "missing": "Expected input not obtained (reason may be unknown).",
       "not_retrieved": "Completed scoped retrieval returned no relevant record; not evidence of absence.",
-      "inaccessible": "Current principal lacks permission; reason/existence disclosed only when permitted.",
+      "inaccessible": "Current principal may know the input exists but may not read it; shown only in the wording the permission decision allows.",
       "unavailable": "Source/dependency could not provide data, distinct from permission denial.",
       "negative": "Explicit adequately scoped observation reports absence with method/time/coverage.",
-      "not_assessed": "Check/assessment not performed; distinct from evaluation/publication NOT ASSESSED (insufficient assessment coverage).",
+      "not_assessed": "Check or assessment of the input was not performed. Not the evaluation status NOT ASSESSED.",
       "stale": "Available record fails applicable freshness requirement."
     },
     "reference_metadata": [
@@ -21459,7 +21459,7 @@
       "Shared atomic consumed/reserved grant limits across concurrent execution, conservative unknown accounting, authoritative reconciliation and partial-effect charging",
       "External target race/idempotency/weaker guarantee/domain acceptance verification; no unattended operations beyond acceptance",
       "Authoritative outcome verification and no-effect truth; timeout/lease expiry cannot establish absence of effects",
-      "Workflow transitions, notifications/recovery/compensation/retention/invalidation and all architectural EV01–EV12 fixtures remain NOT RUN"
+      "Workflow transitions, notifications/recovery/compensation/retention/invalidation and all architectural EV01–EV12 fixtures are NOT ASSESSED"
     ]
   },
   "x-contract-crosswalk": [
@@ -21476,7 +21476,7 @@
       "external_check": "Check immutable stable record identity/version and producer registered permitted kind against source registry; no inference promotion.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C02-G02",
@@ -21491,7 +21491,7 @@
       "external_check": "Resolve producer registry/version/permitted-kind decision and actual admission outcome/time; admission does not establish truth.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C02-G03",
@@ -21506,7 +21506,7 @@
       "external_check": "Validate exact claim text/type meaning or referenced typed payload schema/content; resolve claim vs payload references without inventing raw-payload claims.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C02-G04",
@@ -21521,7 +21521,7 @@
       "external_check": "Validate entity/task/jurisdiction/units/interpretation domain scope; unknown/not-applicable only where legitimately permitted.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C02-G05",
@@ -21536,7 +21536,7 @@
       "external_check": "Resolve exact source locator and original immutable version/snapshot; compare supporting-reference scope/type/source to actual source; producer is not a source substitute.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C02-G06",
@@ -21551,7 +21551,7 @@
       "external_check": "Check applicable source/producer/rule/model/prompt/tool/analytical versions and whether a declared inapplicable reason is legitimate.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C02-G07",
@@ -21566,7 +21566,7 @@
       "external_check": "Check actual event/effective/source-update/ingestion/retrieval clock semantics and freshness policy, not substitution of ingestion for event time.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C02-G08",
@@ -21581,7 +21581,7 @@
       "external_check": "Resolve exact parent/relationship endpoints/asserting actors; enforce acyclic derivation and non-ancestry annotation semantics; analyze common roots.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C02-G09",
@@ -21596,7 +21596,7 @@
       "external_check": "Assess declared scoped coverage/uncertainty basis/limitations; reject unsupported probability or completeness meaning.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C02-G10",
@@ -21611,7 +21611,7 @@
       "external_check": "Authenticate separate validation ID/version/target/method/actor/time/scope/outcome; absence means none, not validated; approval is not validation.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C02-G11",
@@ -21626,7 +21626,7 @@
       "external_check": "Recheck current tenant/classification/purpose/disclosure/permission-policy at model access, release and every current/cache/historical serve including derived summaries.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C02-G12",
@@ -21641,7 +21641,7 @@
       "external_check": "Check current lifecycle/effective reason/replacement applicability against source authority; invalidate affected derivatives/approvals and retain only permitted history.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C02-G13",
@@ -21656,7 +21656,7 @@
       "external_check": "Check actual hash/signature algorithms/origin and availability; integrity/origin do not prove correctness.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C01-G01",
@@ -21671,7 +21671,7 @@
       "external_check": "Authenticate tenant/requestor/workload identities separately; workload identity must not confer requesting-person rights.",
       "figure_links": "F02/F03/F05",
       "fixture_links": "EV06/EV07/EV08",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C01-G02",
@@ -21686,7 +21686,7 @@
       "external_check": "Validate task/entity ontology and current permitted specific purpose; reject blanket unspecified purpose.",
       "figure_links": "F02/F03/F05",
       "fixture_links": "EV06/EV07/EV08",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C01-G03",
@@ -21701,7 +21701,7 @@
       "external_check": "Check actual interval/as-of ordering, risk class and current applicable policy versions with domain owner.",
       "figure_links": "F02/F03/F05",
       "fixture_links": "EV06/EV07/EV08",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C01-G04",
@@ -21716,7 +21716,7 @@
       "external_check": "Validate read-scope authorization decision actor/time/version/restrictions against current policy; it never grants execution permission.",
       "figure_links": "F02/F03/F05",
       "fixture_links": "EV06/EV07/EV08",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C03-G01",
@@ -21731,7 +21731,7 @@
       "external_check": "Resolve current C01, authorized source/time/as-of/policy scope; manifest must be produced by relevance/priority/grouping/coverage from authorized candidates and retrieval coverage after selection.",
       "figure_links": "F02/F03/F04/F09",
       "fixture_links": "EV03/EV04/EV05/EV06/EV09/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C03-G02",
@@ -21746,7 +21746,7 @@
       "external_check": "Check actual scoped retrieval attempts/completion/status/reasons against source oracle; permission-safe summaries must not leak protected names/counts/relationships/existence.",
       "figure_links": "F02/F03/F04/F09",
       "fixture_links": "EV03/EV04/EV05/EV06/EV09/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C03-G03",
@@ -21761,7 +21761,7 @@
       "external_check": "Check eligible/included/excluded exact references and permitted reasons; no entries never establish corpus absence.",
       "figure_links": "F02/F03/F04/F09",
       "fixture_links": "EV03/EV04/EV05/EV06/EV09/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C03-G04",
@@ -21776,7 +21776,7 @@
       "external_check": "Check mandatory policy basis/owner/deadline and independent deterministic delivery/queue/acknowledgement/escalation; acknowledgement never resolves underlying obligation.",
       "figure_links": "F02/F03/F04/F09",
       "fixture_links": "EV03/EV04/EV05/EV06/EV09/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C03-G05",
@@ -21791,7 +21791,7 @@
       "external_check": "Compare material conflict and all seven missingness assignments to expected-evidence/retrieval/permission/dependency/explicit-observation/assessment/freshness oracles, preserving scope/reasons/basis.",
       "figure_links": "F02/F03/F04/F09",
       "fixture_links": "EV03/EV04/EV05/EV06/EV09/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C03-G06",
@@ -21806,7 +21806,7 @@
       "external_check": "Validate completeness only over declared positively assessed scope and actual limitations, not whole-corpus coverage.",
       "figure_links": "F02/F03/F04/F09",
       "fixture_links": "EV03/EV04/EV05/EV06/EV09/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C04-G01",
@@ -21821,7 +21821,7 @@
       "external_check": "Resolve exact C01/C03 references and packet version/as-of; selected scope is not corpus completeness.",
       "figure_links": "F02/F04",
       "fixture_links": "EV01/EV03/EV04/EV05/EV06/EV07/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C04-G02",
@@ -21836,7 +21836,7 @@
       "external_check": "Resolve each exact tagged support/claim ID or explicit payload pointer and original source locator with preserved scope/type/provenance; verify source-faithful claim meaning.",
       "figure_links": "F02/F04",
       "fixture_links": "EV01/EV03/EV04/EV05/EV06/EV07/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C04-G03",
@@ -21851,7 +21851,7 @@
       "external_check": "Check actual inference type/method/support/limitations; no model inference may become source assertion or truth certification.",
       "figure_links": "F02/F04",
       "fixture_links": "EV01/EV03/EV04/EV05/EV06/EV07/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C04-G04",
@@ -21866,7 +21866,7 @@
       "external_check": "Check recommendation basis/uncertainty and meaningful accountable human review; advice never grants action authority.",
       "figure_links": "F02/F04",
       "fixture_links": "EV01/EV03/EV04/EV05/EV06/EV07/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C04-G05",
@@ -21881,7 +21881,7 @@
       "external_check": "Preserve all material expected conflicts and uncertainty after synthesis/compression, not majority/latest/fluency substitution.",
       "figure_links": "F02/F04",
       "fixture_links": "EV01/EV03/EV04/EV05/EV06/EV07/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C04-G06",
@@ -21896,7 +21896,7 @@
       "external_check": "Resolve C03 coverage and verify visible decision-changing scoped omissions/gaps; apply all canonical missingness meanings and permission-safe projection.",
       "figure_links": "F02/F04",
       "fixture_links": "EV01/EV03/EV04/EV05/EV06/EV07/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C04-G07",
@@ -21911,7 +21911,7 @@
       "external_check": "Check item-level priority reasons and mandatory obligation continuity; urgency is not confidence and obligations cannot depend on ranking/LLM availability.",
       "figure_links": "F02/F04",
       "fixture_links": "EV01/EV03/EV04/EV05/EV06/EV07/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C04-G08",
@@ -21926,7 +21926,7 @@
       "external_check": "Resolve C05 proposals and verify genuinely proposed/unexecuted state; recommendations/proposals are not approval or execution.",
       "figure_links": "F02/F04",
       "fixture_links": "EV01/EV03/EV04/EV05/EV06/EV07/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C04-G09",
@@ -21941,7 +21941,7 @@
       "external_check": "Check actual review-state/actor/time applicability, exact prior versions/challenges and permitted history; review does not validate truth; corrections revise/invalidate rather than silently mutate.",
       "figure_links": "F02/F04",
       "fixture_links": "EV01/EV03/EV04/EV05/EV06/EV07/EV10/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C05-G01",
@@ -21956,7 +21956,7 @@
       "external_check": "Resolve exact current C01/C04 bindings and immutable proposal version before authority checks.",
       "figure_links": "F04/F05",
       "fixture_links": "EV07/EV11/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C05-G02",
@@ -21971,7 +21971,7 @@
       "external_check": "Validate actual action kind/exact target/typed parameters, exact evidence/policy refs, genuine preconditions or domain-approved empty justification; verify units/scope/window/exhaustion behavior.",
       "figure_links": "F04/F05",
       "fixture_links": "EV07/EV11/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C05-G03",
@@ -21986,7 +21986,7 @@
       "external_check": "Validate domain risk/expected effects/limitations/recovery conditions; proposal state is not approval or execution.",
       "figure_links": "F04/F05",
       "fixture_links": "EV07/EV11/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C06-G01",
@@ -22001,7 +22001,7 @@
       "external_check": "Authenticate issuer/grantee/tenant/issuance and legitimate authority basis for immutable grant version.",
       "figure_links": "F05",
       "fixture_links": "EV07/EV11",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C06-G02",
@@ -22016,7 +22016,7 @@
       "external_check": "Check exact proposal or genuinely bounded action class, targets/parameter bounds/purpose/evidence/policy constraints; deadline/no response cannot enlarge scope.",
       "figure_links": "F05",
       "fixture_links": "EV07/EV11",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C06-G03",
@@ -22031,7 +22031,7 @@
       "external_check": "Check current expiry/revocation; atomically enforce shared consumed/reserved per-action/cumulative units/scope/window capacity across concurrent executors. Retain unknown reservation/conservative charge until authoritative confirmed-effect policy reconciliation, never timeout/lease expiry alone; charge known partial effects and notifications/recovery. Unsupported enforcement requires declared races/residual risk and unattended operations disabled beyond domain acceptance.",
       "figure_links": "F05",
       "fixture_links": "EV07/EV11",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C07-G01",
@@ -22046,7 +22046,7 @@
       "external_check": "Resolve proposal/grant/execution attempt/executor/exact target; check current authentic grant binding and attempt identity.",
       "figure_links": "F05/F06/F07",
       "fixture_links": "EV11/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C07-G02",
@@ -22061,7 +22061,7 @@
       "external_check": "Compare actual target effects to submitted/unknown/partial/completed_verified/not_executed_verified. Terminal no-effect needs authoritative rejection/failed-before-effect/cancellation with no business effect, mandatory reason and verifier/method/time/target/action; timeout is insufficient, unresolved stays unknown, partial known effects charged separately.",
       "figure_links": "F05/F06/F07",
       "fixture_links": "EV11/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     },
     {
       "mapping_id": "C07-G03",
@@ -22076,7 +22076,7 @@
       "external_check": "Authenticate actual authoritative outcome refs and verifier/method/actor/time/scope; reconcile unknown/partial, prevent blind retry, retain reservations or conservative accounting, charge partial effects. Restore/reconcile allowance only under documented authoritative confirmed-effect policy, never lease/timeout alone; compensation follows policy.",
       "figure_links": "F05/F06/F07",
       "fixture_links": "EV11/EV12",
-      "architectural_status": "NOT RUN"
+      "architectural_status": "NOT ASSESSED"
     }
   ]
 }

@@ -1,21 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 998" width="360" height="998" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 981" width="360" height="981" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">From proposal to commit</title>
-<desc id="d">A packet lists a proposal. An accountable approver, distinct from the requestor, approves the exact proposal version, or a bounded grant covers it. Approval is not commit: the executor rechecks six conditions. If all pass, it reserves allowance and submits, and the receipt records the outcome; if one fails, the receipt is not_executed_verified. An authoritative verification confirms the outcome.</desc>
+<desc id="d">A packet lists a proposal. An approver, distinct from the requestor, approves the exact proposal version, or a bounded grant covers it. Approval is not commit: the executor rechecks six conditions. If all pass, it reserves allowance and submits, and the receipt records the outcome; if one fails, the receipt is not_executed_verified. An authoritative verification confirms the outcome.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
-<rect width="360" height="998" fill="#ffffff"/>
+<rect width="360" height="981" fill="#ffffff"/>
 <rect x="10.0" y="10.0" width="340.0" height="59.9" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
 <text x="20.0" y="34.0" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">The packet lists the proposal</text>
 <text x="20.0" y="55.1" font-size="13" text-anchor="start" fill="#24133F">proposed, not executed</text>
-<rect x="10.0" y="93.9" width="153.0" height="164.5" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
+<rect x="10.0" y="93.9" width="153.0" height="147.3" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
 <text x="20.0" y="117.9" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">Exact approval</text>
 <text x="20.0" y="136.6" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">(C06)</text>
 <text x="20.0" y="157.8" font-size="13" text-anchor="start" fill="#24133F">of this proposal</text>
 <text x="20.0" y="174.9" font-size="13" text-anchor="start" fill="#24133F">version, by the</text>
-<text x="20.0" y="192.1" font-size="13" text-anchor="start" fill="#24133F">accountable</text>
-<text x="20.0" y="209.2" font-size="13" text-anchor="start" fill="#24133F">approver, a role</text>
-<text x="20.0" y="226.4" font-size="13" text-anchor="start" fill="#24133F">distinct from</text>
-<text x="20.0" y="243.6" font-size="13" text-anchor="start" fill="#24133F">the requestor</text>
-<rect x="197.0" y="93.9" width="153.0" height="164.5" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
+<text x="20.0" y="192.1" font-size="13" text-anchor="start" fill="#24133F">approver, a role</text>
+<text x="20.0" y="209.2" font-size="13" text-anchor="start" fill="#24133F">distinct from</text>
+<text x="20.0" y="226.4" font-size="13" text-anchor="start" fill="#24133F">the requestor</text>
+<rect x="197.0" y="93.9" width="153.0" height="147.3" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
 <text x="207.0" y="117.9" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">Bounded</text>
 <text x="207.0" y="136.6" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">grant (C06)</text>
 <text x="207.0" y="157.8" font-size="13" text-anchor="start" fill="#24133F">a standing grant</text>
@@ -25,57 +24,57 @@
 <path d="M180.0 69.9 L180.0 81.9" fill="none" stroke="#57606a" stroke-width="1.8"/>
 <path d="M180.0 81.9 L86.5 81.9 L86.5 92.9" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <path d="M180.0 81.9 L273.5 81.9 L273.5 92.9" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<text x="180.0" y="180.7" font-size="13" text-anchor="middle" font-weight="700" fill="#57606a">or</text>
-<path d="M10.0 294.4 L350.0 294.4" fill="none" stroke="#57606a" stroke-width="1.4"/>
-<rect x="67.3" y="279.4" width="225.4" height="30.0" rx="15" fill="#FFF1D6" stroke="#A15F00" stroke-width="1.6"/>
-<text x="180.0" y="299.9" font-size="15" text-anchor="middle" font-weight="700" fill="#3D2500">Approval is not commit</text>
-<rect x="10.0" y="324.4" width="340.0" height="250.8" rx="12" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1.2"/>
-<text x="24.0" y="348.7" font-size="13" text-anchor="start" font-weight="700" fill="#57606a">RECHECK AT COMMIT</text>
-<text x="24.0" y="367.9" font-size="13" text-anchor="start" fill="#57606a">the executor, or action gateway,</text>
-<text x="24.0" y="385.0" font-size="13" text-anchor="start" fill="#57606a">checks the current state</text>
-<text x="48.0" y="411.2" font-size="14" text-anchor="start" fill="#1b1f24">The grant is current and not revoked</text>
-<rect x="26.0" y="399.9" width="12" height="12" rx="2.5" fill="none" stroke="#A15F00" stroke-width="1.6"/>
-<path d="M28.6 406.1 L31.2 408.7 L35.6 403.0" fill="none" stroke="#A15F00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="48.0" y="437.6" font-size="14" text-anchor="start" fill="#1b1f24">The evidence is current and fresh</text>
-<rect x="26.0" y="426.3" width="12" height="12" rx="2.5" fill="none" stroke="#A15F00" stroke-width="1.6"/>
-<path d="M28.6 432.6 L31.2 435.2 L35.6 429.5" fill="none" stroke="#A15F00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="48.0" y="464.1" font-size="14" text-anchor="start" fill="#1b1f24">The preconditions hold</text>
-<rect x="26.0" y="452.8" width="12" height="12" rx="2.5" fill="none" stroke="#A15F00" stroke-width="1.6"/>
-<path d="M28.6 459.1 L31.2 461.7 L35.6 455.9" fill="none" stroke="#A15F00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="48.0" y="490.6" font-size="14" text-anchor="start" fill="#1b1f24">The parameters and target match</text>
-<rect x="26.0" y="479.3" width="12" height="12" rx="2.5" fill="none" stroke="#A15F00" stroke-width="1.6"/>
-<path d="M28.6 485.5 L31.2 488.2 L35.6 482.4" fill="none" stroke="#A15F00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="48.0" y="517.1" font-size="14" text-anchor="start" fill="#1b1f24">The per-action limit holds</text>
-<rect x="26.0" y="505.8" width="12" height="12" rx="2.5" fill="none" stroke="#A15F00" stroke-width="1.6"/>
-<path d="M28.6 512.0 L31.2 514.7 L35.6 508.9" fill="none" stroke="#A15F00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="48.0" y="543.6" font-size="14" text-anchor="start" fill="#1b1f24">The cumulative limit holds, counting</text>
-<text x="48.0" y="562.0" font-size="14" text-anchor="start" fill="#1b1f24">consumed and reserved capacity</text>
-<rect x="26.0" y="532.3" width="12" height="12" rx="2.5" fill="none" stroke="#A15F00" stroke-width="1.6"/>
-<path d="M28.6 538.5 L31.2 541.1 L35.6 535.4" fill="none" stroke="#A15F00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M105.0 589.2 L105.0 611.2" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<path d="M280.0 589.2 L280.0 611.2" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<rect x="10.0" y="613.2" width="190.0" height="111.4" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
-<text x="20.0" y="637.2" font-size="15" text-anchor="start" font-weight="700" fill="#0F2E1B">Every check passes</text>
-<text x="20.0" y="658.3" font-size="13" text-anchor="start" fill="#0F2E1B">Reserve allowance.</text>
-<text x="20.0" y="675.5" font-size="13" text-anchor="start" fill="#0F2E1B">Submit the exact action</text>
-<text x="20.0" y="692.6" font-size="13" text-anchor="start" fill="#0F2E1B">to the target. Record the</text>
-<text x="20.0" y="709.8" font-size="13" text-anchor="start" fill="#0F2E1B">outcome, or a timeout.</text>
-<rect x="210.0" y="613.2" width="140.0" height="111.4" rx="8" fill="#FBE4E4" stroke="#B3261E" stroke-width="1.6"/>
-<text x="220.0" y="637.2" font-size="15" text-anchor="start" font-weight="700" fill="#3D0A07">A check fails</text>
-<text x="220.0" y="658.3" font-size="13" text-anchor="start" fill="#3D0A07">Nothing is</text>
-<text x="220.0" y="675.5" font-size="13" text-anchor="start" fill="#3D0A07">submitted.</text>
-<path d="M105.0 724.6 L105.0 746.6" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<path d="M280.0 724.6 L280.0 746.6" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<rect x="10.0" y="748.6" width="340.0" height="138.2" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
-<text x="20.0" y="772.6" font-size="15" text-anchor="start" font-weight="700" fill="#0F2E1B">Receipt (C07)</text>
-<text x="20.0" y="794.7" font-size="14" text-anchor="start" fill="#0F2E1B">After a pass: the outcome, as</text>
-<text x="20.0" y="813.1" font-size="14" text-anchor="start" fill="#0F2E1B">completed_verified, unknown,</text>
-<text x="20.0" y="831.6" font-size="14" text-anchor="start" fill="#0F2E1B">partial or not_executed_verified.</text>
-<text x="20.0" y="853.1" font-size="14" text-anchor="start" fill="#0F2E1B">After a failed check:</text>
-<text x="20.0" y="871.6" font-size="14" text-anchor="start" fill="#0F2E1B">not_executed_verified, with the reasons.</text>
-<path d="M180.0 886.8 L180.0 909.8" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<rect x="10.0" y="910.8" width="340.0" height="77.1" rx="8" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.6"/>
-<text x="20.0" y="934.7" font-size="15" text-anchor="start" font-weight="700" fill="#0B2540">Authoritative verification</text>
-<text x="20.0" y="955.9" font-size="13" text-anchor="start" fill="#0B2540">against the target, confirms</text>
-<text x="20.0" y="973.0" font-size="13" text-anchor="start" fill="#0B2540">or reconciles the outcome</text>
+<text x="180.0" y="172.2" font-size="13" text-anchor="middle" font-weight="700" fill="#57606a">or</text>
+<path d="M10.0 277.2 L350.0 277.2" fill="none" stroke="#57606a" stroke-width="1.4"/>
+<rect x="67.3" y="262.2" width="225.4" height="30.0" rx="15" fill="#FFF1D6" stroke="#A15F00" stroke-width="1.6"/>
+<text x="180.0" y="282.7" font-size="15" text-anchor="middle" font-weight="700" fill="#3D2500">Approval is not commit</text>
+<rect x="10.0" y="307.2" width="340.0" height="250.8" rx="12" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1.2"/>
+<text x="24.0" y="331.6" font-size="13" text-anchor="start" font-weight="700" fill="#57606a">RECHECK AT COMMIT</text>
+<text x="24.0" y="350.7" font-size="13" text-anchor="start" fill="#57606a">the executor, or action gateway,</text>
+<text x="24.0" y="367.9" font-size="13" text-anchor="start" fill="#57606a">checks the current state</text>
+<text x="48.0" y="394.0" font-size="14" text-anchor="start" fill="#1b1f24">The grant is current and not revoked</text>
+<rect x="26.0" y="382.7" width="12" height="12" rx="2.5" fill="none" stroke="#A15F00" stroke-width="1.6"/>
+<path d="M28.6 388.9 L31.2 391.6 L35.6 385.8" fill="none" stroke="#A15F00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="48.0" y="420.5" font-size="14" text-anchor="start" fill="#1b1f24">The evidence is current and fresh</text>
+<rect x="26.0" y="409.2" width="12" height="12" rx="2.5" fill="none" stroke="#A15F00" stroke-width="1.6"/>
+<path d="M28.6 415.4 L31.2 418.1 L35.6 412.3" fill="none" stroke="#A15F00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="48.0" y="447.0" font-size="14" text-anchor="start" fill="#1b1f24">The preconditions hold</text>
+<rect x="26.0" y="435.7" width="12" height="12" rx="2.5" fill="none" stroke="#A15F00" stroke-width="1.6"/>
+<path d="M28.6 441.9 L31.2 444.5 L35.6 438.8" fill="none" stroke="#A15F00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="48.0" y="473.4" font-size="14" text-anchor="start" fill="#1b1f24">The parameters and target match</text>
+<rect x="26.0" y="462.1" width="12" height="12" rx="2.5" fill="none" stroke="#A15F00" stroke-width="1.6"/>
+<path d="M28.6 468.4 L31.2 471.0 L35.6 465.3" fill="none" stroke="#A15F00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="48.0" y="499.9" font-size="14" text-anchor="start" fill="#1b1f24">The per-action limit holds</text>
+<rect x="26.0" y="488.6" width="12" height="12" rx="2.5" fill="none" stroke="#A15F00" stroke-width="1.6"/>
+<path d="M28.6 494.9 L31.2 497.5 L35.6 491.7" fill="none" stroke="#A15F00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="48.0" y="526.4" font-size="14" text-anchor="start" fill="#1b1f24">The cumulative limit holds, counting</text>
+<text x="48.0" y="544.9" font-size="14" text-anchor="start" fill="#1b1f24">consumed and reserved capacity</text>
+<rect x="26.0" y="515.1" width="12" height="12" rx="2.5" fill="none" stroke="#A15F00" stroke-width="1.6"/>
+<path d="M28.6 521.3 L31.2 524.0 L35.6 518.2" fill="none" stroke="#A15F00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M105.0 572.1 L105.0 594.1" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M280.0 572.1 L280.0 594.1" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="10.0" y="596.1" width="190.0" height="111.4" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
+<text x="20.0" y="620.0" font-size="15" text-anchor="start" font-weight="700" fill="#0F2E1B">Every check passes</text>
+<text x="20.0" y="641.2" font-size="13" text-anchor="start" fill="#0F2E1B">Reserve allowance.</text>
+<text x="20.0" y="658.3" font-size="13" text-anchor="start" fill="#0F2E1B">Submit the exact action</text>
+<text x="20.0" y="675.5" font-size="13" text-anchor="start" fill="#0F2E1B">to the target. Record the</text>
+<text x="20.0" y="692.6" font-size="13" text-anchor="start" fill="#0F2E1B">outcome, or a timeout.</text>
+<rect x="210.0" y="596.1" width="140.0" height="111.4" rx="8" fill="#FBE4E4" stroke="#B3261E" stroke-width="1.6"/>
+<text x="220.0" y="620.0" font-size="15" text-anchor="start" font-weight="700" fill="#3D0A07">A check fails</text>
+<text x="220.0" y="641.2" font-size="13" text-anchor="start" fill="#3D0A07">Nothing is</text>
+<text x="220.0" y="658.3" font-size="13" text-anchor="start" fill="#3D0A07">submitted.</text>
+<path d="M105.0 707.4 L105.0 729.4" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
+<path d="M280.0 707.4 L280.0 729.4" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="10.0" y="731.4" width="340.0" height="138.2" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
+<text x="20.0" y="755.4" font-size="15" text-anchor="start" font-weight="700" fill="#0F2E1B">Receipt (C07)</text>
+<text x="20.0" y="777.5" font-size="14" text-anchor="start" fill="#0F2E1B">After a pass: the outcome, as</text>
+<text x="20.0" y="796.0" font-size="14" text-anchor="start" fill="#0F2E1B">completed_verified, unknown,</text>
+<text x="20.0" y="814.5" font-size="14" text-anchor="start" fill="#0F2E1B">partial or not_executed_verified.</text>
+<text x="20.0" y="835.9" font-size="14" text-anchor="start" fill="#0F2E1B">After a failed check:</text>
+<text x="20.0" y="854.4" font-size="14" text-anchor="start" fill="#0F2E1B">not_executed_verified, with the reasons.</text>
+<path d="M180.0 869.6 L180.0 892.6" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="10.0" y="893.6" width="340.0" height="77.1" rx="8" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.6"/>
+<text x="20.0" y="917.5" font-size="15" text-anchor="start" font-weight="700" fill="#0B2540">Authoritative verification</text>
+<text x="20.0" y="938.7" font-size="13" text-anchor="start" fill="#0B2540">against the target, confirms</text>
+<text x="20.0" y="955.9" font-size="13" text-anchor="start" fill="#0B2540">or reconciles the outcome</text>
 </svg>
