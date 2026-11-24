@@ -109,6 +109,7 @@ The set holds 37 contract instances: 19 evidence records (C02), 2 contexts (C01)
 - **Registry.** [`registry.json`](registry.json) is the domain's side of the story: registered producers and the evidence kinds each may submit, the external records the contracts name but do not define (access decisions, authority bases, accounting references), the policies with their freshness limits, the commit-time precondition rules, the relationship vocabulary, the terms this requestor may not see, who holds which role and the log of reviews, who each permission decision is for (principal, tenant and purpose) and the complete generic view it lets an output show, and the state of the target system over time. It is domain configuration, not part of the contracts.
 - **Generated data.** The JSON is generated from one definition by [`scripts/build_example_data.py`](../scripts/build_example_data.py). `python scripts/build_example_data.py --check` fails if a committed file differs from a fresh build, so an edit by hand shows up. The READMEs are written by hand.
 
+<a id="reading-the-papers-abstract-notation"></a>
 ## Reading the abstract labels in the reference material
 
 The schema's embedded examples and the evaluation fixtures describe their cases with short abstract labels. In this story:

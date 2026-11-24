@@ -32,17 +32,17 @@ At the top, the Decision Owner reviews, challenges and decides. Below is one dec
 
 ## Reading the packet
 
-This table is the human view: what a reader needs from `PKT-0417` v1, group by group. The JSON files, listed [below](#files), are the self-contained snapshots that it summarizes ([why both](../../contracts/README.md#json-snapshots-and-human-views)).
+This table is the human view: what a reader needs from the first version of the packet (`PKT-0417` v1), group by group. The JSON files, listed [below](#files), are the self-contained snapshots that it summarizes ([why both](../../contracts/README.md#json-snapshots-and-human-views)).
 
-| Group | What is in `PKT-0417` v1 |
+| Group | What the first version holds |
 |---|---|
-| Context and as-of time (G01) | Exact references to `CTX-0417` v1 and `SEL-0417` v1; as-of 2026-11-23T10:00:00Z. |
-| Supported claims (G02) | Seven claims, `PC-1` to `PC-7`: the invoice, the order, the receipt (60 units), the match result (**FAIL**), the screening, the duplicate check, the policy. Each cites an exact record version and claim, or a payload location. A claim that cites a claim says exactly what it says. The match result rests on the whole payload, so its status and every figure in it are checked against that payload. |
-| Labeled inferences (G03) | Two, `M01` and `M02`, one per model summary. Neither is a supported claim. Each states its method and its limitations, including **common origin**. |
-| Recommendations (G04) | `REC-0417-1` hold the invoice; `REC-0417-1B` release at 16:00 only if the match passes, screening is current and the invoice is held. Each names the accountable review requirement. |
-| Conflicts and uncertainty (G05) | `CONF-QTY` carried over from the selection, uncertainty "unquantified: the cause is not established". |
+| Context and as-of time (G01) | Exact references to the context (`CTX-0417` v1) and the selection (`SEL-0417` v1); as-of 2026-11-23T10:00:00Z. |
+| Supported claims (G02) | Seven claims: the invoice, the order, the receipt (60 units), the match result (**FAIL**), the screening, the duplicate check and the policy (`PC-1` to `PC-7`). Each cites an exact record version and claim, or a payload location. A claim that cites a claim says exactly what it says. The match result rests on the whole payload, so its status and every figure in it are checked against that payload. |
+| Labeled inferences (G03) | Two, one for each AI summary (`M01`, `M02`). Neither is a supported claim. Each states its method and its limitations, including **common origin**. |
+| Recommendations (G04) | Hold the invoice (`REC-0417-1`). Release at 16:00 only if the match passes, screening is current and the invoice is held (`REC-0417-1B`). Each names the accountable review requirement. |
+| Conflicts and uncertainty (G05) | The quantity conflict (`CONF-QTY`) carried over from the selection, with the uncertainty "unquantified: the cause is not established". |
 | Coverage, omissions, gaps (G06) | The seven gaps of the selection, unchanged, and a visible limitation summary. |
-| Obligations (G07) | Why `CONF-QTY` and the stale screening come first, and a reference to `OBL-0417-REVIEW`. |
+| Obligations (G07) | Why the quantity conflict and the stale screening come first, and a reference to the review obligation (`OBL-0417-REVIEW`). |
 | Action proposals (G08) | The hold and the release, each `proposed`. |
 | Review and version history (G09) | `invalidated` at 13:45, with a challenge link to the correction. This is the end-of-day snapshot; at 10:00 it was `awaiting_review`. |
 

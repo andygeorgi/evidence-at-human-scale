@@ -140,6 +140,18 @@ class HumanNamesBeforeIdentifiers(unittest.TestCase):
                 self.assertEqual(ABSTRACT_LABEL.findall(figure[key]), [], "%s %s" % (figure["id"], key))
                 self.assertNotRegex(figure[key], r"\bG0\d\b", "%s %s: a group is named, not numbered" % (figure["id"], key))
 
+    def test_the_receipt_states_are_named_in_words_before_their_values(self):
+        for name in ("F06-light.svg", "F06-dark.svg"):
+            words = svg_words(name)
+            for human, value in (("Outcome unknown", "unknown \u00b7"), ("Partly verified", "partial \u00b7"), ("Completed and verified", "completed_verified"), ("Verified no effect", "not_executed_verified")):
+                self.assertLess(words.index(human), next(i for i, w in enumerate(words) if w.startswith(value)), "%s: %s" % (name, human))
+            self.assertEqual([w for w in words if w.strip() in ("unknown", "partial", "completed_verified", "not_executed_verified")], [], "%s: no card or chip is headed by a state value alone" % name)
+        figure = next(f for f in json.loads(text("figures/figures.json"))["figures"] if f["id"] == "F06")
+        self.assertLess(figure["alt"].index("Outcome unknown"), len(figure["alt"]))
+        self.assertNotRegex(figure["alt"], r"completed_verified|not_executed_verified", "the alt text is in words")
+        self.assertIn("completed_verified", figure["caption"], "the stable values stay in the caption, after the words")
+        self.assertLess(figure["caption"].index("a verified no-effect"), figure["caption"].index("not_executed_verified"))
+
     def test_the_story_table_keeps_the_record_numbers_after_the_names(self):
         story = text("examples/README.md").split("## The story", 1)[1].split("## Folder map", 1)[0]
         self.assertIn("Goods receipt `GR-5521` v1", story)
@@ -166,6 +178,68 @@ class OneVoiceOnTheStatus(unittest.TestCase):
         self.assertIn("not a production deployment", text("evaluation/README.md"))
         self.assertIn("real-world effectiveness has not been evaluated", text("docs/paper/00-overview.md"))
         self.assertIn("None of it has been run", text("evaluation/README.md"))
+
+
+class DeepLinksOfEarlierReleasesKeepWorking(unittest.TestCase):
+    """A page was reorganized for the reader, but a link to a section of v1.0.1 still lands on the section that replaced it."""
+
+    LEGACY = {
+        "README.md": ("status-and-limits", "what-a-pass-means-and-what-it-does-not", "the-smallest-useful-experiment", "where-to-go-next"),
+        "docs/paper/00-overview.md": ("how-the-paper-is-organized",),
+        "examples/07-authority-and-delegation/README.md": ("the-commit-check-six-times",),
+        "examples/10-degraded-modes/README.md": ("the-three-fail-closed-evaluations",),
+        "examples/README.md": ("reading-the-papers-abstract-notation",),
+    }
+
+    def test_each_renamed_or_merged_section_of_the_previous_release_still_has_its_anchor(self):
+        for page, anchors in self.LEGACY.items():
+            lines = text(page).split("\n")
+            for anchor in anchors:
+                self.assertIn('<a id="%s"></a>' % anchor, lines, "%s#%s" % (page, anchor))
+
+    def test_an_anchor_sits_directly_above_the_heading_that_replaced_its_section(self):
+        for page, anchors in self.LEGACY.items():
+            if page == "docs/paper/00-overview.md":
+                continue  # the chapter has no sections now: its anchor stands in front of the paragraph that points to the other routes
+            lines = text(page).split("\n")
+            for anchor in anchors:
+                index = lines.index('<a id="%s"></a>' % anchor)
+                following = [line for line in lines[index + 1:index + 4] if not line.startswith("<a id=")]
+                self.assertTrue(following and following[0].startswith("## "), "%s#%s" % (page, anchor))
+
+    def test_no_other_anchor_of_the_previous_release_was_lost(self):
+        """Every other section anchor of v1.0.1 is still a heading of the same page, so that the list above is the whole list."""
+        import subprocess
+        try:
+            tags = subprocess.run(["git", "-C", str(REPO), "tag", "--list", "v1.0.1"], capture_output=True, text=True, encoding="utf-8").stdout.split()
+        except OSError:
+            self.skipTest("git is not available")
+        if "v1.0.1" not in tags:
+            self.skipTest("the v1.0.1 tag is not in this checkout")
+
+        def slug(heading):
+            heading = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", re.sub(r"<[^>]+>", "", heading))
+            return re.sub(r"[^\w\- ]", "", re.sub(r"[`*_]", "", heading).strip().lower()).replace(" ", "-")
+
+        def anchors(markdown):
+            found, fenced = set(), False
+            for line in markdown.split("\n"):
+                if line.startswith("```"):
+                    fenced = not fenced
+                elif not fenced:
+                    heading = re.match(r"^#{1,6}\s+(.*?)\s*#*\s*$", line)
+                    found.update([slug(heading.group(1))] if heading else [])
+                    found.update(re.findall(r'<a\s+(?:id|name)="([^"]+)"', line))
+            return found
+
+        listing = subprocess.run(["git", "-C", str(REPO), "ls-tree", "-r", "--name-only", "v1.0.1"], capture_output=True, text=True, encoding="utf-8").stdout.split("\n")
+        lost = {}
+        for page in (name for name in listing if name.endswith(".md") and (REPO / name).is_file()):
+            earlier = subprocess.run(["git", "-C", str(REPO), "show", "v1.0.1:" + page], capture_output=True, text=True, encoding="utf-8").stdout
+            gone = anchors(earlier) - anchors(text(page))
+            if gone:
+                lost[page] = sorted(gone)
+        self.assertEqual(lost, {})
 
 
 class ReferenceSurfacesKeepTheirIdentifiers(unittest.TestCase):

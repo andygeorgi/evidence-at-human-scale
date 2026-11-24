@@ -64,6 +64,7 @@ A class is for actions that are low-risk, reversible and bounded. An exact appro
 
 The assistant proposed a hold ([05](../05-decision-packet/README.md)). No person approved it, because the bounded grant already covers it. At commit the executor (the grantee of that grant, acting as the action gateway) re-checked the grant, the evidence the proposal cites, the precondition (the invoice is still open), the parameters, the target and the allowance, and allowed it. It judged each of them as of 10:03:00: the match result it relies on had been admitted at 09:36, and the revocation check was made at 07:45. The receipt records the effect, the authoritative verification (the ERP query), the settled accounting and `retry_disposition` `not_applicable_completed`.
 
+<a id="the-commit-check-six-times"></a>
 ## The commit check, eight times
 
 [`gateway-scenarios.json`](gateway-scenarios.json) stores these evaluations; `python scripts/validate_examples.py` replays them and fails if a decision changes. The codes are explained in [08](../08-blocked-action/README.md#the-commit-time-reason-codes).

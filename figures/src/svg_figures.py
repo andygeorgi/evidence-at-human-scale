@@ -375,10 +375,10 @@ def f06(c):
         box = c.card("pkt", head, sub(text), x=cx, w=cw, size=16, gap=12, tag=("final", "pkt"))
         arrows.append(box.y + 21)
 
-    unresolved("unknown", "timeout or no response", "Only authoritative reconciliation\nmoves it on:", ["completed_verified", "not_executed_verified"])
-    unresolved("partial", "some effects verified, others not; known effects stay charged", "Reconciliation or compensation,\nunder policy, moves it on:", ["completed_verified"])
-    final("completed_verified", "an authoritative outcome confirms the effect")
-    final("not_executed_verified", "authoritatively verified: no effect for this attempt, target and scope")
+    unresolved("Outcome unknown", "unknown \u00b7 timeout or no response", "Only authoritative reconciliation\nmoves it on:", ["Completed and verified", "Verified no effect"])
+    unresolved("Partly verified", "partial \u00b7 some effects verified, others not; known effects stay charged", "Reconciliation or compensation,\nunder policy, moves it on:", ["Completed and verified"])
+    final("Completed and verified", "completed_verified \u00b7 an authoritative outcome confirms the effect")
+    final("Verified no effect", "not_executed_verified \u00b7 authoritatively verified: no effect for this attempt, target and scope")
     c.path([(submitted.x, submitted.cy), (bus, submitted.cy), (bus, arrows[-1])], head=False)
     for y in arrows:
         c.path([(bus, y), (cx - 1, y)])

@@ -65,6 +65,7 @@ There is no data of its own: the rest of the degraded behavior is in the other f
 | The executor starts late | An approval is time-bound; it does not stretch (`GRANT_EXPIRED`). | here |
 | The ledger and the target cannot be updated atomically | The weaker guarantee is declared in the grant, with the residual risk and the constraint on unattended operation. | [09](../09-unknown-outcome/README.md) |
 
+<a id="the-three-fail-closed-evaluations"></a>
 ## The six fail-closed evaluations
 
 Each takes job B, which passes the commit check in [09](../09-unknown-outcome/README.md), and breaks one input in memory. The files on disk do not change.
