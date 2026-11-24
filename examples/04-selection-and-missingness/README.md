@@ -95,5 +95,6 @@ The entries are produced by the viewer projection in [`scripts/eahs/disclosure.p
 
 - **Shows:** that "missing" can be said in seven precise ways, each tied to the evidence that justifies it, and that a conflict can stay a conflict.
 - **Does not show:** how relevance or priority is decided (the selection lists what was included, it does not rank), how large a real selection is, or whether people read seven labels. Whether this helps a reader is a human-outcome question; see [human-outcome evaluation](../../evaluation/human-outcome-evaluation.md).
+- **Does not judge free text.** The checks above cover the missingness entries, the wording of a statement about an unreadable source and the records an output names. They do not rebuild a packet's limitation summary or any other free text from the permission decisions, so a restricted detail written into free text is found only if it uses a term from the registry's protected list (`DISC001`, a backstop). See [what snapshot validation cannot judge](../../architecture/lineage-selection-disclosure.md#snapshot-validation-authorization-enforcement-and-viewer-projection).
 
 [← 03 Lineage and common origin](../03-lineage-and-common-origin/README.md) · [Examples](../README.md) · [Next: 05 Decision packet →](../05-decision-packet/README.md)

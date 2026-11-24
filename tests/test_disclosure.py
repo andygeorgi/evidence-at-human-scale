@@ -407,6 +407,16 @@ class SnapshotValidation(unittest.TestCase):
         codes, _ = self.codes({"target": "C04 PKT-0417 v1", "ops": [{"op": "replace", "path": "/coverage_omissions_gaps/visible_scoped_limitation_summary", "value": "Includes a vendor master change."}]})
         self.assertIn("DISC001", codes)
 
+    def test_free_text_beside_the_entries_is_outside_what_the_validator_can_judge_and_the_documents_say_so(self):
+        """The limit is documented, not hidden: restricted detail in free text without a protected term passes, and two pages say that it does."""
+        summary = {"target": "C04 PKT-0417 v1", "ops": [{"op": "replace", "path": "/coverage_omissions_gaps/visible_scoped_limitation_summary", "value": "Three restricted records are older than a month."}]}
+        codes, _ = self.codes(summary)
+        self.assertNotIn("DISC001", codes, "no protected term is used, so the backstop does not see it")
+        for page in ("architecture/lineage-selection-disclosure.md", "examples/04-selection-and-missingness/README.md"):
+            text = (support.REPO / page).read_text(encoding="utf-8")
+            self.assertIn("free text", text, page)
+            self.assertIn("DISC001", text, page)
+
 
 class TheViewIsBuiltFromAuthorizedInputs(unittest.TestCase):
     """The response renderer takes its wording from the permission decision, never from the packet's own entry."""
