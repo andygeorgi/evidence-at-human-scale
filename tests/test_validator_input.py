@@ -151,7 +151,8 @@ class RawSourceExports(Scratch):
     def test_the_committed_raw_exports_are_read_as_non_contract_input(self):
         instances = stage(ve.run(support.EXAMPLES, only={"instances"}), "instances")
         self.assertEqual(instances.status, PASS)
-        self.assertIn("4 other JSON file(s) declare no contract_id and were read as non-contract input", instances.detail)
+        self.assertIn("4 other JSON file(s) are not contract instances (raw exports and the like) and were read as non-contract input", instances.detail)
+        self.assertNotIn("declare no contract_id", instances.detail, "a raw export may carry a business contract_id of its own")
 
     def test_a_raw_export_may_carry_any_fields_including_a_business_contract_id(self):
         self.fresh()
@@ -299,6 +300,57 @@ class TheScenarioFiles(Scratch, Actionable):
                 self.assert_actionable(gateway, "gateway-scenarios.json")
         self.assertEqual(self.gateway(lambda d: d["evaluations"][0].update(overrides="grant")).status, INPUT_ERROR, "overrides that are not a list")
 
+    def test_an_override_path_that_is_not_a_json_pointer_is_an_input_error_and_is_not_replayed(self):
+        """A path without its leading slash used to be read as if it had one, so a slip in a counterfactual was replayed all the same and the file passed."""
+        for label, path in (("no leading slash", "limits_lifecycle/revocation/checked_at"), ("only a slash", "/"), ("an empty step", "/limits_lifecycle//revocation"), ("a trailing slash", "/limits_lifecycle/"),
+                            ("a bad escape", "/limits_lifecycle/~2"), ("empty", "")):
+            with self.subTest(label):
+                gateway = self.gateway(lambda d: d["evaluations"][0].update(overrides=[{"on": "grant", "path": path, "value": "2026-11-23T10:04:00Z"}]))
+                self.assertEqual((gateway.status, [f.code for f in gateway.findings]), (INPUT_ERROR, ["INP002"]))
+                self.assertIn("not a JSON pointer", gateway.findings[0].message)
+                self.assertIn("override 1", gateway.findings[0].message)
+                self.assert_actionable(gateway, "gateway-scenarios.json")
+
+    def test_the_stored_override_paths_are_pointers(self):
+        from eahs.patch import pointer_problem
+        found = 0
+        for path in support.EXAMPLES.rglob("gateway-scenarios.json"):
+            for entry in json.loads(path.read_text(encoding="utf-8"))["evaluations"]:
+                for item in entry.get("overrides", []):
+                    found += 1
+                    self.assertEqual(pointer_problem(item["path"]), "", item["path"])
+        self.assertGreater(found, 5, "the stored scenarios do use overrides")
+
+    def test_a_scenario_file_is_read_for_its_shape_also_when_the_folder_has_no_valid_instances(self):
+        """With no contract instance the stage cannot replay anything, but a file that holds no 'evaluations' is still an input error, named."""
+        self.fresh()
+        for path in list(self.root.rglob("*.json")):
+            name = path.name.lower()
+            if name == "registry.json":
+                continue
+            if name == "gateway-scenarios.json":
+                path.write_text("{}", encoding="utf-8")
+            else:
+                path.unlink()
+        results = ve.run(self.root, only={"gateway"})
+        gateway, instances = stage(results, "gateway"), stage(results, "instances")
+        self.assertEqual(instances.status, NOT_ASSESSED)
+        self.assertEqual((gateway.status, {f.code for f in gateway.findings}), (INPUT_ERROR, {"INP002"}))
+        self.assertIn("no 'evaluations' list", gateway.findings[0].message)
+        self.assert_actionable(gateway, "gateway-scenarios.json")
+        self.assertEqual(overall(results), INPUT_ERROR)
+        done = cli("--examples", str(self.root), "--only", "gateway", "--json")
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+
+    def test_a_blocked_stage_with_files_of_the_right_shape_is_still_not_assessed(self):
+        self.fresh()
+        for path in list(self.root.rglob("*.json")):
+            if path.name.lower() not in ("registry.json", "gateway-scenarios.json"):
+                path.unlink()
+        results = ve.run(self.root, only={"gateway"})
+        self.assertEqual(stage(results, "gateway").status, NOT_ASSESSED)
+        self.assertEqual(overall(results), NOT_ASSESSED)
+
     def test_an_expected_result_without_a_decision_or_codes_is_an_input_error_and_not_a_failure(self):
         for label, expect in (("empty", {}), ("an unknown decision", {"decision": "MAYBE", "codes": []}), ("no codes", {"decision": "ALLOW"}), ("codes that are not a list", {"decision": "ALLOW", "codes": "x"}),
                               ("a code that is not text", {"decision": "BLOCK", "codes": [7]})):
@@ -403,6 +455,31 @@ class TheCaseFiles(Scratch, Actionable):
     def test_a_target_that_does_not_exist_is_still_a_finding_of_the_case_and_not_a_shape(self):
         cases = self.cases(lambda d: d["cases"][2]["mutations"][0].update(target="C05 ACT-NONE v1"))
         self.assertEqual((cases.status, [f.code for f in cases.findings]), (FAIL, ["CASE003"]))
+
+    def test_a_mutation_path_that_is_not_a_json_pointer_is_an_input_error_and_is_not_replayed(self):
+        for label, path in (("no leading slash", "supported_claims_references/0/text"), ("only a slash", "/"), ("an empty step", "/a//b"), ("a bad escape", "/a/~9")):
+            with self.subTest(label):
+                cases = self.cases(lambda d: d["cases"][0]["mutations"][0]["ops"][0].update(path=path))
+                self.assertEqual((cases.status, [f.code for f in cases.findings]), (INPUT_ERROR, ["INP002"]))
+                self.assertIn("not a JSON pointer", cases.findings[0].message)
+                self.assertIn("operation 1", cases.findings[0].message)
+                self.assert_actionable(cases, "cases.json")
+
+    def test_the_stored_mutation_paths_are_pointers(self):
+        from eahs.patch import pointer_problem
+        for case in json.loads((support.EXAMPLES / self.NAME).read_text(encoding="utf-8"))["cases"]:
+            for mutation in case["mutations"]:
+                for op in mutation["ops"]:
+                    self.assertEqual(pointer_problem(op["path"]), "", "%s %s" % (case["case_id"], op["path"]))
+
+    def test_the_patch_itself_refuses_a_path_that_is_not_a_pointer(self):
+        from eahs.patch import apply_ops
+        for path in ("a/b", "/", "//a", "/a/", "/a/~2"):
+            with self.subTest(path):
+                with self.assertRaises(ValueError):
+                    apply_ops({"a": {"b": 1}}, [{"op": "replace", "path": path, "value": 2}])
+        self.assertEqual(apply_ops({"a": {"b": 1}}, [{"op": "replace", "path": "/a/b", "value": 2}]), {"a": {"b": 2}})
+        self.assertEqual(apply_ops({"a/b": {"c~d": 1}}, [{"op": "replace", "path": "/a~1b/c~0d", "value": 2}]), {"a/b": {"c~d": 2}})
 
 
 class TheResponseFiles(Scratch, Actionable):
@@ -580,11 +657,15 @@ class ADocumentNestedTooDeeplyIsRefusedWhereItIsRead(Scratch, Actionable):
         self.assertEqual(json.loads(done.stdout)["status"], INPUT_ERROR)
 
     def test_a_document_just_inside_the_limit_is_read_and_does_not_crash_a_check(self):
+        """It is read, the instance stage validates it and the semantics stage runs every one of its checks over it: nothing is refused and nothing crashes."""
         from eahs.model import MAX_DEPTH
         self.deepen(MAX_DEPTH - 12)
-        for result in ve.run(self.root, only={"semantics"}):
-            self.assertIn(result.status, (PASS, FAIL, INPUT_ERROR, NOT_ASSESSED, SKIPPED), result.stage)
+        results = {r.stage: r for r in ve.run(self.root, only={"semantics"})}
+        self.assertEqual((results["instances"].status, results["instances"].evaluated, results["instances"].findings), (PASS, 37, []))
+        self.assertEqual((results["semantics"].status, results["semantics"].evaluated, results["semantics"].findings), (PASS, 37, []))
+        self.assertIn("check families ran over 37 instances", results["semantics"].detail)
         done = cli("--examples", str(self.root), "--only", "semantics")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertNotIn("Traceback", done.stderr)
 
     def test_a_recursion_error_raised_by_a_check_is_an_input_error_and_not_a_traceback(self):
@@ -662,6 +743,22 @@ class ARegistrySectionOfTheWrongShape(Scratch, Actionable):
             ("a review log entry without its actor", lambda d: d["accountability"]["review_log"][0].pop("actor"), "entry 1 of 'accountability.review_log'"),
             ("a review log entry with a time that is not a time", lambda d: d["accountability"]["review_log"][0].update(time="after lunch"), "not an RFC 3339 time"),
             ("a review log", lambda d: d["accountability"].update(review_log={}), "'accountability.review_log'"),
+            ("a target state with no time", lambda d: d["target_states"][1].pop("at"), "entry 2 of 'target_states'"),
+            ("a target state whose time is null", lambda d: d["target_states"][1].update(at=None), "entry 2 of 'target_states'"),
+            ("a target state whose time is finer than a microsecond", lambda d: d["target_states"][1].update(at="2026-11-23T10:03:20.0000001Z"), "entry 2 of 'target_states'"),
+            ("a target state that is empty", lambda d: d["target_states"].append({}), "entry 4 of 'target_states'"),
+            ("a target state with no entity", lambda d: d["target_states"][0].pop("entity_id"), "entry 1 of 'target_states'"),
+            ("a target state whose state is not an object", lambda d: d["target_states"][2].update(state="paid"), "entry 3 of 'target_states'"),
+            ("a permission decision that is not an object", lambda d: d["permission_decisions"].update({"AUTHZ-READ-LIMIT-0417@v1": []}), "permission decision 'AUTHZ-READ-LIMIT-0417@v1' must be an object"),
+            ("a decision whose view is not an object", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"].update(permitted_view=[]), "'permitted_view' must be an object"),
+            ("a decision whose gap is a list", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"]["permitted_view"].update(gap=[]), "'permitted_view.gap' must be an object"),
+            ("a decision whose gap is null", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"]["permitted_view"].update(gap=None), "'permitted_view.gap' must be an object"),
+            ("a decision whose retrieval is text", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"]["permitted_view"].update(retrieval="none"), "'permitted_view.retrieval' must be an object"),
+            ("a decision whose gap scope is a list", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"]["permitted_view"]["gap"].update(scope=[]), "'permitted_view.gap.scope' must be an object"),
+            ("a decision whose permission to read is text", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"].update(read_allowed="no"), "'read_allowed' must be true or false"),
+            ("a decision whose permission to know is a number", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"].update(disclose_existence_allowed=1), "'disclose_existence_allowed' must be true or false"),
+            ("a decision whose principal is a list", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"].update(principal=["person:ap-analyst-02"]), "'principal' must be text"),
+            ("a decision whose permitted wording is a number", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"].update(permitted_disclosure=7), "'permitted_disclosure' must be text"),
         )
         for label, edit, message in cases:
             with self.subTest(label):
@@ -750,6 +847,19 @@ class PartialRunsOnABrokenFolder(Scratch):
                 self.assertIn("names no stage", done.stderr)
                 self.assertNotIn("Traceback", done.stderr)
                 self.assertNotIn("Result: PASS", done.stdout)
+
+    def test_the_same_refusal_is_a_json_result_when_json_was_asked_for(self):
+        """A program that asked for --json reads the answer as JSON, whatever is wrong with the command line, and still gets the exit code 2."""
+        self.fresh()
+        for args in (("--only", ""), ("--only", ","), ("--skip", ""), ("--skip", " , "), ("--only", "nonsense"), ("--skip", "gateway,nonsense")):
+            with self.subTest(args):
+                done = cli("--examples", str(self.root), "--json", *args)
+                self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+                data = json.loads(done.stdout)
+                self.assertEqual((data["status"], data["exit_code"], data["passed"]), (INPUT_ERROR, 2, False))
+                self.assertEqual([f["code"] for f in data["findings"]], ["INP001"])
+                self.assertTrue(data["findings"][0]["hint"])
+                self.assertNotIn("Traceback", done.stderr)
 
     def test_no_selection_of_stages_raises(self):
         self.fresh()

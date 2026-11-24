@@ -13,7 +13,7 @@ from typing import List
 from .findings import Finding, InputProblem, describe_error, rel
 from .gateway import Decision, attempt_receipt_ids, evaluate_commit, ledger_from_receipts, parse_time, ts
 from .model import Instance, Model
-from .patch import apply_ops
+from .patch import apply_ops, pointer_problem
 
 DOC = "architecture/action-and-degradation.md"
 
@@ -78,6 +78,9 @@ def _override_problem(name: str, position: int, item) -> str:
         return "%s acts on %r, which is not one of %s: an override that names no target would be ignored" % (where, item.get("on"), ", ".join(OVERRIDE_TARGETS))
     if not isinstance(item.get("path"), str) or "value" not in item:
         return "%s needs a 'path' (a JSON pointer) and a 'value'" % where
+    problem = pointer_problem(item["path"])
+    if problem:
+        return "%s has the path %r, which is not a JSON pointer: %s" % (where, item["path"], problem)
     if item["on"] == "evidence":
         record = item.get("record")
         if not (isinstance(record, dict) and isinstance(record.get("id"), str) and isinstance(record.get("version"), str)):

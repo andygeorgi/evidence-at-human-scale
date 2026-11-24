@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple
 
 from .findings import Finding, InputProblem, describe_error, rel
 from .model import Instance, Model
-from .patch import apply_ops
+from .patch import apply_ops, pointer_problem
 from .schema import validate_instance
 
 DOC = "evaluation/README.md"
@@ -67,6 +67,9 @@ def _mutation_problem(name: str, position: int, mutation) -> str:
             return "%s, operation %d needs an 'op' (one of %s) and a 'path' (a JSON pointer)" % (where, number + 1, ", ".join(OPERATIONS))
         if op["op"] != "remove" and "value" not in op:
             return "%s, operation %d (%s) needs a 'value'" % (where, number + 1, op["op"])
+        problem = pointer_problem(op["path"])
+        if problem:
+            return "%s, operation %d has the path %r, which is not a JSON pointer: %s" % (where, number + 1, op["path"], problem)
     return ""
 
 

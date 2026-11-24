@@ -206,6 +206,15 @@ def registry_problem(raw: dict) -> Optional[str]:
             return "'%s' must list only strings" % name
     if not all(isinstance(item, dict) for item in raw.get("target_states", [])):
         return "'target_states' must list only objects, each with an entity_id, a time and a state"
+    from .gateway import parse_time   # imported here: the gateway reads the model, so the model cannot import it at the top
+    for position, item in enumerate(raw.get("target_states", [])):
+        if not isinstance(item.get("entity_id"), str) or not isinstance(item.get("state"), dict) or parse_time(item.get("at")) is None:
+            return ("entry %d of 'target_states' needs an 'entity_id' (text), an 'at' that is an RFC 3339 time with a zone (at most six fractional digits) and a 'state' object, "
+                    "so that the state of the target at an attempt can be established" % (position + 1))
+    for key, decision in raw.get("permission_decisions", {}).items():
+        problem = _decision_problem(key, decision)
+        if problem:
+            return problem
     accountability = raw.get("accountability", {})
     roles, together, log = accountability.get("roles", {}), accountability.get("may_hold_together", []), accountability.get("review_log", [])
     if not isinstance(roles, dict) or not all(isinstance(role, dict) for role in roles.values()):
@@ -218,13 +227,37 @@ def registry_problem(raw: dict) -> Optional[str]:
         return "'accountability.may_hold_together' must be a list of lists of role names (text)"
     if not isinstance(log, list) or not all(isinstance(entry, dict) for entry in log):
         return "'accountability.review_log' must be a list of objects"
-    from .gateway import parse_time   # imported here: the gateway reads the model, so the model cannot import it at the top
     for position, entry in enumerate(log):
         if not all(isinstance(entry.get(key), str) for key in ("packet", "actor", "action", "time")):
             return "entry %d of 'accountability.review_log' needs text for 'packet', 'actor', 'action' and 'time'" % (position + 1)
         if parse_time(entry["time"]) is None:
             return "entry %d of 'accountability.review_log' has a time that is not an RFC 3339 time with a zone: %r" % (position + 1, entry["time"])
     return None
+
+
+def _decision_problem(key, decision) -> str:
+    """Why a permission decision of the registry is not shaped as the viewer projection reads it, or an empty string.
+
+    A part that is missing reads as 'not permitted'; a part of the wrong kind is refused here, with the decision and the part named,
+    and not turned into a refusal that nobody can trace to the file."""
+    where = "permission decision %r" % key
+    if not isinstance(decision, dict):
+        return "%s must be an object" % where
+    for name in ("principal", "tenant", "purpose", "permitted_disclosure"):
+        if name in decision and not isinstance(decision[name], str):
+            return "%s: '%s' must be text" % (where, name)
+    for name in ("read_allowed", "disclose_existence_allowed"):
+        if name in decision and not isinstance(decision[name], bool):
+            return "%s: '%s' must be true or false" % (where, name)
+    view = decision.get("permitted_view", {})
+    if not isinstance(view, dict):
+        return "%s: 'permitted_view' must be an object" % where
+    for part in ("gap", "retrieval"):
+        if part in view and not isinstance(view[part], dict):
+            return "%s: 'permitted_view.%s' must be an object" % (where, part)
+    if "scope" in view.get("gap", {}) and not isinstance(view["gap"]["scope"], dict):
+        return "%s: 'permitted_view.gap.scope' must be an object" % where
+    return ""
 
 
 def _no_constant(name):

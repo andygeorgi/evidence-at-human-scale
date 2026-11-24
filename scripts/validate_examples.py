@@ -69,6 +69,10 @@ REGISTRY_STAGES = {"semantics", "gateway", "cases"}
 DOCUMENT_ERRORS = (KeyError, IndexError, TypeError, ValueError, AttributeError, RecursionError)
 #: Stage files that are neither contract instances nor raw exports: each is read by the stage named here, not by the instances stage.
 STAGE_FILES = {"gateway-scenarios.json": "gateway", "cases.json": "cases", "response-*.json": "responses"}
+#: What each of those stages needs in its file: the pattern, the list it evaluates and what the file is. The shape of a file does not
+#: depend on the model, so a file of the wrong shape is reported also when its stage cannot run for want of valid instances.
+STAGE_COLLECTIONS = {"gateway": ("gateway-scenarios.json", "evaluations", "a gateway scenario file"), "cases": ("cases.json", "cases", "an evaluation-case file"),
+                     "responses": ("response-*.json", "statements", "a response")}
 
 
 def _kind(value) -> str:
@@ -149,7 +153,29 @@ class Run:
                                    detail="the registry this stage reads does not exist")
             return None
         state = base.status if base is not None else "not run"
+        shape = self.shape_problems(stage)
+        if shape:
+            return self.result(stage, INPUT_ERROR, findings=shape, detail="%d file(s) this stage reads cannot be evaluated, and the %s stage ended %s, so nothing could be replayed against the model either" % (len(shape), needed, state))
         return self.result(stage, NOT_ASSESSED, detail="blocked: the %s stage ended %s, and this stage needs structurally valid instances" % (needed, state))
+
+    def shape_problems(self, stage: str) -> List[Finding]:
+        """The files of a stage that lack the list the stage evaluates. Nothing about the model is needed to see that.
+
+        A file that cannot be read as JSON is not repeated here: the instances stage reads every JSON file and has reported it already.
+        """
+        spec = STAGE_COLLECTIONS.get(stage)
+        if spec is None:
+            return []
+        pattern, collection, what = spec
+        problems: List[Finding] = []
+        for path in self.files(pattern):
+            data, unreadable = self.read_json(path)
+            if unreadable is not None:
+                continue
+            problem = self.collection_problem(stage, path, data, collection, what)
+            if problem is not None:
+                problems.append(problem)
+        return problems
 
     def files(self, pattern: str) -> List[Path]:
         """Every file below the folder whose name matches `pattern`, ignoring case, so that the answer does not depend on the platform."""
@@ -259,7 +285,7 @@ class Run:
             return self.result("instances", NOT_ASSESSED, 0, [], "no contract instance found under %s%s: nothing was evaluated" % (rel(self.root), seen))
         detail = "%d contract instances validated (%s)" % (count, ", ".join("%s x%d" % kv for kv in sorted(by.items())))
         if raw:
-            detail += "; %d other JSON file(s) declare no contract_id and were read as non-contract input, not validated as instances" % len(raw)
+            detail += "; %d other JSON file(s) are not contract instances (raw exports and the like) and were read as non-contract input, not validated as instances" % len(raw)
         return self.result("instances", FAIL if findings else PASS, count, findings, detail)
 
     def stage_semantics(self) -> StageResult:
@@ -431,12 +457,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--debug", action="store_true", help="let an unexpected error raise, with its traceback")
     args = parser.parse_args(argv)
     only, skip = split(args.only or ""), split(args.skip or "")
+
+    def refuse(text: str, hint: str) -> int:
+        """A command line that cannot run. A person gets the usual usage message; a program that asked for --json gets the same answer in JSON, with the exit code 2."""
+        if args.json:
+            print(render_json([], INPUT_ERROR, [input_finding("INP001", text, "command line", hint)]))
+            return EXIT_CODES[INPUT_ERROR]
+        parser.error(text)
+        return EXIT_CODES[INPUT_ERROR]   # parser.error exits; this is for a parser that is replaced in a test
     for flag, given, names in (("--only", args.only, only), ("--skip", args.skip, skip)):
         if given is not None and not names:
-            parser.error("%s names no stage: give at least one of %s, or leave the option out" % (flag, ", ".join(STAGES)))
+            return refuse("%s names no stage: give at least one of %s, or leave the option out" % (flag, ", ".join(STAGES)), "give at least one of %s, or leave the option out" % ", ".join(STAGES))
     unknown = (only | skip) - set(STAGES)
     if unknown:
-        parser.error("unknown stage(s): %s (stages: %s)" % (", ".join(sorted(unknown)), ", ".join(STAGES)))
+        return refuse("unknown stage(s): %s (stages: %s)" % (", ".join(sorted(unknown)), ", ".join(STAGES)), "use only these stages: %s" % ", ".join(STAGES))
     if not args.examples.is_dir():
         problem = input_finding("INP001", "the examples folder cannot be read: %s is not a directory" % args.examples, str(args.examples), "pass --examples DIR with a folder that has the layout of examples/")
         if args.json:
