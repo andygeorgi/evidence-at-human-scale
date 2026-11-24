@@ -51,7 +51,7 @@ from eahs import REPO_ROOT, __version__  # noqa: E402
 from eahs import semantics  # noqa: E402
 from eahs.cases import check_cases  # noqa: E402
 from eahs.findings import Finding, InputProblem, describe_error, rel  # noqa: E402
-from eahs.model import Model, Registry, load_model  # noqa: E402
+from eahs.model import Model, Registry, json_files, load_model  # noqa: E402
 from eahs.response import check_response, is_canonical  # noqa: E402
 from eahs.scenarios import check_scenario_file  # noqa: E402
 from eahs.schema import check_embedded_examples, check_schema_itself, load_schema, validate_instance  # noqa: E402
@@ -149,7 +149,7 @@ class Run:
 
     def files(self, pattern: str) -> List[Path]:
         """Every file below the folder whose name matches `pattern`, ignoring case, so that the answer does not depend on the platform."""
-        return sorted(p for p in self.root.rglob("*.json") if fnmatch.fnmatch(p.name.lower(), pattern.lower()))
+        return [p for p in json_files(self.root) if fnmatch.fnmatch(p.name.lower(), pattern.lower())]
 
     def read_json(self, path: Path):
         try:

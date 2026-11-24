@@ -108,6 +108,15 @@ def is_contract_id(value) -> bool:
 CONTRACT_FILE = re.compile(r"c0[1-7]-.+\.json", re.IGNORECASE)
 
 
+def json_files(root: Path) -> List[Path]:
+    """Every file below the folder with a .json extension in any case, so that the answer does not depend on how the platform treats case.
+
+    A glob for "*.json" is case-sensitive on Linux and macOS and case-insensitive on Windows, so it would leave a file named
+    C02-X-V1.JSON out of the folder on one platform and not on the other.
+    """
+    return sorted(p for p in root.rglob("*") if p.suffix.lower() == ".json" and p.is_file())
+
+
 def identity_of(data: dict) -> Optional[Tuple[str, str, str]]:
     contract = data.get("contract_id")
     if not is_contract_id(contract) or contract not in IDENTITY:
@@ -197,7 +206,7 @@ def load_model(root: Path) -> Tuple[Model, List[Finding]]:
     findings: List[Finding] = []
     instances: Dict[Key, Instance] = {}
     ignored: List[str] = []
-    for path in sorted(root.rglob("*.json")):
+    for path in json_files(root):
         if path.name == "registry.json":
             continue
         try:

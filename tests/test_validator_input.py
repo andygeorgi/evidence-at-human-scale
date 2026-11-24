@@ -259,6 +259,24 @@ class TheScenarioFiles(Scratch, Actionable):
         gateway = self.run_stage("gateway")
         self.assertEqual((gateway.status, gateway.evaluated), (PASS, 24))
 
+    def test_an_upper_case_extension_is_not_a_reason_to_leave_a_file_out(self):
+        """A glob for *.json is case-sensitive on Linux and macOS and not on Windows, so the folder must be read the same way on all of them."""
+        from eahs.model import json_files, load_model
+        self.fresh()
+        target = self.root / "01-source-records" / "c02-INV-2026-0417-v1.json"
+        target.rename(target.with_suffix(".JSON"))
+        (self.root / "Notes").mkdir()
+        for name in ("a.Json", "b.txt", "c.json.bak"):
+            (self.root / "Notes" / name).write_text("{}", encoding="utf-8")
+        found = sorted(p.relative_to(self.root).as_posix() for p in json_files(self.root))
+        self.assertIn("01-source-records/c02-INV-2026-0417-v1.JSON", found)
+        self.assertIn("Notes/a.Json", found)
+        self.assertNotIn("Notes/b.txt", found)
+        self.assertNotIn("Notes/c.json.bak", found)
+        model, problems = load_model(self.root)
+        self.assertEqual(problems, [])
+        self.assertIn(("C02", "INV-2026-0417", "v1"), model.instances)
+
 
 class TheCaseFiles(Scratch, Actionable):
     NAME = "13-evaluation-cases/cases.json"
