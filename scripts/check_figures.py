@@ -87,6 +87,33 @@ def mermaid_problems():
     return problems
 
 
+# GitHub's script reads exactly these strings, with one space after the colon, in the media of a <source>.
+GITHUB_THEME_MEDIA = re.compile(r"prefers-color-scheme: (?:light|dark)")
+WIDTH_CONDITION = re.compile(r"\b(?:min|max)-(?:device-)?(?:width|height)\b")
+SOURCE_MEDIA = re.compile(r"<source\b[^>]*?\bmedia=\"([^\"]*)\"", re.I)
+
+
+def source_media_problems(text):
+    """The media of a <source> that GitHub would rewrite while it also holds a size condition.
+
+    For a reader who chose the dark or the light theme in GitHub's settings, GitHub replaces the media of a source that holds
+    `prefers-color-scheme: dark` (or light) by one that is always true, or never, and the size condition is lost. A wide drawing in
+    such a source would be shown at every width. The wide source writes the scheme without the space (`prefers-color-scheme:dark`).
+    """
+    return [m for m in SOURCE_MEDIA.findall(text) if GITHUB_THEME_MEDIA.search(m) and WIDTH_CONDITION.search(m)]
+
+
+def picture_media_problems():
+    problems = []
+    for doc in sorted(REPO.rglob("*.md")):
+        if any(part in (".git", "node_modules") for part in doc.parts):
+            continue
+        for media in source_media_problems(doc.read_text(encoding="utf-8")):
+            problems.append("%s: a <source> media %r holds a size and a color scheme in the form GitHub rewrites for a reader's theme setting; "
+                            "write the scheme without the space after the colon" % (doc.relative_to(REPO).as_posix(), media))
+    return problems
+
+
 def check():
     problems = []
     figures, banner = sync_figures.load()
@@ -134,6 +161,7 @@ def check():
                 problems.append("%s: display_width %s is outside %d to %d" % ((fid, shown) + DISPLAY_WIDTH_RANGE))
     problems += ["gallery/documents: " + p for p in sync_figures.sync(check=True)]
     problems += mermaid_problems()
+    problems += picture_media_problems()
     code, out = run_tool(["figures/src/svg_figures.py", "--check"])
     if code:
         problems.append("drawn SVGs: " + out.replace("\n", " "))

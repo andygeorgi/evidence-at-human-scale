@@ -1,7 +1,7 @@
 <!-- banner:start -->
 <p align="center">
 <picture>
-<source media="(min-width: 900px) and (prefers-color-scheme: dark)" srcset="figures/banner-wide-dark.svg">
+<source media="(min-width: 900px) and (prefers-color-scheme:dark)" srcset="figures/banner-wide-dark.svg">
 <source media="(min-width: 900px)" srcset="figures/banner-wide-light.svg">
 <source media="(prefers-color-scheme: dark)" srcset="figures/banner-dark.svg">
 <img src="figures/banner-light.svg" alt="Evidence at Human Scale. Systems produce evidence, AI makes it consumable, people remain accountable. Evidence is not inference, not recommendation, not authority.">

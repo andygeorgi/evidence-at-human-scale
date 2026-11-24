@@ -10,7 +10,7 @@ A script, [`figures/src/svg_figures.py`](src/svg_figures.py), draws every pictur
 
 **F07 is drawn from a table.** Its data is in `figures/figures.json`, and the same table is written under the picture, inside the text description, so a reader who wants rows and columns, or a screen reader, has them. A wide table does not fit a phone: its last column, the one that says execution is closed, would be off the screen.
 
-**Made to be read on a phone.** Each figure is drawn 360 px wide, in one column that grows downward, and its text is never smaller than 13 px, so a phone shows it at about its natural size. Text is wrapped to a width that fits the widest of Segoe UI, Arial and Verdana, so a substituted font does not overflow a box. Two pictures read better side by side, so they also have a wide drawing, 880 px wide: the architecture overview F02, and the banner. A window of at least 900 px shows the wide drawing; a narrower window, and any browser that does not switch, shows the narrow one.
+**Made to be read on a phone.** Each figure is drawn 360 px wide, in one column that grows downward, and its text is never smaller than 13 px, so a phone shows it at about its natural size. Text is wrapped to a width that fits the widest of Segoe UI, Arial and Verdana, so a substituted font does not overflow a box. Two pictures read better side by side, so they also have a wide drawing, 880 px wide: the architecture overview F02, and the banner. A window of at least 900 px shows the wide drawing; a narrower window, and any browser that does not switch, shows the narrow one. The wide drawing follows the color scheme of the reader's system. The narrow drawings also follow the theme a reader chose in GitHub's settings, so a reader whose GitHub theme differs from their system's may see a wide drawing in the other scheme; it stays legible, because every drawing has its own opaque background. The wide dark source is written `prefers-color-scheme:dark`, without a space: for a reader who chose a theme in GitHub's settings, GitHub's script replaces the whole media condition of a source written with the space, the width included, and a phone would be shown the wide drawing. [`scripts/check_figures.py`](../scripts/check_figures.py) rejects that form.
 
 All colors are paired with a text label. No meaning is carried by color alone, and every fill is paired with dark text of high contrast.
 
@@ -25,7 +25,7 @@ All colors are paired with a text label. No meaning is carried by color alone, a
 
 <p align="center">
 <picture>
-<source media="(min-width: 900px) and (prefers-color-scheme: dark)" srcset="banner-wide-dark.svg">
+<source media="(min-width: 900px) and (prefers-color-scheme:dark)" srcset="banner-wide-dark.svg">
 <source media="(min-width: 900px)" srcset="banner-wide-light.svg">
 <source media="(prefers-color-scheme: dark)" srcset="banner-dark.svg">
 <img src="banner-light.svg" alt="Evidence at Human Scale. Systems produce evidence, AI makes it consumable, people remain accountable. Evidence is not inference, not recommendation, not authority.">
@@ -59,7 +59,7 @@ Source: [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](banne
 
 <p align="center">
 <picture>
-<source media="(min-width: 900px) and (prefers-color-scheme: dark)" srcset="F02-wide-dark.svg">
+<source media="(min-width: 900px) and (prefers-color-scheme:dark)" srcset="F02-wide-dark.svg">
 <source media="(min-width: 900px)" srcset="F02-wide-light.svg">
 <source media="(prefers-color-scheme: dark)" srcset="F02-dark.svg">
 <img src="F02-light.svg" alt="A main path of nine numbered steps from sources to review of one decision packet; a separate mandatory continuity path that branches from the registry; a separate action path that starts from the review; a reassessment and invalidation step that receives corrections and outcomes; and a control plane that constrains every stage.">

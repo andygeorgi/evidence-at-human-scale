@@ -165,11 +165,30 @@ class Pictures(unittest.TestCase):
         html = sync_figures.picture(support.REPO / "README.md", fig)
         sources = [line for line in html.splitlines() if line.startswith("<source")]
         self.assertEqual(len(sources), 3)
-        self.assertIn("(min-width: 900px) and (prefers-color-scheme: dark)", sources[0])
+        self.assertIn('media="(min-width: 900px) and (prefers-color-scheme:dark)" srcset="figures/F01-wide-dark.svg"', sources[0])
         self.assertIn('media="(min-width: 900px)" srcset="figures/F01-wide-light.svg"', sources[1])
-        self.assertIn("(prefers-color-scheme: dark)", sources[2])
+        self.assertIn('media="(prefers-color-scheme: dark)" srcset="figures/F01-dark.svg"', sources[2])
         self.assertNotIn("width=", html.split("<img")[1], "an <img> width would also shrink the wide drawing")
         self.assertIn('<img src="figures/F01-light.svg"', html)
+
+    def test_only_the_narrow_dark_source_is_in_the_form_that_github_rewrites_for_a_theme_setting(self):
+        fig = dict(self.FIG, wide={"light": "figures/F01-wide-light.svg", "dark": "figures/F01-wide-dark.svg"})
+        html = sync_figures.picture(support.REPO / "README.md", fig)
+        self.assertEqual(figs.source_media_problems(html), [])
+        self.assertEqual(html.count("prefers-color-scheme: dark"), 1, "the narrow dark drawing is the one GitHub's theme setting may switch")
+
+    def test_a_size_and_a_color_scheme_in_the_form_github_rewrites_are_found(self):
+        bad = '<source media="(min-width: 900px) and (prefers-color-scheme: dark)" srcset="a.svg">'
+        self.assertEqual(figs.source_media_problems(bad), ["(min-width: 900px) and (prefers-color-scheme: dark)"])
+        self.assertEqual(figs.source_media_problems('<source srcset="a.svg" media="(prefers-color-scheme: light) and (max-width: 500px)">'),
+                         ["(prefers-color-scheme: light) and (max-width: 500px)"])
+        for fine in ('<source media="(min-width: 900px) and (prefers-color-scheme:dark)" srcset="a.svg">',
+                     '<source media="(prefers-color-scheme: dark)" srcset="a.svg">',
+                     '<source media="(min-width: 900px)" srcset="a.svg">'):
+            self.assertEqual(figs.source_media_problems(fine), [], fine)
+
+    def test_no_page_holds_a_size_and_a_color_scheme_in_the_form_github_rewrites(self):
+        self.assertEqual(figs.picture_media_problems(), [])
 
 
 if __name__ == "__main__":

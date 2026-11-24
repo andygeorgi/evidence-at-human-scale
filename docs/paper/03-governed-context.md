@@ -13,7 +13,7 @@ Bounded orchestration and synthesis turn that selection into a candidate decisio
 
 <p align="center">
 <picture>
-<source media="(min-width: 900px) and (prefers-color-scheme: dark)" srcset="../../figures/F02-wide-dark.svg">
+<source media="(min-width: 900px) and (prefers-color-scheme:dark)" srcset="../../figures/F02-wide-dark.svg">
 <source media="(min-width: 900px)" srcset="../../figures/F02-wide-light.svg">
 <source media="(prefers-color-scheme: dark)" srcset="../../figures/F02-dark.svg">
 <img src="../../figures/F02-light.svg" alt="A main path of nine numbered steps from sources to review of one decision packet; a separate mandatory continuity path that branches from the registry; a separate action path that starts from the review; a reassessment and invalidation step that receives corrections and outcomes; and a control plane that constrains every stage.">
