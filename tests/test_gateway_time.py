@@ -431,6 +431,57 @@ class AFreshnessLimitThatCannotBeRead(unittest.TestCase):
         self.assertEqual(self.decide_on(self.with_limit(10 ** 6)).codes, [])
 
 
+class TheCheckNeverRaisesOnAMalformedGrantOrProposal(unittest.TestCase):
+    """Random damage to the grant, the proposal, the evidence and the receipts (a part removed, replaced by another kind of value) is never an error.
+
+    The check answers ALLOW or BLOCK. It raises only for an attempt time that is not a timezone-aware datetime.
+    """
+
+    VALUES = (None, "x", "", [], {}, -1, 0, True, False, 1.5, "2026-11-23T10:03:00Z", {"a": 1}, [1, 2], 10 ** 400, "unknown")
+    TARGETS = (("C05", "ACT-HOLD-0417", "v1"), ("C06", "GRT-CLASS-HOLD", "v1"), ("C05", "ACT-REL-0417", "v2"), ("C06", "GRT-APPR-0417-B", "v1"),
+               ("C02", "M3W-0417", "v1"), ("C02", "M3W-0417", "v2"), ("C07", "RCP-HOLD-0417", "v1"), ("C07", "RCP-REL-0417-B", "v1"))
+    ATTEMPTS = ((("C05", "ACT-HOLD-0417", "v1"), ("C06", "GRT-CLASS-HOLD", "v1"), "2026-11-23T10:03:00Z"),
+                (("C05", "ACT-REL-0417", "v2"), ("C06", "GRT-APPR-0417-B", "v1"), "2026-11-23T16:00:05Z"))
+
+    @staticmethod
+    def paths(node, prefix=()):
+        yield prefix
+        for key, value in (node.items() if isinstance(node, dict) else enumerate(node) if isinstance(node, list) else ()):
+            yield from TheCheckNeverRaisesOnAMalformedGrantOrProposal.paths(value, prefix + (key,))
+
+    def damaged(self, data, rng):
+        data = copy.deepcopy(data)
+        path = rng.choice([p for p in self.paths(data) if p])
+        parent = data
+        for key in path[:-1]:
+            parent = parent[key]
+        if rng.random() < 0.34:
+            del parent[path[-1]]
+        else:
+            parent[path[-1]] = rng.choice(self.VALUES)
+        return data
+
+    def test_a_thousand_damaged_sets_each_give_a_decision(self):
+        import random
+        from eahs.model import Instance, Model
+        base = support.example_model()
+        for seed in range(1000):
+            rng = random.Random(seed)
+            instances = dict(base.instances)
+            for _ in range(rng.randint(1, 3)):
+                key = rng.choice(self.TARGETS)
+                old = instances[key]
+                instances[key] = Instance(old.contract, old.id, old.version, self.damaged(old.data, rng), old.path)
+            model = Model(instances, base.registry, base.root)
+            for proposal, grant, at in self.ATTEMPTS:
+                try:
+                    decision = evaluate_commit(model, model.get(*proposal), model.get(*grant), ts(at), ledger_from_receipts(model, ts(at)))
+                except Exception as exc:  # noqa: BLE001
+                    self.fail("seed %d, attempt %s: %s: %s" % (seed, proposal[1], type(exc).__name__, exc))
+                self.assertIn(decision.allow, (True, False))
+                self.assertTrue(set(decision.codes) <= set(GATE_CODES), decision.codes)
+
+
 class ParsingTimes(unittest.TestCase):
     def test_rfc3339_with_a_zone_is_accepted(self):
         for text in ("2026-11-23T10:03:00Z", "2026-11-23t10:03:00z", "2026-11-23T10:03:00.5Z", "2026-11-23T12:03:00+02:00", "2026-11-23T10:03:00.123456000-00:00", "2026-11-23T10:03:00.0000000Z"):

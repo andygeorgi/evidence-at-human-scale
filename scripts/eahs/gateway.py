@@ -227,7 +227,7 @@ def evidence_refs(proposal: dict, grant: dict) -> List[dict]:
     seen, out = set(), []
     for r in refs:
         r = _object(r)
-        key = (r.get("record_id"), r.get("version"))
+        key = (repr(r.get("record_id")), repr(r.get("version")))   # repr: a reference that is not text must still be told apart, and cannot be hashed as it is
         if key not in seen:
             seen.add(key)
             out.append(r)
@@ -307,14 +307,15 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
     elif binding.get("binding_type") != "bounded_class":
         reasons.append(Reason("GRANT_NOT_BOUND", "the grant states no binding that this check knows (%r), so it cannot be shown to cover this action" % binding.get("binding_type")))
     action_kind, target = action.get("action_kind"), _object(action.get("exact_target"))
-    if action_kind not in _list(scope.get("permitted_actions")):
-        reasons.append(Reason("ACTION_NOT_PERMITTED", "action %s is outside the grant" % action_kind))
-    if not _target_permitted(target, _list(scope.get("permitted_targets"))):
-        reasons.append(Reason("TARGET_NOT_PERMITTED", "target %s is outside the grant" % target.get("entity_id")))
-    allowed_params = {x.get("name"): x.get("data_type") for x in _list(scope.get("permitted_parameters")) if isinstance(x, dict)}
+    if not isinstance(action_kind, str) or action_kind not in _list(scope.get("permitted_actions")):
+        reasons.append(Reason("ACTION_NOT_PERMITTED", "action %s is outside the grant" % (action_kind,)))
+    if not (isinstance(target.get("entity_type"), str) and isinstance(target.get("entity_id"), str)) or not _target_permitted(target, _list(scope.get("permitted_targets"))):
+        reasons.append(Reason("TARGET_NOT_PERMITTED", "target %s is outside the grant" % (target.get("entity_id"),)))
+    allowed_params = {x["name"]: x.get("data_type") for x in _list(scope.get("permitted_parameters")) if isinstance(x, dict) and isinstance(x.get("name"), str)}
     for param in map(_object, _list(action.get("typed_parameters"))):
-        if allowed_params.get(param.get("name")) != param.get("data_type"):
-            reasons.append(Reason("PARAMETER_NOT_PERMITTED", "parameter %s (%s) is not permitted by the grant" % (param.get("name"), param.get("data_type"))))
+        name, data_type = param.get("name"), param.get("data_type")
+        if not isinstance(name, str) or not isinstance(data_type, str) or allowed_params.get(name) != data_type:
+            reasons.append(Reason("PARAMETER_NOT_PERMITTED", "parameter %s (%s) is not permitted by the grant" % (name, data_type)))
 
     # 3. The evidence had been admitted by the attempt, was still current, and was fresh.
     for ref in evidence_refs(p, g):
