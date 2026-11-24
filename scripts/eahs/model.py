@@ -169,8 +169,12 @@ def _no_repeated_key(pairs):
 def loads_strict(text: str):
     """JSON as RFC 8259 defines it. Python also reads NaN, Infinity and -Infinity, a number too large for a float and an
     object that repeats a key (the last value silently wins): other parsers do not, so a file that depends on them means
-    one thing here and another elsewhere. All four are refused (ValueError, like any other malformed JSON)."""
-    return json.loads(text, parse_constant=_no_constant, parse_float=_finite, object_pairs_hook=_no_repeated_key)
+    one thing here and another elsewhere. All four are refused (ValueError, like any other malformed JSON), and so is a
+    document nested too deeply for the reader."""
+    try:
+        return json.loads(text, parse_constant=_no_constant, parse_float=_finite, object_pairs_hook=_no_repeated_key)
+    except RecursionError as exc:
+        raise ValueError("the document is nested too deeply to read (more than about a thousand levels)") from exc
 
 
 def registry_path(root: Path) -> Path:

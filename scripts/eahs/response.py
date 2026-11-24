@@ -168,10 +168,13 @@ def states_claim(claim: str, statement: str) -> bool:
 
 
 def currency_assertions(text: str) -> int:
-    """How many times a text calls something current or valid without negating it ("not current advice" is not such a call)."""
+    """How many times a text calls something current or valid without negating it ("not current advice" is not such a call).
+
+    Only the words just before each match are read, so a long statement is read in one pass.
+    """
     count = 0
     for match in CURRENCY_WORDS.finditer(text):
-        clause = re.split(r"[.!?;:(]", text[:match.start()])[-1]
+        clause = re.split(r"[.!?;:(]", text[max(0, match.start() - 80):match.start()])[-1]
         if not NEGATED_BEFORE.search(clause):
             count += 1
     return count

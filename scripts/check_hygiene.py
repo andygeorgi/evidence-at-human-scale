@@ -331,7 +331,7 @@ def find_matches(rule: Rule, rel: str, line: str) -> Iterator[str]:
     for match in _COMPILED[rule.code].finditer(line):
         if rule.ignore_match and re.fullmatch(rule.ignore_match, match.group(0)):
             continue
-        if rule.ignore_before and re.search(rule.ignore_before, _SENTENCE_END.split(line[:match.start()])[-1]):
+        if rule.ignore_before and re.search(rule.ignore_before, _SENTENCE_END.split(line[max(0, match.start() - 160):match.start()])[-1]):
             continue
         yield match.group(0)
     if rule.code == "HYG105" and not is_public_source_line(rel, line):

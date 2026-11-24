@@ -418,7 +418,7 @@ def _label_findings(text: str, payload, skip: Set[float]) -> List[Tuple[float, s
     found: List[Tuple[float, str, List[str]]] = []
     text = text.replace("\u2212", "-")
     for match in _NUMBER.finditer(text):
-        clause = re.split(r"[.;!?](?=\s|$)", text[:match.start()])[-1]
+        clause = re.split(r"[.;!?](?=\s|$)", text[max(0, match.start() - 96):match.start()])[-1]
         words = _WORD.findall(clause[-48:])
         while words and words[-1].lower() in _BETWEEN:
             words.pop()

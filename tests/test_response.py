@@ -572,6 +572,14 @@ class CoverageAndStatusConsistency(unittest.TestCase):
         advice = [s for s in self.v1["statements"] if s["kind"] in ("recommendation", "proposal", "obligation")]
         self.assertTrue(all("withdrawn" in s["text"].lower() for s in advice))
 
+    def test_a_very_long_statement_is_read_in_one_pass(self):
+        import time
+        response = copy.deepcopy(self.v1)
+        next(s for s in response["statements"] if s["kind"] == "recommendation")["text"] += " This is current. " * 20000 + " 12 " * 20000
+        start = time.perf_counter()
+        self.assertIn("RESP016", [f.code for f in check_structural(self.model, response, "r.json")])
+        self.assertLess(time.perf_counter() - start, 10)
+
 
 class ClaimBoundary(unittest.TestCase):
     """What each validation promises. The documents must say the same, and the code must not promise more."""

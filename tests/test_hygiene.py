@@ -577,6 +577,15 @@ class Speed(unittest.TestCase):
         codes_for_text(text, name="figures/x.svg")
         self.assertLess(time.perf_counter() - start, 5)
 
+    def test_a_line_with_thousands_of_claims_is_read_in_one_pass(self):
+        """Each claim of finality is judged with the few words before it, not with the whole line before it."""
+        import time
+        line = ("the %s publication. " % OFFICIAL) * 20000 + ("not " * 20000) + "the %s version\n" % FINAL
+        start = time.perf_counter()
+        found = codes_for_text(line)
+        self.assertEqual(found, ["HYG108"])
+        self.assertLess(time.perf_counter() - start, 5)
+
 
 NOREPLY = ("Test Author", "1+test@users.noreply.github.com")
 
