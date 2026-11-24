@@ -71,7 +71,7 @@ The entries are produced by the viewer projection in [`scripts/eahs/disclosure.p
 ## Also in the selection
 
 - **Retrieval** shows what was tried and how it ended: `completed`, `failed` (treasury, with an unknown completion time), `not_permitted` (the part of the scope the requestor may not read, with the permitted wording).
-- **Disposition** includes nine records (among them the two model summaries, labeled as inferences) and excludes one with a reason: the delivery-reliability result is not a payment-release criterion, and it stays retrievable.
+- **Disposition** includes nine records (among them the two AI summaries, labeled as inferences) and excludes one with a reason: the delivery-reliability result is not a payment-release criterion, and it stays retrievable.
 - **Conflict** `CONF-QTY`: the invoice says 100 units, the receipt says 60. Both claims are cited, neither is treated as correct, and there is no "majority" or "latest wins".
 - **Obligation** `OBL-0417-REVIEW`: the controller must review before 15:30, with delivery, acknowledgement and escalation states.
 - **Coverage** is `partial` with limitations stated. A selection is a scope, not the whole corpus.

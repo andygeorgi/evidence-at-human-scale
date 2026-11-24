@@ -58,7 +58,7 @@ All times are UTC on 2026-11-23 unless stated.
 | 07:30 | Invoice `INV-2026-0417` arrives: 100 units at EUR 184.00, total EUR 18,400.00 | [01](01-source-records/README.md) |
 | 07:45 | The controller issues two bounded grants for the day's payment work: place payment holds, and release low-value payments | [07](07-authority-and-delegation/README.md) · [12](12-controlled-change/README.md) |
 | 09:35 | The three-way match `M3W-0417` v1 fails: 100 units invoiced against 60 received, a variance of 40% against a tolerance of 2% | [03](03-lineage-and-common-origin/README.md) |
-| 09:41–09:44 | Two model summaries both suggest a receiving delay. Both rest on `GR-5521` v1 alone and say nothing about the invoice | [03](03-lineage-and-common-origin/README.md) |
+| 09:41–09:44 | Two AI summaries both suggest a receiving delay. Both rest on `GR-5521` v1 alone and say nothing about the invoice | [03](03-lineage-and-common-origin/README.md) |
 | 09:45–09:59 | Retrieval for the review. The treasury service returns HTTP 503. Part of the requested scope is outside the requestor's read permissions | [04](04-selection-and-missingness/README.md) |
 | 10:00 | Context `CTX-0417` v1, selection `SEL-0417` v1 and decision packet `PKT-0417` v1 are produced for the requestor. A first response is written from the packet | [02](02-context-and-normalization/README.md) · [05](05-decision-packet/README.md) · [06](06-assistant-response/README.md) |
 | 10:03 | A payment hold is placed on the invoice under a bounded grant. The receipt says `completed_verified` | [07](07-authority-and-delegation/README.md) |

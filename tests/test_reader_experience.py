@@ -152,6 +152,11 @@ class HumanNamesBeforeIdentifiers(unittest.TestCase):
         self.assertIn("completed_verified", figure["caption"], "the stable values stay in the caption, after the words")
         self.assertLess(figure["caption"].index("a verified no-effect"), figure["caption"].index("not_executed_verified"))
 
+    def test_the_two_summaries_have_one_name_on_the_reader_pages(self):
+        """A reader meets them as AI summaries; the kind, model inference, is named beside it, not a third name for the same thing."""
+        found = [page for page in self.PRIMARY if re.search(r"(?i)model summar", without_generated_blocks(text(page)))]
+        self.assertEqual(found, [])
+
     def test_the_story_table_keeps_the_record_numbers_after_the_names(self):
         story = text("examples/README.md").split("## The story", 1)[1].split("## Folder map", 1)[0]
         self.assertIn("Goods receipt `GR-5521` v1", story)
