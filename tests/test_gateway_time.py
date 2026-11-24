@@ -374,6 +374,19 @@ class AGrantOrAProposalMissingAPart(unittest.TestCase):
                 with self.subTest(path, value=value):
                     self.assertEqual(self.blocked(replace(self.GRANT, "/limits_lifecycle/%s/0/quantity" % path, value)), [code])
 
+    def test_a_limit_without_a_readable_unit_cannot_be_checked(self):
+        for path, code in (("per_action_limits", "PER_ACTION_LIMIT"), ("cumulative_limits", "CUMULATIVE_LIMIT")):
+            for label, mutation in (("missing", remove(self.GRANT, "/limits_lifecycle/%s/0/units" % path)), ("not text", replace(self.GRANT, "/limits_lifecycle/%s/0/units" % path, 3))):
+                with self.subTest("%s %s" % (path, label)):
+                    self.assertEqual(self.blocked(mutation), [code])
+
+    def test_a_limit_too_large_for_a_float_is_still_compared_and_named(self):
+        decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", replace(self.GRANT, "/limits_lifecycle/per_action_limits/0/quantity", 10 ** 400))
+        self.assertEqual((decision.allow, decision.codes), (True, []))
+        decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", replace("C06 GRT-APPR-0417-B v1", "/limits_lifecycle/per_action_limits/0/quantity", -10 ** 400))
+        self.assertEqual(unique(decision.codes), ["PER_ACTION_LIMIT"])
+        self.assertIn("exceeds the per-action limit", decision.reasons[0].message)
+
     def test_a_proposal_without_its_action_is_not_covered_by_the_grant(self):
         codes = self.blocked(remove(self.PROPOSAL, "/action"))
         self.assertIn("ACTION_NOT_PERMITTED", codes)

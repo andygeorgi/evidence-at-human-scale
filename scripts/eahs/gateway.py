@@ -378,41 +378,51 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         reasons.append(Reason("PER_ACTION_LIMIT", "the grant lists no per-action limits, so none can be checked"))
         per_action = []
     for limit in map(_object, per_action):
-        qty, cap = action_quantity(p, limit.get("units")), limit.get("quantity")
-        if qty is None or isinstance(cap, bool) or not isinstance(cap, (int, float)):
-            reasons.append(Reason("PER_ACTION_LIMIT", "the per-action limit in %s cannot be checked: the proposal states no readable amount in that unit, or the limit states no readable quantity" % limit.get("units")))
+        units, cap = limit.get("units"), limit.get("quantity")
+        qty = action_quantity(p, units) if isinstance(units, str) else None
+        if qty is None or not _is_quantity(cap):
+            reasons.append(Reason("PER_ACTION_LIMIT", "the per-action limit in %s cannot be checked: the proposal states no readable amount in that unit, or the limit states no readable unit or quantity" % units))
         elif qty > cap:
-            reasons.append(Reason("PER_ACTION_LIMIT", "%s %s exceeds the per-action limit of %s %s" % (_fmt(qty), limit["units"], _fmt(cap), limit["units"])))
+            reasons.append(Reason("PER_ACTION_LIMIT", "%s %s exceeds the per-action limit of %s %s" % (_fmt(qty), units, _fmt(cap), units)))
     reserve = None
     if not isinstance(cumulative, list):
         reasons.append(Reason("GRANT_TIME_UNKNOWN", "the grant lists no cumulative limits, so no accounting window can be read and the capacity already used cannot be established"))
         cumulative = []
     for limit in map(_object, cumulative):
-        qty, cap = action_quantity(p, limit.get("units")), limit.get("quantity")
+        units, cap, scope_name = limit.get("units"), limit.get("quantity"), limit.get("accounting_scope")
+        qty = action_quantity(p, units) if isinstance(units, str) else None
         window = _object(limit.get("accounting_window"))
         window_start, window_end = parse_time(window.get("start")), parse_time(window.get("end"))
         if window_start is None or window_end is None or window_end <= window_start:
-            reasons.append(Reason("GRANT_TIME_UNKNOWN", "the accounting window of the %s limit has a start or an end that is missing, unknown or out of order, so the capacity already used in it cannot be established" % limit.get("units")))
+            reasons.append(Reason("GRANT_TIME_UNKNOWN", "the accounting window of the %s limit has a start or an end that is missing, unknown or out of order, so the capacity already used in it cannot be established" % units))
             continue
-        if qty is None or isinstance(cap, bool) or not isinstance(cap, (int, float)) or not isinstance(limit.get("accounting_scope"), str):
-            reasons.append(Reason("CUMULATIVE_LIMIT", "the cumulative limit in %s cannot be checked: the proposal states no readable amount in that unit, or the limit states no readable quantity or scope" % limit.get("units")))
+        if qty is None or not _is_quantity(cap) or not isinstance(scope_name, str):
+            reasons.append(Reason("CUMULATIVE_LIMIT", "the cumulative limit in %s cannot be checked: the proposal states no readable amount in that unit, or the limit states no readable unit, quantity or scope" % units))
             continue
         # Only what the ledger held by the attempt counts: an entry that starts after it is information from the future.
         used = sum(
             e.quantity for e in ledger
-            if e.grant_id == grant.id and e.accounting_scope == limit["accounting_scope"] and e.units == limit.get("units")
+            if e.grant_id == grant.id and e.accounting_scope == scope_name and e.units == units
             and (e.start is None or (window_start <= e.start < window_end and e.start <= at))
         )
         if used + qty > cap:
-            reasons.append(Reason("CUMULATIVE_LIMIT", "%s already counted plus %s would exceed %s %s in the window" % (_fmt(used), _fmt(qty), _fmt(cap), limit["units"])))
+            reasons.append(Reason("CUMULATIVE_LIMIT", "%s already counted plus %s would exceed %s %s in the window" % (_fmt(used), _fmt(qty), _fmt(cap), units)))
         else:
-            reserve = {"units": limit["units"], "quantity": qty, "counted_before": used}
+            reserve = {"units": units, "quantity": qty, "counted_before": used}
     allow = not reasons
     return Decision(allow, reasons, reserve if allow else None)
 
 
-def _fmt(x: float) -> str:
-    return ("%d" % x) if float(x).is_integer() else ("%.2f" % x)
+def _is_quantity(value) -> bool:
+    """A quantity a limit can state: a number that is not true or false and not NaN."""
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and value == value
+
+
+def _fmt(x) -> str:
+    try:
+        return ("%d" % x) if float(x).is_integer() else ("%.2f" % x)
+    except OverflowError:
+        return str(x)
 
 
 def receipt_known_at(receipt: dict, first_version: bool = False) -> Optional[datetime]:
