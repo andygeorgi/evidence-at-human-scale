@@ -2,7 +2,7 @@
 
 [Contracts](README.md) · Schema definition `#/$defs/decision_packet` · Groups C04-G01–G09
 
-**Paper:** [6. The decision packet compresses presentation](../docs/paper/06-decision-packet.md)
+**Paper:** [6. The decision packet](../docs/paper/06-decision-packet.md)
 **Reference:** [evidence semantics](../architecture/evidence-semantics.md); [lineage, selection and disclosure](../architecture/lineage-selection-disclosure.md)
 **Figures:** F02, F04 · **Evaluation tests:** EV01, EV03, EV04, EV05, EV06, EV07, EV10, EV12 (NOT ASSESSED)
 

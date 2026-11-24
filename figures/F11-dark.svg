@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 712" width="360" height="712" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">How the seven contracts refer to each other</title>
-<desc id="d">Contracts C01 context, C03 selection, C04 decision packet, C05 action proposal, C06 delegation and C07 execution receipt chain downward, each referencing the ones before it; C07 references one proposal and one grant. C02 evidence is drawn at the top, with dashed arrows to C03, C04, C05, C06 and C07 for references by exact version.</desc>
+<desc id="d">C02 evidence is drawn at the top, with dashed arrows to C03, C04, C05, C06 and C07 for references by exact version. Below it, solid arrows run down a chain: C01 context, C03 selection, C04 decision packet, C05 action proposal, C06 delegation and C07 execution receipt. C07 references one proposal and one grant.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8b949e"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8b949e"/></marker></defs>
 <rect width="360" height="712" fill="#0d1117"/>
 <rect x="10.0" y="10.0" width="340.0" height="77.1" rx="8" fill="#12304F" stroke="#58A6FF" stroke-width="1.6"/>

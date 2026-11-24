@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 939" width="880" height="939" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">Reference architecture</title>
-<desc id="d">A main path of nine numbered steps from sources to review of one decision packet; a separate mandatory continuity path that branches from the registry; a separate action path that starts from the review; a reassessment and invalidation step that receives corrections and outcomes; and a control plane that constrains every stage.</desc>
+<desc id="d">Nine numbered steps run from sources to the review of one decision packet. A separate mandatory continuity path branches from the registry. A separate action path starts at the review. A reassessment and invalidation step receives corrections and outcomes and returns to the registry. A control plane constrains every stage and path.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
 <rect width="880" height="939" fill="#ffffff"/>
 <rect x="10.0" y="10.0" width="280.0" height="844.7" rx="12" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1.2"/>

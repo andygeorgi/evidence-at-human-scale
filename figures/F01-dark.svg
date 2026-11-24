@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 393" width="360" height="393" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">Information production can outgrow human inspection</title>
-<desc id="d">Three cards of decreasing width: a wide band of growing records, events, findings and model interpretations narrows, through a governed decision context, into one accountable Decision Owner with finite attention.</desc>
+<desc id="d">Three cards, each narrower than the one above. Information production keeps growing: records, events, deterministic findings, analytical results and model interpretations. An arrow labeled authorize, select, label leads to the decision context card. An arrow labeled one decision packet leads to the Decision Owner card, labeled finite attention and accountable.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8b949e"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8b949e"/></marker></defs>
 <rect width="360" height="393" fill="#0d1117"/>
 <rect x="10.0" y="10.0" width="340.0" height="98.5" rx="8" fill="#12304F" stroke="#58A6FF" stroke-width="1.6"/>

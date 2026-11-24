@@ -2,7 +2,7 @@
 
 [Contracts](README.md) · Schema definition `#/$defs/context` · Groups C01-G01–G04
 
-**Paper:** [3. A governed context, not an agent hierarchy](../docs/paper/03-governed-context.md); [5. Context governs what is selected](../docs/paper/05-context-and-attention.md); [9. Authority remains a separate boundary](../docs/paper/09-authority.md)
+**Paper:** [3. The reference architecture](../docs/paper/03-governed-context.md); [5. Context and selection](../docs/paper/05-context-and-attention.md); [9. Authority remains a separate boundary](../docs/paper/09-authority.md)
 **Reference:** [lineage, selection and disclosure](../architecture/lineage-selection-disclosure.md); [action and degradation](../architecture/action-and-degradation.md)
 **Figures:** F02, F03, F05 · **Evaluation tests:** EV06, EV07, EV08 (NOT ASSESSED)
 

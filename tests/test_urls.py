@@ -1,4 +1,6 @@
 """The URL checker: extraction and cleaning work offline, and classification is tested against a local server."""
+import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -111,6 +113,22 @@ class Classification(unittest.TestCase):
 
     def test_a_name_that_does_not_resolve_is_broken(self):
         self.assertEqual(urls.check_url("http://no-such-host.invalid/", timeout=5).kind, "broken")
+
+    def test_the_inventory_is_complete_for_the_repository_itself(self):
+        """--list is the complete inventory: every URL that any scanned file cites, in every folder, and the schema's own sources."""
+        inventory = urls.inventory(support.REPO)
+        expected = {}
+        for path in sorted(support.REPO.rglob("*")):
+            relative = path.relative_to(support.REPO)
+            if not path.is_file() or any(part in urls.SKIP_DIRS for part in relative.parts) or path.suffix.lower() not in urls.SCANNED_SUFFIXES:
+                continue
+            for url in urls.extract(path.read_text(encoding="utf-8")):
+                expected.setdefault(url, set()).add(relative.as_posix())
+        self.assertEqual({url: sorted(set(files)) for url, files in inventory.items()}, {url: sorted(files) for url, files in expected.items()})
+        schema_urls = {value for key in ("url", "metaschema", "source")
+                       for value in re.findall(r'"%s": "(https://[^"]+)"' % key, json.dumps(support.schema()["x-documentation"]))}
+        self.assertTrue(schema_urls)
+        self.assertEqual(sorted(schema_urls - set(inventory)), [])
 
     def test_list_mode_makes_no_request_and_skips_placeholder_hosts(self):
         with tempfile.TemporaryDirectory() as tmp:

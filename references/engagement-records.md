@@ -5,7 +5,7 @@ The architecture was informed by a case-based engagement. Four of the engagement
 ## What is described, and how
 
 - **IN01.** Agent-value test of the agents proposed by the case brief, 16 October 2026. No agent reached evidenced value on its own; evidence-backed value also came from non-agent controls and platform continuity; and the EN02 correction gap was logged as a design requirement.
-- **IN02.** Re-planning brief, 10 November 2026, moving from agents producing additional outputs to one assistant that makes existing information consumable.
+- **IN02.** Re-planning brief, 10 November 2026, moving from agents producing additional outputs to one assistant that presents existing information for a person to inspect.
 - **IN03.** Root-cause report on the demonstrator's first cloud deployment, 6 November 2026.
 - **IN04.** Demonstrator acceptance record, 17 November 2026, on synthetic data.
 

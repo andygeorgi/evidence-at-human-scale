@@ -255,6 +255,41 @@ class OneVocabulary(unittest.TestCase):
         self.assertNotIn('"issuer"', context)
 
 
+class RetiredWording(unittest.TestCase):
+    """Wording that was removed on purpose stays removed. The change records name some of it, so they are exempt."""
+
+    RETIRED = (
+        "Author's architecture specification",
+        "supplementary assets",
+        "illustration is removable",
+        "evaluation workbook",
+        "convenience ratios",
+        "Disclosure and publication requirements of a venue",
+        "ends where accountability begins",
+        "employed by Microsoft",
+        "Systems produce evidence. AI makes it consumable",
+        "architecture proposition",
+        "No evaluation has been run",
+        "no independent human review is recorded",
+        "accountable approver",
+        "Reviewer navigation",
+        "reviewer-navigation",
+    )
+    EXEMPT = ("CHANGELOG.md", "contracts/CHANGES.md")
+
+    def test_no_retired_wording_returns(self):
+        found = []
+        for path in sorted(REPO.rglob("*")):
+            relative = path.relative_to(REPO).as_posix()
+            if not path.is_file() or ".git" in path.relative_to(REPO).parts or relative.startswith("tests/") or relative in self.EXEMPT:
+                continue
+            if path.suffix not in (".md", ".json", ".py", ".cff", ".yml", ".csv", ".svg", ".txt"):
+                continue
+            body = path.read_text(encoding="utf-8").lower()
+            found += [(relative, phrase) for phrase in self.RETIRED if phrase.lower() in body]
+        self.assertEqual(found, [])
+
+
 class EngagementWithoutScale(unittest.TestCase):
     """The engagement is described by what it showed and by its limits, not by its scale.
 

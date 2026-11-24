@@ -1,19 +1,21 @@
-# 5. Context governs what is selected
+# 5. Context and selection
 
 [← 4. Evidence and lineage](04-evidence-and-lineage.md) · [Paper contents](README.md) · [Next: the decision packet →](06-decision-packet.md)
 
-C01 Context identifies the requesting principal, permitted task and purpose, relevant entities, scope, time, and policy constraints. The workload identity is separate. Retrieval is authorized for that context before evidence enters model context, not merely filtered after an answer has been produced. Selection then records what the system actually considered and retained. In this paper "context" has three meanings, qualified wherever more than one could apply: the *decision context* (the governed, versioned unit selected for one decision), the *C01 Context* contract that records the request, and the *model context* (what is placed in front of a model). The [glossary](../glossary.md) keeps them apart.
+C01 Context records who is asking and for what: the requesting principal, the permitted task and purpose, the relevant entities, the scope, the time and the policy constraints. The workload identity is separate from the requesting principal. Retrieval is authorized against this context before evidence enters model context. Filtering an answer after it has been produced is not enough.
 
-C03 Selection binds authorized retrieval coverage to selected evidence, exclusions, grouping reasons, missingness, and constraints. A selected scope is not whole-corpus coverage. The reader must be able to distinguish an input that was expected but absent from one deliberately excluded, inaccessible, or outside the retrieval scope.
+This paper uses "context" in three senses and says which one it means wherever the word could be read another way. The *decision context* is the governed, versioned unit selected for one decision. The *C01 Context* is the contract that records the request. The *model context* is what is placed in front of a model. The [glossary](../glossary.md) keeps them apart.
 
-## Attention is a governed budget
+C03 Selection records what the system actually considered and retained: the coverage of the authorized retrieval, the evidence selected, the exclusions, the reasons for grouping, the missingness and the constraints. A selected scope is not whole-corpus coverage. The reader must be able to tell an input that was expected but absent from one that was deliberately excluded, inaccessible or outside the retrieval scope. That applies to inputs the reader may know about. An input the reader may not know about has no entry ([chapter 8](08-uncertainty.md)).
 
-Attention policy begins by preventing unnecessary production. Authorization, purpose, lifecycle, and mandatory constraints come before discretionary ranking and synthesis. Item-level reasons expose obligation, severity, deadline, task relevance, freshness, and uncertainty. A severe low-confidence signal may deserve prominence; urgency is not confidence.
+## Attention is a budget, and mandatory items come first
 
-Deduplication can reduce repeated presentation by common origin, but cannot relabel repetition as corroboration. Progressive disclosure can move detail out of the main view only when decision-changing evidence, conflict, uncertainty, omissions, and drillback remain visible. User preferences may reorder permitted discretionary items, not obligations or access.
+The attention policy starts by preventing unnecessary output. Authorization, purpose, lifecycle and mandatory constraints are applied before any discretionary ranking or synthesis. Each item states its reasons in terms of obligation, severity, deadline, task relevance, freshness and uncertainty. A severe signal with low confidence may deserve prominence, but urgency does not make it confident.
 
-Mandatory overflow exposes the true authorized workload and escalates ownership rather than silently capping the queue. A short packet is not successful if its brevity removes a fact that could change the decision. Likewise, a ranking budget does not excuse discarding a required signal. Finite attention must be managed, not treated as a reason to hide obligations.
+Deduplication can merge repeated items that share an origin. It cannot turn repetition into corroboration. Progressive disclosure can move detail out of the main view only while decision-changing evidence, conflicts, uncertainty, omissions and drillback stay visible. A user's preferences can reorder permitted discretionary items. They cannot reorder obligations or change access.
 
-The context and selection contracts make these choices inspectable. They preserve task scope, as-of information, policy references, and relevant versions rather than claiming to reconstruct an unlimited corpus. The [lineage, selection and disclosure reference](../../architecture/lineage-selection-disclosure.md) supplies the complete selection and disclosure treatment; the [JSON Schema bundle](../../schemas/README.md) carries the formal structure.
+When mandatory items overflow the queue, the system exposes the true authorized workload and escalates ownership. It does not silently cap the queue. A short packet fails if its brevity removes a fact that could change the decision, and a ranking budget does not excuse dropping a required signal.
+
+The context and selection contracts make these choices inspectable. They keep the task scope, the as-of time, the policy references and the relevant versions. They do not claim to reconstruct an unlimited corpus. The [lineage, selection and disclosure reference](../../architecture/lineage-selection-disclosure.md) gives the complete treatment of selection and disclosure, and the [JSON Schema bundle](../../schemas/README.md) carries the formal structure.
 
 [← 4. Evidence and lineage](04-evidence-and-lineage.md) · [Paper contents](README.md) · [Next: the decision packet →](06-decision-packet.md)

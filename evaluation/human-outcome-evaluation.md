@@ -4,13 +4,13 @@
 
 **Status: NOT ASSESSED.** There is no human-outcome result in this repository, no pilot, no participants and no recommended threshold.
 
-The architecture's central claim is about people: that someone with limited attention can still be accountable for a decision, because the evidence, its gaps and its limits stay in front of them. That is a claim about human behavior, and the checks in this repository cannot test it. This page is a **template of what a study has to define** before it can say anything. It is a list of questions to answer, not a protocol and not a prediction.
+The architecture's central claim concerns people: a person with limited attention can still be accountable for a decision, because the evidence, its gaps and its limits stay in front of them. The checks in this repository cannot test a claim about human behavior. This page is a **template of what a study has to define** before it can say anything. It lists questions to answer. It is not a protocol and it makes no prediction.
 
-The measures named in the paper are evidence actually inspected, decision quality and workload. They still need study-specific definitions: this is open question OQ06 in the [ownership, parameters and tradeoffs reference](../architecture/ownership-and-tradeoffs.md). See [chapter 12](../docs/paper/12-evaluation.md).
+The measures named in the paper are evidence actually inspected, decision quality and workload. Each still needs a study-specific definition. This is open question OQ06 in the [ownership, parameters and tradeoffs reference](../architecture/ownership-and-tradeoffs.md); see also [chapter 12](../docs/paper/12-evaluation.md).
 
 ## The question
 
-State one primary question in a form that a result could contradict. For example: *under the same task, risk and time budget, do reviewers using a packet inspect the evidence behind the decision-changing items more often, and reach decisions closer to a gold standard, than reviewers using the current workflow?* Write down what result would count against the architecture. If no result could, it is not a question.
+State one primary question that a result could contradict. For example: *under the same task, risk and time budget, do reviewers using a packet inspect the evidence behind the decision-changing items more often, and reach decisions closer to a gold standard, than reviewers using the current workflow?* Write down what result would count against the architecture. If no result could, it is not a question.
 
 ## What must be defined before data is collected
 
@@ -27,8 +27,8 @@ State one primary question in a form that a result could contradict. For example
 | **Sample and uncertainty** | How many participants and tasks, how uncertainty will be reported | No inferred benefit from a small or unrepresentative sample. |
 | **Analysis plan** | Preregistered: comparisons, exclusions, handling of missing data, stopping rules | So the result is not chosen after the fact. |
 | **Scoring** | Who scores, blind to condition where possible, with what rubric | Semantic judgments need explicit rubrics, not impressions. |
-| **Ethics and data** | Consent, privacy, minimization (`DP047`), whether real data is used, who may see raw records | Reviewers' behaviour is personal data. |
-| **Independence** | Who runs, who analyses, who has an interest in the outcome | |
+| **Ethics and data** | Consent, privacy, minimization (`DP047`), whether real data is used, who may see raw records | Reviewers' behavior is personal data. |
+| **Independence** | Who runs the study, who analyzes it, who has an interest in the outcome | |
 | **Reporting** | Raw counts, denominators, coverage and uncertainty; negative and null results | |
 
 ## Measures
@@ -39,7 +39,7 @@ State one primary question in a form that a result could contradict. For example
 | **Decision quality** | Agreement with the gold decision, weighted by consequence; false approvals and false holds counted separately | A faster wrong decision is not better. |
 | **Omissions caught** | Gold critical items, conflicts and gaps the reviewer noticed | Reading a packet and noticing what is missing are different things. |
 | **Time** | Elapsed time on the critical path, separately from total work | Time saved without decision quality is not a benefit. |
-| **Workload** | A declared instrument and its scale (`DP003`) | |
+| **Workload** | A declared instrument and its scale | |
 | **Calibration** | Whether confidence follows correctness | Optional; declare it if used. |
 
 ## Measures that do not answer the question
@@ -48,7 +48,7 @@ State one primary question in a form that a result could contradict. For example
 - How many agents agree. Agreement between derivations that share a source is not corroboration.
 - Reviewer satisfaction on its own.
 - A groundedness score from a tool, treated as source truth.
-- Approval rate. An approval without inspection is exactly the failure the architecture exists to prevent.
+- Approval rate. An approval without inspection is the failure the design is meant to prevent.
 
 ## Threats to validity to plan for
 

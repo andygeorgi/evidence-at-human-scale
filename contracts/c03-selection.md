@@ -2,7 +2,7 @@
 
 [Contracts](README.md) · Schema definition `#/$defs/selection` · Groups C03-G01–G06
 
-**Paper:** [5. Context governs what is selected](../docs/paper/05-context-and-attention.md); [8. Uncertainty is part of the result](../docs/paper/08-uncertainty.md)
+**Paper:** [5. Context and selection](../docs/paper/05-context-and-attention.md); [8. Uncertainty is part of the result](../docs/paper/08-uncertainty.md)
 **Reference:** [lineage, selection and disclosure](../architecture/lineage-selection-disclosure.md)
 **Figures:** F02, F03, F04, F09 · **Evaluation tests:** EV03, EV04, EV05, EV06, EV09, EV10, EV12 (NOT ASSESSED)
 

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 1295" width="360" height="1295" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">Which missingness label applies?</title>
-<desc id="d">Seven questions, asked in order. If the reader&#x27;s principal may not know the input exists, nothing is shown. If it may not read the input, the label is inaccessible, in the permitted wording only. Otherwise the answers give stale, not_assessed, unavailable, missing or negative, and else not_retrieved.</desc>
+<desc id="d">Seven questions, asked in order. If the reader&#x27;s principal may not know the input exists, nothing is shown. If it may not read the input, the label is inaccessible, in the permitted wording only. The remaining questions give stale, not_assessed, unavailable, missing or negative; otherwise the label is not_retrieved.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
 <rect width="360" height="1295" fill="#ffffff"/>
 <rect x="10.0" y="10.0" width="340.0" height="57.0" rx="8" fill="#F4F4F4" stroke="#6F6F6F" stroke-width="1.6"/>

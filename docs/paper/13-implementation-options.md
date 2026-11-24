@@ -1,15 +1,15 @@
-# 13. Azure is an implementation option, not the thesis
+# 13. Implementation options
 
 [← 12. Evaluation](12-evaluation.md) · [Paper contents](README.md) · [Next: start with one decision →](14-start-monday.md)
 
-The logical architecture is product-independent. Official Azure sources, verified 17 November 2026 UTC, identify implementation options with configuration- and feature-specific qualifications. They are not evidence that this architecture has been deployed or that a product independently establishes source truth, end-user permission, or a legitimate human mandate.
+Official Azure sources, verified 17 November 2026 UTC, identify implementation options for the architecture's responsibilities. Each option has qualifications that depend on its configuration and features. The sources are not evidence that this architecture has been deployed, and they do not show that a product on its own establishes source truth, end-user permission or a legitimate human mandate.
 
-Messaging choices distinguish discrete events, streaming, and work queues. Broker or session delivery, settlement, and transactions do not guarantee exactly-once external business effects. Compute, storage, identity, search, and model hosting can implement responsibilities, but application ownership, admission, source-user authorization, and the separate execution boundary remain necessary.
+Messaging options differ by pattern: discrete events, streaming or work queues. Broker or session delivery, settlement and transactions do not guarantee exactly-once external business effects. Compute, storage, identity, search and model hosting can implement other responsibilities, but they do not replace application ownership, admission, source-user authorization or the separate execution boundary.
 
-Microsoft Foundry capabilities need feature-specific maturity checks; managed memory is not an evidence ledger. Azure AI Search application security filters were identified as generally available, while native document ACL/RBAC, indexed SharePoint ACL, Purview-label and token-query features retained preview qualifications. No universal bounded permission-synchronization latency was verified.
+Microsoft Foundry capabilities need a maturity check feature by feature, and managed memory is not an evidence ledger. Azure AI Search application security filters were identified as generally available. Native document ACL and RBAC, indexed SharePoint ACL, Purview-label and token-query features retained preview qualifications. No universal bound on permission-synchronization latency was verified.
 
-Governance and protection controls remain scoped to supported infrastructure and metadata. Foundry evaluation's core portal availability does not make every evaluator or extension generally available. Groundedness assesses against supplied context, not independent source truth. The [implementation options reference](../../architecture/azure-implementation-options.md) carries the full option table, verified claims, URLs, and related qualifications.
+Governance and protection controls remain limited to supported infrastructure and metadata. That the core Foundry evaluation portal is generally available does not make every evaluator or extension generally available. Groundedness is assessed against the supplied context, not against independent source truth. The [implementation options reference](../../architecture/azure-implementation-options.md) has the full option table, the verified claims, the URLs and the related qualifications.
 
-Product capabilities change quickly. The qualifications above were verified on 17 November 2026 UTC and are not re-verified by later edits to this repository; check the cited pages before relying on any of them.
+Product capabilities change quickly. The qualifications above were verified on 17 November 2026 UTC. Later edits to this repository do not re-verify them, so check the cited pages before relying on any of them.
 
 [← 12. Evaluation](12-evaluation.md) · [Paper contents](README.md) · [Next: start with one decision →](14-start-monday.md)

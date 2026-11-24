@@ -105,7 +105,7 @@ A pre-publication scan for what must not reach a public repository: private or t
 Requests every external URL the repository cites and reports the broken ones. It is the only script that uses the network, and it is **not** part of `check_all.py`: a publisher can block a script or be down for reasons that say nothing about this repository. It runs weekly in continuous integration, as an advisory job.
 
 ```bash
-python scripts/check_urls.py --list      # the URLs and where they are cited; no network
+python scripts/check_urls.py --list      # the complete inventory of cited URLs and where each is cited; no network
 python scripts/check_urls.py             # request each; exit 1 if any is broken
 python scripts/check_urls.py --strict    # also fail on refused or unreachable
 ```
@@ -164,6 +164,6 @@ The sixteen reason codes of the commit check itself (for example `GRANT_REVOKED`
 python -m unittest discover -s tests
 ```
 
-The tests in [`tests/`](../tests) cover the schema bundle and the surface hash; the five validation states and what the command does with an empty folder, a partial stage selection and malformed input; the semantic checks (the unmutated example set has no findings, every evaluation case produces exactly its declared codes, and every check family is exercised by a case); permission before disclosure, including that an unauthorized requester's view is the same with and without a restricted record; the gateway story; the canonical and structural response validations and their adversarial cases; the catalogue (counts, no row claims a result it did not run, JSON and CSV agree); the counts the documents state, the code table above and the reason-code table in example 08; and the hygiene and URL scripts. They use only the standard library.
+The tests in [`tests/`](../tests) cover the schema bundle and the surface hash; the five validation states and what the command does with an empty folder, a partial stage selection and malformed input; the semantic checks (the unmutated example set has no findings, every evaluation case produces exactly its declared codes, and every check family is exercised by a case); permission before disclosure, including that an unauthorized requester's view is the same with and without a restricted record; the distinct roles of requestor, Decision Owner, approver and executor; the gateway story; the canonical and structural response validations and their adversarial cases; the catalogue (counts, the five states and the rule that a run needs its command, input and output, no field repeated, contracts derived from each fixture's own references, and generated copies that agree with the JSON); the counts the documents state, the code table above and the reason-code table in example 08; the Quickstart output in the README; wording that was removed on purpose; and the hygiene and URL scripts. They use only the standard library.
 
 [Examples](../examples/README.md) · [Contributing](../CONTRIBUTING.md)
