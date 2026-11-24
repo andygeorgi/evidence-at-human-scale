@@ -41,20 +41,25 @@ The business situation had in fact been fixed by 14:10: the corrected receipt ma
 
 ## The commit-time reason codes
 
-All sixteen codes of the reference commit check, and where each is shown:
+All twenty-one codes of the reference commit check, and where each is shown. The check judges every item as of the attempt: evidence counts only if it was admitted by then, a revocation check only if it was made by then, and a required time that is missing or unknown blocks.
 
 | Code | The check fails when… | Shown in |
 |---|---|---|
-| `GRANT_REVOKED` | the grant was revoked at or before the attempt | here |
+| `GRANT_REVOKED` | a revocation check made at or before the attempt shows the grant revoked | here |
+| `REVOCATION_NOT_YET_OBSERVED` | the only revocation check on record was made after the attempt, so it cannot show the grant was unrevoked then | [07](../07-authority-and-delegation/README.md) |
+| `REVOCATION_TIME_UNKNOWN` | the time of the revocation check is missing or unknown | [10](../10-degraded-modes/README.md) |
 | `REVOCATION_UNVERIFIED` | the revocation state is neither `not_revoked` nor `revoked`: the check cannot show the grant is unrevoked | [10](../10-degraded-modes/README.md) |
 | `GRANT_EXPIRED` | the grant's expiry has passed | [10](../10-degraded-modes/README.md) |
 | `GRANT_NOT_YET_VALID` | the grant was issued after the attempt | [07](../07-authority-and-delegation/README.md) |
+| `GRANT_TIME_UNKNOWN` | the grant's issuance or expiry time, or the issuance time of another version of it, is missing or unknown | [10](../10-degraded-modes/README.md) |
 | `GRANT_SUPERSEDED` | a newer version of the grant is in force | [12](../12-controlled-change/README.md) |
 | `GRANT_NOT_BOUND` | an exact approval is bound to a different proposal version | here |
 | `ACTION_NOT_PERMITTED` | the action kind is not among the grant's | [07](../07-authority-and-delegation/README.md) |
 | `TARGET_NOT_PERMITTED` | the target is outside the grant (exact, or `*` for the same type) | [07](../07-authority-and-delegation/README.md) |
 | `PARAMETER_NOT_PERMITTED` | a parameter's name or type is not permitted | [07](../07-authority-and-delegation/README.md) |
 | `EVIDENCE_UNRESOLVED` | a cited record does not exist | [10](../10-degraded-modes/README.md) |
+| `EVIDENCE_NOT_YET_ADMITTED` | a cited record was admitted after the attempt, or its admission status is not `admitted` | [07](../07-authority-and-delegation/README.md) |
+| `EVIDENCE_TIME_UNKNOWN` | a time the check needs for a cited record (admission, ingestion, lifecycle, or event time under a freshness policy) is missing or unknown | [10](../10-degraded-modes/README.md) |
 | `EVIDENCE_NOT_CURRENT` | a cited record had been superseded, withdrawn, revoked or expired | here |
 | `EVIDENCE_STALE` | a cited record is older than its freshness policy | here |
 | `PRECONDITION_UNDEFINED` | a precondition has no defined rule | [07](../07-authority-and-delegation/README.md) |

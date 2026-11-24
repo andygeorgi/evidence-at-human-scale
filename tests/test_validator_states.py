@@ -87,7 +87,7 @@ class TheCommittedExamples(unittest.TestCase):
 
     def test_the_counts_are_the_documented_ones(self):
         counts = {r.stage: r.evaluated for r in ve.run(support.EXAMPLES)}
-        self.assertEqual(counts, {"schema": 102, "instances": 37, "semantics": 37, "gateway": 19, "responses": 3, "cases": 37})
+        self.assertEqual(counts, {"schema": 102, "instances": 37, "semantics": 37, "gateway": 24, "responses": 3, "cases": 37})
 
     def test_the_command_says_what_it_evaluated(self):
         done = cli()

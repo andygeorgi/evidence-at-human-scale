@@ -22,11 +22,11 @@ Synthetic data only. A pass is not evidence about any real system.
 [1/6] Schema bundle ...           PASS          102 evaluated
 [2/6] Example instances ...       PASS          37 evaluated
 [3/6] Scenario semantics ...      PASS          37 evaluated
-[4/6] Gateway scenarios ...       PASS          19 evaluated
+[4/6] Gateway scenarios ...       PASS          24 evaluated
 [5/6] Assistant responses ...     PASS          3 evaluated
 [6/6] Evaluation cases ...        PASS          37 evaluated
 
-Result: PASS. All 6 stages passed, each after evaluating at least one item (235 items in all).
+Result: PASS. All 6 stages passed, each after evaluating at least one item (240 items in all).
 ```
 
 It is tested on Windows and Linux; nothing in it is platform-specific, so macOS should work too. Add `--verbose` to see what each stage covered, `--only schema,semantics` to run some stages, `--skip cases` to leave one out, or `--json` for a machine-readable result.
@@ -38,7 +38,7 @@ A stage passes only if it evaluated something. Run the command on an empty folde
 | Schema bundle | The schema is valid JSON Schema (Draft 2020-12) and its 38 valid and 64 invalid embedded examples behave as labeled. |
 | Example instances | Every contract instance in this folder validates against its contract. |
 | Scenario semantics | What a schema cannot say: references resolve to the exact version they name, derivation is acyclic, a correction reaches everything built on the corrected record, each missingness label is justified, a pending approval ends when its basis is invalidated, a receipt agrees with what the commit check decides, a summary does not disclose what a record withholds, an output mentions an unreadable source only if its permission decision allows it, and the requestor, the Decision Owner and the approver stay distinct. |
-| Gateway scenarios | 19 stored what-if evaluations of the reference commit check reproduce their recorded decisions, and between them they exercise every reason code. |
+| Gateway scenarios | 24 stored what-if evaluations of the reference commit check reproduce their recorded decisions, and between them they exercise every reason code. |
 | Assistant responses | Each stored response meets the structural constraints (it cites packet items, takes its figures from them, labels inferences, keeps conflicts open and gaps labeled, words proposals as proposals, and is withdrawn when its packet is), and a response written by the template equals what the template renders. |
 | Evaluation cases | 37 mutated copies of this example set each produce exactly the check codes they declare. |
 

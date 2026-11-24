@@ -17,6 +17,18 @@ The authority figure (Figure F05, [chapter 9](../docs/paper/09-authority.md)) se
 - the per-action limits;
 - the cumulative limits, including consumed and reserved capacity.
 
+The recheck is **as of the attempt**. A decision may use only evidence and authority observations that were available and valid at the time of the attempt (`attempted_at`). The five times involved stay separate:
+
+| Time | What it says | How the commit check uses it |
+| --- | --- | --- |
+| Business event or effective time | When the thing happened or took effect in the source | Freshness only: the age at the attempt, judged against the record's own freshness policy. It does not make a record available. |
+| Admission (and ingestion) time | When the system could first rely on a record of the event | The record counts only if it was admitted at or before the attempt. An event that precedes the attempt is not available until it is admitted. |
+| Lifecycle effective time | When a state such as superseded, withdrawn, revoked or expired took effect | The state applies from that time. The record carries one time per state, so blocking from the effective time is the conservative reading. |
+| Revocation-observation time | When the grant was last checked for revocation | A check counts only if it was made at or before the attempt. A "not revoked" result recorded after the attempt cannot authorize it. |
+| Grant issuance and expiry | When the grant became valid and stopped being valid | The grant must have been issued at or before the attempt and must not have expired. |
+
+A time equal to the attempt time has been reached, except that a grant is expired from its expiry time on. A required time that is missing, tagged unknown or malformed blocks the attempt: the check assumes nothing and names the time to supply. The reference check sets no universal freshness limit; each record's own policy does. [Example 07](../examples/07-authority-and-delegation/README.md) and [example 10](../examples/10-degraded-modes/README.md) replay these cases.
+
 A proposal and a grant each state their units, their accounting scope and window, and what happens when the limit is exhausted. An upstream check or an earlier approval does not excuse this check at the current boundary.
 
 Where supported, the executor checks the conditions, reserves or consumes shared capacity, and commits as one atomic operation. Reservation and accounting must stay atomic across concurrent executions. An atomic check of the target's version does not, by itself, stop a grant limit from being overspent. An unknown outcome keeps its reservation, or an equivalent conservative accounting, until authoritative reconciliation. A timeout or a lease expiry cannot restore the allowance, because that would allow duplicate or over-limit actions. Known partial effects are charged against the cumulative limits, and they are reconciled or compensated under policy.

@@ -121,8 +121,8 @@ python scripts/check_urls.py --strict    # also fail on refused or unreachable
 | `schema.py` | Loads the bundle, validates an instance against its contract, checks the embedded examples, and checks RFC 3339 timestamps strictly. |
 | `model.py` | Loads the examples into a model keyed by contract, id and version, with the registry. |
 | `semantics.py` | The checks a schema cannot make: references, lineage, lifecycle, missingness, the packet, authority and accounting, disclosure, accountability. |
-| `gateway.py` | The reference commit check: given a proposal, a grant, a time and the receipts known so far, it allows or blocks and says why. |
-| `scenarios.py` | Replays the stored gateway evaluations, including counterfactual overrides, and compares them with the recorded decisions. |
+| `gateway.py` | The reference commit check: given a proposal, a grant, an attempt time and the receipts known so far, it allows or blocks and says why. It uses only what was available and valid at the attempt, and blocks when a time it needs is missing or unknown. |
+| `scenarios.py` | Replays the stored gateway evaluations, including counterfactual overrides of the proposal, the grant or one evidence record, and compares them with the recorded decisions. |
 | `response.py` | Renders a response from a packet (a model-free fallback) and validates a stored response two ways: **canonical** validation compares it with the renderer's output, and **structural** validation checks named constraints. The structural validation does not prove that prose is semantically correct. |
 | `disclosure.py` | The decision list of Figure F09 as code, with the permission questions first. A reference for the order, used by the tests. |
 | `status.py` | The five states a stage can end in (`PASS`, `FAIL`, `SKIPPED`, `NOT ASSESSED`, `INPUT ERROR`) and how they combine. |
@@ -156,7 +156,7 @@ Each finding has a code. The page named in a finding explains the rule. The [eva
 | `HYG101`–`HYG108`, `HYG201`–`HYG207` | The [hygiene](#check_hygienepy) rules; see `check_hygiene.py --rules`. |
 | `STR001`–`STR004` | The [structure](#check_structurepy) rules: one H1, no skipped heading level, no generic link text, no empty table header. |
 
-The sixteen reason codes of the commit check itself (for example `GRANT_REVOKED`, `EVIDENCE_STALE`, `CUMULATIVE_LIMIT`) are explained in [example 08](../examples/08-blocked-action/README.md#the-commit-time-reason-codes) and exercised by the stored evaluations in examples [07](../examples/07-authority-and-delegation/README.md), [08](../examples/08-blocked-action/README.md), [09](../examples/09-unknown-outcome/README.md), [10](../examples/10-degraded-modes/README.md) and [12](../examples/12-controlled-change/README.md).
+The twenty-one reason codes of the commit check itself (for example `GRANT_REVOKED`, `EVIDENCE_NOT_YET_ADMITTED`, `CUMULATIVE_LIMIT`) are explained in [example 08](../examples/08-blocked-action/README.md#the-commit-time-reason-codes) and exercised by the stored evaluations in examples [07](../examples/07-authority-and-delegation/README.md), [08](../examples/08-blocked-action/README.md), [09](../examples/09-unknown-outcome/README.md), [10](../examples/10-degraded-modes/README.md) and [12](../examples/12-controlled-change/README.md).
 
 ## Tests
 

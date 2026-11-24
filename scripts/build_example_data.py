@@ -56,6 +56,8 @@ CONTROLLER = "person:ap-controller-01"  # holds role:ap-controller: the Decision
 PERMISSION_LIMIT_ID = "AUTHZ-READ-LIMIT-0417"      # may be disclosed as a coverage limitation, in these words only
 PERMISSION_WITHHELD_ID = "AUTHZ-READ-WITHHELD-0417"  # existence may not be disclosed: no output mentions it
 COVERAGE_LIMIT_WORDING = "Coverage is limited by access permissions; no protected source identity or content is disclosed."
+# A time that was not recorded, written the way the contracts write a legitimately unknown time.
+UNKNOWN_TIME = {"state": "unknown", "reason": "The producing system did not record this time."}
 
 
 # ----------------------------------------------------------------------------- small constructors
@@ -1145,7 +1147,10 @@ def scenario_files(model):
                       [{"on": "proposal", "path": "/action/exact_target/entity_type", "value": "purchase_order"}]),
                 entry("A precondition that nobody defined", "A precondition with no rule cannot be shown to hold, so the action does not proceed.", T_HOLD_SUBMIT, HOLDP, HOLD,
                       [{"on": "proposal", "path": "/action/preconditions/0/condition_id", "value": "PRE-UNDEFINED-9"}]),
-                entry("An attempt timed before the grant was issued", "A grant is not valid before its issuance time: clock skew or a replayed request.", "2026-11-23T05:59:00Z", HOLDP, HOLD),
+                entry("An attempt timed before the grant was issued", "Everything the attempt rests on comes later than the attempt: the grant's issuance, its revocation check and the evidence admitted afterwards. Nothing that happens after an attempt can authorize it.", "2026-11-23T05:59:00Z", HOLDP, HOLD),
+                entry("A hold at 09:30, before the match result was admitted", "The hold rests on the match result, which was admitted at 09:36. At 09:30 the gateway could not rely on it, however correct it later proved to be.", "2026-11-23T09:30:00Z", HOLDP, HOLD),
+                entry("A hold at 10:03 when the only revocation check was made at 10:04", "A check that says the grant is unrevoked cannot authorize an attempt made before the check was recorded.", T_HOLD_SUBMIT, HOLDP, HOLD,
+                      [{"on": "grant", "path": "/limits_lifecycle/revocation/checked_at", "value": "2026-11-23T10:04:00Z"}]),
             ],
         },
         "08-blocked-action/gateway-scenarios.json": {
@@ -1177,6 +1182,12 @@ def scenario_files(model):
                       [{"on": "proposal", "path": "/action/evidence_references/3/version", "value": "v9"}], ledger="empty"),
                 entry("The run starts after the approval has expired", "An approval is time-bound; a delayed executor does not extend it.", T_RUN_B, REL2, B,
                       [{"on": "grant", "path": "/limits_lifecycle/expiry", "value": "2026-11-23T16:00:00Z"}], ledger="empty"),
+                entry("The time of the revocation check is not known", "A check that cannot be placed before the attempt cannot show the grant was unrevoked then.", T_RUN_B, REL2, B,
+                      [{"on": "grant", "path": "/limits_lifecycle/revocation/checked_at", "value": UNKNOWN_TIME}], ledger="empty"),
+                entry("The admission time of a cited record is not known", "Evidence that cannot be shown to have been admitted by the attempt is not evidence the gateway may rely on.", T_RUN_B, REL2, B,
+                      [{"on": "evidence", "record": {"id": "M3W-0417", "version": "v2"}, "path": "/producer_admission/admission_time", "value": UNKNOWN_TIME}], ledger="empty"),
+                entry("The issuance time of the approval is not known", "A grant that cannot be shown to have been issued by the attempt is not usable.", T_RUN_B, REL2, B,
+                      [{"on": "grant", "path": "/identity_principals/issuance_time", "value": UNKNOWN_TIME}], ledger="empty"),
             ],
         },
         "12-controlled-change/gateway-scenarios.json": {

@@ -38,7 +38,7 @@ At the top, the packet lists the proposal, marked proposed, not executed. Below 
 | [`c06-GRT-APPR-0417-A-v1.json`](c06-GRT-APPR-0417-A-v1.json) | An **exact approval** by the controller for one proposal, `ACT-REL-0417` v1, at the 16:00 payment run. |
 | [`c07-RCP-HOLD-0417-v1.json`](c07-RCP-HOLD-0417-v1.json) | The receipt of the hold, executed at 10:03 under the bounded grant. |
 | [`c02-ERP-HOLD-QUERY-0417-v1.json`](c02-ERP-HOLD-QUERY-0417-v1.json) | The authoritative ERP query that shows the invoice is held. It is what verifies the receipt. |
-| [`gateway-scenarios.json`](gateway-scenarios.json) | Six stored what-if evaluations of the commit check. |
+| [`gateway-scenarios.json`](gateway-scenarios.json) | Eight stored what-if evaluations of the commit check. |
 
 The proposals these grants refer to are in [05](../05-decision-packet/README.md).
 
@@ -60,9 +60,9 @@ A class is for actions that are low-risk, reversible and bounded. An exact appro
 
 ## What happened at 10:03
 
-The assistant proposed a hold ([05](../05-decision-packet/README.md)). No person approved it, because the bounded grant already covers it. At commit the gateway re-checked the grant, the evidence the proposal cites, the precondition (the invoice is still open), the parameters, the target and the allowance, and allowed it. The receipt records the effect, the authoritative verification (the ERP query), the settled accounting and `retry_disposition` `not_applicable_completed`.
+The assistant proposed a hold ([05](../05-decision-packet/README.md)). No person approved it, because the bounded grant already covers it. At commit the gateway re-checked the grant, the evidence the proposal cites, the precondition (the invoice is still open), the parameters, the target and the allowance, and allowed it. It judged each of them as of 10:03:00: the match result it relies on had been admitted at 09:36, and the revocation check was made at 07:45. The receipt records the effect, the authoritative verification (the ERP query), the settled accounting and `retry_disposition` `not_applicable_completed`.
 
-## The commit check, six times
+## The commit check, eight times
 
 [`gateway-scenarios.json`](gateway-scenarios.json) stores these evaluations; `python scripts/validate_examples.py` replays them and fails if a decision changes. The codes are explained in [08](../08-blocked-action/README.md#the-commit-time-reason-codes).
 
@@ -73,7 +73,9 @@ The assistant proposed a hold ([05](../05-decision-packet/README.md)). No person
 | The **hold** grant used to release a payment at 10:45 | BLOCK | `ACTION_NOT_PERMITTED`, `PARAMETER_NOT_PERMITTED`, `EVIDENCE_STALE`, `PRECONDITION_FAILED` | A grant covers exactly what it names. Release is not a hold, and its parameters are not the grant's parameters. |
 | A hold on a purchase order | BLOCK | `TARGET_NOT_PERMITTED` | The class covers invoices; a different kind of target is outside it. |
 | A hold whose precondition has no defined rule | BLOCK | `PRECONDITION_UNDEFINED` | A precondition that cannot be evaluated cannot be shown to hold. |
-| An attempt timed before the grant was issued | BLOCK | `GRANT_NOT_YET_VALID`, `PRECONDITION_FAILED` | A grant is not valid before its issuance time (clock skew, or a replayed request). The invoice state is also unknown that early. |
+| An attempt timed before the grant was issued (05:59) | BLOCK | `REVOCATION_NOT_YET_OBSERVED`, `GRANT_NOT_YET_VALID`, `EVIDENCE_NOT_YET_ADMITTED`, `PRECONDITION_FAILED` | Everything the attempt rests on comes later than the attempt: the grant's issuance, its revocation check and the evidence admitted afterwards. Nothing that happens after an attempt can authorize it. |
+| A hold at 09:30, before the match result was admitted | BLOCK | `EVIDENCE_NOT_YET_ADMITTED` | The match result was admitted at 09:36. An event is not available to the gateway until a record of it is admitted: an attempt at 09:35:30, after the rule ran at 09:35, is blocked too. |
+| A hold at 10:03 when the only revocation check was made at 10:04 | BLOCK | `REVOCATION_NOT_YET_OBSERVED` | A check that says the grant is unrevoked cannot authorize an attempt made before the check was recorded. |
 
 ## Checks that run here
 

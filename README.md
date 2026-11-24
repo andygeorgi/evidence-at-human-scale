@@ -61,11 +61,11 @@ Synthetic data only. A pass is not evidence about any real system.
 [1/6] Schema bundle ...           PASS          102 evaluated
 [2/6] Example instances ...       PASS          37 evaluated
 [3/6] Scenario semantics ...      PASS          37 evaluated
-[4/6] Gateway scenarios ...       PASS          19 evaluated
+[4/6] Gateway scenarios ...       PASS          24 evaluated
 [5/6] Assistant responses ...     PASS          3 evaluated
 [6/6] Evaluation cases ...        PASS          37 evaluated
 
-Result: PASS. All 6 stages passed, each after evaluating at least one item (235 items in all).
+Result: PASS. All 6 stages passed, each after evaluating at least one item (240 items in all).
 ```
 
 A stage passes only if it evaluated something. An empty folder is `NOT ASSESSED`, unreadable input is an `INPUT ERROR`, and a broken example is a `FAIL`. When a check fails, the message names a code, the file and location, and the contract page to read. The [examples guide](examples/README.md) tells you how to break something on purpose, and [`scripts/README.md`](scripts/README.md) documents every script.
