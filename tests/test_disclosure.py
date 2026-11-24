@@ -441,6 +441,17 @@ class TheViewIsBuiltFromAuthorizedInputs(unittest.TestCase):
         self.assertEqual([s for s in statements if "(inaccessible)" in s["label"]], [])
         self.assertEqual([f.code for f in check_structural(model, render_response(model, packet), "r.json")], [])
 
+    def test_a_withheld_gap_leaves_no_gap_in_the_numbering_and_the_text_is_the_same_as_without_it(self):
+        """What the reader sees must not depend on whether a gap they may not know of exists: not the text, and not the numbers that count the gaps."""
+        withheld_model, withheld = self.mutated({"op": "replace", "path": "/coverage_omissions_gaps/missingness/2/permission_decision_reference/record_id", "value": "AUTHZ-READ-WITHHELD-0417"})
+        absent_model, absent = self.mutated({"op": "remove", "path": "/coverage_omissions_gaps/missingness/2"})
+
+        def seen(model, packet):
+            return [(s["kind"], s["label"], s["text"]) for s in render_response(model, packet)["statements"]]
+        self.assertEqual(seen(withheld_model, withheld), seen(absent_model, absent))
+        numbers = [label.split(" ")[1] for kind, label, _ in seen(withheld_model, withheld) if kind == "gap"]
+        self.assertEqual(numbers, ["1", "2", "3", "4", "5", "6"])
+
     def test_a_response_that_mentions_such_a_gap_is_refused(self):
         model, packet = self.mutated({"op": "replace", "path": "/coverage_omissions_gaps/missingness/2/permission_decision_reference/record_id", "value": "AUTHZ-READ-WITHHELD-0417"})
         response = render_response(self.model, self.packet)
