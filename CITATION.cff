@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "Please cite this repository by its version."
 title: "Evidence at Human Scale: Reference Architecture for Accountable Decisions in Agentic Systems"
 type: software
-version: "1.0.1"
+version: "1.0.2"
 date-released: "2026-11-24"
 license: MIT
 authors:
@@ -30,6 +30,6 @@ preferred-citation:
       given-names: Andy
   year: 2026
   month: 11
-  version: "1.0.1"
+  version: "1.0.2"
   url: "https://github.com/andygeorgi/evidence-at-human-scale"
   notes: "AI assistance is disclosed in the repository README."

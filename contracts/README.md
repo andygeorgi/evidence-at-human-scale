@@ -28,7 +28,7 @@ That copying is intentional. A supporting reference names an exact record ID and
 
 A snapshot is not what a person reads. The compact human view of a contract is the group table on its page, and for a packet it is the [reading table in example 05](../examples/05-decision-packet/README.md#reading-the-packet). Start there, and open the JSON to check a detail.
 
-Some repetition between instances is accidental rather than intentional. A normalized form could reference a shared scope or policy by ID instead of copying it. That would change what validates, so v1.0.1 does not do it. It is recorded as a possible future design option, not as a decision, and any such change would be recorded in [`CHANGES.md`](CHANGES.md).
+Some repetition between instances is accidental rather than intentional. A normalized form could reference a shared scope or policy by ID instead of copying it. That would change what validates, so this version of the contracts does not do it. It is recorded as a possible future design option, not as a decision, and any such change would be recorded in [`CHANGES.md`](CHANGES.md).
 
 ## How the contracts relate
 
