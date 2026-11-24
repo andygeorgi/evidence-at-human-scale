@@ -122,7 +122,7 @@ RULES: Tuple[Rule, ...] = (
     Rule("HYG108", "claim of finality",
          r"(?i:\b(?:final|canonical|definitive|official)\s+(?:version|release|edition|publication|paper)\b"
          r"|officially\s+(?:published|released|approved)|\bfinal\s+paper\b)",
-         "This is a release candidate. Do not call it final, canonical or official.",
+         "Do not call the repository final, canonical or official.",
          ignore_line=r"(?i:\b(?:not|never|no|nothing|neither|nor|until|before|isn't)\b.{0,60}\b(?:final|canonical|definitive|official)\b)"),
 )
 
@@ -389,7 +389,7 @@ def scan(root: Path = REPO, files: Optional[Sequence[str]] = None, private_terms
     if not terms:
         notices.append("The scan for private terms is off: no list was found. Put one regular expression per line in %s (Git ignores it) or set %s. Only confidentiality-label wording and the authority's name were looked for." % (PRIVATE_TERMS_FILE, PRIVATE_TERMS_ENV))
     if not any(n.lower() in LICENSE_NAMES for n in names if "/" not in n):
-        notices.append("No LICENSE file: the license decision is still open. Nothing in this repository grants one.")
+        notices.append("No LICENSE file: nothing in this repository grants a license.")
     findings.sort(key=lambda f: (f.path, f.line, f.code))
     return findings, notices, len(names)
 

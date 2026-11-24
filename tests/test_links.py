@@ -28,7 +28,7 @@ class Slugs(unittest.TestCase):
         self.assertEqual(links.slug("Approval is not commit"), "approval-is-not-commit")
         self.assertEqual(links.slug("`check_urls.py`"), "check_urlspy")
         self.assertEqual(links.slug("1. What it is, and isn't"), "1-what-it-is-and-isnt")
-        self.assertEqual(links.slug("Known limitations of this release candidate"), "known-limitations-of-this-release-candidate")
+        self.assertEqual(links.slug("Known limitations of this release"), "known-limitations-of-this-release")
         self.assertEqual(links.slug("[Linked](x.md) *heading*"), "linked-heading")
 
     def test_repeated_headings_get_numeric_suffixes(self):

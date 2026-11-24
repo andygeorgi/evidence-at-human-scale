@@ -135,7 +135,7 @@ class Detection(unittest.TestCase):
     def test_claims_of_finality_but_not_their_denial(self):
         for text in ("This is the final version.", "The canonical paper is here.", "officially published today"):
             self.assertEqual(codes_for_text(text), ["HYG108"], text)
-        for text in ("This is a release candidate, not a final version.", "Nothing here is the canonical release."):
+        for text in ("This is a first release, not a final version.", "Nothing here is the canonical release."):
             self.assertEqual(codes_for_text(text), [], text)
 
 
