@@ -95,12 +95,6 @@ class Detection(unittest.TestCase):
         for text in ("Internal Use Only", "marked Highly Confidential", "MSIP_Label_abc_Enabled=true"):
             self.assertEqual(codes_for_text(text), ["HYG105"], text)
 
-    def test_the_citation_waiver_is_narrow(self):
-        cited = "- **URL:** <https://www.stjornarradid.is/gogn/urskurdir/Akvordun-Zebracorp/>"
-        self.assertEqual(codes_for({"references/public-records.md": cited}, SYNTHETIC_TERMS), [])
-        self.assertEqual(codes_for({"references/public-records.md": "We worked with Zebracorp."}, SYNTHETIC_TERMS), ["HYG105"])
-        self.assertEqual(codes_for({"docs/page.md": cited}, SYNTHETIC_TERMS), ["HYG105"])
-
     def test_hidden_characters(self):
         for text in ("a\u202eb", "\ufeffhello", "zero\u200bwidth"):
             self.assertEqual(codes_for_text(text), ["HYG106"], repr(text))
@@ -211,12 +205,12 @@ class CommandLine(unittest.TestCase):
         self.assertIn("--history", done.stdout)
 
     def test_output_is_utf8_even_when_the_console_uses_a_legacy_code_page(self):
-        """The rules text holds letters (an accented i, an eth) that a legacy Windows code page cannot print."""
+        """The rules text holds a typographic dash that a legacy Windows code page cannot print."""
         import os
         env = dict(os.environ, PYTHONIOENCODING="cp437", PYTHONUTF8="0")
         done = subprocess.run([sys.executable, str(support.SCRIPTS / "check_hygiene.py"), "--rules"], capture_output=True, env=env)
         self.assertEqual(done.returncode, 0, done.stderr.decode("utf-8", "replace"))
-        self.assertIn("R\u00edkisendursko\u00f0un", done.stdout.decode("utf-8"))
+        self.assertIn("HYG201\u2013HYG207", done.stdout.decode("utf-8"))
 
 
 class Speed(unittest.TestCase):

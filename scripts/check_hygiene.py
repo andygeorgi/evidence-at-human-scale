@@ -3,7 +3,8 @@
 
     python scripts/check_hygiene.py            # scan, exit 1 on any finding
     python scripts/check_hygiene.py --history  # also scan every commit: each file version, path, message, author and ref
-    python scripts/check_hygiene.py --rules    # list what is looked for, and where a rule is waived
+    python scripts/check_hygiene.py --rules    # list what is looked for, and which lines are pinned
+    python scripts/check_hygiene.py --pin PATH:LINE  # print the pin for one line of a file (see below)
     python scripts/check_hygiene.py --json     # machine-readable result
 
 Standard library only; works offline and is platform-neutral. It scans every file Git would include (tracked, or
@@ -11,24 +12,27 @@ untracked and not ignored), or every file under the folder when Git is not avail
 With --history it also reads everything that a push of the whole history would publish: a term that was removed from the
 tree is still in an old commit, and a commit message or an author's address is published with it.
 
-A finding is a reason to look, not a verdict. If a flagged line is legitimate, change the wording; if it cannot change
-(for example a quoted public source), add a narrow waiver to ``RULES`` below, with the reason, in a reviewed commit.
+A finding is a reason to look, not a verdict. If a flagged line is legitimate, change the wording. The one exception is the
+name of the authority that the paper discusses: it may appear only where a public record's own title or address is quoted
+exactly. Such a line is pinned in ``PUBLIC_SOURCE_LINES`` below, by the SHA-256 of the whole line, in a reviewed commit.
 
 Private terms. The names that identify the private origin of the material cannot be listed in a public repository, because
 the list would publish them. Rule HYG105 therefore reads them from outside the repository: one regular expression per
 line in a file named ``.hygiene-private-terms`` in the repository folder (Git ignores that name), or in the environment
 variable ``EAHS_PRIVATE_TERMS``, which holds either a path to such a file or the lines themselves. Continuous integration
 has no such list, so a maintainer who has one runs the scan locally before a release. Without a list the scan still runs,
-says so, and looks only for confidentiality-label wording.
+says so, and looks for confidentiality-label wording and for the authority's name, which it knows as a digest (below).
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -45,6 +49,35 @@ NO_MATCH = r"(?!)"
 # Confidentiality-label wording that survives when text is copied out of a labeled document.
 LABEL_MARKERS = r"Internal [Uu]se [Oo]nly|(?:Highly|Strictly) Confidential|MSIP_"
 
+# The authority that the paper discusses may be named in one place only: the title or the address of a public record that the paper
+# cites, quoted as the record gives it. The scanner enforces that in two parts, and neither part repeats the name.
+#
+# 1. It knows the name as a digest. A word matches when its first letters (lower-cased, without accents) have the SHA-256 digest
+#    in NAME_STEMS, so inflected and compound forms match too, in any case, in text, in an address and in a file name.
+# 2. It excuses a match on a line listed in PUBLIC_SOURCE_LINES, and nowhere else. A line is listed by its file and by the SHA-256 of
+#    its exact text, so a line that differs by one character, the same line in another file, and the same word in prose, in a
+#    heading, in data, in a file name, in a commit message or in a figure's metadata are all findings.
+NAME_STEMS: Tuple[Tuple[int, str], ...] = (
+    (9, "db7189bb970a0a0ae5cf9e77fb89a5cfcec4906eb682b9d2cc45232b56332e8d"),  # (number of letters, digest of those letters)
+)
+
+
+@dataclass(frozen=True)
+class PublicSourceLine:
+    """One line that may name the authority, because it quotes a public record's own title or address."""
+    path: str  # the exact file, relative to the repository
+    digest: str  # SHA-256 of the exact line, without its line ending
+    what: str  # which record, and whether the line is its title or its address; never the name
+
+
+PUBLIC_SOURCE_LINES: Tuple[PublicSourceLine, ...] = (
+    PublicSourceLine("references/public-records.md", "c2a627932d4e6bb4d07e79f381a37ced5b15426d7d5d0f10a41427729c60a510", "EN01 source line: the original title of a follow-up audit report"),
+    PublicSourceLine("references/public-records.md", "27a335aeefaee9cea0583074bccf08f7419b03861546a954266c2218cd31986f", "EN01 address of that report"),
+    PublicSourceLine("references/public-records.md", "939c99eebb2407597ba4e4a7d129470b7c7300b061021c743fb5a9bbbc8f8a6c", "EN02 address of an appeal ruling"),
+    PublicSourceLine("references/public-records.md", "71a903a6bef5c6ed9b1075001cbe92fc8c0cf60e9c5273cd4c48eea38fb12427", "EN03 address of an appeal ruling"),
+    PublicSourceLine("references/public-records.md", "61d2c5cd6c39f83a29e76acbf7baf7d10528e724303dc48d02153f385f22aed5", "EN04 address of a data-protection ruling"),
+)
+
 
 @dataclass(frozen=True)
 class Rule:
@@ -54,7 +87,6 @@ class Rule:
     advice: str
     ignore_match: str = ""  # a match that matches this in full is fine
     ignore_line: str = ""  # a line that matches this is fine for this rule
-    waivers: Tuple[Tuple[str, str], ...] = ()  # (path prefix, regex a line must match) where the rule is waived
     on_names: bool = False  # also apply to the file path
     needle: str = ""  # a literal that every match contains: text without it cannot match, so it is not searched
 
@@ -79,10 +111,10 @@ RULES: Tuple[Rule, ...] = (
     Rule("HYG104", "e-mail address", r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+",
          "Use a role link or the repository's issue tracker, not a personal address.",
          ignore_match=r"(?i:[^@]+@(?:users\.noreply\.github\.com|example\.(?:com|org|net))|git@github\.com)", needle="@"),
-    Rule("HYG105", "internal vocabulary or confidentiality label",
+    Rule("HYG105", "internal vocabulary, confidentiality label or the authority's name",
          LABEL_MARKERS,
-         "This names the private origin of the material or carries a confidentiality label. Use the public wording.",
-         waivers=(("references/", r"https?://[^\s>]+\.is/|Ríkisendurskoðun"),), on_names=True),
+         "This names the private origin of the material, carries a confidentiality label, or names the authority outside a quoted public record. Use the public wording.",
+         on_names=True),
     Rule("HYG106", "hidden or direction-changing character", "[\u200b-\u200d\u2060\ufeff\u202a-\u202e\u2066-\u2069]",
          "Zero-width, byte-order-mark and bidirectional control characters can hide or reorder text. Remove it."),
     Rule("HYG107", "draft marker", r"\b(?:TODO|FIXME|XXX|TBD)\b|(?i:lorem ipsum)|\[(?:placeholder|insert|your)[^\]]*\]",
@@ -165,21 +197,74 @@ def use_private_terms(terms: Sequence[str]) -> List[int]:
     return invalid
 
 
-def _waived(rule: Rule, rel: str, line: str) -> bool:
-    return any(rel.startswith(prefix) and re.search(rx, line) for prefix, rx in rule.waivers)
+def _fold(word: str) -> str:
+    """A word in lower case and without accents, so that 'Name', 'NAME' and an accented spelling are one word."""
+    return "".join(c for c in unicodedata.normalize("NFKD", word.lower()) if not unicodedata.combining(c))
+
+
+def _digest(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def name_stem_digest(stem: str) -> str:
+    """The digest to put in NAME_STEMS, with the number of letters, for the first letters of a name."""
+    return _digest(_fold(stem))
+
+
+def line_digest(line: str) -> str:
+    """The digest that pins a line in PUBLIC_SOURCE_LINES: the SHA-256 of its exact text, without the line ending."""
+    return _digest(line.rstrip("\r\n"))
+
+
+_WORDS = re.compile(r"[^\W\d_]+")
+
+
+def name_words(text: str) -> List[str]:
+    """The words of a text that begin with a name the scanner knows as a digest, as they are written, each once."""
+    shortest = min((length for length, _ in NAME_STEMS), default=0)
+    if not shortest:
+        return []
+    found = []
+    for word in dict.fromkeys(_WORDS.findall(text)):
+        if len(word) < shortest:
+            continue
+        folded = _fold(word)
+        if any(len(folded) >= length and _digest(folded[:length]) == stem for length, stem in NAME_STEMS):
+            found.append(word)
+    return found
+
+
+def is_public_source_line(rel: str, line: str) -> bool:
+    """True when this exact line of this exact file is pinned as a public record's own title or address."""
+    digest = line_digest(line)
+    return any(pin.path == rel and pin.digest == digest for pin in PUBLIC_SOURCE_LINES)
+
+
+def _private_match(line: str) -> Optional[str]:
+    """The first private term, or the first word of a name known as a digest, in this line."""
+    for pattern in _PRIVATE:
+        found = pattern.search(line)
+        if found:
+            return found.group(0)
+    words = name_words(line)
+    return words[0] if words else None
 
 
 def apply_rule(rule: Rule, rel: str, line: str) -> Optional[str]:
-    """The first match of the rule on this line that is not waived or ignored, or None."""
+    """The first match of the rule on this line that is not ignored, or None.
+
+    For HYG105 a private term or a name known as a digest is excused only on a line pinned in PUBLIC_SOURCE_LINES; label wording never is.
+    """
     if rule.ignore_line and re.search(rule.ignore_line, line):
         return None
-    if _waived(rule, rel, line):
-        return None
-    for pattern in [_COMPILED[rule.code]] + (_PRIVATE if rule.code == "HYG105" else []):
-        for match in pattern.finditer(line):
-            if rule.ignore_match and re.fullmatch(rule.ignore_match, match.group(0)):
-                continue
-            return match.group(0)
+    for match in _COMPILED[rule.code].finditer(line):
+        if rule.ignore_match and re.fullmatch(rule.ignore_match, match.group(0)):
+            continue
+        return match.group(0)
+    if rule.code == "HYG105":
+        hit = _private_match(line)
+        if hit is not None and not is_public_source_line(rel, line):
+            return hit
     return None
 
 
@@ -187,7 +272,9 @@ def _may_match(rule: Rule, text: str) -> bool:
     """False only when the rule cannot match anywhere in the text, so that most files are not read line by line for every rule."""
     if rule.needle and rule.needle not in text:
         return False
-    return any(pattern.search(text) for pattern in [_COMPILED[rule.code]] + (_PRIVATE if rule.code == "HYG105" else []))
+    if _COMPILED[rule.code].search(text):
+        return True
+    return rule.code == "HYG105" and (any(pattern.search(text) for pattern in _PRIVATE) or bool(name_words(text)))
 
 
 def candidate_files(root: Path) -> List[str]:
@@ -478,12 +565,18 @@ def describe_rules() -> str:
     for rule in RULES:
         lines.append("  %s  %s%s" % (rule.code, rule.label, "  (also file names)" if rule.on_names else ""))
         lines.append("          %s" % rule.advice)
-        for prefix, rx in rule.waivers:
-            lines.append("          waived under %s for lines matching: %s" % (prefix, rx))
     lines += ["", "HYG105 also looks for every pattern in the private term list: one regular expression per line in %s" % PRIVATE_TERMS_FILE,
               "(Git ignores that file) or in the environment variable %s. The list is not part of the repository, because it would" % PRIVATE_TERMS_ENV,
-              "publish the terms. Without a list, HYG105 looks only for confidentiality-label wording and the scan says so."]
-    lines += ["", "File rules:",
+              "publish the terms. Without a list, HYG105 looks for confidentiality-label wording and for the authority's name only.",
+              "",
+              "HYG105 knows the name of the authority that the paper discusses as a digest (%d name stem%s), so that this script does not repeat it." % (
+                  len(NAME_STEMS), "" if len(NAME_STEMS) == 1 else "s"),
+              "A word matches when its first letters, lower-cased and without accents, have that digest: any case, any inflection, in text, in an",
+              "address and in a file name. The name passes on exactly these %d lines, each a public record's own title or address, pinned by file" % len(PUBLIC_SOURCE_LINES),
+              "and by the SHA-256 of the whole line (the first 12 characters are shown); a line that differs by a character is not pinned:"]
+    for pin in PUBLIC_SOURCE_LINES:
+        lines.append("  %s  %s  %s" % (pin.path, pin.digest[:12], pin.what))
+    lines += ["", "File rules (HYG201\u2013HYG207):",
               "  HYG201  blocked file type or editor/OS file (%s ...)" % ", ".join(sorted(BLOCKED_SUFFIXES)[:6]),
               "  HYG202  file larger than 1 MiB",
               "  HYG203  not UTF-8 text",
@@ -497,15 +590,44 @@ def describe_rules() -> str:
     return "\n".join(lines)
 
 
+def pin_entry(root: Path, spec: str) -> Tuple[str, str]:
+    """For 'path:line number', the exact line and the PUBLIC_SOURCE_LINES entry that would pin it. Raises ValueError if there is no such line."""
+    path, _, number = spec.rpartition(":")
+    if not path or not number.isdigit() or int(number) < 1:
+        raise ValueError("expected PATH:LINE, for example references/public-records.md:10")
+    target = (root / path).resolve()
+    if root.resolve() not in target.parents or not target.is_file():
+        raise ValueError("%s is not a file inside %s" % (path, root))
+    text = read_text(target)
+    if text is None:
+        raise ValueError("%s is not UTF-8 text" % path)
+    rows = text.split("\n")
+    if int(number) > len(rows):
+        raise ValueError("%s has only %d lines" % (path, len(rows)))
+    line = rows[int(number) - 1].rstrip("\r")
+    rel = target.relative_to(root.resolve()).as_posix()
+    return line, 'PublicSourceLine("%s", "%s", "<which record, and its title or its address>"),' % (rel, line_digest(line))
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--root", default=str(REPO), help="folder to scan (default: this repository)")
     parser.add_argument("--history", action="store_true", help="also scan the whole Git history: every file version, path, commit message, author, committer and ref")
-    parser.add_argument("--rules", action="store_true", help="list the rules and exit")
+    parser.add_argument("--rules", action="store_true", help="list the rules and the pinned public-record lines, and exit")
+    parser.add_argument("--pin", metavar="PATH:LINE", help="print the PUBLIC_SOURCE_LINES entry for one line of a file, and exit; add it only for a public record's own title or address")
     parser.add_argument("--json", action="store_true", help="print a machine-readable result")
     args = parser.parse_args(argv)
     if args.rules:
         print(describe_rules())
+        return 0
+    if args.pin:
+        try:
+            line, entry = pin_entry(Path(args.root), args.pin)
+        except ValueError as exc:
+            print("error: %s" % exc, file=sys.stderr)
+            return 2
+        print("The line:\n    %s\n\nTo let it name the authority, add this to PUBLIC_SOURCE_LINES in scripts/check_hygiene.py, in a reviewed commit,\n"
+              "and only if the whole line is a public record's own title or address:\n    %s" % (line, entry))
         return 0
     root = Path(args.root).resolve()
     terms = load_private_terms(root)
@@ -531,7 +653,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             len(findings), count, " and %d commit(s)" % counts["commits"] if counts else ""))
         return 1
     internal = "internal term, " if terms else ""
-    print("Hygiene scan clean: %d files, no private link, local path, credential, e-mail address, %sconfidentiality label, hidden character, draft marker or claim of finality." % (count, internal))
+    print("Hygiene scan clean: %d files, no private link, local path, credential, e-mail address, %sauthority name outside %d pinned public-record lines, confidentiality label, hidden character, draft marker or claim of finality." % (
+        count, internal, len(PUBLIC_SOURCE_LINES)))
     if counts:
         print("History scan clean: %d commits, %d file versions and %d paths, with every commit message, author, committer and ref name, under the same rules." % (
             counts["commits"], counts["file_versions"], counts["paths"]))
