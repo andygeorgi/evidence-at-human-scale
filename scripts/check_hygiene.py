@@ -186,8 +186,10 @@ RULES: Tuple[Rule, ...] = (
          r"(?i:\b(?:final|canonical|definitive|official)\s+(?:version|release|edition|publication|paper)\b"
          r"|officially\s+(?:published|released|approved)|\bfinal\s+paper\b)",
          "Do not call the repository final, canonical or official.",
-         # A denial excuses the claim right after it and no other claim on the line: it has to stand within a few words of it.
-         ignore_before=r"(?i:\b(?:not|never|no|nothing|neither|nor|until|before|isn't|aren't|wasn't|weren't)\b(?:[ \t]+[\w'-]+){0,5}[ \t]+$)"),
+         # A denial excuses the claim right after it and no other claim on the line: it has to stand within a few filler words of it
+         # (a denial, then the, a, this, here, is and similar), so a denial followed by an unrelated clause excuses nothing.
+         ignore_before=r"(?i:\b(?:not|never|no|nothing|neither|nor|until|before|isn't|aren't|wasn't|weren't)\b"
+                       r"(?:[ \t]+(?:the|a|an|this|that|it|is|are|be|been|was|were|here|now|yet|longer|really|necessarily|quite|as|only|just)\b){0,3}[ \t]+$)"),
 )
 
 BLOCKED_SUFFIXES = {

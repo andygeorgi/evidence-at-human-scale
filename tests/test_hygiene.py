@@ -238,7 +238,8 @@ class Detection(unittest.TestCase):
 
     def test_a_denial_excuses_only_the_claim_it_negates(self):
         """A denial near one claim of finality must not excuse another claim on the same line."""
-        excused = ("This is not the %s version." % FINAL, "It is never the %s release." % FINAL, "Nothing here is the %s edition." % OFFICIAL, "This isn't the %s publication." % OFFICIAL)
+        excused = ("This is not the %s version." % FINAL, "It is never the %s release." % FINAL, "Nothing here is the %s edition." % OFFICIAL, "This isn't the %s publication." % OFFICIAL,
+                   "This is not really the %s version." % FINAL, "It is not yet the %s release." % FINAL, "That is no longer the %s edition." % OFFICIAL)
         for text in excused:
             self.assertEqual(codes_for_text(text), [], text)
         found = (
@@ -247,6 +248,10 @@ class Detection(unittest.TestCase):
             "No change was made; this is the %s release." % FINAL,
             "It is not %s: the %s paper is elsewhere, and this is the %s edition." % ("ready", FINAL, OFFICIAL),
             "The %s release is here, and the other is not the %s version." % (OFFICIAL, FINAL),
+            "Do not forget that this is the %s release." % FINAL,
+            "No one doubts that this is the %s version." % FINAL,
+            "Not long ago this was the %s edition." % OFFICIAL,
+            "Nothing to see here, but it is the %s publication." % OFFICIAL,
         )
         for text in found:
             self.assertEqual(codes_for_text(text), ["HYG108"], text)
