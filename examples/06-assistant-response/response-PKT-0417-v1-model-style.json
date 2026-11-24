@@ -9,7 +9,7 @@
   "as_of": "2026-11-23T10:00:00Z",
   "produced_by": "illustration-written-by-the-maintainers (not model output)",
   "status": "withdrawn",
-  "status_reason": "Packet PKT-0417 v1 was invalidated at 2026-11-23T13:45:00Z because GR-5521 v1 was superseded by GR-5521 v2.",
+  "status_reason": "This response was withdrawn: packet PKT-0417 v1 was invalidated at 2026-11-23T13:45:00Z because GR-5521 v1 was superseded by GR-5521 v2.",
   "statements": [
     {
       "kind": "claim",
@@ -69,7 +69,7 @@
     {
       "kind": "recommendation",
       "label": "REC-0417-1, REC-0417-1B",
-      "text": "Recommendation (for review, not a decision): hold the invoice now; release at the 16:00 run only if the match passes, screening is current and the invoice is held.",
+      "text": "Withdrawn recommendation, no longer current (for review, not a decision): hold the invoice now; release at the 16:00 run only if the match passes, screening is current and the invoice is held.",
       "refs": [
         "/recommendations/0",
         "/recommendations/1"
@@ -78,7 +78,7 @@
     {
       "kind": "proposal",
       "label": "ACT-HOLD-0417 v1, ACT-REL-0417 v1",
-      "text": "Proposed (not executed or approved): a payment hold and a conditional release at the 16:00 run.",
+      "text": "Withdrawn proposal, no longer current (not executed or approved): a payment hold and a conditional release at the 16:00 run.",
       "refs": [
         "/action_proposals/0",
         "/action_proposals/1"
@@ -87,7 +87,7 @@
     {
       "kind": "obligation",
       "label": "OBL-0417-REVIEW",
-      "text": "Obligation OBL-0417-REVIEW: the AP controller must review before 15:30.",
+      "text": "Withdrawn obligation, no longer current: OBL-0417-REVIEW asked the AP controller to review before 15:30.",
       "refs": [
         "/priority_mandatory_obligations/obligation_references/0"
       ]

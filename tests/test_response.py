@@ -4,8 +4,9 @@ from pathlib import Path
 
 import support  # noqa: F401
 
+from eahs.cases import mutate_model
 from eahs.patch import apply_ops
-from eahs.response import check_canonical, check_response, check_structural, is_canonical, render_markdown, render_response
+from eahs.response import check_canonical, check_response, check_structural, is_canonical, render_markdown, render_response, trusted_lifecycle
 
 
 def codes(response, path="response.json"):
@@ -27,16 +28,19 @@ class Rendering(unittest.TestCase):
         self.assertEqual(codes(render_response(self.model, self.pkt2)), [])
         self.assertEqual(canonical_codes(render_response(self.model, self.pkt2)), [])
 
-    def test_a_response_from_an_invalidated_packet_must_be_withdrawn(self):
-        self.assertEqual(codes(render_response(self.model, self.pkt1)), ["RESP006"])
-        self.assertEqual(codes(render_response(self.model, self.pkt1, status="withdrawn", withdrawn_reason="invalidated")), [])
+    def test_a_response_from_an_invalidated_packet_is_withdrawn_by_the_renderer_itself(self):
+        response = render_response(self.model, self.pkt1)
+        self.assertEqual((response["status"], codes(response)), ("withdrawn", []))
+        self.assertEqual(response["status_reason"], "Packet PKT-0417 v1 was invalidated at 2026-11-23T13:45:00Z because GR-5521 v1 was superseded by GR-5521 v2.")
 
     def test_the_committed_responses_are_what_the_template_renders(self):
         committed = support.read_json("06-assistant-response/response-PKT-0417-v2-template.json")
         self.assertEqual(committed, render_response(self.model, self.pkt2))
+        withdrawn = support.read_json("06-assistant-response/response-PKT-0417-v1-template.json")
+        self.assertEqual(withdrawn, render_response(self.model, self.pkt1))
 
     def test_markdown_lists_every_section_and_the_withdrawal(self):
-        text = render_markdown(render_response(self.model, self.pkt1, status="withdrawn", withdrawn_reason="invalidated"))
+        text = render_markdown(render_response(self.model, self.pkt1))
         for heading in ("What the sources say", "Conflicts nobody has resolved", "What could not be checked", "Proposed actions (none is executed or approved)"):
             self.assertIn(heading, text)
         self.assertIn("Withdrawn.", text)
@@ -45,7 +49,7 @@ class Rendering(unittest.TestCase):
 class Conformance(unittest.TestCase):
     def setUp(self):
         self.model = support.example_model()
-        self.base = render_response(self.model, self.model.get("C04", "PKT-0417", "v1"), status="withdrawn", withdrawn_reason="invalidated")
+        self.base = render_response(self.model, self.model.get("C04", "PKT-0417", "v1"))
 
     def mutate(self, *ops):
         return apply_ops(self.base, list(ops))
@@ -84,7 +88,7 @@ class Conformance(unittest.TestCase):
 
     def test_a_proposal_worded_as_done_is_rejected(self):
         i = self.index("proposal")
-        self.assertEqual(codes(self.mutate({"op": "replace", "path": "/statements/%d/text" % i, "value": "The payment hold has been executed."})), ["RESP005"])
+        self.assertEqual(codes(self.mutate({"op": "replace", "path": "/statements/%d/text" % i, "value": "The withdrawn payment hold has been executed."})), ["RESP005"])
 
     def test_a_response_cannot_cite_a_packet_that_does_not_exist(self):
         self.assertEqual(codes(self.mutate({"op": "replace", "path": "/packet_reference/version", "value": "v9"})), ["RESP007"])
@@ -164,7 +168,7 @@ class Adversarial(unittest.TestCase):
 
     def setUp(self):
         self.model = support.example_model()
-        self.v1 = render_response(self.model, self.model.get("C04", "PKT-0417", "v1"), status="withdrawn", withdrawn_reason="invalidated")
+        self.v1 = render_response(self.model, self.model.get("C04", "PKT-0417", "v1"))
         self.v2 = render_response(self.model, self.model.get("C04", "PKT-0417", "v2"))
 
     def reword(self, response, kind, label, text):
@@ -238,6 +242,144 @@ class Adversarial(unittest.TestCase):
         self.assertIn("RESP008", codes(gap))
         obligation = self.reword(self.v1, "obligation", "OBL-0417-REVIEW", "Obligation OBL-0417-REVIEW: already reviewed, owner role:ap-controller.")
         self.assertIn("RESP008", codes(obligation))
+
+
+class TheLifecycleComesFromThePacket(unittest.TestCase):
+    """A response cannot define its own lifecycle: the trusted packet state decides, and the response can only agree."""
+
+    def setUp(self):
+        self.model = support.example_model()
+        self.pkt1, self.pkt2 = self.model.get("C04", "PKT-0417", "v1"), self.model.get("C04", "PKT-0417", "v2")
+        self.v1 = render_response(self.model, self.pkt1)
+        self.v2 = render_response(self.model, self.pkt2)
+
+    def changed(self, response, **fields):
+        out = copy.deepcopy(response)
+        for key, value in fields.items():
+            if value is MISSING:
+                out.pop(key, None)
+            else:
+                out[key] = value
+        return out
+
+    def test_the_trusted_lifecycle_is_read_from_the_packet(self):
+        self.assertEqual(trusted_lifecycle(self.model, self.pkt2), ("current", ""))
+        status, reason = trusted_lifecycle(self.model, self.pkt1)
+        self.assertEqual(status, "withdrawn")
+        self.assertEqual(reason, "Packet PKT-0417 v1 was invalidated at 2026-11-23T13:45:00Z because GR-5521 v1 was superseded by GR-5521 v2.")
+
+    def test_the_renderer_takes_no_status_from_its_caller(self):
+        for argument in ({"status": "current"}, {"withdrawn_reason": "fine"}):
+            with self.assertRaises(TypeError):
+                render_response(self.model, self.pkt1, **argument)
+
+    def test_the_correct_withdrawn_v1_and_the_correct_current_v2_are_accepted(self):
+        for response in (self.v1, self.v2, support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")):
+            self.assertEqual(codes(response), [])
+        self.assertEqual(canonical_codes(self.v1), [])
+        self.assertEqual(canonical_codes(self.v2), [])
+
+    def test_a_response_about_an_invalidated_packet_cannot_be_current(self):
+        response = self.changed(self.v1, status="current")
+        self.assertIn("RESP006", codes(response))
+        self.assertIn("RESP101", canonical_codes(response))
+        self.assertIn("the packet's state decides", next(f.message for f in check_structural(self.model, response, "r.json") if f.code == "RESP006"))
+
+    def test_a_response_cannot_call_itself_active_historical_or_anything_else(self):
+        for word in ("active", "historical", "valid", "CURRENT", "Current", " current", "archived", ""):
+            with self.subTest(repr(word)):
+                self.assertIn("RESP014", codes(self.changed(self.v1, status=word)))
+                self.assertIn("RESP014", codes(self.changed(self.v2, status=word)))
+
+    def test_a_status_that_is_not_text_is_refused(self):
+        for value in (None, 1, ["current"], {"state": "current"}):
+            with self.subTest(repr(value)):
+                self.assertIn("RESP014", codes(self.changed(self.v1, status=value)))
+
+    def test_a_missing_status_is_refused_not_assumed(self):
+        for response in (self.v1, self.v2):
+            self.assertIn("RESP014", codes(self.changed(response, status=MISSING)))
+            self.assertIn("RESP101", canonical_codes(self.changed(response, status=MISSING)))
+
+    def test_a_response_cannot_withdraw_itself_from_an_active_packet(self):
+        response = self.changed(self.v2, status="withdrawn", status_reason="Packet PKT-0417 v2 was invalidated at 2026-11-23T14:10:00Z.")
+        found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP006"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("cannot withdraw itself", found[0].message)
+
+    def test_a_current_response_carries_no_withdrawal_reason(self):
+        self.assertIn("RESP015", codes(self.changed(self.v2, status_reason="Packet PKT-0417 v2 is fine.")))
+
+    def test_a_missing_as_of_time_is_refused(self):
+        self.assertIn("RESP006", codes(self.changed(self.v2, as_of=MISSING)))
+
+    def test_a_withdrawn_response_must_give_the_reason(self):
+        self.assertIn("RESP015", codes(self.changed(self.v1, status_reason=MISSING)))
+        self.assertIn("RESP015", codes(self.changed(self.v1, status_reason="")))
+        self.assertIn("RESP015", codes(self.changed(self.v1, status_reason=["invalidated"])))
+
+    def test_a_contradictory_withdrawal_reason_is_refused(self):
+        contradictions = [
+            "Packet PKT-0417 v1 was never invalidated: GR-5521 v1 was superseded by GR-5521 v2.",
+            "Packet PKT-0417 v1 was invalidated at 2026-11-23T13:45:00Z, but it remains valid and current.",
+            "Packet PKT-0417 v1 is still current although it was invalidated.",
+            "Packet PKT-0417 v1 was invalidated and then reinstated at 2026-11-23T13:45:00Z.",
+            "Packet PKT-0417 v1 was invalidated; the withdrawal was lifted.",
+            "Packet PKT-0417 v1 was not withdrawn: it was invalidated in error.",
+        ]
+        for reason in contradictions:
+            with self.subTest(reason):
+                self.assertIn("RESP015", codes(self.changed(self.v1, status_reason=reason)))
+
+    def test_a_withdrawal_reason_that_gives_another_packet_state_cause_or_time_is_refused(self):
+        wrong = {
+            "another packet": "Packet PKT-0418 v1 was invalidated at 2026-11-23T13:45:00Z because GR-5521 v1 was superseded by GR-5521 v2.",
+            "another version": "Packet PKT-0417 v2 was invalidated at 2026-11-23T13:45:00Z because GR-5521 v1 was superseded by GR-5521 v2.",
+            "another event": "Packet PKT-0417 v1 was retired at 2026-11-23T13:45:00Z because GR-5521 v1 was superseded by GR-5521 v2.",
+            "another cause": "Packet PKT-0417 v1 was invalidated at 2026-11-23T13:45:00Z because PO-77231 v1 was superseded by PO-77231 v2.",
+            "another time": "Packet PKT-0417 v1 was invalidated at 2026-11-23T09:00:00Z because GR-5521 v1 was superseded by GR-5521 v2.",
+        }
+        for label, reason in wrong.items():
+            with self.subTest(label):
+                self.assertIn("RESP015", codes(self.changed(self.v1, status_reason=reason)))
+
+    def test_a_paraphrased_reason_that_agrees_with_the_packet_is_accepted(self):
+        reason = "This response was withdrawn: packet PKT-0417 v1 was invalidated at 2026-11-23T13:45:00Z because GR-5521 v1 was superseded by GR-5521 v2."
+        self.assertEqual(codes(self.changed(self.v1, status_reason=reason, produced_by="an-assistant-model")), [])
+        self.assertEqual(codes(self.changed(self.v1, status_reason="Packet PKT-0417 v1 was invalidated because the goods receipt GR-5521 was superseded.", produced_by="an-assistant-model")), [])
+
+    def test_advice_phrased_as_current_in_a_withdrawn_response_is_refused(self):
+        for kind in ("recommendation", "proposal", "obligation"):
+            with self.subTest(kind):
+                response = copy.deepcopy(self.v1)
+                statement = next(s for s in response["statements"] if s["kind"] == kind)
+                statement["text"] = {"recommendation": "Recommendation (for review, not a decision): hold the invoice now.",
+                                     "proposal": "Proposed (not executed or approved): release_payment on invoice INV-2026-0417.",
+                                     "obligation": "Obligation OBL-0417-REVIEW: due 2026-11-23T15:30:00Z, owner role:ap-controller."}[kind]
+                found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP016"]
+                self.assertEqual(len(found), 1)
+                self.assertIn("withdrawn", found[0].message)
+
+    def test_the_same_advice_is_fine_in_a_current_response(self):
+        self.assertEqual([f for f in check_structural(self.model, self.v2, "r.json") if f.code == "RESP016"], [])
+
+    def test_the_lifecycle_follows_the_packet_when_the_packet_changes(self):
+        # Invalidate v2 in the trusted data: the same response, unchanged, is no longer acceptable as current.
+        model, _ = mutate_model(self.model, [{"target": "C04 PKT-0417 v2", "ops": [{"op": "replace", "path": "/review_version_history/state", "value": "invalidated"}]}])
+        found = {f.code for f in check_structural(model, self.v2, "r.json")}
+        self.assertIn("RESP006", found)
+        # And re-activating v1 in the trusted data makes its withdrawn response the inconsistent one.
+        model, _ = mutate_model(self.model, [{"target": "C04 PKT-0417 v1", "ops": [{"op": "replace", "path": "/review_version_history/state", "value": "reviewed"}]}])
+        self.assertIn("RESP006", {f.code for f in check_structural(model, self.v1, "r.json")})
+
+    def test_malformed_responses_are_findings_not_crashes(self):
+        for response in (self.changed(self.v2, packet_reference="PKT-0417"), self.changed(self.v2, statements=[1, "x", None]),
+                         self.changed(self.v2, statements=[{"kind": "claim", "text": 5, "refs": "x"}])):
+            with self.subTest(repr(response)[:60]):
+                self.assertTrue(canonical_codes(response))
+
+
+MISSING = object()
 
 
 class ClaimBoundary(unittest.TestCase):

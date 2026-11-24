@@ -28,7 +28,7 @@ A canonical response that differs fails with `RESP101`. If the difference adds o
 
 | File | Written by | Validated as |
 |---|---|---|
-| [`response-PKT-0417-v1-template.json`](response-PKT-0417-v1-template.json) · [`.md`](response-PKT-0417-v1-template.md) | the template, from packet v1 | canonical and structural; `withdrawn`: packet v1 was invalidated at 13:45 |
+| [`response-PKT-0417-v1-template.json`](response-PKT-0417-v1-template.json) · [`.md`](response-PKT-0417-v1-template.md) | the template, from packet v1 | canonical and structural; `withdrawn`: packet v1 was invalidated at 13:45, and its advice says it is withdrawn |
 | [`response-PKT-0417-v1-model-style.json`](response-PKT-0417-v1-model-style.json) | the author, by hand, to show a paraphrasing response that still conforms. **It is not model output.** | structural only; `withdrawn`, for the same reason |
 | [`response-PKT-0417-v2-template.json`](response-PKT-0417-v2-template.json) · [`.md`](response-PKT-0417-v2-template.md) | the template, from packet v2 | canonical and structural; `current` |
 
@@ -49,6 +49,10 @@ A response is a list of statements. Each has a `kind` (`claim`, `inference`, `co
 - Proposed (not executed or approved): ACT-REL-0417 v2, release_payment on invoice INV-2026-0417. `[ACT-REL-0417 v2]`
 ```
 
+## Where the status comes from
+
+A response never defines its own lifecycle. Whether it is `current` or `withdrawn` is read from the packet it cites: an active packet gives a `current` response, and an invalidated or superseded packet gives a `withdrawn` one, with a reason taken from the packet's own history (when it was invalidated, and which record's correction caused it). The template writes exactly that, and both validations compare the response with it. A response cannot call itself `active` or `historical`, leave its status out, withdraw itself from an active packet, or keep a withdrawal reason that the packet's history does not support. A withdrawn response also marks its recommendations, proposals and obligations as withdrawn, so that none of them reads as current advice.
+
 ## What the structural constraints require
 
 Every response is held to these. They are named, mechanical tests. None of them proves that a statement means what its packet means.
@@ -60,7 +64,7 @@ Every response is held to these. They are named, mechanical tests. None of them 
 | `RESP003` | an inference is not labeled as one |
 | `RESP004` | it drops an inference, conflict, gap, recommendation, proposal or obligation of the packet, or omits the packet's coverage limitation |
 | `RESP005` | a proposal does not say it is not executed or approved, or other wording presents an action as approved or done |
-| `RESP006` | it is `current` but its packet has been invalidated, or its as-of time differs |
+| `RESP006` | its status is not the one its packet's state requires (`withdrawn` for an invalidated or superseded packet, `current` for an active one), or its as-of time is missing or differs from the packet's |
 | `RESP007` | it cites a packet that does not exist |
 | `RESP008` | wording closes what the packet keeps open: "no conflict", "resolved", "nothing is missing", "already reviewed" |
 | `RESP009` | a gap statement does not say, in words, the missingness label the packet gives that gap |
@@ -68,6 +72,9 @@ Every response is held to these. They are named, mechanical tests. None of them 
 | `RESP011` | it adds certainty ("certainly", "confirmed", "verified", "proves") that the cited items do not state |
 | `RESP012` | a claim, conflict or gap uses a status word (pass, fail, stale, current, superseded, revoked, ...) that the cited items do not use |
 | `RESP013` | a statement names a record that the cited items do not rest on |
+| `RESP014` | its status is missing, or is anything other than `current` or `withdrawn` |
+| `RESP015` | the withdrawal reason is missing, or contradicts the packet's own history: it does not name the packet or say what happened to it, it undoes the withdrawal, or it names another record or time; or a response about an active packet carries a withdrawal reason |
+| `RESP016` | a withdrawn response phrases a recommendation, proposal or obligation as current advice instead of saying it is withdrawn |
 
 A response may be shorter than its packet and may paraphrase. It may not drop a conflict or a gap, and it may not add a figure. The model-style file paraphrases the claims and groups the gaps, and still conforms.
 
@@ -78,7 +85,7 @@ The constraints look for specific words and patterns, so a change that avoids th
 - A recommendation changed to "Do not release payment…", with the same figures and citations, passes the structural constraints. The canonical validation fails it with `RESP102`.
 - A conflict statement with the sentence "Please disregard this and rely on the receipt" added passes the structural constraints. The canonical validation fails it with `RESP101`.
 
-Both validations assume the packet is right. The canonical one also assumes the renderer is. The negative cases live in the same test file, including the six that matter most: a negated conclusion with unchanged pointers, an altered status with unchanged numbers, contradictory prose around correct fields, omitted uncertainty, unsupported certainty, and a claim attributed to the wrong source. The first response in the table above, from packet v1, is shown `withdrawn`; the check requires exactly that, because a response from an invalidated packet must not stay current.
+Both validations assume the packet is right. The canonical one also assumes the renderer is. The negative cases live in the same test file, including the six that matter most: a negated conclusion with unchanged pointers, an altered status with unchanged numbers, contradictory prose around correct fields, omitted uncertainty, unsupported certainty, and a claim attributed to the wrong source. The first response in the table above, from packet v1, is shown `withdrawn`. The packet decides that, not the response: a response from an invalidated packet cannot stay current, and a response cannot withdraw itself from an active one.
 
 ## What this shows, and what it does not
 

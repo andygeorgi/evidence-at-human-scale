@@ -18,12 +18,19 @@ of the packet is mentioned. These constraints catch specific, named failures. Th
 semantically correct: a sentence can satisfy every constraint and still mislead. Where the response is not canonical,
 only a person, or a comparison with a canonical rendering, can judge what it means.
 
+LIFECYCLE. A response never defines its own lifecycle. Whether it is ``current`` or ``withdrawn`` comes from the trusted
+packet it cites (``trusted_lifecycle``): an active packet gives a current response, an invalidated or superseded one a
+withdrawn response. Both validations compare the response with that, so a response cannot call itself current, active,
+historical or anything else, and cannot carry a withdrawal reason that the packet's own history does not support. A
+withdrawn response also marks its advice (recommendations, proposals, obligations) as withdrawn. These too are mechanical
+constraints; they do not judge what a free-form sentence means.
+
 Neither validation shows that the packet is right, and neither says anything about how a real model would behave.
 """
 from __future__ import annotations
 
 import re
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from .findings import Finding, rel
 from .model import Instance, Model, resolve_pointer
@@ -44,6 +51,10 @@ KIND_PREFIX = {
 }
 REQUIRED_COVERAGE = ("inference", "conflict", "gap", "recommendation", "proposal", "obligation")
 FIGURE_CHECKED = ("claim", "inference", "conflict", "recommendation")
+#: The statements that tell the reader what to do. In a withdrawn response none of them may read as current advice.
+ADVICE_KINDS = ("recommendation", "proposal", "obligation")
+#: The only two statuses a response can have. Which one it has is decided by its packet, never by the response.
+RESPONSE_STATUSES = ("current", "withdrawn")
 DECISION_WORDING = re.compile(r"\b(has|have|had|was|were|been|is|are)\s+(now\s+)?(approved|executed|released|paid|sent|submitted)\b", re.I)
 FIGURE = re.compile(r"\d[\d,.:/-]*\d|\d")
 CURRENCY = re.compile(r"\b(EUR|USD|GBP|ISK|NOK|SEK|DKK|CHF|JPY)\b")
@@ -85,6 +96,17 @@ STATE_WORDS = {
     "stale": re.compile(r"\bstale\b|\bout of date\b|\btoo old\b|\bolder than\b", re.I),
 }
 IDENTIFIER = re.compile(r"\b[A-Z][A-Z0-9]*(?:-[A-Z0-9][A-Za-z0-9.]*)+\b")
+#: Wording that marks a statement as withdrawn, so that it cannot be read as current advice.
+WITHDRAWN_MARKER = re.compile(r"\bwithdrawn\b|\bno longer current\b|\bhistorical\b|\bsuperseded\b|\binvalidated\b", re.I)
+#: Wording that undoes a withdrawal. A withdrawal reason that says the packet is still valid contradicts the packet's own state.
+UNDOES_WITHDRAWAL = re.compile(
+    r"\b(?:not|never|no longer)\s+(?:been\s+|be\s+)?(?:invalidated|superseded|withdrawn)\b"
+    r"|\bstill\s+(?:current|valid|active|in force|usable)\b"
+    r"|\b(?:packet\s+[\w.-]+\s+v\d+|this\s+packet|the\s+packet|this\s+response|the\s+response|it)\s+(?:is|remains?|stays?)\s+(?:current|valid|active|in force|usable)\b"
+    r"|\b(?:reinstated|restored|reactivated|re-activated)\b"
+    r"|\bwithdrawal\s+(?:is|was|has been)\s+(?:lifted|cancell?ed|reversed|withdrawn)\b",
+    re.I)
+ISO_TIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})")
 
 
 def figures(text: str) -> set:
@@ -125,8 +147,37 @@ def gap_text(g: dict) -> str:
     return "%s: %s" % (state, expected)
 
 
-def render_response(model: Model, packet: Instance, produced_by: str = "template-fallback-1", status: str = "current", withdrawn_reason: str = "") -> dict:
+def _object(value) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def trusted_lifecycle(model: Model, packet: Instance) -> Tuple[str, str]:
+    """The lifecycle a response about `packet` must carry, taken from the packet's own state and the records it names.
+
+    A response never defines this itself. An active packet gives ("current", ""). An invalidated or superseded packet
+    gives ("withdrawn", the reason its own history supports): when it was invalidated and which records caused it.
+    """
+    from .semantics import packet_active
+    if packet_active(packet):
+        return "current", ""
+    history = _object(packet.data.get("review_version_history"))
+    when = _object(history.get("time")).get("value")
+    text = "Packet %s %s was %s%s" % (packet.id, packet.version, history.get("state"), " at %s" % when if when else "")
+    causes: List[str] = []
+    for link in history.get("challenge_links", []):
+        replaced = [r for r in model.of("C02") if _object(r.data.get("lifecycle")).get("state") == "superseded" and r.data["lifecycle"].get("replacement_reference") == link]
+        if replaced:
+            causes += ["%s %s was superseded by %s %s" % (r.id, r.version, link["record_id"], link["version"]) for r in replaced]
+        else:
+            causes.append("%s %s challenged it" % (link["record_id"], link["version"]))
+    return "withdrawn", text + (" because %s" % "; ".join(causes) if causes else "") + "."
+
+
+def render_response(model: Model, packet: Instance, produced_by: str = "template-fallback-1") -> dict:
+    """The deterministic response for a packet. Its status and withdrawal reason come from the packet, not from the caller."""
     d = packet.data
+    status, reason = trusted_lifecycle(model, packet)
+    withdrawn = status == "withdrawn"
     statements: List[dict] = []
 
     def add(kind: str, label: str, text: str, pointer: str) -> None:
@@ -141,16 +192,19 @@ def render_response(model: Model, packet: Instance, produced_by: str = "template
     for i, g in enumerate(d["coverage_omissions_gaps"]["missingness"]):
         add("gap", "gap %d (%s)" % (i + 1, g["state"]), gap_text(g), "%s%d" % (KIND_PREFIX["gap"], i))
     for i, r in enumerate(d["recommendations"]):
-        add("recommendation", r["recommendation_id"], "Recommendation (for review, not a decision): %s Basis: %s Requires: %s" % (r["text"], r["basis"], r["accountable_review_requirement"]), "%s%d" % (KIND_PREFIX["recommendation"], i))
+        lead = "Recommendation from the withdrawn packet (not current advice; for review, not a decision)" if withdrawn else "Recommendation (for review, not a decision)"
+        add("recommendation", r["recommendation_id"], "%s: %s Basis: %s Requires: %s" % (lead, r["text"], r["basis"], r["accountable_review_requirement"]), "%s%d" % (KIND_PREFIX["recommendation"], i))
     for i, p in enumerate(d["action_proposals"]):
         ref = p["proposal_reference"]
         prop = model.get("C05", ref["id"], ref["version"])
         what = "%s on %s %s" % (prop.data["action"]["action_kind"], prop.data["action"]["exact_target"]["entity_type"], prop.data["action"]["exact_target"]["entity_id"]) if prop else "an action"
-        add("proposal", "%s %s" % (ref["id"], ref["version"]), "Proposed (not executed or approved): %s %s, %s." % (ref["id"], ref["version"], what), "%s%d" % (KIND_PREFIX["proposal"], i))
+        lead = "Proposal from the withdrawn packet (not current advice; not executed or approved)" if withdrawn else "Proposed (not executed or approved)"
+        add("proposal", "%s %s" % (ref["id"], ref["version"]), "%s: %s %s, %s." % (lead, ref["id"], ref["version"], what), "%s%d" % (KIND_PREFIX["proposal"], i))
     for i, o in enumerate(d["priority_mandatory_obligations"]["obligation_references"]):
         sel = model.get("C03", o["selection_reference"]["id"], o["selection_reference"]["version"])
         ob = next((x for x in sel.data["obligations"] if x["obligation_id"] == o["obligation_id"]), None) if sel else None
-        text = "Obligation %s: due %s, owner %s." % (o["obligation_id"], ob["deadline"], ob["owner"]) if ob else "Obligation %s." % o["obligation_id"]
+        name = "Obligation %s from the withdrawn packet (not current advice)" % o["obligation_id"] if withdrawn else "Obligation %s" % o["obligation_id"]
+        text = "%s: due %s, owner %s." % (name, ob["deadline"], ob["owner"]) if ob else "%s." % name
         add("obligation", o["obligation_id"], text, "%s%d" % (KIND_PREFIX["obligation"], i))
     add("limitation", "limits", d["coverage_omissions_gaps"]["visible_scoped_limitation_summary"], KIND_PREFIX["limitation"])
     out = {
@@ -162,8 +216,8 @@ def render_response(model: Model, packet: Instance, produced_by: str = "template
         "status": status,
         "statements": statements,
     }
-    if status != "current":
-        out["status_reason"] = withdrawn_reason
+    if withdrawn:
+        out["status_reason"] = reason
     return out
 
 
@@ -238,24 +292,93 @@ def _free_text_findings(kind: str, text: str, label: str, cited_text: str, point
     return out
 
 
+def _lifecycle_findings(model: Model, response: dict, packet: Instance, file: str) -> List[Finding]:
+    """The response's status, withdrawal reason and as-of time against the packet it cites.
+
+    The lifecycle is the packet's, not the response's: `trusted_lifecycle` says what the status must be, and the
+    response can only agree with it. Every test here is mechanical. None of them judges what a free-form sentence means.
+    """
+    out: List[Finding] = []
+    expected, _ = trusted_lifecycle(model, packet)
+    state = _object(packet.data.get("review_version_history")).get("state")
+    status = response.get("status")
+    if not isinstance(status, str) or not status.strip():
+        out.append(Finding("RESP014", "the response states no status: it must say %s" % " or ".join(RESPONSE_STATUSES), file, "/status", DOC_RESPONSE))
+    elif status not in RESPONSE_STATUSES:
+        out.append(Finding("RESP014", "status %r is not a response status (%s): the packet decides which one applies" % (status, " or ".join(RESPONSE_STATUSES)), file, "/status", DOC_RESPONSE))
+    elif status != expected:
+        if expected == "withdrawn":
+            out.append(Finding("RESP006", "presented as %s, but packet %s %s has been %s: the response must be withdrawn, and the packet's state decides, not the response" % (status, packet.id, packet.version, state), file, "/status", DOC_RESPONSE))
+        else:
+            out.append(Finding("RESP006", "marked %s, but packet %s %s is active: a response cannot withdraw itself from an active packet" % (status, packet.id, packet.version), file, "/status", DOC_RESPONSE))
+    as_of = response.get("as_of")
+    if not isinstance(as_of, str) or not as_of.strip():
+        out.append(Finding("RESP006", "the response states no as-of time: it must say which snapshot of the packet it speaks about", file, "/as_of", DOC_RESPONSE))
+    elif as_of != packet.data["decision_context_as_of"]["as_of"]:
+        out.append(Finding("RESP006", "the response's as-of time differs from the packet's", file, "/as_of", DOC_RESPONSE))
+    out.extend(_reason_findings(model, response, packet, expected, file))
+    if expected == "withdrawn":
+        for i, st in enumerate(response.get("statements", [])):
+            if isinstance(st, dict) and st.get("kind") in ADVICE_KINDS and not WITHDRAWN_MARKER.search(str(st.get("text", ""))):
+                out.append(Finding("RESP016", "this %s is phrased as current advice, but packet %s %s is withdrawn: say that it is withdrawn or no longer current" % (st["kind"], packet.id, packet.version), file, "/statements/%d" % i, DOC_RESPONSE))
+    return out
+
+
+def _reason_findings(model: Model, response: dict, packet: Instance, expected: str, file: str) -> List[Finding]:
+    """The withdrawal reason must be the packet's own: it names the packet, says what happened to it, and adds no other cause or time."""
+    reason = response.get("status_reason")
+    present = isinstance(reason, str) and reason.strip() != ""
+    if expected == "current":
+        if reason not in (None, ""):
+            return [Finding("RESP015", "a response about an active packet has no withdrawal reason, and this one carries one: a response cannot declare its own lifecycle", file, "/status_reason", DOC_RESPONSE)]
+        return []
+    if not present:
+        return [Finding("RESP015", "a withdrawn response must give the reason from its packet (%s %s was %s); this one gives none" % (packet.id, packet.version, _object(packet.data.get("review_version_history")).get("state")), file, "/status_reason", DOC_RESPONSE)]
+    out: List[Finding] = []
+    history = _object(packet.data.get("review_version_history"))
+    packet_id, version = re.escape(packet.id), re.escape(packet.version)
+    bare = re.escape(packet.version.lstrip("vV"))
+    named = re.search(r"(?<![\w-])%s(?![\w-])[\s,:(]*(?:%s(?![\w.])|version\s+v?%s(?![\w.]))" % (packet_id, version, bare), reason)
+    if not named:
+        out.append(Finding("RESP015", "the withdrawal reason does not name the packet it withdraws (%s %s)" % (packet.id, packet.version), file, "/status_reason", DOC_RESPONSE))
+    if not re.search(r"\b%s\b" % re.escape(str(history.get("state"))), reason, re.I):
+        out.append(Finding("RESP015", "the withdrawal reason does not say what happened to the packet: its own history says it was %s" % history.get("state"), file, "/status_reason", DOC_RESPONSE))
+    undone = UNDOES_WITHDRAWAL.search(reason)
+    if undone:
+        out.append(Finding("RESP015", "the withdrawal reason contradicts the withdrawal (%r): the packet's state is %s" % (undone.group(0), history.get("state")), file, "/status_reason", DOC_RESPONSE))
+    allowed = {packet.id}
+    for link in history.get("challenge_links", []):
+        allowed.add(link["record_id"])
+    allowed |= {r.id for r in model.of("C02") if _object(r.data.get("lifecycle")).get("replacement_reference") in history.get("challenge_links", [])}
+    for ident in sorted(set(IDENTIFIER.findall(reason)) - allowed):
+        out.append(Finding("RESP015", "the withdrawal reason names %s, which is not part of the packet's own history: it may not give another cause" % ident, file, "/status_reason", DOC_RESPONSE))
+    times = {_object(history.get("time")).get("value"), packet.data["decision_context_as_of"]["as_of"]}
+    for stamp in sorted(set(ISO_TIME.findall(reason)) - times):
+        out.append(Finding("RESP015", "the withdrawal reason gives the time %s, which is neither when the packet was withdrawn nor its as-of time" % stamp, file, "/status_reason", DOC_RESPONSE))
+    return out
+
+
 def check_structural(model: Model, response: dict, path) -> List[Finding]:
     """STRUCTURAL FREE-TEXT VALIDATION: named constraints on any response. It does not prove that the prose is correct."""
-    from .semantics import packet_active
     file = rel(path)
     findings: List[Finding] = []
-    ref = response.get("packet_reference", {})
+    ref = response.get("packet_reference")
+    ref = ref if isinstance(ref, dict) else {}
     packet = model.get("C04", ref.get("id"), ref.get("version"))
     if packet is None:
         return [Finding("RESP007", "the response cites packet %s %s, which does not exist" % (ref.get("id"), ref.get("version")), file, "/packet_reference", DOC)]
     d = packet.data
-    if response.get("status") == "current" and not packet_active(packet):
-        findings.append(Finding("RESP006", "presented as current, but packet %s %s has been invalidated: the response must be withdrawn" % (packet.id, packet.version), file, "/status", DOC))
-    if response.get("as_of") and response["as_of"] != d["decision_context_as_of"]["as_of"]:
-        findings.append(Finding("RESP006", "the response's as-of time differs from the packet's", file, "/as_of", DOC))
+    findings.extend(_lifecycle_findings(model, response, packet, file))
     cited: Dict[str, set] = {k: set() for k in KIND_PREFIX}
     for i, st in enumerate(response.get("statements", [])):
         loc = "/statements/%d" % i
+        if not isinstance(st, dict):
+            findings.append(Finding("RESP001", "a statement must be an object with a kind, a text and the packet items it cites", file, loc, DOC))
+            continue
         kind, refs, text = st.get("kind"), st.get("refs", []), st.get("text", "")
+        if not isinstance(refs, list) or not all(isinstance(r, str) for r in refs) or not isinstance(text, str):
+            findings.append(Finding("RESP001", "a statement's text must be a string and its refs a list of packet pointers", file, loc, DOC))
+            continue
         if kind not in KIND_PREFIX:
             findings.append(Finding("RESP001", "unknown statement kind %r" % kind, file, loc, DOC))
             continue
@@ -333,11 +456,11 @@ def check_canonical(model: Model, response: dict, packet: Instance, file: str) -
     """CANONICAL RESPONSE VALIDATION: the response must equal what the renderer writes from its packet.
 
     A statement that differs fails (RESP101). A difference that adds or removes a negation, changes a status word or a
-    figure, or opens or closes a conflict is reported as a change of meaning (RESP102).
+    figure, or opens or closes a conflict is reported as a change of meaning (RESP102). The status and the withdrawal
+    reason are part of what is compared, and the renderer takes them from the packet, not from the response.
     """
     out: List[Finding] = []
-    expected = render_response(model, packet, produced_by=str(response.get("produced_by", "template-fallback-1")),
-                               status=str(response.get("status", "current")), withdrawn_reason=str(response.get("status_reason", "")))
+    expected = render_response(model, packet, produced_by=str(response.get("produced_by", "template-fallback-1")))
     compared = ("response_id", "synthetic", "packet_reference", "as_of", "produced_by", "status", "status_reason")
     for key in compared:
         if response.get(key) != expected.get(key):
@@ -348,6 +471,9 @@ def check_canonical(model: Model, response: dict, packet: Instance, file: str) -
     seen = set()
     for i, st in enumerate(response.get("statements", [])):
         loc = "/statements/%d" % i
+        if not isinstance(st, dict):
+            out.append(Finding("RESP101", "a statement must be an object, as the canonical rendering writes it", file, loc, DOC_RESPONSE))
+            continue
         key = (st.get("kind"), st.get("label"))
         canonical = by_key.get(key)
         if canonical is None or key in seen:
@@ -366,7 +492,7 @@ def check_canonical(model: Model, response: dict, packet: Instance, file: str) -
     for key in by_key:
         if key not in seen:
             out.append(Finding("RESP101", "the canonical rendering has a %s statement %r that the response omits" % key, file, "/statements", DOC_RESPONSE))
-    order = [(s.get("kind"), s.get("label")) for s in response.get("statements", []) if (s.get("kind"), s.get("label")) in by_key]
+    order = [(s.get("kind"), s.get("label")) for s in response.get("statements", []) if isinstance(s, dict) and (s.get("kind"), s.get("label")) in by_key]
     if not out and order != [(s["kind"], s["label"]) for s in expected["statements"]]:
         out.append(Finding("RESP101", "the statements are in a different order from the canonical rendering", file, "/statements", DOC_RESPONSE))
     return out
@@ -376,7 +502,8 @@ def check_response(model: Model, response: dict, path) -> List[Finding]:
     """Validate a response: structural constraints for every response, and the canonical comparison when it claims to be rendered."""
     findings = check_structural(model, response, path)
     if is_canonical(response):
-        ref = response.get("packet_reference", {})
+        ref = response.get("packet_reference")
+        ref = ref if isinstance(ref, dict) else {}
         packet = model.get("C04", ref.get("id"), ref.get("version"))
         if packet is not None:
             findings += check_canonical(model, response, packet, rel(path))

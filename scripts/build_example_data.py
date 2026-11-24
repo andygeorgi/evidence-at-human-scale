@@ -1213,8 +1213,10 @@ def scenario_files(model):
 def response_files(model):
     from eahs.response import render_markdown, render_response
     pkt1, pkt2 = model.get("C04", "PKT-0417", "v1"), model.get("C04", "PKT-0417", "v2")
-    withdrawn = "Packet PKT-0417 v1 was invalidated at %s because GR-5521 v1 was superseded by GR-5521 v2." % T_INVALIDATE
-    r1 = render_response(model, pkt1, status="withdrawn", withdrawn_reason=withdrawn)
+    # The renderer takes each response's status and reason from its packet. The hand-written response is free-form: it gives
+    # the same facts in its own words, and the structural validation checks them against the packet.
+    withdrawn = "This response was withdrawn: packet PKT-0417 v1 was invalidated at %s because GR-5521 v1 was superseded by GR-5521 v2." % T_INVALIDATE
+    r1 = render_response(model, pkt1)
     r2 = render_response(model, pkt2)
     style = {
         "response_id": "RESP-0417-v1-model-style", "synthetic": True,
@@ -1228,9 +1230,9 @@ def response_files(model):
             {"kind": "inference", "label": "M01, M02", "text": "Inference (model-generated, not verified): both model summaries suggest a receiving delay, but they share one origin, the goods receipt, so they do not corroborate each other.", "refs": ["/labeled_inferences/0", "/labeled_inferences/1"]},
             {"kind": "gap", "label": "gaps 1-7", "text": "Several things could not be checked: no record of a second delivery; credit notes (the query returned nothing, which does not prove there are none); part of the requested scope that is outside your read permissions; the treasury cash position (service unavailable); early-payment discount (not assessed); and supplier screening is stale. A duplicate check found nothing in its declared window.",
              "refs": ["/coverage_omissions_gaps/missingness/%d" % i for i in range(7)]},
-            {"kind": "recommendation", "label": "REC-0417-1, REC-0417-1B", "text": "Recommendation (for review, not a decision): hold the invoice now; release at the 16:00 run only if the match passes, screening is current and the invoice is held.", "refs": ["/recommendations/0", "/recommendations/1"]},
-            {"kind": "proposal", "label": "ACT-HOLD-0417 v1, ACT-REL-0417 v1", "text": "Proposed (not executed or approved): a payment hold and a conditional release at the 16:00 run.", "refs": ["/action_proposals/0", "/action_proposals/1"]},
-            {"kind": "obligation", "label": "OBL-0417-REVIEW", "text": "Obligation OBL-0417-REVIEW: the AP controller must review before 15:30.", "refs": ["/priority_mandatory_obligations/obligation_references/0"]},
+            {"kind": "recommendation", "label": "REC-0417-1, REC-0417-1B", "text": "Withdrawn recommendation, no longer current (for review, not a decision): hold the invoice now; release at the 16:00 run only if the match passes, screening is current and the invoice is held.", "refs": ["/recommendations/0", "/recommendations/1"]},
+            {"kind": "proposal", "label": "ACT-HOLD-0417 v1, ACT-REL-0417 v1", "text": "Withdrawn proposal, no longer current (not executed or approved): a payment hold and a conditional release at the 16:00 run.", "refs": ["/action_proposals/0", "/action_proposals/1"]},
+            {"kind": "obligation", "label": "OBL-0417-REVIEW", "text": "Withdrawn obligation, no longer current: OBL-0417-REVIEW asked the AP controller to review before 15:30.", "refs": ["/priority_mandatory_obligations/obligation_references/0"]},
             {"kind": "limitation", "label": "limits", "text": "This covers selected sources for this invoice and supplier only.", "refs": ["/coverage_omissions_gaps/visible_scoped_limitation_summary"]},
         ],
     }
