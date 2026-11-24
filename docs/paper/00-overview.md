@@ -1,4 +1,4 @@
-# Overview: systems produce evidence, AI makes it consumable, people remain accountable
+# Overview
 
 [Paper contents](README.md) · [Next: the scarce resource is human attention →](01-human-attention.md)
 

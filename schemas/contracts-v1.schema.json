@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:evidence-at-human-scale:contracts:1",
   "title": "Evidence at Human Scale: contract definitions C01–C07",
-  "description": "Documentation-only contracts C01–C07. Systems produce evidence. AI makes it consumable. People remain accountable. One assistant means one interaction contract, not one model/runtime/failure domain. Not a deployment, application or customer solution.",
+  "description": "Documentation-only contracts C01–C07 for a reference architecture. One assistant means one interaction contract, which does not require one model, one runtime or one failure domain. Not a deployment, application or customer solution.",
   "oneOf": [
     {
       "$ref": "#/$defs/context"
