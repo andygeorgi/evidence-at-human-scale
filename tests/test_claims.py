@@ -187,6 +187,85 @@ class SeveralReferences(unittest.TestCase):
         self.assertEqual([f.code for f in semantics.check_references(model) if "supported_claims_references/2" in f.location], ["REF002"])
 
 
+class WhatAPayloadClaimMustSay(unittest.TestCase):
+    """A claim that rests on a payload states what the payload holds: its status, at least one of its figures, and each figure beside its own field."""
+
+    def test_a_claim_that_says_something_else_about_a_failed_match_is_found(self):
+        model = with_claim(PAYLOAD_CLAIM, "The supplier has been cleared for immediate payment.")
+        messages = [f.message for f in claim_findings(model)]
+        self.assertEqual(len(messages), 2, messages)
+        self.assertTrue(any("does not state 'fail'" in m for m in messages))
+        self.assertTrue(any("states none of the figures" in m for m in messages))
+
+    def test_a_claim_that_states_the_status_and_none_of_the_figures_is_found(self):
+        found = claim_findings(with_claim(PAYLOAD_CLAIM, "The three-way match failed."))
+        self.assertEqual([f.code for f in found], ["PKT005"])
+        self.assertIn("none of the figures", found[0].message)
+
+    def test_a_claim_that_states_the_figures_and_no_status_is_found(self):
+        found = claim_findings(with_claim(PAYLOAD_CLAIM, "Three-way match M3W 2.0 on INV-2026-0417 (invoiced 100 units, received 60 units, variance 40.0%, tolerance 2%)."))
+        self.assertEqual([f.code for f in found], ["PKT005"])
+        self.assertIn("does not state 'fail'", found[0].message)
+
+    def test_a_claim_that_restates_the_payload_in_its_own_words_passes(self):
+        for text in ("The match failed: a variance of 40.0% against a tolerance of 2%, with 100 units invoiced and received 60.",
+                     "FAIL. Quantity invoiced: 100. Quantity received: 60. Variance 40.0%. Tolerance 2%.",
+                     "The match failed (invoiced 100, received 60, variance 40.0 percent, tolerance 2 percent)."):
+            with self.subTest(text):
+                self.assertEqual(codes(with_claim(PAYLOAD_CLAIM, text)), [])
+
+    def test_swapped_figures_are_found_although_each_is_in_the_payload(self):
+        swapped = said(PAYLOAD_CLAIM).replace("invoiced 100 units, received 60 units", "invoiced 60 units, received 100 units")
+        found = claim_findings(with_claim(PAYLOAD_CLAIM, swapped))
+        self.assertEqual([f.code for f in found], ["PKT005", "PKT005"])
+        self.assertTrue(any("after 'invoiced'" in f.message and "quantity_invoiced is 100" in f.message for f in found), [f.message for f in found])
+        self.assertTrue(any("after 'received'" in f.message and "quantity_received is 60" in f.message for f in found), [f.message for f in found])
+
+    def test_the_variance_and_the_tolerance_cannot_trade_places(self):
+        traded = said(PAYLOAD_CLAIM).replace("variance 40.0%, tolerance 2%", "variance 2%, tolerance 40.0%")
+        self.assertEqual(len(claim_findings(with_claim(PAYLOAD_CLAIM, traded))), 2)
+
+    def test_a_minus_sign_is_part_of_the_figure(self):
+        self.assertEqual(sorted(_numbers_in("variance -40.0% and \u22125 and (-3) and 2026-11-18 and x-5 and 10-20").elements()), [-40.0, -5.0, -3.0])
+        for old, new in (("variance 40.0%", "variance -40.0%"), ("received 60 units", "received -60 units"), ("invoiced 100 units", "invoiced \u2212100 units")):
+            with self.subTest(new):
+                found = claim_findings(with_claim(PAYLOAD_CLAIM, said(PAYLOAD_CLAIM).replace(old, new)))
+                self.assertIn("PKT005", [f.code for f in found])
+        model, _ = mutate_model(support.example_model(), [{"target": "C02 M3W-0417 v1", "ops": [{"op": "replace", "path": "/content/payload/value/variance_pct", "value": -40.0}]}])
+        self.assertIn("PKT005", [f.code for f in claim_findings(model)])
+
+    def test_a_mixed_claim_cannot_add_prose_that_ignores_the_payload(self):
+        refs = [reference(INVOICE_CLAIM), reference(PAYLOAD_CLAIM)]
+        for text in (said(INVOICE_CLAIM) + " The supplier has been cleared for immediate payment.", said(INVOICE_CLAIM) + " The match failed.", said(INVOICE_CLAIM)):
+            with self.subTest(text[-40:]):
+                found = claim_findings(with_claim(INVOICE_CLAIM, text, refs))
+                self.assertTrue(found)
+                self.assertEqual({f.code for f in found}, {"PKT005"})
+
+    def test_a_mixed_claim_that_states_the_payload_passes_and_one_that_reverses_it_does_not(self):
+        refs = [reference(INVOICE_CLAIM), reference(PAYLOAD_CLAIM)]
+        self.assertEqual(codes(with_claim(INVOICE_CLAIM, said(INVOICE_CLAIM) + " " + said(PAYLOAD_CLAIM), refs)), [])
+        swapped = said(INVOICE_CLAIM) + " " + said(PAYLOAD_CLAIM).replace("invoiced 100 units, received 60 units", "invoiced 60 units, received 100 units")
+        self.assertEqual({f.code for f in claim_findings(with_claim(INVOICE_CLAIM, swapped, refs))}, {"PKT005"})
+
+    def test_the_cited_claims_own_figures_cannot_cover_a_figure_the_payload_lacks(self):
+        refs = [reference(INVOICE_CLAIM), reference(PAYLOAD_CLAIM)]
+        # 18,400.00 is the invoice's figure: stated again beside the payload's own words it is not the payload's.
+        text = said(INVOICE_CLAIM) + " " + said(PAYLOAD_CLAIM).replace("variance 40.0%", "variance 18,400.00%")
+        self.assertIn("PKT005", [f.code for f in claim_findings(with_claim(INVOICE_CLAIM, text, refs))])
+
+    def test_a_reference_that_does_not_resolve_does_not_stop_the_others_being_checked(self):
+        bad = reference(INVOICE_CLAIM)
+        bad["claim_id"] = "c9"
+        model = with_claim(PAYLOAD_CLAIM, "The supplier has been cleared for immediate payment.", [reference(PAYLOAD_CLAIM), bad])
+        self.assertEqual({f.code for f in claim_findings(model)}, {"PKT005"})
+        self.assertIn("REF002", {f.code for f in semantics.check_references(model)})
+
+    def test_every_packet_of_the_examples_still_says_what_its_payload_holds(self):
+        self.assertEqual(claim_findings(support.example_model()), [])
+        self.assertEqual(claim_findings(support.example_model(), version="v2"), [])
+
+
 class WhatIsCompared(unittest.TestCase):
     def test_figures_are_numbers_that_no_identifier_date_or_time_owns_and_each_statement_counts(self):
         self.assertEqual(sorted(_numbers_in("Three-way match M3W 2.0 on INV-2026-0417: FAIL (invoiced 100 units, variance 40.0%, tolerance 2%).").elements()), [2.0, 2.0, 40.0, 100.0])

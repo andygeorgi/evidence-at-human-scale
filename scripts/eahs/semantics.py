@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from .disclosure import Decision, Viewer, binding_problems, differences, gap_entry, may_know, retrieval_entry
 from .findings import Finding, doc_for_contract
-from .gateway import GATE_CODES, age_hours, evaluate_commit, freshness_max_age, is_current_at, ledger_from_receipts, parse_time, ts
+from .gateway import GATE_CODES, age_hours, availability_problem, evaluate_commit, freshness_max_age, is_current_at, ledger_from_receipts, parse_time, ts
 from .model import Instance, Model, claims_of, iter_refs, payload_object_of, resolve_pointer
 
 DOC_EVIDENCE = "architecture/evidence-semantics.md"
@@ -132,6 +132,8 @@ def check_lineage(model: Model) -> List[Finding]:
         # cycle: the record must not be among its own ancestors
         if (("C02", rec.id, rec.version)) in ancestors(model, rec):
             out.append(_f("LIN001", "derivation ancestry must be acyclic, but %s %s is its own ancestor" % (rec.id, rec.version), rec, "/lineage", DOC_LINEAGE))
+        elif rec.data["identity_schema"]["kind"] == "model_inference":
+            out.extend(_check_inference_figures(model, rec))
         for i, rel in enumerate(rec.data["lineage"]["typed_relationships"]):
             if allowed and rel["relationship_type"] not in allowed:
                 out.append(_f("LIN002", "relationship type %r is not one of %s" % (rel["relationship_type"], sorted(allowed)), rec, "/lineage/typed_relationships/%d" % i, DOC_LINEAGE))
@@ -139,6 +141,27 @@ def check_lineage(model: Model) -> List[Finding]:
                 older = model.get("C02", rel["to"]["record_id"], rel["to"]["version"])
                 if older is not None and (older.data["lifecycle"]["state"] != "superseded" or older.data["lifecycle"].get("replacement_reference") != {"record_id": rec.id, "version": rec.version}):
                     out.append(_f("LIN003", "supersession of %s %s requires that version to be marked superseded with this record as its replacement" % (older.id, older.version), rec, "/lineage/typed_relationships/%d" % i, DOC_LINEAGE))
+    return out
+
+
+def _check_inference_figures(model: Model, rec: Instance) -> List[Finding]:
+    """A model inference reaches no further than the records it declares it rests on: it states no figure that its ancestry does not hold.
+
+    A summary of one goods receipt that says "40 units are missing" has compared the receipt with something it does not rest on,
+    and the figure it gives is not in its sources. Each figure it states must be accounted for by a figure in the content of
+    its ancestors, once for each time it is stated. This is a necessary condition on structured values: it does not show that a
+    summary is faithful to its sources, and it reads no prose for meaning. A model inference that rests on nothing holds no figure.
+    """
+    out: List[Finding] = []
+    held: Counter = Counter()
+    for ancestor in ancestors(model, rec).values():
+        held.update(_content_values(ancestor.data.get("content", {}))[0])
+    sources = ", ".join("%s %s" % (a.id, a.version) for a in sorted(ancestors(model, rec).values(), key=lambda a: (a.id, a.version))) or "no record"
+    content = _object_of(rec.data.get("content"))
+    claims = content.get("claims") if content.get("content_type") == "claims" and isinstance(content.get("claims"), list) else []
+    for i, claim in enumerate(claims):
+        for number in sorted(_numbers_in(str(_object_of(claim).get("text", ""))) - held):
+            out.append(_f("LIN005", "this model inference states the figure %g, which none of the records it rests on holds (%s): a derivation reaches no further than its ancestry" % (number, sources), rec, "/content/claims/%d/text" % i, DOC_LINEAGE))
     return out
 
 
@@ -315,16 +338,20 @@ def check_packets(model: Model) -> List[Finding]:
     return out
 
 
-#: Numbers a claim states: decimals that are not part of an identifier, a date or a time (no letter, hyphen, colon or slash touches them).
-_NUMBER = re.compile(r"(?<![\w.,/:-])\d[\d,]*(?:\.\d+)?(?![\w:/-]|\.\d)")
+#: Numbers a claim states: decimals that are not part of an identifier, a date or a time (no letter, hyphen, colon or slash touches
+#: them), with a leading minus when they have one, so that -100 is not 100.
+_NUMBER = re.compile(r"(?<![\w.,/:-])-?\d[\d,]*(?:\.\d+)?(?![\w:/-]|\.\d)")
 #: The status vocabulary a payload can state and a claim can restate. Only these words are compared: no other prose is interpreted.
 _STATUS = re.compile(r"\b(pass|fail)(?:ed|es|s|ing|ure)?\b", re.IGNORECASE)
+_WORD = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
+#: Words that may stand between a field's name and its figure ("variance of 40.0%", "tolerance is 2%").
+_BETWEEN = frozenset("of is was are were at to be equal equals about only just exactly than".split())
 
 
 def _numbers_in(text: str) -> Counter:
     """Every number a text states, once for each time it states it."""
     found: Counter = Counter()
-    for token in _NUMBER.findall(text):
+    for token in _NUMBER.findall(text.replace("\u2212", "-")):
         try:
             found[float(token.replace(",", ""))] += 1
         except ValueError:
@@ -357,66 +384,130 @@ def _content_values(node) -> Tuple[Counter, Set[str]]:
     return numbers, statuses
 
 
+def _stem(word: str) -> str:
+    word = word.lower()
+    return re.sub(r"(ing|ed|es|e|s|d)$", "", word) if len(word) > 4 else word
+
+
+def _named_numbers(node, name: str = "") -> List[Tuple[str, float]]:
+    """(the name of the field, the number) for every number a payload holds; a number in a list belongs to the field that holds the list."""
+    if isinstance(node, bool) or node is None:
+        return []
+    if isinstance(node, (int, float)):
+        return [(name, float(node))]
+    if isinstance(node, str):
+        return [(name, n) for n in _numbers_in(node)]
+    if isinstance(node, dict):
+        return [pair for key, value in node.items() for pair in _named_numbers(value, str(key))]
+    if isinstance(node, list):
+        return [pair for value in node for pair in _named_numbers(value, name)]
+    return []
+
+
+def _label_findings(text: str, payload, skip: Set[float]) -> List[Tuple[float, str, List[str]]]:
+    """Figures in `text` that follow the name of a payload field and are not that field's value: (the figure, the word, the fields' values).
+
+    "invoiced 60" is wrong when the payload's quantity_invoiced is 100, even though 60 is in the payload: the figure is tied to the
+    field by the word in front of it. A figure that follows no field's name is not tied to anything and is not judged here, and a
+    figure in `skip` has been reported already.
+    """
+    by_word: Dict[str, List[Tuple[str, float]]] = {}
+    for name, value in _named_numbers(payload):
+        for word in re.findall(r"[A-Za-z]{3,}", re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name)):
+            by_word.setdefault(_stem(word), []).append((name, value))
+    found: List[Tuple[float, str, List[str]]] = []
+    text = text.replace("\u2212", "-")
+    for match in _NUMBER.finditer(text):
+        clause = re.split(r"[.;!?](?=\s|$)", text[:match.start()])[-1]
+        words = _WORD.findall(clause[-48:])
+        while words and words[-1].lower() in _BETWEEN:
+            words.pop()
+        if not words or _stem(words[-1]) not in by_word:
+            continue
+        figure = float(match.group(0).replace(",", ""))
+        fields = by_word[_stem(words[-1])]
+        if figure not in skip and figure not in {value for _, value in fields}:
+            found.append((figure, words[-1], ["%s is %g" % (name, value) for name, value in dict.fromkeys(fields)]))
+    return found
+
+
 def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -> List[Finding]:
     """Hold a supported claim to every reference that supports it, not only to a lone claim_reference.
 
     A claim whose references are all claim references must say exactly what they say, in the order cited (for one
-    reference, exactly what that claim says). A claim that rests on a payload must not state a status (pass or fail) that
-    the payload does not hold, and every figure it states must be accounted for by a figure of what it cites, once for each
-    time it is stated (so a claim cannot reuse one figure to cover two). A claim that mixes both quotes each cited claim and
-    stays within the statuses and figures of everything it cites. These are structured values, compared exactly. They are
-    necessary conditions: a claim that passes them can still say something its sources do not support. Nothing here reads
-    prose for meaning.
+    reference, exactly what that claim says). A claim that rests on a payload, alone or beside claim references, says what
+    the payload holds: after the cited claims' own words are taken out, what is left states every status (pass or fail) of each
+    payload it cites and at least one of its figures, states no status or figure that the payloads do not hold (once for each
+    time it is stated, so a claim cannot reuse one figure to cover two), and puts no figure after the name of a payload
+    field that is not that field's value (swapping "invoiced 100, received 60" is found). A minus sign is part of a figure.
+    These are structured values, compared exactly. They are necessary conditions: a claim that passes them can still say
+    something its sources do not support. Nothing here reads prose for meaning, and the schema's free-text claim cannot be made
+    to say more without a structured assertion field, which v1.0.2 does not add.
 
-    A reference that does not resolve is reported by REF001-REF003, so the claim is not compared against less than it cites.
+    A reference that does not resolve is reported by REF001-REF003; the claim is still compared with the references that do.
     """
     out: List[Finding] = []
     loc = "/supported_claims_references/%d" % index
     quoted: List[Tuple[str, str]] = []   # (what a referenced claim says, its name)
-    payloads: List[object] = []
-    sources: List[str] = []
+    payloads: List[Tuple[object, str]] = []
+    unresolved = False
     for ref in claim["supporting_references"]:
         rec = model.get("C02", ref["record_id"], ref["version"])
         if rec is None:
-            return out
+            unresolved = True
+            continue
         if ref["reference_type"] == "claim_reference":
             source = claims_of(rec.data).get(ref.get("claim_id"))
             if source is None:
-                return out
-            name = "%s %s claim %s" % (rec.id, rec.version, ref.get("claim_id"))
-            quoted.append((source["text"], name))
-            sources.append(name)
+                unresolved = True
+                continue
+            quoted.append((source["text"], "%s %s claim %s" % (rec.id, rec.version, ref.get("claim_id"))))
         else:
             payload = payload_object_of(rec.data)
             if payload is None:
-                return out
+                unresolved = True
+                continue
             try:
-                payloads.append(resolve_pointer(payload, ref.get("payload_location", "")))
+                payloads.append((resolve_pointer(payload, ref.get("payload_location", "")), "%s %s payload %s" % (rec.id, rec.version, ref.get("payload_location"))))
             except (KeyError, IndexError, ValueError, TypeError):
-                return out
-            sources.append("%s %s payload %s" % (rec.id, rec.version, ref.get("payload_location")))
+                unresolved = True
     text = claim["text"]
-    cited = ", ".join(sources)
     texts = [t for t, _ in quoted]
-    if texts and not payloads:
-        if text != " ".join(texts):
+    if not payloads:
+        if texts and not unresolved and text != " ".join(texts):
+            cited = ", ".join(name for _, name in quoted)
             how = "exactly what they say together, in the order cited" if len(texts) > 1 else "what its record says"
             out.append(_f("PKT001", "a supported claim must say %s; the text differs from %s" % (how, cited), pkt, loc + "/text", DOC_EVIDENCE))
         return out
+    remainder = text
     for said, name in quoted:
-        if said not in text:
+        if said in remainder:
+            remainder = remainder.replace(said, " ", 1)
+        else:
             out.append(_f("PKT001", "a claim that cites %s must say what it says; the text does not contain it" % name, pkt, loc + "/text", DOC_EVIDENCE))
+    stated_statuses, stated_numbers = _statuses_in(remainder), _numbers_in(remainder)
     supported_numbers: Counter = Counter()
     supported_statuses: Set[str] = set()
-    for node in payloads + texts:
-        numbers, statuses = _content_values(node)
+    for payload, _ in payloads:
+        numbers, statuses = _content_values(payload)
         supported_numbers.update(numbers)
         supported_statuses |= statuses
-    for status in sorted(_statuses_in(text) - supported_statuses):
+    wrong_statuses = stated_statuses - supported_statuses
+    unaccounted = stated_numbers - supported_numbers
+    cited = ", ".join(name for _, name in payloads)
+    for status in sorted(wrong_statuses):
         out.append(_f("PKT005", "the claim states %r, which what it cites does not hold (%s)" % (status, cited), pkt, loc + "/text", DOC_EVIDENCE))
-    unaccounted = _numbers_in(text) - supported_numbers
     for number in sorted(unaccounted):
         out.append(_f("PKT005", "the claim states the figure %g%s, which what it cites does not account for (%s)" % (number, " more than once" if unaccounted[number] > 1 else "", cited), pkt, loc + "/text", DOC_EVIDENCE))
+    for payload, name in payloads:
+        numbers, statuses = _content_values(payload)
+        if not wrong_statuses:
+            for status in sorted(statuses - stated_statuses):
+                out.append(_f("PKT005", "the claim does not state %r, which %s holds: a claim that rests on a payload says what it holds" % (status, name), pkt, loc + "/text", DOC_EVIDENCE))
+        if numbers and not set(numbers) & set(stated_numbers):
+            out.append(_f("PKT005", "the claim states none of the figures that %s holds (%s)" % (name, ", ".join("%g" % n for n in sorted(numbers))), pkt, loc + "/text", DOC_EVIDENCE))
+        for figure, word, fields in _label_findings(remainder, payload, set(unaccounted)):
+            out.append(_f("PKT005", "the claim puts the figure %g after %r, but %s holds %s for it" % (figure, word, name, " and ".join(fields)), pkt, loc + "/text", DOC_EVIDENCE))
     return out
 
 
@@ -478,11 +569,11 @@ def check_authority(model: Model) -> List[Finding]:
         for rec in versions:
             if rec.data["outcome"]["state"] in ("completed_verified", "not_executed_verified") and rec.data["verification_recovery"]["accounting"]["state"] != "reconciled":
                 out.append(_f("ACC003", "a verified outcome settles its accounting: the state must be reconciled", rec, "/verification_recovery/accounting/state", DOC_ACTION))
-            out.extend(_check_verification_binding(rec))
+            out.extend(_check_verification_binding(model, rec))
     return out
 
 
-def _check_verification_binding(rec: Instance) -> List[Finding]:
+def _check_verification_binding(model: Model, rec: Instance) -> List[Finding]:
     """A verified outcome, and a verified no-effect above all, is verified for this attempt, its target and its action.
 
     Three things stay apart. A rejection before submission is what the gateway did. A verified no-effect is what an
@@ -490,6 +581,10 @@ def _check_verification_binding(rec: Instance) -> List[Finding]:
     A gateway rejection alone shows nothing about every external effect: the receipt may say `not_executed_verified` only
     from a verification made after the attempt, of the receipt's own target, for its own action. A check of another target,
     another action or an earlier moment shows nothing about this attempt.
+
+    The labels are not enough: each record the verification cites must itself be about the receipt's target, must describe
+    something observed at or after the attempt and at or before the verification, and must have been admitted by the time of
+    the verification. A record observed before the attempt, or one the verification could not yet have had, verifies nothing.
     """
     d = rec.data
     out: List[Finding] = []
@@ -510,10 +605,39 @@ def _check_verification_binding(rec: Instance) -> List[Finding]:
     verified_at, attempted_at = parse_time(verification.get("time")), parse_time(d["outcome"]["timestamps"].get("submitted"))
     if verified_at is None or attempted_at is None:
         out.append(_f("AUTH008", "a verified outcome needs a verification time and an attempt time, to show that the check came after the attempt", rec, where + "/time", DOC_ACTION))
-    elif verified_at < attempted_at:
+        return out
+    if verified_at < attempted_at:
         out.append(_f("AUTH008", "the verification was made at %s, before the attempt at %s: a check made before an attempt cannot show what that attempt did" % (
             verification["time"], d["outcome"]["timestamps"]["submitted"]), rec, where + "/time", DOC_ACTION))
+    for i, item in enumerate(verification.get("authoritative_outcome_references", [])):
+        loc = "%s/authoritative_outcome_references/%d" % (where, i)
+        ref = _object_of(item.get("reference"))
+        record = model.get("C02", ref.get("record_id"), ref.get("version"))
+        if record is None:
+            continue   # REF001 reports a record that does not exist
+        label = "%s %s" % (record.id, record.version)
+        named_entities = [e for e in _object_of(record.data.get("scope")).get("entity_references", []) if isinstance(e, dict)]
+        if binding["target"] not in named_entities:
+            out.append(_f("AUTH008", "the verification cites %s, which is not about the receipt's own target (%s %s): its scope names %s" % (
+                label, binding["target"]["entity_type"], binding["target"]["entity_id"], ", ".join("%s %s" % (e.get("entity_type"), e.get("entity_id")) for e in named_entities) or "no entity"), rec, loc + "/reference", DOC_ACTION))
+        event = _object_of(_object_of(record.data.get("times")).get("event"))
+        observed = parse_time(event.get("value")) if event.get("state") == "known" else None
+        if observed is None:
+            out.append(_f("AUTH008", "the time that %s was observed is missing or unknown, so it cannot be shown to come from after the attempt" % label, rec, loc + "/reference", DOC_ACTION))
+        elif observed < attempted_at:
+            out.append(_f("AUTH008", "the verification cites %s, observed at %s, before the attempt at %s: an observation made before an attempt cannot show what that attempt did" % (
+                label, event["value"], d["outcome"]["timestamps"]["submitted"]), rec, loc + "/reference", DOC_ACTION))
+        elif observed > verified_at:
+            out.append(_f("AUTH008", "the verification, made at %s, cites %s, observed at %s: it cannot rest on an observation made after it" % (
+                verification["time"], label, event["value"]), rec, loc + "/reference", DOC_ACTION))
+        unavailable = availability_problem(record, verified_at)
+        if unavailable is not None:
+            out.append(_f("AUTH008", "the verification, made at %s, cites a record that was not yet available to it: %s" % (verification["time"], unavailable.message), rec, loc + "/reference", DOC_ACTION))
     return out
+
+
+def _object_of(value) -> dict:
+    return value if isinstance(value, dict) else {}
 
 
 def _check_receipt(model: Model, rec: Instance) -> List[Finding]:

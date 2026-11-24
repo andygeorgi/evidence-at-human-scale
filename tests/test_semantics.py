@@ -5,7 +5,7 @@ from collections import Counter
 import support  # noqa: F401
 
 from eahs import semantics
-from eahs.cases import check_cases
+from eahs.cases import check_cases, mutate_model
 from eahs.gateway import evaluate_commit, ledger_from_receipts, ts
 from eahs.patch import apply_ops
 from eahs.scenarios import evaluate_entry, expectation
@@ -20,14 +20,42 @@ class ProvenanceTeaching(unittest.TestCase):
         self.assertEqual(sorted(r.id for r in found), ["SUM-A-0417", "SUM-B-0417"])
         return model, found
 
+    @staticmethod
+    def lin005(model):
+        return [f for f in semantics.check_lineage(model) if f.code == "LIN005"]
+
     def test_no_summary_states_a_figure_its_ancestry_does_not_hold(self):
         model, found = self.summaries()
+        self.assertEqual(self.lin005(model), [])
         for rec in found:
             held = Counter()
             for ancestor in semantics.ancestors(model, rec).values():
                 held.update(semantics._content_values(ancestor.data["content"])[0])
             for claim in rec.data["content"]["claims"]:
                 self.assertEqual(sorted(semantics._numbers_in(claim["text"]) - held), [], "%s states a figure that %s does not hold" % (rec.id, sorted(a.id for a in semantics.ancestors(model, rec).values())))
+
+    def test_the_validator_finds_a_summary_that_reaches_beyond_its_ancestry(self):
+        for text in ("Goods receipt GR-5521 records 60 units received, 40 units fewer than the invoice.", "The receipt records 60 units and the supplier is owed EUR 18,400.00."):
+            with self.subTest(text):
+                model, _ = mutate_model(support.example_model(), [{"target": "C02 SUM-A-0417 v1", "ops": [{"op": "replace", "path": "/content/claims/0/text", "value": text}]}])
+                found = self.lin005(model)
+                self.assertEqual(len(found), 1)
+                self.assertIn("GR-5521 v1", found[0].message)
+                self.assertEqual(found[0].location, "/content/claims/0/text")
+
+    def test_a_summary_may_state_a_figure_its_ancestry_holds_but_not_more_often_than_it_does(self):
+        model, _ = mutate_model(support.example_model(), [{"target": "C02 SUM-A-0417 v1", "ops": [{"op": "replace", "path": "/content/claims/0/text", "value": "The receipt records 60 units, only 60 units."}]}])
+        self.assertEqual([f.message.split(",")[0] for f in self.lin005(model)], ["this model inference states the figure 60"])
+        model, _ = mutate_model(support.example_model(), [{"target": "C02 SUM-A-0417 v1", "ops": [{"op": "replace", "path": "/content/claims/0/text", "value": "The receipt records 60 units."}]}])
+        self.assertEqual(self.lin005(model), [])
+
+    def test_a_summary_that_rests_on_nothing_holds_no_figure(self):
+        model, _ = mutate_model(support.example_model(), [{"target": "C02 SUM-A-0417 v1", "ops": [
+            {"op": "replace", "path": "/lineage/parent_references", "value": []}, {"op": "replace", "path": "/lineage/typed_relationships", "value": []},
+            {"op": "replace", "path": "/content/claims/0/text", "value": "The receipt records 60 units."}]}])
+        found = self.lin005(model)
+        self.assertEqual(len(found), 1)
+        self.assertIn("no record", found[0].message)
 
     def test_no_summary_compares_with_a_record_it_does_not_rest_on(self):
         model, found = self.summaries()

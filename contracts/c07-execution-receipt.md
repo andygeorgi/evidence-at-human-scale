@@ -20,7 +20,7 @@ The five outcome states and their required treatment are in [action and degradat
 
 ## What a valid C07 does not establish
 
-A receipt that says `completed_verified` is only as good as the authoritative outcome reference behind it; the schema checks that the reference is present, not that the target system is correct. The executor's own status is never outcome evidence. A gateway rejection is not a verified no-effect either: it says what the gateway did, not what happened at the target. The reference validator checks that a verified outcome is verified for the receipt's own target and action, and from a check made at or after the attempt (check `AUTH008`); it does not check that the verifying system is right, or that nothing happened beyond the scope the verification declares.
+A receipt that says `completed_verified` is only as good as the authoritative outcome reference behind it; the schema checks that the reference is present, not that the target system is correct. The executor's own status is never outcome evidence. A gateway rejection is not a verified no-effect either: it says what the gateway did, not what happened at the target. The reference validator checks that a verified outcome is verified for the receipt's own target and action, from a check made at or after the attempt, and from records about that target that were observed between the attempt and the check and had been admitted by then (check `AUTH008`); it does not check that the verifying system is right, or that nothing happened beyond the scope the verification declares.
 
 ## Examples
 
