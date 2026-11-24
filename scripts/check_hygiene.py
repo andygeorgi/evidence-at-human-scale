@@ -5,6 +5,7 @@
     python scripts/check_hygiene.py --history  # also scan every commit: each file version at each path, path, message, author and ref
     python scripts/check_hygiene.py --rules    # list what is looked for, and which lines are pinned
     python scripts/check_hygiene.py --pin PATH:LINE  # print the pin for one line of a file (see below)
+    python scripts/check_hygiene.py --pin-quoted PATH:LINE  # print the digest that pins one quoting line of the scanner or its tests
     python scripts/check_hygiene.py --json     # machine-readable result
 
 Standard library only; works offline and is platform-neutral. It scans every file Git would include (tracked, or
@@ -19,8 +20,10 @@ name of the authority that the paper discusses: it may appear only where a publi
 exactly. Such a line is pinned in ``PUBLIC_SOURCE_LINES`` below, by the SHA-256 of the whole line, in a reviewed commit.
 
 The scanner and its tests have to quote the patterns they look for. They are scanned by every rule like any other file.
-``QUOTED_MATCHES`` excuses only the exact matches of one rule in one exact file, never a whole file or a whole rule, and never
-the same text in another file.
+``QUOTED_LINES`` excuses one rule on one exact line of one exact file, pinned by the SHA-256 of the whole line, never a whole
+file, a whole rule or a piece of text. A line that differs by one character is a finding, so is the same line in another file,
+and so is any text added to a pinned line or beside it: a private link, a path, a label or an address pasted into either
+file is found like anywhere else.
 
 Private terms. The names that identify the private origin of the material cannot be listed in a public repository, because
 the list would publish them. Rule HYG105 therefore reads them from outside the repository: one regular expression per
@@ -84,62 +87,58 @@ PUBLIC_SOURCE_LINES: Tuple[PublicSourceLine, ...] = (
 
 
 @dataclass(frozen=True)
-class QuotedMatches:
-    """The matches that one rule finds in one exact file because the file quotes what the rule looks for.
+class QuotedLines:
+    """The exact lines of one exact file that quote what one rule looks for.
 
     The scanner and its tests have to quote the patterns they look for, so a rule that reads them finds its own words. An entry
-    excuses only the listed matches of one rule in one file, each by the SHA-256 of its exact text (the script cannot list the
-    samples themselves: they would be matches too). Every other rule, every other match of that rule and the same text in any
-    other file is still a finding, so a private term, the authority's name, a credential or an address that is pasted into these
-    files is found like anywhere else. An exception never travels with content: it belongs to a path.
+    excuses one rule on each listed line of one file, and each line is pinned by the SHA-256 of its whole text without its line
+    ending (the script cannot list the lines themselves: they would be matches too). A line that differs by a character, the same
+    line in another file, text added to a pinned line or beside it, and every other rule on the pinned line are still findings, so
+    a private link, a path, a credential, a label or an address pasted into these files is found like anywhere else. An exception
+    never travels with content: it belongs to a path and to a line, and it is added in a reviewed commit.
     """
     path: str
     rule: str
-    digests: Tuple[str, ...]  # SHA-256 of the exact text of each excused match
-    what: str  # what the file quotes; never a private term
+    digests: Tuple[str, ...]  # SHA-256 of each pinned line
+    what: str  # what the lines quote; never a private term
 
 
-QUOTED_MATCHES: Tuple[QuotedMatches, ...] = (
-    QuotedMatches("scripts/check_hygiene.py", "HYG101",
-                  ("304db88cc92969947c8bec7deec655698a94820a8934d9aaf13a8608c83a4cde", "3e357eedba7940c853e6175551bfec65011b86095214708e0d556b76b8cd1c0f"),
-                  "the private-link rule's own pattern"),
-    QuotedMatches("scripts/check_hygiene.py", "HYG102",
-                  ("de85814ad9cb4769a090f611dc4f82e7aa8aca812c00aa095d4ad459e8545880",),
-                  "the local-path rule's own pattern"),
-    QuotedMatches("scripts/check_hygiene.py", "HYG105",
-                  ("55332099d0e58d85f39fc91bb9227e6a3ea9d9fc4003716d4fa9f5fc9d3c7db8",),
-                  "the confidentiality-label rule's own pattern"),
-    QuotedMatches("scripts/check_hygiene.py", "HYG107",
-                  ("337e547a950fc8a98592f10d964c1e79a304961790a8da0ce449a1f000cefabb", "8f2adf96b87e9da120f700d292f446ffe20062d9f57eaa2449ae67a09af970c3",
-                   "9b38b8f5877f2395b4361c1f68c059078ee9c0c8b0cbb22c97d2906e011e40a3", "03626549a59abf648ee59163b3b8acbf66c36513cb1e76d6e277bc044c926e30",
-                   "5e2bf57d3f40c4b6df69daf1936cb766f832374b4fc0259a7cbff06e2f70f269"),
-                  "the draft-marker rule's own pattern"),
-    QuotedMatches("tests/test_hygiene.py", "HYG101",
-                  ("4c4638dbdc781ac06f94db29991f63aff057eef9a146cc00778487b08a35a8d7", "8bed67cbd6506351d90c3d679feb2a1e305bc8c4382495bb9a8da41e661865d5",
-                   "8bf7a1e49ee333291e48184a51e9602eaf3bb83ae0ec8cd45056c72e39439ad1"),
-                  "invented private links that a test expects to be found"),
-    QuotedMatches("tests/test_hygiene.py", "HYG102",
-                  ("58e9952854dee73d52cb6faa21ac8323a5cd32e1443749df8bfc69727fab9be2", "69fa3345a8399f93d75d44f0a73ca6c2e0d1f7a4d461cae0f20836843cbb8c3e",
-                   "3eb068b74fb9957cbccf4cdd4fe9c10d445a32853d884167ba82d9118b2a24f6", "de85814ad9cb4769a090f611dc4f82e7aa8aca812c00aa095d4ad459e8545880"),
-                  "invented local paths that a test expects to be found"),
-    QuotedMatches("tests/test_hygiene.py", "HYG103",
-                  ("9085d9a235d122847e788b0e1c17209bc77c6afc046ea6aed26ba1c2d7c8e950",),
-                  "an invented password that a test expects to be found"),
-    QuotedMatches("tests/test_hygiene.py", "HYG104",
-                  ("164f47fb6c88f01f444a3c2ed32f8ebeac9e140b76f925b3a40313cf588fb1a0",),
-                  "an invented address that a test expects to be found"),
-    QuotedMatches("tests/test_hygiene.py", "HYG105",
-                  ("eceb053c870a941c2071b9bca2278a520c51d8d8ca329496765446a7852c1222", "a7c6853426d3ef744eeea22afcbee78c8d560bfa8417b26252186fa2baa2d157",
-                   "55332099d0e58d85f39fc91bb9227e6a3ea9d9fc4003716d4fa9f5fc9d3c7db8"),
-                  "label wording that a test expects to be found"),
-    QuotedMatches("tests/test_hygiene.py", "HYG107",
-                  ("337e547a950fc8a98592f10d964c1e79a304961790a8da0ce449a1f000cefabb", "03626549a59abf648ee59163b3b8acbf66c36513cb1e76d6e277bc044c926e30",
-                   "a9a66978f378456c818fb8a3e7c6ad3d2c83e62724ccbdea7b36253fb8df5edd", "7f3900ada95f5441fed787ec2618850696162e321a59205f7a1ec0aa67e80454"),
-                  "draft markers that a test expects to be found"),
-    QuotedMatches("tests/test_hygiene.py", "HYG108",
-                  ("7773aaf45064072a2ba3033a1adedc2981e5eea006a34237e8a87146df5a0624", "83a1cf3e6349b5220435edd91e0b7b0bdb64b7301a55f7ed11f88361f3f8ffe9",
-                   "6787232fc83104f290e4f5ba5c2183229357c17e39ce5bfe47516093c4045517"),
-                  "claims of finality that a test expects to be found"),
+QUOTED_LINES: Tuple[QuotedLines, ...] = (
+    QuotedLines("scripts/check_hygiene.py", "HYG101",
+                ("0d2ead2708b33185a4e9deb0429f24b43d15d3952421a6602339b7f974d1cc11", "365aff8fdad97efe5cf7cc8c090a7e2a686a9a4ef2f0f6d8a3caa3ca23e5e823"),
+                "the private-link rule's own pattern"),
+    QuotedLines("scripts/check_hygiene.py", "HYG102",
+                ("ab772b8cad882589c4ecb29ad9f5666ffdde053c64d97e66f6dbf25eed94cb0b",),
+                "the local-path rule's own pattern"),
+    QuotedLines("scripts/check_hygiene.py", "HYG105",
+                ("107633ce04d2c1ccfdad93631f52e0ba9c4f6aad3772816d75608c1a78a1c4c3", "de85b1897321eefbcc9f29da56c63a76f9066f5e51385d732d1a4af2542922de"),
+                "the confidentiality-label rule's own pattern"),
+    QuotedLines("scripts/check_hygiene.py", "HYG107",
+                ("f09adc69a3e286b2471e9dfef2670986c34674acb21362d5f240cf9fa4ef2c00",),
+                "the draft-marker rule's own pattern"),
+    QuotedLines("tests/test_hygiene.py", "HYG101",
+                ("30918176eb6c09e49fa2f17b9ffb457fa72bf6e38a6cef89d572e16c7618312f",),
+                "invented private links that a test expects to be found"),
+    QuotedLines("tests/test_hygiene.py", "HYG102",
+                ("91bc8b3acb103c420f3d3e7107732f6147adfdd7dd3c118a3a7bf1e378cbddb9",),
+                "invented local paths that a test expects to be found"),
+    QuotedLines("tests/test_hygiene.py", "HYG103",
+                ("a6e5fdaa94f010c8f5acb29c327bc17b50c05e4c68f6d3b1b39368735ce35739",),
+                "an invented password that a test expects to be found"),
+    QuotedLines("tests/test_hygiene.py", "HYG104",
+                ("30b9e4fc9ed4c588bde468a4b47cde149fcc0ca3ca45acf1a6c7252f4a16a25d", "5d1c8a70434975da18aa3ad16400d8b12d25d45d57861152486168b5484ac603",
+                 "a0ec640cd929144b4928bf48d0ba4e871097ff19dd324b7f52091507afe3623c", "ceafdefa5453d026631102e94b4fabafba29e2685f5865e50824a89926629fc6",
+                 "dba3186fd8a7860ee6ddc0b4a110802d604fb4738fec582292211699c0f2469f", "eeee487315e61fd5d6f0de0b3ed4704771af62b939cb194cd276bcf7f6ef27c6"),
+                "invented addresses that a test expects to be found"),
+    QuotedLines("tests/test_hygiene.py", "HYG105",
+                ("09394a9412c7e1e306cf7a025b8b22d83b9c55b0c9775e776d6d878a27998ed5", "dba3186fd8a7860ee6ddc0b4a110802d604fb4738fec582292211699c0f2469f"),
+                "label wording that a test expects to be found"),
+    QuotedLines("tests/test_hygiene.py", "HYG107",
+                ("e400d195cb2eaa2d22361203b4eed67d128268e2036d3fda0e24d9ae5461492d",),
+                "draft markers that a test expects to be found"),
+    QuotedLines("tests/test_hygiene.py", "HYG108",
+                ("a7ab71d6fe00b8fade46d70c4527c599974ff36f36bf94757e30df236858230d",),
+                "claims of finality that a test expects to be found"),
 )
 
 
@@ -150,7 +149,7 @@ class Rule:
     pattern: str
     advice: str
     ignore_match: str = ""  # a match that matches this in full is fine
-    ignore_line: str = ""  # a line that matches this is fine for this rule
+    ignore_before: str = ""  # a match is fine when the text before it in the same sentence ends with something that matches this
     on_names: bool = False  # also apply to the file path
     needle: str = ""  # a literal that every match contains: text without it cannot match, so it is not searched
 
@@ -187,7 +186,8 @@ RULES: Tuple[Rule, ...] = (
          r"(?i:\b(?:final|canonical|definitive|official)\s+(?:version|release|edition|publication|paper)\b"
          r"|officially\s+(?:published|released|approved)|\bfinal\s+paper\b)",
          "Do not call the repository final, canonical or official.",
-         ignore_line=r"(?i:\b(?:not|never|no|nothing|neither|nor|until|before|isn't)\b.{0,60}\b(?:final|canonical|definitive|official)\b)"),
+         # A denial excuses the claim right after it and no other claim on the line: it has to stand within a few words of it.
+         ignore_before=r"(?i:\b(?:not|never|no|nothing|neither|nor|until|before|isn't|aren't|wasn't|weren't)\b(?:[ \t]+[\w'-]+){0,5}[ \t]+$)"),
 )
 
 BLOCKED_SUFFIXES = {
@@ -304,10 +304,10 @@ def is_public_source_line(rel: str, line: str) -> bool:
     return any(pin.path == rel and pin.digest == digest for pin in PUBLIC_SOURCE_LINES)
 
 
-def is_quoted_match(rel: str, code: str, match: str) -> bool:
-    """True when this exact file is listed as quoting this exact text for this rule. Another file, rule or text is not."""
-    digest = _digest(match)
-    return any(q.path == rel and q.rule == code and digest in q.digests for q in QUOTED_MATCHES)
+def is_quoted_line(rel: str, code: str, line: str) -> bool:
+    """True when this exact line of this exact file is pinned as quoting what this rule looks for. Another file, rule or line is not."""
+    digest = line_digest(line)
+    return any(q.path == rel and q.rule == code and digest in q.digests for q in QUOTED_LINES)
 
 
 def _private_matches(line: str) -> Iterator[str]:
@@ -318,16 +318,20 @@ def _private_matches(line: str) -> Iterator[str]:
     yield from name_words(line)
 
 
+_SENTENCE_END = re.compile(r"[.!?;:](?=\s|$)")
+
+
 def find_matches(rule: Rule, rel: str, line: str) -> Iterator[str]:
     """Every match of the rule on this line that the rule itself does not ignore, in order.
 
     For HYG105 a private term or a name known as a digest comes after the label wording, and is excused only on a line pinned in
-    PUBLIC_SOURCE_LINES; label wording never is.
+    PUBLIC_SOURCE_LINES; label wording never is. A rule that a denial can excuse (HYG108) looks at each match with the sentence
+    before it, so that a denial excuses the claim it negates and not another claim on the same line.
     """
-    if rule.ignore_line and re.search(rule.ignore_line, line):
-        return
     for match in _COMPILED[rule.code].finditer(line):
         if rule.ignore_match and re.fullmatch(rule.ignore_match, match.group(0)):
+            continue
+        if rule.ignore_before and re.search(rule.ignore_before, _SENTENCE_END.split(line[:match.start()])[-1]):
             continue
         yield match.group(0)
     if rule.code == "HYG105" and not is_public_source_line(rel, line):
@@ -337,12 +341,11 @@ def find_matches(rule: Rule, rel: str, line: str) -> Iterator[str]:
 def apply_rule(rule: Rule, rel: str, line: str) -> Optional[str]:
     """The first match of the rule on this line that nothing excuses, or None.
 
-    Every match on the line is looked at, so an excused match cannot hide another one beside it.
+    A line that is pinned as quoting what this rule looks for is excused for this rule, whole: its exact text is what was reviewed.
     """
-    for match in find_matches(rule, rel, line):
-        if not is_quoted_match(rel, rule.code, match):
-            return match
-    return None
+    if is_quoted_line(rel, rule.code, line):
+        return None
+    return next(find_matches(rule, rel, line), None)
 
 
 def _may_match(rule: Rule, text: str) -> bool:
@@ -380,7 +383,7 @@ def check_names(paths: Iterable[str]) -> List[Finding]:
         name = rel.rsplit("/", 1)[-1]
         low = name.lower()
         suffix = ("." + low.rsplit(".", 1)[-1]) if "." in low else ""
-        if rel == PRIVATE_TERMS_FILE:
+        if name.lower() == PRIVATE_TERMS_FILE:
             findings.append(Finding("HYG207", rel, 0, "the private term list is part of what would be published, and it names the private origin of the material. Keep it out of Git (add it to .gitignore)"))
         if rel not in ALLOWED_FILES:
             if suffix in BLOCKED_SUFFIXES:
@@ -419,8 +422,8 @@ def scan_bytes(rel: str, data: bytes) -> List[Finding]:
     findings: List[Finding] = []
     if len(data) > MAX_BYTES and rel not in ALLOWED_FILES:
         findings.append(Finding("HYG202", rel, 0, "larger than 1 MiB (%d bytes); the repository is for text and small figures" % len(data)))
-    if rel == PRIVATE_TERMS_FILE:
-        # Always a finding (HYG207). Its content is not read, so that no finding can print the terms the list holds.
+    if PurePosixPath(rel).name.lower() == PRIVATE_TERMS_FILE:
+        # Always a finding (HYG207), at any path. Its content is not read, so that no finding can print the terms the list holds.
         return findings
     for rule in RULES:
         if rule.on_names:
@@ -678,10 +681,10 @@ def describe_rules() -> str:
               "", "With --history, every rule above is also applied to each file version that any commit added or changed, at each path that held it",
               "(reported as path @ commit), to the path names in every commit, to every commit message, to every author and committer, and to every ref.",
               "A shallow clone is refused: its missing history would pass unread.",
-              "", "Quoted matches. The scanner and its tests quote the patterns they look for. Exactly these %d matches of one rule in one file are excused," % sum(len(q.digests) for q in QUOTED_MATCHES),
-              "each by the SHA-256 of its exact text (the first 12 characters are shown). Every other rule, every other match and the same text in any",
-              "other file is a finding, in these two files too:"]
-    for quoted in QUOTED_MATCHES:
+              "", "Quoted lines. The scanner and its tests quote the patterns they look for. Exactly these %d lines, each for one rule in one file, are excused," % sum(len(q.digests) for q in QUOTED_LINES),
+              "each pinned by the SHA-256 of the whole line (the first 12 characters are shown). A line that differs by a character, the same line in",
+              "another file, any other rule on the line and any text added to it or beside it is a finding, in these two files too:"]
+    for quoted in QUOTED_LINES:
         lines.append("  %s  %s  %s  (%s)" % (quoted.path, quoted.rule, " ".join(d[:12] for d in quoted.digests), quoted.what))
     lines += ["", "Skipped: %s. The private term list is not read, even if it is among the files (HYG207 fails the scan)." % ", ".join(sorted(SKIP_DIRS))]
     return "\n".join(lines)
@@ -706,16 +709,37 @@ def pin_entry(root: Path, spec: str) -> Tuple[str, str]:
     return line, 'PublicSourceLine("%s", "%s", "<which record, and its title or its address>"),' % (rel, line_digest(line))
 
 
+def pin_quoted(root: Path, spec: str) -> Tuple[str, List[str]]:
+    """For 'path:line number', the exact line and the QUOTED_LINES digest and rules it needs (the rules that match it as it stands).
+
+    Raises ValueError if there is no such line. Only the scanner and its tests quote what the rules look for.
+    """
+    line, _entry = pin_entry(root, spec)
+    rel = spec.rpartition(":")[0].replace("\\", "/")
+    rules = [rule.code for rule in RULES if next(find_matches(rule, rel, line), None) is not None]
+    return line_digest(line), rules
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--root", default=str(REPO), help="folder to scan (default: this repository)")
     parser.add_argument("--history", action="store_true", help="also scan the whole Git history: every file version, path, commit message, author, committer and ref")
     parser.add_argument("--rules", action="store_true", help="list the rules and the pinned public-record lines, and exit")
     parser.add_argument("--pin", metavar="PATH:LINE", help="print the PUBLIC_SOURCE_LINES entry for one line of a file, and exit; add it only for a public record's own title or address")
+    parser.add_argument("--pin-quoted", metavar="PATH:LINE", help="print the QUOTED_LINES digest and rules for one line of the scanner or its tests, and exit; add it only for a line that quotes a pattern")
     parser.add_argument("--json", action="store_true", help="print a machine-readable result")
     args = parser.parse_args(argv)
     if args.rules:
         print(describe_rules())
+        return 0
+    if args.pin_quoted:
+        try:
+            digest, rules = pin_quoted(Path(args.root), args.pin_quoted)
+        except ValueError as exc:
+            print("error: %s" % exc, file=sys.stderr)
+            return 2
+        print("The line is pinned by this digest: %s\nIt is matched by: %s\n\nTo excuse it, add the digest to the QuotedLines entry for each of those rules in scripts/check_hygiene.py, in a reviewed commit,\n"
+              "and only if the whole line quotes a pattern or a test sample and holds nothing real." % (digest, ", ".join(rules) or "no rule"))
         return 0
     if args.pin:
         try:

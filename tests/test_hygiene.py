@@ -38,6 +38,7 @@ def codes_for_text(text, name="docs/page.md", terms=()):
 SYNTHETIC_TERMS = ("Zebracorp", r"Project Aurora\b")
 STRANGER = "other" + "@fabrikam.com"  # an address that no exception covers, written so that this file does not contain it
 PRIVATE_TERM = "Quill" + "feather"  # an invented private term, written so that this file does not contain it
+FINAL, OFFICIAL = "fin" + "al", "offic" + "ial"  # words of a claim of finality, written so that this file does not make one
 
 
 class TheRepository(unittest.TestCase):
@@ -60,11 +61,14 @@ class TheRepository(unittest.TestCase):
     def test_the_two_files_that_quote_the_patterns_are_scanned_by_every_rule(self):
         """No whole file is exempt: a leak pasted into the scanner or into its tests is found like one anywhere else."""
         leaks = {
+            "HYG101": b"\n# https://realcustomer." + b"share" + b"point.com/sites/secret-deal\n",
             "HYG102": b"\n/Users/" + b"anyone/notes\n",
             "HYG103": b"\nghp_" + b"a" * 36 + b"\n",
             "HYG104": b"\n" + STRANGER.encode() + b"\n",
             "HYG105": b"\n" + PRIVATE_TERM.encode() + b"\n",
             "HYG106": "\n\u202e\n".encode("utf-8"),
+            "HYG107": b"\n# TO" + b"DO: resolve the deal\n",
+            "HYG108": ("\nThis is the " + FINAL + " version.\n").encode(),
         }
         hyg.use_private_terms([PRIVATE_TERM])
         self.addCleanup(hyg.use_private_terms, [])
@@ -74,31 +78,75 @@ class TheRepository(unittest.TestCase):
             for code, extra in leaks.items():
                 self.assertEqual(sorted({f.code for f in hyg.scan_bytes(rel, data + extra)}), [code], "%s: %s pasted into the file must be found" % (rel, code))
 
-    def test_the_quoted_matches_are_exactly_what_the_two_files_quote(self):
-        """With no exception at all the two files produce exactly the listed matches, so no entry is stale and no other match is hidden."""
+    def test_a_private_link_path_or_label_of_the_same_kind_as_a_quoted_sample_is_still_found(self):
+        """Pinning a quoted sample line does not excuse the same kind of text on another line, nor any addition to the pinned line."""
         hyg.use_private_terms([])
-        listed = {(q.path, q.rule, digest) for q in hyg.QUOTED_MATCHES for digest in q.digests}
+        smuggled = {
+            "HYG101": b"# https://realcustomer." + b"share" + b"point.com/sites/secret-deal",
+            "HYG102": b"# file:" + b"///Volumes/SecretShare/deal.pdf",
+            "HYG105": b"# MSI" + b"P_Label_7f9a8b_Enabled=True",
+        }
+        for rel in self.SELF:
+            lines = self.own_bytes(rel).split(b"\n")
+            pinned = [(n, line) for n, line in enumerate(lines) for q in hyg.QUOTED_LINES if q.path == rel and hyg.line_digest(line.decode("utf-8")) in q.digests]
+            self.assertTrue(pinned, rel)
+            for code, text in smuggled.items():
+                with self.subTest("%s %s on a new line" % (rel, code)):
+                    self.assertIn(code, {f.code for f in hyg.scan_bytes(rel, b"\n".join(lines) + b"\n" + text + b"\n")})
+                number, line = pinned[0]
+                with self.subTest("%s %s added to a pinned line" % (rel, code)):
+                    lines_added = list(lines)
+                    lines_added[number] = line + b" " + text
+                    self.assertTrue({f.code for f in hyg.scan_bytes(rel, b"\n".join(lines_added))} - {"HYG107"}, "text added to a pinned line voids the pin")
+
+    def test_the_quoted_lines_are_exactly_the_lines_the_two_files_quote(self):
+        """With no exception at all the two files produce exactly the listed (rule, line) pairs, so no entry is stale and no other line is hidden."""
+        hyg.use_private_terms([])
+        listed = {(q.path, q.rule, digest) for q in hyg.QUOTED_LINES for digest in q.digests}
         self.assertEqual({path for path, _rule, _digest in listed}, set(self.SELF))
         found = set()
         for rel in self.SELF:
             for line in self.own_bytes(rel).decode("utf-8").split("\n"):
                 for rule in hyg.RULES:
-                    found.update((rel, rule.code, hyg._digest(match)) for match in hyg.find_matches(rule, rel, line))
-        self.assertEqual(sorted(found), sorted(listed))
-        for quoted in hyg.QUOTED_MATCHES:
+                    if next(hyg.find_matches(rule, rel, line), None) is not None:
+                        found.add((rel, rule.code, hyg.line_digest(line)))
+        current = {(path, rule, digest) for path, rule, digest in listed}
+        self.assertEqual(sorted(found - current), [], "a line quotes a pattern and is not pinned")
+        for quoted in hyg.QUOTED_LINES:
             self.assertTrue(quoted.what.strip() and quoted.digests, quoted)
             for digest in quoted.digests:
                 self.assertRegex(digest, r"^[0-9a-f]{64}$")
 
-    def test_an_exception_belongs_to_its_path_and_to_its_exact_text(self):
+    def test_every_pin_of_a_quoted_line_is_a_line_of_the_current_file_or_of_an_earlier_version(self):
+        """The table may keep pins for lines of earlier versions of a file, because the history scan judges those too, and nothing else."""
+        if not (support.REPO / ".git").exists():
+            self.skipTest("not a git checkout")
+        if hyg._git(support.REPO, "rev-parse", "--is-shallow-repository").strip() == b"true":
+            self.skipTest("a shallow clone does not hold the earlier versions")
+        versions = hyg.history_versions(support.REPO, hyg.history_commits(support.REPO))
+        blobs = hyg.read_blobs(support.REPO, sorted({blob for (blob, path) in versions if path in self.SELF}))
+        lines = {path: set() for path in self.SELF}
+        for (blob, path) in versions:
+            if path in self.SELF and blob in blobs:
+                lines[path].update(hyg.line_digest(line) for line in blobs[blob].decode("utf-8").split("\n"))
+        for rel in self.SELF:
+            lines[rel].update(hyg.line_digest(line) for line in self.own_bytes(rel).decode("utf-8").split("\n"))
+        for quoted in hyg.QUOTED_LINES:
+            for digest in quoted.digests:
+                self.assertIn(digest, lines[quoted.path], "%s %s pins a line that no version of the file has" % (quoted.path, quoted.rule))
+
+    def test_an_exception_belongs_to_its_path_its_rule_and_its_exact_line(self):
+        sample = "Contact someone@" + "contoso.com"
+        pinned = (hyg.QuotedLines("tests/test_hygiene.py", "HYG104", (hyg.line_digest(sample),), "a sample"),)
         hyg.use_private_terms([])
-        quoted = b"Contact someone@contoso.com\n"
-        self.assertEqual([f.code for f in hyg.scan_bytes("tests/test_hygiene.py", quoted)], [])
-        for elsewhere in ("tests/test_other.py", "docs/page.md", "scripts/check_hygiene.py", "x/tests/test_hygiene.py"):
-            self.assertEqual([f.code for f in hyg.scan_bytes(elsewhere, quoted)], ["HYG104"], elsewhere)
-        beside = quoted.rstrip() + b" and " + STRANGER.encode()
-        self.assertEqual([(f.code, f.excerpt) for f in hyg.scan_bytes("tests/test_hygiene.py", beside)], [("HYG104", STRANGER)], "an excused match does not hide another one on its line")
-        self.assertEqual([f.code for f in hyg.scan_bytes("tests/test_hygiene.py", b"Contact a." + b"b" + b"@contoso.com\n")], ["HYG104"], "another text of the same rule")
+        with mock.patch.object(hyg, "QUOTED_LINES", pinned):
+            self.assertEqual([f.code for f in hyg.scan_bytes("tests/test_hygiene.py", (sample + "\n").encode())], [])
+            for elsewhere in ("tests/test_other.py", "docs/page.md", "scripts/check_hygiene.py", "x/tests/test_hygiene.py"):
+                self.assertEqual([f.code for f in hyg.scan_bytes(elsewhere, (sample + "\n").encode())], ["HYG104"], elsewhere)
+            for altered in (sample + " ", sample + " and " + STRANGER, "# " + sample, sample.replace("someone", "another")):
+                self.assertEqual([f.code for f in hyg.scan_bytes("tests/test_hygiene.py", (altered + "\n").encode())], ["HYG104"], repr(altered))
+            with_label = (sample + " Internal " + "Use Only").encode()
+            self.assertEqual({f.code for f in hyg.scan_bytes("tests/test_hygiene.py", with_label)}, {"HYG104", "HYG105"}, "a pin excuses one rule only")
 
     def test_the_pinned_lines_are_exactly_the_lines_that_name_the_authority(self):
         """With no pin, the scan must flag the pinned lines and nothing else; so no pin is stale, and no other line names the authority."""
@@ -188,6 +236,23 @@ class Detection(unittest.TestCase):
         for text in ("This is a first release, not a final version.", "Nothing here is the canonical release."):
             self.assertEqual(codes_for_text(text), [], text)
 
+    def test_a_denial_excuses_only_the_claim_it_negates(self):
+        """A denial near one claim of finality must not excuse another claim on the same line."""
+        excused = ("This is not the %s version." % FINAL, "It is never the %s release." % FINAL, "Nothing here is the %s edition." % OFFICIAL, "This isn't the %s publication." % OFFICIAL)
+        for text in excused:
+            self.assertEqual(codes_for_text(text), [], text)
+        found = (
+            "This is not the %s version. This is the %s publication." % (FINAL, OFFICIAL),
+            "This is not a draft, and it is the %s version." % FINAL,
+            "No change was made; this is the %s release." % FINAL,
+            "It is not %s: the %s paper is elsewhere, and this is the %s edition." % ("ready", FINAL, OFFICIAL),
+            "The %s release is here, and the other is not the %s version." % (OFFICIAL, FINAL),
+        )
+        for text in found:
+            self.assertEqual(codes_for_text(text), ["HYG108"], text)
+        shown = [f.excerpt for f in hyg.scan_bytes("docs/page.md", (found[0] + "\n").encode())]
+        self.assertEqual(shown, ["%s publication" % OFFICIAL], "only the claim that nothing negates is reported")
+
 
 class PrivateTerms(unittest.TestCase):
     """The list of private terms lives outside the repository, so the scanner must find it and must never publish it."""
@@ -211,6 +276,30 @@ class PrivateTerms(unittest.TestCase):
             (root / hyg.PRIVATE_TERMS_FILE).write_text("Zebracorp\n", encoding="utf-8")
             findings, _, _ = hyg.scan(root)
         self.assertEqual(sorted((f.code, f.path) for f in findings), [("HYG105", "page.md"), ("HYG207", hyg.PRIVATE_TERMS_FILE)])
+
+    def test_a_list_at_any_path_is_a_finding_and_is_never_read(self):
+        """The list names the private origin of the material, so it may not be published from a subfolder either, and no finding may print it."""
+        for rel in ("docs/" + hyg.PRIVATE_TERMS_FILE, "a/b/c/" + hyg.PRIVATE_TERMS_FILE, "docs/" + hyg.PRIVATE_TERMS_FILE.upper(), "docs/.Hygiene-Private-Terms"):
+            with self.subTest(rel):
+                with tempfile.TemporaryDirectory() as tmp:
+                    target = Path(tmp) / rel
+                    target.parent.mkdir(parents=True)
+                    target.write_text("Zebracorp\n%s\nsomeone@" % PRIVATE_TERM + "contoso.com\n", encoding="utf-8")
+                    findings, _, _ = hyg.scan(Path(tmp), private_terms=["Zebracorp", PRIVATE_TERM])
+                self.assertEqual([(f.code, f.path) for f in findings], [("HYG207", rel)])
+                self.assertEqual([f.excerpt for f in findings], [""], "nothing from the list is printed")
+
+    def test_a_list_at_a_nested_path_is_found_in_the_history_too(self):
+        try:
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+        nested = "docs/" + hyg.PRIVATE_TERMS_FILE
+        root = History.repository(self, [("add a note", {nested: "Zebracorp\n"}, NOREPLY), ("remove it", {nested: None, "docs/page.md": "A clean page\n"}, NOREPLY)])
+        head, _, _ = hyg.scan(root, private_terms=[])
+        history, _, _ = hyg.scan_history(root, private_terms=[])
+        self.assertEqual(head, [])
+        self.assertEqual([(f.code, f.path.split(" @ ")[0]) for f in history], [("HYG207", nested)])
 
     def test_a_scan_without_a_list_says_so(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -436,8 +525,8 @@ class CommandLine(unittest.TestCase):
         self.assertIn("exactly these %d lines" % len(hyg.PUBLIC_SOURCE_LINES), done.stdout)
         for pin in hyg.PUBLIC_SOURCE_LINES:
             self.assertIn(pin.digest[:12], done.stdout)
-        self.assertIn("Exactly these %d matches of one rule in one file are excused" % sum(len(q.digests) for q in hyg.QUOTED_MATCHES), done.stdout)
-        for quoted in hyg.QUOTED_MATCHES:
+        self.assertIn("Exactly these %d lines, each for one rule in one file, are excused" % sum(len(q.digests) for q in hyg.QUOTED_LINES), done.stdout)
+        for quoted in hyg.QUOTED_LINES:
             self.assertIn(quoted.path, done.stdout)
             for digest in quoted.digests:
                 self.assertIn(digest[:12], done.stdout)
@@ -456,6 +545,19 @@ class CommandLine(unittest.TestCase):
             self.assertIn('PublicSourceLine("%s"' % RECORDS, done.stdout)
             for bad in (RECORDS + ":9", RECORDS, "nowhere.md:1", "../outside.md:1", RECORDS + ":0"):
                 self.assertEqual(self.run_cli(root, "--pin", bad).returncode, 2, bad)
+
+    def test_pin_quoted_prints_the_digest_and_the_rules_that_match_the_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "tests").mkdir()
+            sample = "# see https://tenant." + "share" + "point.com/x, mail someone@" + "contoso.com"
+            (root / "tests" / "test_hygiene.py").write_text("one\n" + sample + "\n", encoding="utf-8")
+            done = self.run_cli(root, "--pin-quoted", "tests/test_hygiene.py:2")
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            self.assertIn(hyg.line_digest(sample), done.stdout)
+            self.assertIn("HYG101, HYG104", done.stdout)
+            for bad in ("tests/test_hygiene.py:9", "tests/test_hygiene.py", "nowhere.py:1", "../outside.py:1"):
+                self.assertEqual(self.run_cli(root, "--pin-quoted", bad).returncode, 2, bad)
 
     def test_output_is_utf8_even_when_the_console_uses_a_legacy_code_page(self):
         """The rules text holds a typographic dash that a legacy Windows code page cannot print."""
@@ -549,12 +651,15 @@ class History(unittest.TestCase):
 
     def test_the_same_content_at_another_path_is_judged_at_that_path(self):
         """What a path excuses belongs to the path: content excused where it was first added is judged again where it is added later."""
-        text = "Contact someone@contoso.com\n"
+        sample = "Contact someone@" + "contoso.com"
+        text = sample + "\n"
+        pinned = (hyg.QuotedLines("tests/test_hygiene.py", "HYG104", (hyg.line_digest(sample),), "a sample"),)
         root = self.repository([
             ("quote it where it is excused", {"tests/test_hygiene.py": text}, NOREPLY),
             ("copy it elsewhere", {"docs/copy.md": text}, NOREPLY),
             ("remove the copy", {"docs/copy.md": None}, NOREPLY)])
-        history, _notices, counts = hyg.scan_history(root, private_terms=[])
+        with mock.patch.object(hyg, "QUOTED_LINES", pinned):
+            history, _notices, counts = hyg.scan_history(root, private_terms=[])
         self.assertEqual([(f.code, f.path.split(" @ ")[0]) for f in history], [("HYG104", "docs/copy.md")])
         self.assertEqual((counts["file_versions"], counts["blobs"]), (2, 1), "one blob, held at two paths, is two file versions")
 
