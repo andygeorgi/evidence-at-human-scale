@@ -146,10 +146,48 @@ def registry_from_dict(raw: dict) -> Registry:
     )
 
 
+def _no_constant(name):
+    raise ValueError("%s is not valid JSON: write a number, a string, true, false or null" % name)
+
+
+def _finite(text):
+    value = float(text)
+    if value in (float("inf"), float("-inf")):
+        raise ValueError("the number %s is too large to read as a number" % text[:20])
+    return value
+
+
+def _no_repeated_key(pairs):
+    seen = {}
+    for key, value in pairs:
+        if key in seen:
+            raise ValueError("the key %r appears more than once in one object, so it is unclear which value counts" % key)
+        seen[key] = value
+    return seen
+
+
+def loads_strict(text: str):
+    """JSON as RFC 8259 defines it. Python also reads NaN, Infinity and -Infinity, a number too large for a float and an
+    object that repeats a key (the last value silently wins): other parsers do not, so a file that depends on them means
+    one thing here and another elsewhere. All four are refused (ValueError, like any other malformed JSON)."""
+    return json.loads(text, parse_constant=_no_constant, parse_float=_finite, object_pairs_hook=_no_repeated_key)
+
+
+def registry_path(root: Path) -> Path:
+    """The registry file of the folder: registry.json in any letter case, so that the answer does not depend on the platform.
+
+    Raises ValueError when two files differ only by case, because it is then unclear which one is the registry.
+    """
+    found = sorted(p for p in root.iterdir() if p.is_file() and p.name.lower() == "registry.json") if root.is_dir() else []
+    if len(found) > 1:
+        raise ValueError("%s holds more than one registry file (%s); keep one registry.json" % (root, ", ".join(p.name for p in found)))
+    return found[0] if found else root / "registry.json"
+
+
 def load_registry(path: Path) -> Registry:
     if not path.exists():
         return Registry()
-    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw = loads_strict(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError("the registry must be a JSON object")
     return registry_from_dict(raw)
@@ -206,13 +244,18 @@ def load_model(root: Path) -> Tuple[Model, List[Finding]]:
     findings: List[Finding] = []
     instances: Dict[Key, Instance] = {}
     ignored: List[str] = []
+    registry_error: Optional[ValueError] = None
+    try:
+        registry_file = registry_path(root)
+    except ValueError as exc:
+        registry_file, registry_error = root / "registry.json", exc
     for path in json_files(root):
-        if path.name == "registry.json":
+        if path.parent == root and path.name.lower() == "registry.json":
             continue
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            data = loads_strict(path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:  # includes JSONDecodeError and UnicodeDecodeError
-            findings.append(Finding("ID000", "cannot read JSON: %s" % exc, rel(path), hint="repair or remove the file; every .json file below the folder must be valid UTF-8 JSON"))
+            findings.append(Finding("ID000", "cannot read JSON: %s" % exc, rel(path), hint="repair or remove the file; every .json file below the folder must be valid UTF-8 JSON, without NaN, Infinity or a repeated key"))
             continue
         problem = _contract_claim_problem(path, root, data)
         if problem is not None:
@@ -231,9 +274,11 @@ def load_model(root: Path) -> Tuple[Model, List[Finding]]:
             continue
         instances[inst.key] = inst
     try:
-        registry = load_registry(root / "registry.json")
+        if registry_error is not None:
+            raise registry_error
+        registry = load_registry(registry_file)
     except (OSError, ValueError, AttributeError) as exc:
-        findings.append(Finding("ID000", "cannot read the registry: %s" % exc, rel(root / "registry.json"), hint="registry.json must be a JSON object"))
+        findings.append(Finding("ID000", "cannot read the registry: %s" % exc, rel(registry_file), hint="registry.json must be a JSON object, without NaN, Infinity or a repeated key; keep one registry file in the folder"))
         registry = Registry()
     return Model(instances, registry, root, ignored), findings
 

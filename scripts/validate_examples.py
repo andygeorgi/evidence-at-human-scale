@@ -51,7 +51,7 @@ from eahs import REPO_ROOT, __version__  # noqa: E402
 from eahs import semantics  # noqa: E402
 from eahs.cases import check_cases  # noqa: E402
 from eahs.findings import Finding, InputProblem, describe_error, rel  # noqa: E402
-from eahs.model import Model, Registry, json_files, load_model  # noqa: E402
+from eahs.model import Model, Registry, json_files, load_model, loads_strict, registry_path  # noqa: E402
 from eahs.response import check_response, is_canonical  # noqa: E402
 from eahs.scenarios import check_scenario_file  # noqa: E402
 from eahs.schema import check_embedded_examples, check_schema_itself, load_schema, validate_instance  # noqa: E402
@@ -138,7 +138,11 @@ class Run:
             return self.result(stage, INPUT_ERROR, findings=[self.schema_problem], detail="the schema bundle cannot be read")
         base = self.results.get(needed)
         if base is not None and base.status == PASS:
-            registry = self.root / "registry.json"
+            try:
+                registry = registry_path(self.root)
+            except ValueError as exc:
+                return self.result(stage, INPUT_ERROR, findings=[input_finding("INP003", "the registry cannot be chosen: %s" % exc, rel(self.root), "keep one registry.json in the folder")],
+                                   detail="the folder holds more than one registry file")
             if stage in REGISTRY_STAGES and not registry.is_file():
                 return self.result(stage, INPUT_ERROR, findings=[input_finding("INP003", "the registry is missing: %s does not exist" % rel(registry), rel(registry),
                                                                                "add registry.json (its layout is in examples/registry.json), or run only the stages that do not read it")],
@@ -153,9 +157,9 @@ class Run:
 
     def read_json(self, path: Path):
         try:
-            return json.loads(path.read_text(encoding="utf-8")), None
+            return loads_strict(path.read_text(encoding="utf-8")), None
         except (OSError, ValueError) as exc:
-            return None, input_finding("ID000", "cannot read JSON: %s" % exc, rel(path), "repair or remove the file")
+            return None, input_finding("ID000", "cannot read JSON: %s" % exc, rel(path), "repair or remove the file; JSON has no NaN, Infinity or repeated key")
 
     def bad_document(self, stage: str, path: Path, exc: Exception) -> Finding:
         hint = exc.hint if isinstance(exc, InputProblem) and exc.hint else "the document lacks a structure the checks read; compare it with the example it is modelled on"

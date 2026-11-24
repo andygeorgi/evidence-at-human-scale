@@ -133,7 +133,7 @@ python scripts/check_urls.py --strict    # also fail on refused or unreachable
 | Module | Role |
 |---|---|
 | `schema.py` | Loads the bundle, validates an instance against its contract, checks the embedded examples, and checks RFC 3339 timestamps strictly. |
-| `model.py` | Loads the examples into a model keyed by contract, id and version, with the registry. It checks a `contract_id` before it is used as a key, and reports a file it cannot index instead of skipping it. |
+| `model.py` | Loads the examples into a model keyed by contract, id and version, with the registry. It reads JSON strictly, finds `registry.json` in any letter case, checks a `contract_id` before it is used as a key, and reports a file it cannot index instead of skipping it. |
 | `semantics.py` | The checks a schema cannot make: references, lineage, lifecycle, missingness, the packet, authority and accounting, disclosure, accountability. |
 | `gateway.py` | The reference commit check: given a proposal, a grant, an attempt time and the receipts known so far, it allows or blocks and says why. It uses only what was available and valid at the attempt, and blocks when a time it needs is missing or unknown. |
 | `scenarios.py` | Replays the stored gateway evaluations, including counterfactual overrides of the proposal, the grant or one evidence record, and compares them with the recorded decisions. |
@@ -149,7 +149,7 @@ Each finding has a code. The page named in a finding explains the rule. The [eva
 
 | Code | Meaning |
 |---|---|
-| `ID000`–`ID005` | Input that cannot be indexed: a file that is not valid JSON, an identity that is duplicated, an instance without a readable identity, a `contract_id` that is not a string or names no contract, a file named like a contract instance that is not one. These make the instance stage an `INPUT ERROR`. |
+| `ID000`–`ID005` | Input that cannot be indexed: a file that is not valid JSON (this includes `NaN`, `Infinity`, a number too large for a float and an object that repeats a key, which other JSON readers do not accept), two registry files that differ only by letter case, an identity that is duplicated, an instance without a readable identity, a `contract_id` that is not a string or names no contract, a file named like a contract instance that is not one. These make the instance stage an `INPUT ERROR`. |
 | `INP001`–`INP003` | Input that cannot support a stage: a folder or the schema bundle that cannot be read, a document the checks cannot evaluate (including a stage file that lacks the list the stage evaluates), or a `registry.json` that the stage needs and the folder does not have. These make the stage an `INPUT ERROR`. |
 | `SCH000`–`SCH003` | The schema bundle is invalid; `contract_id` is missing or not C01–C07; an instance does not match its contract; an embedded example does not behave as labeled. |
 | `REF001`–`REF007` | A reference does not name an existing exact version, names the wrong kind, points at a missing payload, is neither a record nor a registered external record, names a retrieval that did not complete, or names an undefined policy. |

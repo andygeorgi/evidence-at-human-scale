@@ -364,6 +364,92 @@ class MalformedAndZeroByteFiles(Scratch, Actionable):
                     self.assertEqual(overall(results), INPUT_ERROR)
 
 
+class StrictJson(Scratch, Actionable):
+    """JSON as RFC 8259 defines it. Python also reads NaN, Infinity, a number too large for a float and a repeated key (the
+    last value wins), and other parsers do not, so such a file would mean one thing here and another elsewhere."""
+
+    BAD = (("NaN", '{"evaluations": [], "x": NaN}'), ("Infinity", '{"evaluations": [], "x": Infinity}'), ("-Infinity", '{"x": -Infinity}'),
+           ("a number too large for a float", '{"x": 1e999}'), ("a repeated key", '{"evaluations": [], "evaluations": [1]}'),
+           ("a repeated key in a nested object", '{"evaluations": [{"a": 1, "a": 2}]}'))
+
+    def test_each_is_an_input_error_in_a_stage_file_and_blocks_the_stages_that_need_the_model(self):
+        for label, content in self.BAD:
+            with self.subTest(label):
+                self.fresh()
+                self.write("99-extra/gateway-scenarios.json", content)
+                results = ve.run(self.root, only={"instances", "gateway"})
+                instances = stage(results, "instances")
+                self.assertEqual((instances.status, instances.findings[0].code), (INPUT_ERROR, "ID000"))
+                self.assert_actionable(instances, "gateway-scenarios.json")
+                self.assertEqual(stage(results, "gateway").status, NOT_ASSESSED)
+
+    def test_each_is_an_input_error_in_a_contract_instance_and_a_raw_export(self):
+        for label, content in self.BAD:
+            for name in ("01-source-records/c02-X-v1.json", "01-source-records/raw/export.json"):
+                with self.subTest("%s in %s" % (label, name)):
+                    self.fresh()
+                    self.write(name, content)
+                    instances = self.run_stage("instances")
+                    self.assertEqual((instances.status, [f.code for f in instances.findings]), (INPUT_ERROR, ["ID000"]))
+
+    def test_each_is_an_input_error_in_the_registry_and_names_it(self):
+        for label, content in self.BAD:
+            with self.subTest(label):
+                self.fresh()
+                (self.root / "registry.json").write_text(content, encoding="utf-8")
+                instances = self.run_stage("instances")
+                self.assertEqual(instances.status, INPUT_ERROR)
+                self.assert_actionable(instances, "registry.json")
+
+    def test_a_response_is_read_strictly_too(self):
+        self.fresh()
+        self.write("06-assistant-response/response-broken.json", '{"contract_id": "C04", "contract_id": "C05"}')
+        results = ve.run(self.root, only={"instances", "responses"})
+        self.assertEqual(stage(results, "instances").status, INPUT_ERROR)
+        self.assertEqual(stage(results, "responses").status, NOT_ASSESSED)
+
+    def test_the_command_reports_the_file_and_does_not_crash(self):
+        self.fresh()
+        self.write("99-extra/gateway-scenarios.json", '{"evaluations": [], "x": NaN}')
+        done = cli("--examples", str(self.root))
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertNotIn("Traceback", done.stderr)
+        self.assertIn("NaN", done.stdout)
+        self.assertIn("gateway-scenarios.json", done.stdout)
+
+    def test_ordinary_numbers_still_read(self):
+        from eahs.model import loads_strict
+        self.assertEqual(loads_strict('{"a": 1, "b": -2.5, "c": 1e3, "d": [true, false, null], "e": {"a": 1}}'), {"a": 1, "b": -2.5, "c": 1000.0, "d": [True, False, None], "e": {"a": 1}})
+
+
+class TheRegistryFile(Scratch, Actionable):
+    def test_a_registry_in_another_letter_case_is_still_the_registry(self):
+        self.fresh()
+        (self.root / "registry.json").rename(self.root / "REGISTRY.JSON")
+        results = ve.run(self.root, only={"instances", "semantics", "gateway"})
+        self.assertEqual({r.stage: r.status for r in results if r.stage in ("instances", "semantics", "gateway")}, {"instances": PASS, "semantics": PASS, "gateway": PASS})
+
+    def test_a_registry_in_another_letter_case_is_read_strictly_too(self):
+        self.fresh()
+        (self.root / "registry.json").rename(self.root / "Registry.JSON")
+        (self.root / "Registry.JSON").write_text('{"permission_decisions": NaN}', encoding="utf-8")
+        instances = self.run_stage("instances")
+        self.assertEqual(instances.status, INPUT_ERROR)
+        self.assert_actionable(instances, "Registry.JSON")
+
+    def test_two_registries_that_differ_only_by_case_are_refused_rather_than_one_chosen(self):
+        from eahs.model import registry_path
+        self.fresh()
+        (self.root / "Registry.JSON").write_text("{}", encoding="utf-8")
+        if len([p for p in self.root.iterdir() if p.name.lower() == "registry.json"]) < 2:
+            self.skipTest("this file system does not tell the two names apart")
+        with self.assertRaises(ValueError):
+            registry_path(self.root)
+        instances = self.run_stage("instances")
+        self.assertEqual(instances.status, INPUT_ERROR)
+        self.assertIn("more than one registry", instances.findings[0].message)
+
+
 class ASchemaOnlyRun(Scratch):
     """The schema bundle does not depend on the folder, so a schema-only run does not index it."""
 
