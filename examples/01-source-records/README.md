@@ -38,7 +38,7 @@ A source record is what a source system asserted, in a specific version and scop
 
 - The receipt record carries a **scoped validation**, `V-GR-5521-01`: the pallet count was re-scanned at the dock. Its `scope` says "Pallet P-1 only (60 units)" and its limitation says it validates neither a later delivery nor the invoice. Validation belongs to the target and scope it assessed.
 - Two records disagree about quantity (the invoice says 100, the receipt says 60). Neither record says so. Disagreement is found later, by [selection](../04-selection-and-missingness/README.md), and stays visible.
-- `GR-5521` v1 shows `lifecycle.state` = `superseded` with `replacement_reference` v2. That is the end-of-day snapshot; it became superseded at 13:40.
+- The goods receipt (`GR-5521` v1) shows `lifecycle.state` = `superseded` with `replacement_reference` v2. That is the end-of-day snapshot; it became superseded at 13:40.
 
 ## Checks that run here
 

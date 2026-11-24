@@ -163,8 +163,8 @@ class HumanNamesBeforeIdentifiers(unittest.TestCase):
         self.assertIn("Invoice `INV-2026-0417` arrives", story)
 
     def test_a_table_of_a_first_use_example_names_a_record_before_its_identifier(self):
-        starts_with_an_identifier = re.compile(r"^\|\s*`[A-Z]{2,5}-[A-Z0-9-]+`")
-        for page in ("examples/04-selection-and-missingness/README.md", "examples/05-decision-packet/README.md", "examples/11-late-correction/README.md"):
+        starts_with_an_identifier = re.compile(r"^(?:\|\s*|\s*(?:\d+\.|-)\s+)`[A-Z]{2,5}-[A-Z0-9-]+`")
+        for page in pages("examples/0[1-9]-*/README.md", "examples/1[0-2]-*/README.md"):
             self.assertEqual([line[:70] for line in text(page).split("\n") if starts_with_an_identifier.match(line)], [], page)
         packet = text("examples/05-decision-packet/README.md")
         self.assertIn("Hold the invoice (`REC-0417-1`)", packet)
