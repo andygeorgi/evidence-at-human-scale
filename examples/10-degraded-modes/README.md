@@ -53,22 +53,22 @@ There is no data of its own: the rest of the degraded behavior is in the other f
 
 | What fails | What the architecture does | Where it is shown |
 |---|---|---|
-| A source cannot be read (an outage) | The gap is labeled `unavailable`, tied to a record of the failure. The packet is still produced and says so. Nothing is assumed. | [04](../04-selection-and-missingness/README.md), [05](../05-decision-packet/README.md) |
-| A source is outside the reader's permissions | If the reader may know that it exists, the gap is labeled `inaccessible`, in the wording the permission decision allows and with no identity or content. If not, nothing is shown for it. | [04](../04-selection-and-missingness/README.md) |
-| Evidence is older than policy allows | The gap is labeled `stale`; at commit the check refuses to rely on it. | [04](../04-selection-and-missingness/README.md), [08](../08-blocked-action/README.md) |
-| The assistant model is unavailable | A deterministic template writes the response from the packet. It is less fluent, and it is faithful. | [06](../06-assistant-response/README.md) |
-| A correction arrives late | Everything derived from the corrected record stops being current, and so does every approval that rested on it. | [11](../11-late-correction/README.md) |
-| The outcome of an action is unknown | The allowance stays reserved; no blind retry; reconciliation is required. | [09](../09-unknown-outcome/README.md) |
+| A source cannot be read (an outage) | The gap is labeled `unavailable`, tied to a record of the failure. The packet is still produced and says so. Nothing is assumed. | [Selection and missingness](../04-selection-and-missingness/README.md), [Decision packet](../05-decision-packet/README.md) |
+| A source is outside the reader's permissions | If the reader may know that it exists, the gap is labeled `inaccessible`, in the wording the permission decision allows and with no identity or content. If not, nothing is shown for it. | [Selection and missingness](../04-selection-and-missingness/README.md) |
+| Evidence is older than policy allows | The gap is labeled `stale`; at commit the check refuses to rely on it. | [Selection and missingness](../04-selection-and-missingness/README.md), [Blocked action](../08-blocked-action/README.md) |
+| The assistant model is unavailable | A deterministic template writes the response from the packet. It is less fluent, and it is faithful. | [Assistant response](../06-assistant-response/README.md) |
+| A correction arrives late | Everything derived from the corrected record stops being current, and so does every approval that rested on it. | [Late correction](../11-late-correction/README.md) |
+| The outcome of an action is unknown | The allowance stays reserved; no blind retry; reconciliation is required. | [Unknown outcome](../09-unknown-outcome/README.md) |
 | Revocation cannot be established | The action does not proceed (`REVOCATION_UNVERIFIED`). | here |
 | A time the check needs is missing or unknown | The action does not proceed: the time of the revocation check (`REVOCATION_TIME_UNKNOWN`), the issuance time of the grant (`GRANT_TIME_UNKNOWN`) or the admission time of a cited record (`EVIDENCE_TIME_UNKNOWN`). | here |
 | A cited record cannot be resolved | The action does not proceed (`EVIDENCE_UNRESOLVED`). | here |
 | The executor starts late | An approval is time-bound; it does not stretch (`GRANT_EXPIRED`). | here |
-| The ledger and the target cannot be updated atomically | The weaker guarantee is declared in the grant, with the residual risk and the constraint on unattended operation. | [09](../09-unknown-outcome/README.md) |
+| The ledger and the target cannot be updated atomically | The weaker guarantee is declared in the grant, with the residual risk and the constraint on unattended operation. | [Unknown outcome](../09-unknown-outcome/README.md) |
 
 <a id="the-three-fail-closed-evaluations"></a>
 ## The six fail-closed evaluations
 
-Each takes job B, which passes the commit check in [09](../09-unknown-outcome/README.md), and breaks one input in memory. The files on disk do not change.
+Each takes job B, which passes the commit check in the [unknown outcome example](../09-unknown-outcome/README.md), and breaks one input in memory. The files on disk do not change.
 
 | What is broken | Decision | Codes | Why |
 |---|---|---|---|

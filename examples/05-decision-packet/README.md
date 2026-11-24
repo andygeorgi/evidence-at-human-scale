@@ -50,8 +50,8 @@ This table is the human view: what a reader needs from the first version of the 
 
 A proposal ([C05](../../contracts/c05-action-proposal.md)) names an exact action, an exact target, typed parameters, the evidence it relies on (exact versions), the policies, the preconditions that must hold **at commit**, the accounting (units and window) and an assessment of risk, effects, limitations and recovery.
 
-- **The hold** relies on the invoice, the goods receipt and the failing match. It does not rely on the screening, so stale screening cannot block a hold. It is covered by a bounded grant ([07](../07-authority-and-delegation/README.md)).
-- **The release** was proposed while the match was failing. That is deliberate: a proposal can be conditional, and its three preconditions (`PRE-MATCH-PASS`, `PRE-SCREEN-FRESH`, `PRE-INVOICE-HELD`) are re-evaluated at the moment of execution, not at approval time. It needs an exact approval ([07](../07-authority-and-delegation/README.md)), and it is blocked at 16:00 because the evidence it cites has been superseded ([08](../08-blocked-action/README.md)).
+- **The hold** relies on the invoice, the goods receipt and the failing match. It does not rely on the screening, so stale screening cannot block a hold. It is covered by a bounded grant (see the [authority and delegation example](../07-authority-and-delegation/README.md)).
+- **The release** was proposed while the match was failing. That is deliberate: a proposal can be conditional, and its three preconditions (`PRE-MATCH-PASS`, `PRE-SCREEN-FRESH`, `PRE-INVOICE-HELD`) are re-evaluated at the moment of execution, not at approval time. It needs an exact approval (see the [authority and delegation example](../07-authority-and-delegation/README.md)), and it is blocked at 16:00 because the evidence it cites has been superseded (see the [blocked action example](../08-blocked-action/README.md)).
 
 ## Files
 

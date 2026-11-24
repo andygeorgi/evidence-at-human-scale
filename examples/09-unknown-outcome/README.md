@@ -40,7 +40,7 @@ An action is submitted after every check has passed and allowance has been reser
 | [`c02-EXE-REL-0417-B-v1.json`](c02-EXE-REL-0417-B-v1.json) | An `execution_record`: it documents the observed effect. It validates no earlier observation. |
 | [`gateway-scenarios.json`](gateway-scenarios.json) | Three stored evaluations: the allowed attempt and two retries. |
 
-Approval B (`GRT-APPR-0417-B`), the corrected proposal and the packet it relies on are in [11](../11-late-correction/README.md).
+Approval B (`GRT-APPR-0417-B`), the corrected proposal and the packet it relies on are in the [late correction example](../11-late-correction/README.md).
 
 ## What happened
 

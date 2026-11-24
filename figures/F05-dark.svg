@@ -68,9 +68,9 @@
 <path d="M280.0 707.4 L280.0 729.4" fill="none" stroke="#8b949e" stroke-width="1.8" marker-end="url(#arr)"/>
 <rect x="10.0" y="731.4" width="340.0" height="156.6" rx="8" fill="#12361F" stroke="#56D364" stroke-width="1.6"/>
 <text x="20.0" y="755.4" font-size="15" text-anchor="start" font-weight="700" fill="#D2F8DB">Receipt (C07)</text>
-<text x="20.0" y="777.5" font-size="14" text-anchor="start" fill="#D2F8DB">After a pass: the outcome, as</text>
-<text x="20.0" y="796.0" font-size="14" text-anchor="start" fill="#D2F8DB">completed_verified, unknown,</text>
-<text x="20.0" y="814.5" font-size="14" text-anchor="start" fill="#D2F8DB">partial or not_executed_verified.</text>
+<text x="20.0" y="777.5" font-size="14" text-anchor="start" fill="#D2F8DB">After a pass, the receipt records one of four</text>
+<text x="20.0" y="796.0" font-size="14" text-anchor="start" fill="#D2F8DB">states: completed and verified, unknown,</text>
+<text x="20.0" y="814.5" font-size="14" text-anchor="start" fill="#D2F8DB">partly verified, or verified no effect.</text>
 <text x="20.0" y="835.9" font-size="14" text-anchor="start" fill="#D2F8DB">After a failed check: the rejection</text>
 <text x="20.0" y="854.4" font-size="14" text-anchor="start" fill="#D2F8DB">and its reasons. A rejection alone</text>
 <text x="20.0" y="872.9" font-size="14" text-anchor="start" fill="#D2F8DB">is not a verified no-effect.</text>

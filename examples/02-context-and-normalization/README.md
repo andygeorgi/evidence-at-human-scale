@@ -28,7 +28,7 @@ The access decision itself is not defined by the contracts. It is an external re
 
 ## Normalization: the rules that keep records comparable
 
-Folder [01](../01-source-records/README.md) shows admission of one record. Normalization is also a set of rules every record's **scope** obeys, so that two records can be compared without guessing. Look at `scope` in any C02 file:
+The [source records example](../01-source-records/README.md) shows admission of one record. Normalization is also a set of rules every record's **scope** obeys, so that two records can be compared without guessing. Look at `scope` in any C02 file:
 
 - **Entities and task** are named, not implied.
 - **Jurisdiction** is never left blank. Here it is `not_applicable` with a reason ("Internal accounts-payable review; no external jurisdiction asserted").

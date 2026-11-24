@@ -120,6 +120,11 @@ class TheBanner(unittest.TestCase):
             self.assertIn(concept, alt)
         self.assertEqual(ABSTRACT_LABEL.findall(alt) + MACHINE_ID.findall(alt), [])
 
+    def test_the_banner_alt_text_gives_the_decision_line_as_the_banner_does(self):
+        meta = json.loads(text("figures/figures.json"))["banner"]["alt"]
+        self.assertIn("A person decides: approve or hold. Current evidence is rechecked before action.", meta)
+        self.assertNotIn("after rechecking", meta)
+
     def test_no_drawing_leads_with_an_identifier_before_its_concept(self):
         for path in sorted(FIGURES.glob("*.svg")):
             for word in svg_words(path.name):
@@ -158,6 +163,32 @@ class HumanNamesBeforeIdentifiers(unittest.TestCase):
         self.assertNotRegex(figure["alt"], r"completed_verified|not_executed_verified", "the alt text is in words")
         self.assertIn("completed_verified", figure["caption"], "the stable values stay in the caption, after the words")
         self.assertLess(figure["caption"].index("a verified no-effect"), figure["caption"].index("not_executed_verified"))
+
+    def test_a_link_in_a_first_use_example_names_the_page_and_not_only_its_number(self):
+        """"[05]" says nothing to a reader who has not met folder 05. A lookup row (its first cell is a code) may stay terse."""
+        bare = re.compile(r"\[\d{2}\]\(")
+        found = []
+        for page in pages("examples/0[1-9]-*/README.md", "examples/1[0-2]-*/README.md"):
+            found += [(page, line[:70]) for line in text(page).split("\n") if bare.search(line) and not line.startswith("| `")]
+        self.assertEqual(found, [])
+
+    def test_the_commit_figure_names_the_receipt_states_in_words(self):
+        """F05 listed four state values and no words. The values belong to the receipt and to F06, where each comes after its name."""
+        for name in ("F05-light.svg", "F05-dark.svg"):
+            words = " ".join(svg_words(name)).lower()
+            for human in ("completed and verified", "unknown", "partly verified", "verified no effect"):
+                self.assertIn(human, words, "%s: %s" % (name, human))
+            self.assertEqual(re.findall(r"completed_verified|not_executed_verified|\bpartial\b", words), [], name)
+        figure = next(f for f in json.loads(text("figures/figures.json"))["figures"] if f["id"] == "F05")
+        description = figure["description"]
+        self.assertLess(description.index("completed and verified"), description.index("completed_verified"), "the words come before the values")
+        self.assertLess(description.index("verified no effect"), description.index("not_executed_verified"))
+
+    def test_the_late_correction_figure_says_that_the_packet_lists_the_proposal_and_the_delegation_holds_the_approval(self):
+        figure = next(f for f in json.loads(text("figures/figures.json"))["figures"] if f["id"] == "F10")
+        self.assertIn("the packet (C04) lists a proposal, and the delegation (C06) holds an approval of it", figure["description"])
+        for name in ("F10-light.svg", "F10-dark.svg"):
+            self.assertNotIn("Packet (C04) and delegation (C06)", svg_words(name), name)
 
     def test_the_two_summaries_have_one_name_on_the_reader_pages(self):
         """A reader meets them as AI summaries; the kind, model inference, is named beside it, not a third name for the same thing."""
@@ -198,6 +229,14 @@ class OneVoiceOnTheStatus(unittest.TestCase):
         self.assertIn("not a production deployment", text("evaluation/README.md"))
         self.assertIn("real-world effectiveness has not been evaluated", text("docs/paper/00-overview.md"))
         self.assertIn("None of it has been run", text("evaluation/README.md"))
+
+    def test_the_architecture_entry_and_the_examples_guide_say_it_once_and_link_the_rest(self):
+        architecture = text("architecture/README.md")
+        self.assertEqual(architecture.count("production deployment"), 1, "one status sentence, with its link")
+        self.assertNotIn("no assurance about any deployment", architecture)
+        section = text("examples/README.md").split("### What a pass means, and what it does not", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("(../docs/claims-and-limits.md)", section)
+        self.assertLess(len(section.split("\n", 2)[2].strip()), 260, "one sentence and a link, not the statement again")
 
 
 class DeepLinksOfEarlierReleasesKeepWorking(unittest.TestCase):

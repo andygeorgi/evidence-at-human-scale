@@ -10,7 +10,7 @@ When several systems and AI assistants feed one decision, the person who decides
 <source media="(min-width: 900px) and (prefers-color-scheme:dark)" srcset="figures/banner-wide-dark.svg">
 <source media="(min-width: 900px)" srcset="figures/banner-wide-light.svg">
 <source media="(prefers-color-scheme: dark)" srcset="figures/banner-dark.svg">
-<img src="figures/banner-light.svg" alt="Evidence at Human Scale, a reference architecture for accountable decisions in agentic systems. Evidence stays distinct: goods receipt, source record; three-way match, deterministic finding; AI explanation, model inference. One decision packet: claims cite evidence, inferences are labeled, conflicts and gaps stay visible, proposals are not actions. A person decides: approve or hold, after rechecking current evidence.">
+<img src="figures/banner-light.svg" alt="Reference architecture for accountable decisions in agentic systems. Evidence stays distinct: goods receipt, source record; three-way match, deterministic finding; AI explanation, model inference. One decision packet: claims cite evidence, inferences remain labeled, conflicts and gaps stay visible, proposals are not actions. A person decides: approve or hold. Current evidence is rechecked before action.">
 </picture>
 </p>
 <!-- banner:end -->
@@ -54,7 +54,7 @@ python scripts/validate_examples.py         # validate the synthetic examples
 python scripts/check_all.py                 # every repository check, as CI runs them
 ```
 
-You need Python 3.9 or later. It is tested on Windows and Linux (nothing in it is platform-specific, so macOS should work too), uses no network, and starts no service or model. The first command should print:
+You need Python 3.9 or later. It is tested on Windows and Linux (nothing in it is platform-specific, so macOS should work too), uses no network, and starts no service or model. `validate_examples.py`, the second command, should print:
 
 ```text
 Evidence at Human Scale 1.0.2: example validation

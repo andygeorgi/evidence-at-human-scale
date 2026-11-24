@@ -15,7 +15,7 @@ A source record is what a source system asserted, in a specific version and scop
 | [`raw/erp-invoice-FC-88231.json`](raw/erp-invoice-FC-88231.json) | The invoice as the ERP exports it: numbers as strings, local time with an offset, status `OPEN`, revision 3. |
 | [`raw/erp-purchase-order-77231.json`](raw/erp-purchase-order-77231.json) | The purchase order: 100 units at EUR 184.00. |
 | [`raw/wms-receipt-5521-rev1.json`](raw/wms-receipt-5521-rev1.json) | The goods receipt as first recorded: one pallet, 60 units. |
-| [`raw/wms-receipt-5521-rev2.json`](raw/wms-receipt-5521-rev2.json) | The same receipt after a late scan of a second pallet: 100 units. Admitted in [11](../11-late-correction/README.md). |
+| [`raw/wms-receipt-5521-rev2.json`](raw/wms-receipt-5521-rev2.json) | The same receipt after a late scan of a second pallet: 100 units. Admitted in the [late correction example](../11-late-correction/README.md). |
 | [`c02-INV-2026-0417-v1.json`](c02-INV-2026-0417-v1.json) | Evidence record admitted from the invoice export. |
 | [`c02-PO-77231-v1.json`](c02-PO-77231-v1.json) | Evidence record admitted from the purchase-order export. |
 | [`c02-GR-5521-v1.json`](c02-GR-5521-v1.json) | Evidence record admitted from receipt revision 1. |

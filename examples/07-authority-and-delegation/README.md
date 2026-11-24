@@ -23,7 +23,7 @@ A packet is not an approval. Authority to act comes from a **grant** ([C06](../.
 <details>
 <summary>Text description of Figure F05</summary>
 
-At the top, the packet lists the proposal, marked proposed, not executed. Below it, joined by the word or, are an exact approval and a bounded grant. The exact approval is of this proposal version, given by the approver, a role distinct from the requestor. The bounded grant is a grant for a class of actions that already covers the proposal. Both are recorded in a delegation (C06). A divider reads Approval is not commit. Below the divider, the executor, also called the action gateway, checks the current state at commit against six conditions. The grant is current and not revoked. The evidence is current and fresh. The preconditions hold. The parameters and target match. The per-action limit holds. The cumulative limit holds, counting consumed and reserved capacity. If every check passes, allowance is reserved and the exact action is submitted to the target. The outcome, or a timeout, is recorded. If a check fails, the action is rejected before submission and nothing is submitted. The receipt (C07) records the outcome. After a pass, the outcome is completed_verified, unknown, partial or not_executed_verified. After a failed check, the receipt records the rejection and its reasons. A rejection by itself is only what the gateway did, so it is not proof about every external effect. The receipt says not_executed_verified, a verified no-effect, only when an authoritative verification against the target confirms no effect for this attempt, target and scope. An authoritative verification against the target also confirms or reconciles every other outcome.
+At the top, the packet lists the proposal, marked proposed, not executed. Below it, joined by the word or, are an exact approval and a bounded grant. The exact approval is of this proposal version, given by the approver, a role distinct from the requestor. The bounded grant is a grant for a class of actions that already covers the proposal. Both are recorded in a delegation (C06). A divider reads Approval is not commit. Below the divider, the executor, also called the action gateway, checks the current state at commit against six conditions. The grant is current and not revoked. The evidence is current and fresh. The preconditions hold. The parameters and target match. The per-action limit holds. The cumulative limit holds, counting consumed and reserved capacity. If every check passes, allowance is reserved and the exact action is submitted to the target. The outcome, or a timeout, is recorded. If a check fails, the action is rejected before submission and nothing is submitted. The receipt (C07) records the outcome. After a pass, the receipt records one of four states: completed and verified, unknown, partly verified, or verified no effect (the receipt's own values are completed_verified, unknown, partial and not_executed_verified). After a failed check, the receipt records the rejection and its reasons. A rejection by itself is only what the gateway did, so it is not proof about every external effect. The receipt says verified no effect (not_executed_verified) only when an authoritative verification against the target confirms no effect for this attempt, target and scope. An authoritative verification against the target also confirms or reconciles every other outcome.
 
 [All figures and their descriptions](../../figures/README.md#f05-from-proposal-to-commit)
 
@@ -40,7 +40,7 @@ At the top, the packet lists the proposal, marked proposed, not executed. Below 
 | [`c02-ERP-HOLD-QUERY-0417-v1.json`](c02-ERP-HOLD-QUERY-0417-v1.json) | The authoritative ERP query that shows the invoice is held. It is what verifies the receipt. |
 | [`gateway-scenarios.json`](gateway-scenarios.json) | Eight stored what-if evaluations of the commit check. |
 
-The proposals these grants refer to are in [05](../05-decision-packet/README.md).
+The proposals these grants refer to are in the [decision packet example](../05-decision-packet/README.md).
 
 ## Two shapes of grant
 
@@ -54,7 +54,7 @@ The proposals these grants refer to are in [05](../05-decision-packet/README.md)
 | Evidence constraints | the policy record `AP-POLICY-4` | the six records the proposal relied on, by exact version |
 | Expiry | end of day | 17:00 |
 | Atomic accounting | `shared_atomic`: the hold and its allowance live in one system | `unsupported`: the allowance ledger and the bank cannot be updated in one step. Weaker guarantees, race windows and residual risk are written down, with the domain owner's acceptance |
-| Revocation | `not_revoked` | `revoked` at 13:45 (end-of-day snapshot; see [11](../11-late-correction/README.md)) |
+| Revocation | `not_revoked` | `revoked` at 13:45 (end-of-day snapshot; see the [late correction example](../11-late-correction/README.md)) |
 
 A class is for actions that are low-risk, reversible and bounded. An exact approval is for anything that is not. Neither is an instruction to act: each is a ceiling the gateway enforces at the moment of execution.
 
@@ -62,12 +62,12 @@ A class is for actions that are low-risk, reversible and bounded. An exact appro
 
 ## What happened at 10:03
 
-The assistant proposed a hold ([05](../05-decision-packet/README.md)). No person approved it, because the bounded grant already covers it. At commit the executor (the grantee of that grant, acting as the action gateway) re-checked the grant, the evidence the proposal cites, the precondition (the invoice is still open), the parameters, the target and the allowance, and allowed it. It judged each of them as of 10:03:00: the match result it relies on had been admitted at 09:36, and the revocation check was made at 07:45. The receipt records the effect, the authoritative verification (the ERP query), the settled accounting and `retry_disposition` `not_applicable_completed`.
+The assistant proposed a hold (see the [decision packet example](../05-decision-packet/README.md)). No person approved it, because the bounded grant already covers it. At commit the executor (the grantee of that grant, acting as the action gateway) re-checked the grant, the evidence the proposal cites, the precondition (the invoice is still open), the parameters, the target and the allowance, and allowed it. It judged each of them as of 10:03:00: the match result it relies on had been admitted at 09:36, and the revocation check was made at 07:45. The receipt records the effect, the authoritative verification (the ERP query), the settled accounting and `retry_disposition` `not_applicable_completed`.
 
 <a id="the-commit-check-six-times"></a>
 ## The commit check, eight times
 
-[`gateway-scenarios.json`](gateway-scenarios.json) stores these evaluations; `python scripts/validate_examples.py` replays them and fails if a decision changes. The codes are explained in [08](../08-blocked-action/README.md#the-commit-time-reason-codes).
+[`gateway-scenarios.json`](gateway-scenarios.json) stores these evaluations; `python scripts/validate_examples.py` replays them and fails if a decision changes. The codes are explained in [the blocked action example](../08-blocked-action/README.md#the-commit-time-reason-codes).
 
 | What is attempted | Decision | Codes | Why |
 |---|---|---|---|

@@ -1,8 +1,8 @@
 # Architecture reference
 
-This reference holds the technical detail behind the [paper](../docs/paper/README.md): what each kind of evidence establishes, how permission limits what a requestor sees, how approval and execution stay separate, what happens when a part fails, who owns what, and which choices a domain still has to make. Each contract detail appears once, in the [contract reference](../contracts/README.md). It is not an implementation report, and it gives no assurance about any deployment.
+This reference holds the technical detail behind the [paper](../docs/paper/README.md): what each kind of evidence establishes, how permission limits what a requestor sees, how approval and execution stay separate, what happens when a part fails, who owns what, and which choices a domain still has to make. Each contract detail appears once, in the [contract reference](../contracts/README.md).
 
-It describes a reference architecture, not a production deployment. [Claims and limits](../docs/claims-and-limits.md#evidence-classes-kept-apart) says what the repository's own checks show and what they do not.
+It describes a reference architecture, not an implementation report or a production deployment. [Claims and limits](../docs/claims-and-limits.md#evidence-classes-kept-apart) says what the repository's own checks show and what they do not.
 
 ## Contents
 

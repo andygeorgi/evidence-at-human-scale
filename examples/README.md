@@ -46,7 +46,7 @@ If a check fails, the message names a code, the file and location, and the contr
 
 ### What a pass means, and what it does not
 
-A pass means the synthetic examples are internally coherent and the checks behave as documented. It says nothing about any real system, and it is not the [evaluation programme](../evaluation/README.md), which has not been run. The full statement is on the [Claims and limits](../docs/claims-and-limits.md) page.
+A pass shows that the invented examples are coherent and that the checks behave as documented, and nothing about any real system. [Claims and limits](../docs/claims-and-limits.md) has the full statement.
 
 ## The story
 

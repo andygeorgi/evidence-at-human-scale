@@ -23,7 +23,7 @@ A correction arrives after an approval but before execution. The corrected recor
 <details>
 <summary>Text description of Figure F10</summary>
 
-A vertical timeline in three phases. Each event is headed by the actor or record that performs it. Before: the packet (C04) and the delegation (C06) hold an approval that is queued for a later run. The correction cascades. The source owner admits a correction as a new version. The registry (C02) records that it supersedes the earlier version. Lineage invalidates the findings and summaries derived from the earlier version, and the packet that rested on them. The packet (C04) is revised, and the prior version stays linked. The delegation (C06) revokes the pending approval. At commit: the executor, also called the action gateway, rechecks the queued action. It finds that the grant is revoked and the evidence is no longer current. The action is refused before submission, and the receipt (C07) records the reasons. The receipt is a verified no-effect only once the target has been checked. A last card says that a new proposal on the revised packet needs a new approval.
+A vertical timeline in three phases. Each event is headed by the actor or record that performs it. Before: the packet (C04) lists a proposal, and the delegation (C06) holds an approval of it that is queued for a later run. The correction cascades. The source owner admits a correction as a new version. The registry (C02) records that it supersedes the earlier version. Lineage invalidates the findings and summaries derived from the earlier version, and the packet that rested on them. The packet (C04) is revised, and the prior version stays linked. The delegation (C06) revokes the pending approval. At commit: the executor, also called the action gateway, rechecks the queued action. It finds that the grant is revoked and the evidence is no longer current. The action is refused before submission, and the receipt (C07) records the reasons. The receipt is a verified no-effect only once the target has been checked. A last card says that a new proposal on the revised packet needs a new approval.
 
 [All figures and their descriptions](../../figures/README.md#f10-a-late-correction-reaches-a-pending-approval)
 
@@ -42,7 +42,7 @@ A vertical timeline in three phases. Each event is headed by the actor or record
 | [`c05-ACT-REL-0417-v2.json`](c05-ACT-REL-0417-v2.json) | The release proposal re-bound to the revised packet and citing the corrected evidence. |
 | [`c06-GRT-APPR-0417-B-v1.json`](c06-GRT-APPR-0417-B-v1.json) | A second exact approval, at 15:20, bound to proposal v2 only. |
 
-The raw second-pallet receipt is in [01](../01-source-records/README.md), the context v2 in [02](../02-context-and-normalization/README.md).
+The raw second-pallet receipt is in the [source records example](../01-source-records/README.md), the context v2 in the [context and normalization example](../02-context-and-normalization/README.md).
 
 ## What happened
 
@@ -77,7 +77,7 @@ The earlier versions are not rewritten to look as though they were always right.
 
 ## Why the first approval did not carry over
 
-The corrected receipt makes the release legitimate, and approval A is still refused ([08](../08-blocked-action/README.md)): it was given for a proposal built on evidence that is no longer current. The cost is a second approval. What the second approval buys is that no approval outlives the facts it rested on. Whether that cost is acceptable in a given process is a design choice; see [ownership and tradeoffs](../../architecture/ownership-and-tradeoffs.md).
+The corrected receipt makes the release legitimate, and approval A is still refused (see the [blocked action example](../08-blocked-action/README.md)): it was given for a proposal built on evidence that is no longer current. The cost is a second approval. What the second approval buys is that no approval outlives the facts it rested on. Whether that cost is acceptable in a given process is a design choice; see [ownership and tradeoffs](../../architecture/ownership-and-tradeoffs.md).
 
 ## Checks that run here
 
