@@ -302,7 +302,10 @@ def _check_gap(model: Model, inst: Instance, m: dict, loc: str, as_of: str, sele
     elif state == "stale":
         rec = model.get("C02", m["available_record"]["record_id"], m["available_record"]["version"])
         if rec is not None:
-            limit = freshness_max_age(model, rec.data)
+            try:
+                limit = freshness_max_age(model, rec.data)
+            except ValueError:
+                limit = None   # a limit that cannot be read cannot show that the label is wrong
             age = age_hours(rec.data, ts(m["freshness"]["evaluated_at"]))
             if limit is not None and age is not None and age <= limit:
                 out.append(_f("MISS003", "labeled stale, but the record is %.1f h old and policy allows %.0f h" % (age, limit), inst, loc, DOC_LINEAGE))

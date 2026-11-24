@@ -106,22 +106,39 @@ class LedgerEntry:
     receipt: str = ""
 
 
-def action_quantity(proposal: dict, units: str) -> float:
-    """Quantity a proposal would consume in `units` (EUR from the amount parameter; one per action for counted units)."""
+def action_quantity(proposal: dict, units: str) -> Optional[float]:
+    """Quantity a proposal would consume in `units` (EUR from the amount parameter; one per action for counted units).
+
+    None when the proposal states no readable amount in EUR: a limit in EUR cannot then be checked, and the check blocks.
+    """
     if units == "EUR":
-        for p in proposal["action"]["typed_parameters"]:
-            if p["name"] == "amount_eur":
-                return float(p["value"])
-        raise KeyError("proposal has no amount_eur parameter")
+        for p in _list(_object(proposal.get("action")).get("typed_parameters")):
+            if isinstance(p, dict) and p.get("name") == "amount_eur":
+                value = p.get("value")
+                if isinstance(value, bool) or not isinstance(value, (int, float)):
+                    return None
+                try:
+                    return float(value)
+                except OverflowError:
+                    return None
+        return None
     return 1.0
-
-
-def _record(model: Model, ref: dict) -> Optional[Instance]:
-    return model.get("C02", ref["record_id"], ref["version"])
 
 
 def _object(value) -> dict:
     return value if isinstance(value, dict) else {}
+
+
+def _list(value) -> list:
+    return value if isinstance(value, list) else []
+
+
+def _record(model: Model, ref) -> Optional[Instance]:
+    ref = _object(ref)
+    record_id, version = ref.get("record_id"), ref.get("version")
+    if not isinstance(record_id, str) or not isinstance(version, str):
+        return None
+    return model.get("C02", record_id, version)
 
 
 def availability_problem(record: Instance, at: datetime) -> Optional[Reason]:
@@ -176,11 +193,24 @@ def usable_at(record: Instance, at: datetime) -> bool:
 
 
 def freshness_max_age(model: Model, record: dict) -> Optional[float]:
-    ref = record["times"]["freshness"]["policy_reference"]
-    policy = model.registry.policy(ref["policy_id"], ref["version"])
-    if policy and policy.get("type") == "freshness":
-        return float(policy["max_age_hours"])
-    return None
+    """The longest age, in hours, that the record's freshness policy allows; None when no freshness policy applies to the record.
+
+    Raises ValueError when a freshness policy applies but states no limit that can be read. That is not the same as no limit:
+    a record cannot be shown to be fresh under a policy whose limit cannot be read.
+    """
+    ref = _object(_object(_object(record.get("times")).get("freshness")).get("policy_reference"))
+    policy_id, version = ref.get("policy_id"), ref.get("version")
+    policy = _object(_object(model.registry.policies.get(policy_id)).get(version)) if isinstance(policy_id, str) and isinstance(version, str) else {}
+    if policy.get("type") != "freshness":
+        return None
+    value = policy.get("max_age_hours")
+    try:
+        limit = None if isinstance(value, bool) or not isinstance(value, (int, float)) else float(value)
+    except OverflowError:
+        limit = None
+    if limit is None or limit != limit or limit < 0 or limit == float("inf"):
+        raise ValueError("freshness policy %s %s states no limit in hours that can be read" % (policy_id, version))
+    return limit
 
 
 def age_hours(record: dict, at: datetime) -> Optional[float]:
@@ -193,11 +223,11 @@ def age_hours(record: dict, at: datetime) -> Optional[float]:
 
 
 def evidence_refs(proposal: dict, grant: dict) -> List[dict]:
-    refs = list(proposal["action"]["evidence_references"])
-    refs += list(grant["scope_binding"]["evidence_constraints"])
+    refs = _list(_object(proposal.get("action")).get("evidence_references")) + _list(_object(grant.get("scope_binding")).get("evidence_constraints"))
     seen, out = set(), []
     for r in refs:
-        key = (r["record_id"], r["version"])
+        r = _object(r)
+        key = (r.get("record_id"), r.get("version"))
         if key not in seen:
             seen.add(key)
             out.append(r)
@@ -207,16 +237,16 @@ def evidence_refs(proposal: dict, grant: dict) -> List[dict]:
 def _target_state(model: Model, entity: str, at: datetime) -> dict:
     """The latest recorded state of the target at or before `at`. An entry with no usable time is not an observation."""
     latest, latest_at = {}, None
-    for item in model.registry.target_states:
+    for item in map(_object, model.registry.target_states):
         seen = parse_time(item.get("at"))
         if item.get("entity_id") == entity and seen is not None and seen <= at and (latest_at is None or seen >= latest_at):
-            latest, latest_at = item["state"], seen
+            latest, latest_at = _object(item.get("state")), seen
     return latest
 
 
 def _target_permitted(target: dict, permitted: List[dict]) -> bool:
     """Exact match, or the explicit wildcard entity_id '*' for the same entity type (a convention of this reference check)."""
-    return any(p == target or (p["entity_id"] == "*" and p["entity_type"] == target["entity_type"]) for p in permitted)
+    return any(isinstance(p, dict) and (p == target or (p.get("entity_id") == "*" and p.get("entity_type") == target.get("entity_type"))) for p in permitted)
 
 
 def _issued(grant: Instance) -> Optional[datetime]:
@@ -238,9 +268,10 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         raise ValueError("the attempt time must be a timezone-aware datetime")
     reasons: List[Reason] = []
     p, g = proposal.data, grant.data
-    life, scope = g["limits_lifecycle"], g["scope_binding"]
+    life, scope, action = _object(g.get("limits_lifecycle")), _object(g.get("scope_binding")), _object(p.get("action"))
 
     # 1. The grant itself is valid at the attempt, and a revocation observation made by then shows it unrevoked.
+    # A missing part of the grant that holds a time is a time that is missing: it blocks, it does not raise.
     rev = _object(life.get("revocation"))
     observed_at = parse_time(rev.get("checked_at"))
     if observed_at is None:
@@ -267,26 +298,29 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         if other.version != grant.version and _issued(other) is None:
             reasons.append(Reason("GRANT_TIME_UNKNOWN", "grant version %s has no known issuance time, so it cannot be ruled out that it replaced %s before the attempt" % (other.version, grant.version)))
 
-    # 2. The grant covers exactly this action.
-    binding = scope["binding"]
-    if binding["binding_type"] == "exact_proposal":
-        ref = binding["proposal_reference"]
-        if (ref["id"], ref["version"]) != (proposal.id, proposal.version):
-            reasons.append(Reason("GRANT_NOT_BOUND", "approval is bound to %s %s, not to %s %s" % (ref["id"], ref["version"], proposal.id, proposal.version)))
-    if p["action"]["action_kind"] not in scope["permitted_actions"]:
-        reasons.append(Reason("ACTION_NOT_PERMITTED", "action %s is outside the grant" % p["action"]["action_kind"]))
-    if not _target_permitted(p["action"]["exact_target"], scope["permitted_targets"]):
-        reasons.append(Reason("TARGET_NOT_PERMITTED", "target %s is outside the grant" % p["action"]["exact_target"]["entity_id"]))
-    allowed_params = {x["name"]: x["data_type"] for x in scope["permitted_parameters"]}
-    for param in p["action"]["typed_parameters"]:
-        if allowed_params.get(param["name"]) != param["data_type"]:
-            reasons.append(Reason("PARAMETER_NOT_PERMITTED", "parameter %s (%s) is not permitted by the grant" % (param["name"], param["data_type"])))
+    # 2. The grant covers exactly this action. A part of the grant that is missing covers nothing.
+    binding = _object(scope.get("binding"))
+    if binding.get("binding_type") == "exact_proposal":
+        ref = _object(binding.get("proposal_reference"))
+        if (ref.get("id"), ref.get("version")) != (proposal.id, proposal.version):
+            reasons.append(Reason("GRANT_NOT_BOUND", "approval is bound to %s %s, not to %s %s" % (ref.get("id"), ref.get("version"), proposal.id, proposal.version)))
+    elif binding.get("binding_type") != "bounded_class":
+        reasons.append(Reason("GRANT_NOT_BOUND", "the grant states no binding that this check knows (%r), so it cannot be shown to cover this action" % binding.get("binding_type")))
+    action_kind, target = action.get("action_kind"), _object(action.get("exact_target"))
+    if action_kind not in _list(scope.get("permitted_actions")):
+        reasons.append(Reason("ACTION_NOT_PERMITTED", "action %s is outside the grant" % action_kind))
+    if not _target_permitted(target, _list(scope.get("permitted_targets"))):
+        reasons.append(Reason("TARGET_NOT_PERMITTED", "target %s is outside the grant" % target.get("entity_id")))
+    allowed_params = {x.get("name"): x.get("data_type") for x in _list(scope.get("permitted_parameters")) if isinstance(x, dict)}
+    for param in map(_object, _list(action.get("typed_parameters"))):
+        if allowed_params.get(param.get("name")) != param.get("data_type"):
+            reasons.append(Reason("PARAMETER_NOT_PERMITTED", "parameter %s (%s) is not permitted by the grant" % (param.get("name"), param.get("data_type"))))
 
     # 3. The evidence had been admitted by the attempt, was still current, and was fresh.
     for ref in evidence_refs(p, g):
         rec = _record(model, ref)
         if rec is None:
-            reasons.append(Reason("EVIDENCE_UNRESOLVED", "evidence %s %s does not exist" % (ref["record_id"], ref["version"])))
+            reasons.append(Reason("EVIDENCE_UNRESOLVED", "evidence %s %s does not exist" % (ref.get("record_id"), ref.get("version"))))
             continue
         unavailable = availability_problem(rec, at)
         if unavailable is not None:
@@ -295,7 +329,11 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         stale_or_gone = lifecycle_problem(rec, at)
         if stale_or_gone is not None:
             reasons.append(stale_or_gone)
-        limit = freshness_max_age(model, rec.data)
+        try:
+            limit = freshness_max_age(model, rec.data)
+        except ValueError as exc:
+            reasons.append(Reason("EVIDENCE_STALE", "%s %s cannot be shown to be fresh: %s" % (rec.id, rec.version, exc)))
+            continue
         if limit is not None:
             age = age_hours(rec.data, at)
             if age is None:
@@ -303,53 +341,70 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
             elif age > limit:
                 reasons.append(Reason("EVIDENCE_STALE", "%s %s is %.1f h old; policy allows %.0f h" % (rec.id, rec.version, age, limit)))
 
-    # 4. Preconditions hold, judged only on evidence that was usable at the attempt.
+    # 4. Preconditions hold, judged only on evidence that was usable at the attempt. A rule that cannot be read is not satisfied.
     refs = evidence_refs(p, g)
-    for pre in p["action"]["preconditions"]:
-        rule = model.registry.preconditions.get(pre["condition_id"])
-        if rule is None:
-            reasons.append(Reason("PRECONDITION_UNDEFINED", "no rule is defined for %s" % pre["condition_id"]))
+    for pre in map(_object, _list(action.get("preconditions"))):
+        condition_id = pre.get("condition_id")
+        rule = _object(model.registry.preconditions.get(condition_id)) if isinstance(condition_id, str) else {}
+        if not rule:
+            reasons.append(Reason("PRECONDITION_UNDEFINED", "no rule is defined for %s" % condition_id))
             continue
         ok = False
-        if rule["type"] == "evidence_payload_equals":
-            for ref in refs:
-                rec = _record(model, ref)
-                if rec and rec.id.startswith(rule["record_prefix"]) and usable_at(rec, at):
-                    try:
-                        ok = resolve_pointer(payload_of(rec.data), rule["pointer"]) == rule["equals"]
-                    except (KeyError, IndexError, TypeError, ValueError):
-                        ok = False
-        elif rule["type"] == "evidence_fresh":
-            for ref in refs:
-                rec = _record(model, ref)
-                if rec and rec.id.startswith(rule["record_prefix"]) and usable_at(rec, at):
-                    age = age_hours(rec.data, at)
-                    ok = age is not None and age <= float(rule["max_age_hours"])
-        elif rule["type"] == "target_state_equals":
-            ok = _target_state(model, rule["entity_id"], at).get(rule["key"]) == rule["equals"]
+        try:
+            if rule.get("type") == "evidence_payload_equals":
+                for ref in refs:
+                    rec = _record(model, ref)
+                    if rec and rec.id.startswith(rule["record_prefix"]) and usable_at(rec, at):
+                        try:
+                            ok = resolve_pointer(payload_of(rec.data), rule["pointer"]) == rule["equals"]
+                        except (KeyError, IndexError, TypeError, ValueError):
+                            ok = False
+            elif rule.get("type") == "evidence_fresh":
+                for ref in refs:
+                    rec = _record(model, ref)
+                    if rec and rec.id.startswith(rule["record_prefix"]) and usable_at(rec, at):
+                        age = age_hours(rec.data, at)
+                        ok = age is not None and age <= float(rule["max_age_hours"])
+            elif rule.get("type") == "target_state_equals":
+                ok = _target_state(model, rule["entity_id"], at).get(rule["key"]) == rule["equals"]
+        except (KeyError, TypeError, ValueError, OverflowError, AttributeError):
+            ok = False
         if not ok:
-            reasons.append(Reason("PRECONDITION_FAILED", "%s is not satisfied: %s" % (pre["condition_id"], pre["condition"])))
+            reasons.append(Reason("PRECONDITION_FAILED", "%s is not satisfied: %s" % (condition_id, pre.get("condition"))))
 
-    # 5. Per-action and cumulative limits, counting consumed and reserved capacity.
-    for limit in life["per_action_limits"]:
-        qty = action_quantity(p, limit["units"])
-        if qty > limit["quantity"]:
-            reasons.append(Reason("PER_ACTION_LIMIT", "%s %s exceeds the per-action limit of %s %s" % (_fmt(qty), limit["units"], _fmt(limit["quantity"]), limit["units"])))
+    # 5. Per-action and cumulative limits, counting consumed and reserved capacity. A limit that cannot be read cannot be shown to hold.
+    per_action, cumulative = life.get("per_action_limits"), life.get("cumulative_limits")
+    if not isinstance(per_action, list):
+        reasons.append(Reason("PER_ACTION_LIMIT", "the grant lists no per-action limits, so none can be checked"))
+        per_action = []
+    for limit in map(_object, per_action):
+        qty, cap = action_quantity(p, limit.get("units")), limit.get("quantity")
+        if qty is None or isinstance(cap, bool) or not isinstance(cap, (int, float)):
+            reasons.append(Reason("PER_ACTION_LIMIT", "the per-action limit in %s cannot be checked: the proposal states no readable amount in that unit, or the limit states no readable quantity" % limit.get("units")))
+        elif qty > cap:
+            reasons.append(Reason("PER_ACTION_LIMIT", "%s %s exceeds the per-action limit of %s %s" % (_fmt(qty), limit["units"], _fmt(cap), limit["units"])))
     reserve = None
-    for limit in life["cumulative_limits"]:
-        qty = action_quantity(p, limit["units"])
+    if not isinstance(cumulative, list):
+        reasons.append(Reason("GRANT_TIME_UNKNOWN", "the grant lists no cumulative limits, so no accounting window can be read and the capacity already used cannot be established"))
+        cumulative = []
+    for limit in map(_object, cumulative):
+        qty, cap = action_quantity(p, limit.get("units")), limit.get("quantity")
         window = _object(limit.get("accounting_window"))
         window_start, window_end = parse_time(window.get("start")), parse_time(window.get("end"))
         if window_start is None or window_end is None or window_end <= window_start:
             reasons.append(Reason("GRANT_TIME_UNKNOWN", "the accounting window of the %s limit has a start or an end that is missing, unknown or out of order, so the capacity already used in it cannot be established" % limit.get("units")))
             continue
+        if qty is None or isinstance(cap, bool) or not isinstance(cap, (int, float)) or not isinstance(limit.get("accounting_scope"), str):
+            reasons.append(Reason("CUMULATIVE_LIMIT", "the cumulative limit in %s cannot be checked: the proposal states no readable amount in that unit, or the limit states no readable quantity or scope" % limit.get("units")))
+            continue
+        # Only what the ledger held by the attempt counts: an entry that starts after it is information from the future.
         used = sum(
             e.quantity for e in ledger
-            if e.grant_id == grant.id and e.accounting_scope == limit["accounting_scope"] and e.units == limit["units"]
-            and (e.start is None or window_start <= e.start < window_end)
+            if e.grant_id == grant.id and e.accounting_scope == limit["accounting_scope"] and e.units == limit.get("units")
+            and (e.start is None or (window_start <= e.start < window_end and e.start <= at))
         )
-        if used + qty > limit["quantity"]:
-            reasons.append(Reason("CUMULATIVE_LIMIT", "%s already counted plus %s would exceed %s %s in the window" % (_fmt(used), _fmt(qty), _fmt(limit["quantity"]), limit["units"])))
+        if used + qty > cap:
+            reasons.append(Reason("CUMULATIVE_LIMIT", "%s already counted plus %s would exceed %s %s in the window" % (_fmt(used), _fmt(qty), _fmt(cap), limit["units"])))
         else:
             reserve = {"units": limit["units"], "quantity": qty, "counted_before": used}
     allow = not reasons
@@ -399,19 +454,23 @@ def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str
     for rec in latest.values():
         d = rec.data
         submitted = parse_time(_object(_object(d.get("outcome")).get("timestamps")).get("submitted"))
-        grant_ref = d["identity_binding"]["grant_reference"]
-        grant = model.get("C06", grant_ref["id"], grant_ref["version"])
-        proposal_ref = d["identity_binding"]["proposal_reference"]
-        proposal = model.get("C05", proposal_ref["id"], proposal_ref["version"])
+        binding = _object(d.get("identity_binding"))
+        grant_ref, proposal_ref = _object(binding.get("grant_reference")), _object(binding.get("proposal_reference"))
+        grant = model.get("C06", grant_ref.get("id"), grant_ref.get("version")) if isinstance(grant_ref.get("id"), str) and isinstance(grant_ref.get("version"), str) else None
+        proposal = model.get("C05", proposal_ref.get("id"), proposal_ref.get("version")) if isinstance(proposal_ref.get("id"), str) and isinstance(proposal_ref.get("version"), str) else None
         if grant is None or proposal is None:
             continue
-        state = d["outcome"]["state"]
+        state = _object(d.get("outcome")).get("state")
         if state == "not_executed_verified":
             continue
-        for limit in grant.data["limits_lifecycle"]["cumulative_limits"]:
+        for limit in map(_object, _list(_object(grant.data.get("limits_lifecycle")).get("cumulative_limits"))):
+            scope = limit.get("accounting_scope")
+            if not isinstance(scope, str) or not isinstance(limit.get("units"), str):
+                continue
+            # An attempt whose amount cannot be read cannot be shown to have used less than everything: it is counted without limit.
             qty = action_quantity(proposal.data, limit["units"])
             held = "consumed" if state == "completed_verified" else "reserved"
-            entries.append(LedgerEntry(grant.id, limit["accounting_scope"], limit["units"], qty, held, submitted, rec.id))
+            entries.append(LedgerEntry(grant.id, scope, limit["units"], float("inf") if qty is None else qty, held, submitted, rec.id))
     return entries
 
 

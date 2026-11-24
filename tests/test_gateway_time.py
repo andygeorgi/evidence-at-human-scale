@@ -5,13 +5,15 @@ says when the system could first rely on a record of it. Freshness compares the 
 lifecycle state applies from its effective time. A revocation observation counts from the time it was made. A time
 that equals the attempt time was reached when the attempt was made. A time that is missing or unknown blocks.
 """
+import copy
+import dataclasses
 import unittest
 
 import support  # noqa: F401  (puts scripts/ on the path)
 
 from eahs import semantics
 from eahs.cases import mutate_model
-from eahs.gateway import GATE_CODES, evaluate_commit, ledger_from_receipts, parse_time, ts
+from eahs.gateway import GATE_CODES, LedgerEntry, evaluate_commit, ledger_from_receipts, parse_time, ts
 
 HOLD, HOLD_GRANT = ("ACT-HOLD-0417", "v1"), ("GRT-CLASS-HOLD", "v1")
 RELEASE_B, APPROVAL_B = ("ACT-REL-0417", "v2"), ("GRT-APPR-0417-B", "v1")
@@ -21,6 +23,10 @@ UNKNOWN = {"state": "unknown", "reason": "The producing system did not record th
 
 def replace(target, path, value):
     return {"target": target, "ops": [{"op": "replace", "path": path, "value": value}]}
+
+
+def remove(target, path):
+    return {"target": target, "ops": [{"op": "remove", "path": path}]}
 
 
 def unique(codes):
@@ -311,6 +317,105 @@ class TheAttemptTime(unittest.TestCase):
         for at in (None, parse_time("2026-11-23T10:03:00Z").replace(tzinfo=None)):
             with self.assertRaises(ValueError):
                 evaluate_commit(model, proposal, grant, at, [])
+
+
+class TheLedgerIsReadAsOfTheAttempt(unittest.TestCase):
+    """A reservation that starts after the attempt is information from the future: it cannot change a decision already made."""
+
+    SCOPE = "tenant:calder-works/GRT-CLASS-HOLD"
+
+    def decide_with(self, at, *entries):
+        model = support.example_model()
+        return evaluate_commit(model, model.get("C05", *HOLD), model.get("C06", *HOLD_GRANT), ts(at), list(entries))
+
+    def entry(self, start):
+        return LedgerEntry("GRT-CLASS-HOLD", self.SCOPE, "holds", 20.0, "reserved", None if start is None else ts(start), "RCP-OTHER")
+
+    def test_a_reservation_that_starts_after_the_attempt_does_not_change_it(self):
+        decision = self.decide_with("2026-11-23T10:03:00Z", self.entry("2026-11-23T10:04:00Z"))
+        self.assertEqual((decision.allow, decision.codes), (True, []))
+
+    def test_a_reservation_that_started_by_the_attempt_counts(self):
+        for start in ("2026-11-23T10:02:59Z", "2026-11-23T10:03:00Z"):
+            with self.subTest(start):
+                self.assertEqual(self.decide_with("2026-11-23T10:03:00Z", self.entry(start)).codes, ["CUMULATIVE_LIMIT"])
+
+    def test_a_reservation_whose_start_cannot_be_read_counts_in_every_window(self):
+        self.assertEqual(self.decide_with("2026-11-23T10:03:00Z", self.entry(None)).codes, ["CUMULATIVE_LIMIT"])
+
+
+class AGrantOrAProposalMissingAPart(unittest.TestCase):
+    """A part of the grant or the proposal that is missing is a check that cannot pass. It blocks with a reason from the table, and never raises."""
+
+    GRANT = "C06 GRT-CLASS-HOLD v1"
+    PROPOSAL = "C05 ACT-HOLD-0417 v1"
+
+    def blocked(self, *mutations, proposal=HOLD, grant=HOLD_GRANT):
+        decision = decide(proposal, grant, "2026-11-23T10:03:00Z", *mutations)
+        self.assertFalse(decision.allow)
+        self.assertTrue(set(decision.codes) <= set(GATE_CODES))
+        return unique(decision.codes)
+
+    def test_a_grant_without_its_limits_and_lifecycle_blocks(self):
+        codes = self.blocked(remove(self.GRANT, "/limits_lifecycle"))
+        self.assertEqual(codes, ["REVOCATION_TIME_UNKNOWN", "GRANT_TIME_UNKNOWN", "PER_ACTION_LIMIT"])
+
+    def test_a_grant_without_its_scope_covers_nothing(self):
+        codes = self.blocked(remove(self.GRANT, "/scope_binding"))
+        self.assertEqual(codes, ["GRANT_NOT_BOUND", "ACTION_NOT_PERMITTED", "TARGET_NOT_PERMITTED", "PARAMETER_NOT_PERMITTED"])
+
+    def test_a_grant_without_a_list_of_limits_cannot_show_the_limits_hold(self):
+        self.assertEqual(self.blocked(remove(self.GRANT, "/limits_lifecycle/per_action_limits")), ["PER_ACTION_LIMIT"])
+        self.assertEqual(self.blocked(remove(self.GRANT, "/limits_lifecycle/cumulative_limits")), ["GRANT_TIME_UNKNOWN"])
+
+    def test_a_limit_without_a_readable_quantity_cannot_be_checked(self):
+        for path, code in (("per_action_limits", "PER_ACTION_LIMIT"), ("cumulative_limits", "CUMULATIVE_LIMIT")):
+            for value in ("many", None, True):
+                with self.subTest(path, value=value):
+                    self.assertEqual(self.blocked(replace(self.GRANT, "/limits_lifecycle/%s/0/quantity" % path, value)), [code])
+
+    def test_a_proposal_without_its_action_is_not_covered_by_the_grant(self):
+        codes = self.blocked(remove(self.PROPOSAL, "/action"))
+        self.assertIn("ACTION_NOT_PERMITTED", codes)
+        self.assertIn("TARGET_NOT_PERMITTED", codes)
+
+    def test_an_amount_in_euro_that_is_not_stated_blocks_with_a_limit_reason(self):
+        for mutation in (replace("C05 ACT-REL-0417 v2", "/action/typed_parameters", []), remove("C05 ACT-REL-0417 v2", "/action/typed_parameters")):
+            with self.subTest(mutation["ops"][0]["op"]):
+                codes = self.blocked(mutation, proposal=RELEASE_B, grant=APPROVAL_B)
+                self.assertIn("PER_ACTION_LIMIT", codes)
+                self.assertIn("CUMULATIVE_LIMIT", codes)
+
+    def test_a_ledger_built_from_receipts_never_raises_for_a_receipt_whose_amount_cannot_be_read(self):
+        """The attempt's amount cannot be shown to be smaller than everything, so it is counted without limit."""
+        model, _ = mutate_model(support.example_model(), [remove("C05 ACT-REL-0417 v2", "/action/typed_parameters")])
+        entries = [e for e in ledger_from_receipts(model, ts("2026-11-23T16:10:00Z")) if e.receipt == "RCP-REL-0417-B"]
+        self.assertEqual([(e.units, e.quantity) for e in entries], [("EUR", float("inf"))])
+
+
+class AFreshnessLimitThatCannotBeRead(unittest.TestCase):
+    """A freshness policy whose limit cannot be read is not 'no limit': the evidence cannot be shown to be fresh, and the attempt blocks."""
+
+    def with_limit(self, value):
+        model = support.example_model()
+        registry = copy.deepcopy(model.registry)
+        ref = model.get("C02", "M3W-0417", "v1").data["times"]["freshness"]["policy_reference"]
+        policy = registry.policies[ref["policy_id"]][ref["version"]]
+        policy["type"], policy["max_age_hours"] = "freshness", value
+        return dataclasses.replace(model, registry=registry)
+
+    def decide_on(self, model):
+        return evaluate_commit(model, model.get("C05", *HOLD), model.get("C06", *HOLD_GRANT), ts("2026-11-23T10:03:00Z"), [])
+
+    def test_a_limit_that_is_not_a_number_blocks_with_a_reason_and_does_not_raise(self):
+        for value in (None, "soon", True, [], {}, float("nan"), float("inf"), -1, 10 ** 400):
+            with self.subTest(repr(value)[:20]):
+                decision = self.decide_on(self.with_limit(value))
+                self.assertEqual((decision.allow, unique(decision.codes)), (False, ["EVIDENCE_STALE"]))
+                self.assertIn("cannot be shown to be fresh", decision.reasons[0].message)
+
+    def test_a_readable_limit_still_decides_by_age(self):
+        self.assertEqual(self.decide_on(self.with_limit(10 ** 6)).codes, [])
 
 
 class ParsingTimes(unittest.TestCase):
