@@ -191,6 +191,15 @@ class StageSelection(Scratch):
         done = cli("--only", "schema")
         self.assertEqual(done.returncode, 0, done.stdout)
         self.assertIn("5 stage(s) were skipped and not evaluated", done.stdout)
+        self.assertIn("Result: PASS for the stages that ran", done.stdout)
+        self.assertIn("says nothing about them", done.stdout)
+        self.assertNotIn("Result: PASS. All", done.stdout)
+
+    def test_a_complete_run_says_so_and_a_partial_run_does_not(self):
+        partial, whole = json.loads(cli("--only", "schema", "--json").stdout), json.loads(cli("--json").stdout)
+        self.assertEqual((partial["status"], partial["complete"]), (PASS, False))
+        self.assertEqual((whole["status"], whole["complete"]), (PASS, True))
+        self.assertNotIn("stages that ran", cli().stdout)
 
     def test_skipping_every_stage_is_not_assessed(self):
         done = cli("--skip", ",".join(ve.STAGES))

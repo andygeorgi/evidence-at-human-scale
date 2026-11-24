@@ -46,18 +46,18 @@ The raw second-pallet receipt is in [01](../01-source-records/README.md), the co
 
 ## What happened
 
-The files show end-of-day snapshots, so a state that was later replaced is not in them. The registry's `review_log` keeps the two reviews, and the checks use it: an exact approval must come after the decision owner's review of the packet it rests on (`ROLE004`).
+The files show end-of-day snapshots, so a state that was later replaced is not in them. The registry's `review_log` keeps the two reviews, and the checks use it: an exact approval must come after the Decision Owner's review of the packet it rests on (`ROLE004`).
 
 | Time | Event |
 |---|---|
-| 10:35 | The controller, as decision owner, reviews packet v1. The review is in the registry's log; the packet file shows only its final state, `invalidated`. |
+| 10:35 | The controller, as Decision Owner, reviews packet v1. The review is in the `review_log` of `registry.json`; the packet file shows only its final state, `invalidated`. |
 | 10:40 | The controller, as approver, gives the first exact approval. |
 | 13:30 | Screening re-run. `SCR-S1042` v2 is admitted; v1 is superseded. |
 | 13:40 | The warehouse supervisor admits `GR-5521` v2. The record asserts four typed relationships, each naming who asserted it: **supersession** of v1 (by the supervisor) and **invalidation** of `M3W-0417` v1, `SUM-A-0417` v1 and `SUM-B-0417` v1 (by the lineage service). |
 | 13:45 | The invalidations take effect. The packet that rested on them, `PKT-0417` v1, is invalidated, with a challenge link to the correction. The approval that relied on that packet, `GRT-APPR-0417-A`, is revoked. |
 | 13:50 | The three-way match is recomputed from the corrected receipt. `M3W-0417` v2 (PASS) is admitted at 13:51, and v1 is superseded. |
 | 14:10 | A new context, selection, packet and proposal are produced from the corrected record. |
-| 15:10 | The controller, as decision owner, reviews packet v2. The requestor read it through the assistant but is not its reviewer. |
+| 15:10 | The controller, as Decision Owner, reviews packet v2. The requestor read it through the assistant but is not its reviewer. |
 | 15:20 | The controller, as approver, gives a new exact approval, bound to proposal v2. |
 
 ## What changed, record by record

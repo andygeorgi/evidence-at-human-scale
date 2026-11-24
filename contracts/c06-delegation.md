@@ -6,7 +6,7 @@
 **Reference:** [action and degradation](../architecture/action-and-degradation.md)
 **Figures:** F05 · **Evaluation tests:** EV07, EV11 (NOT ASSESSED)
 
-A C06 Delegation records what has been authorized: either an **exact approval** of one proposal version, or a **standing grant** for a bounded class of actions. Neither is an instruction to act. Current rights, evidence, policy, target state and shared limits still govern commit, and a grant works only within its current scope and lifecycle.
+A C06 Delegation records what has been authorized: either an **exact approval** of one proposal version, or a **bounded grant** for a class of actions. Neither is an instruction to act. Current rights, evidence, policy, target state and shared limits still govern commit, and a grant works only within its current scope and lifecycle.
 
 | Group / exact type-cardinality | Emitted group and fields | Required semantics |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ A C06 Delegation records what has been authorized: either an **exact approval** 
 | `binding_type` | Fields | Use |
 | --- | --- | --- |
 | `exact_proposal` | `proposal_reference`: the C05 `id` and `version` | An approval. It covers that proposal version and nothing else, so a corrected proposal needs a new approval. |
-| `bounded_class` | `class_id`, `class_version`, `bounds` | A standing grant for actions that are low-risk, reversible and bounded, and may repeat inside the stated bounds. |
+| `bounded_class` | `class_id`, `class_version`, `bounds` | A bounded grant for actions that are low-risk, reversible and within stated bounds, and may repeat inside them. |
 
 ## Values the schema fixes
 
@@ -84,7 +84,7 @@ A grant is not a standing permission to act: at commit the executor rechecks per
 
 ## Examples
 
-- [07 Authority and delegation](../examples/07-authority-and-delegation/README.md): a bounded class grant and an exact approval (the second exact approval is in 11).
+- [07 Authority and delegation](../examples/07-authority-and-delegation/README.md): a bounded grant and an exact approval (the second exact approval is in 11).
 - [12 Controlled change](../examples/12-controlled-change/README.md): a new grant version with a lower limit, and its effect on a pending proposal.
 
 [← C05 Action proposal](c05-action-proposal.md) · [Contracts](README.md) · [Next: C07 Execution receipt →](c07-execution-receipt.md)

@@ -24,7 +24,7 @@ A supplier invoice is ready to pay, and the goods receipt disagrees with it. The
 | **Records that disagree** | Invoice `INV-2026-0417` says 100 units, EUR 18,400. Goods receipt `GR-5521` version 1 says 60 units received. |
 | **What remains unknown** | Why they differ. Two AI summaries say "probably a receiving delay", but both read the same receipt, so they are one opinion. The treasury service did not answer, and part of the requested scope is outside the requestor's read permissions. |
 | **Decision requested** | Hold the payment or release it. The controller owns the decision. |
-| **What authority permits** | A standing grant lets the system place a hold. Releasing this payment needs the controller's approval of one exact proposal. |
+| **What authority permits** | A bounded grant lets the system place holds. Releasing this payment needs the controller's approval of one exact proposal. |
 | **After the correction** | The warehouse finds a second pallet and corrects the receipt to 100 units. The summaries, the packet and the approval built on version 1 stop being current, and the controller reviews a new packet before approving again. |
 
 Every name, amount and system in this example is invented. [The full story](examples/README.md#the-story), with times and folders, is in the examples.
@@ -39,6 +39,10 @@ It gives the controller one versioned **decision packet** instead of a pile of a
 - **Corrections travel.** When a record is superseded, everything built on the old version, a pending approval included, stops being current.
 
 More agents give the controller more interpretations to read. The unit of design here is the decision context rather than the agent hierarchy, and [the paper](docs/paper/README.md) argues why.
+
+## The smallest useful experiment
+
+You can test the idea on your own work before building anything. Pick one recurring decision where people already struggle with the evidence, and replay one recent case on paper. Write down the decision question, who owns it, which actions could follow, and who may read, approve and execute. List the sources with their versions. Then draft the first view of the packet, with supported claims, labeled inferences, conflicts and the missingness labels that apply, and walk it through the case with the person who owns the decision. The [implementation guide](docs/implementation-guide.md) gives a template for each step, and [chapter 14](docs/paper/14-start-monday.md) explains why to start there.
 
 ## Quickstart
 
@@ -81,7 +85,7 @@ A stage passes only if it evaluated something. An empty folder is `NOT ASSESSED`
 | **Read** | [The paper](docs/paper/README.md): 15 short chapters, from the problem to the first decision to build. |
 | **Check the detail** | [Architecture reference](architecture/README.md) · [seven contracts](contracts/README.md) · [JSON Schema bundle](schemas/README.md). |
 | **Run** | [Examples](examples/README.md): one invented supplier-payment story in 13 folders, and a command that validates it. |
-| **Evaluate** | [Evaluation guide](evaluation/README.md): 12 tests, 70 fixtures and 47 parameters, defined and not yet run. |
+| **Evaluate** | [Evaluation guide](evaluation/README.md): 12 tests, 70 fixtures and 47 parameters. The tests are defined and none has been run, and every parameter is UNSET. |
 | **Build** | [Implementation guide](docs/implementation-guide.md). |
 | **See** | [Figures](figures/README.md): F01–F11, each with a caption, alt text and a text description. |
 | **Look up** | [Glossary](docs/glossary.md) · [Claims and limits](docs/claims-and-limits.md) · [Sources](references/README.md). |

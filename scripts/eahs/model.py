@@ -65,7 +65,7 @@ class Registry:
     relationship_types: list = field(default_factory=list)
     protected_terms: list = field(default_factory=list)
     target_states: list = field(default_factory=list)
-    #: what each requester may be told about a source they cannot read ("record_id@version" -> decision)
+    #: what each requestor may be told about a source they cannot read ("record_id@version" -> decision)
     permission_decisions: dict = field(default_factory=dict)
     #: who holds which role, which roles one person may hold together, and the log of human reviews
     accountability: dict = field(default_factory=dict)

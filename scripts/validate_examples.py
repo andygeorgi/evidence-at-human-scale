@@ -276,7 +276,8 @@ def finding_json(f: Finding) -> dict:
 
 def render_json(results: List[StageResult], state: str, run_findings: Optional[List[Finding]] = None) -> str:
     return json.dumps({
-        "version": __version__, "status": state, "passed": state == PASS, "exit_code": EXIT_CODES[state],
+        "version": __version__, "status": state, "passed": state == PASS, "complete": bool(results) and all(r.status != SKIPPED for r in results),
+        "exit_code": EXIT_CODES[state],
         "findings": [finding_json(f) for f in (run_findings or [])],
         "stages": [{"stage": r.stage, "title": r.title, "status": r.status, "passed": r.passed, "evaluated": r.evaluated, "detail": r.detail,
                     "required_by": r.needed_by, "findings": [finding_json(f) for f in r.findings]} for r in results],
@@ -307,9 +308,12 @@ def render_text(results: List[StageResult], state: str, verbose: bool) -> str:
     if state == PASS:
         left_out = states.count(SKIPPED)
         total = sum(r.evaluated for r in results)
-        note = "" if not left_out else " %d stage(s) were skipped and not evaluated." % left_out
-        head = "All %d stages passed" % len(ran) if not left_out else "%d stage%s passed" % (len(ran), "" if len(ran) == 1 else "s")
-        out.append("Result: PASS. %s, each after evaluating at least one item (%d items in all).%s" % (head, total, note))
+        passed = "%d stage%s passed" % (len(ran), "" if len(ran) == 1 else "s")
+        each = "each " if len(ran) > 1 else ""
+        if left_out:
+            out.append("Result: PASS for the stages that ran. %s, %safter evaluating at least one item (%d items in all). %d stage(s) were skipped and not evaluated, so this result says nothing about them." % (passed, each, total, left_out))
+        else:
+            out.append("Result: PASS. All %d stages passed, each after evaluating at least one item (%d items in all)." % (len(ran), total))
     elif state == FAIL:
         out.append("Result: FAIL. %d of %d stages reported findings. %s" % (states.count(FAIL), len(ran), NEXT_STEP[FAIL]))
     elif state == INPUT_ERROR:

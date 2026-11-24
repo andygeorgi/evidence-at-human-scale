@@ -21608,7 +21608,7 @@
       "schema_pointer": "#/$defs/evidence/properties/validation",
       "schema_enforcement": "Required array; nested field/type/list/state constraints. contract_id/schema_version are required at the contract root, with instance ID/version inside identity group.",
       "required_semantics": "Separate validation records: ID/version, target version, method, actor, time, scope, outcome, limitations. Empty means none, not validated.",
-      "external_check": "Authenticate separate validation ID/version/target/method/actor/time/scope/outcome; absence means none, not validated; approval is not validation.",
+      "external_check": "Authenticate each separate validation: its ID, version, target, method, actor, time, scope and outcome. Absence means none, not validated; approval is not validation.",
       "figure_links": "F02/F03",
       "fixture_links": "EV01/EV02/EV03/EV07/EV12",
       "architectural_status": "NOT ASSESSED"
@@ -22072,8 +22072,8 @@
       "schema_group": "verification_recovery",
       "schema_pointer": "#/$defs/execution_receipt/properties/verification_recovery",
       "schema_enforcement": "Required object; nested field/type/list/state constraints. contract_id/schema_version are required at the contract root, with instance ID/version inside identity group.",
-      "required_semantics": "Authoritative outcome references, verification method/actor/time/scope; reconciliation/recovery state, retry disposition. Unknown outcomes retain reservation or equivalent conservative accounting; partial effects count against cumulative limits and reconcile/compensate under policy. Allowance is reconciled/restored only under documented confirmed-effect policy, never timeout/lease expiry alone.",
-      "external_check": "Authenticate actual authoritative outcome refs and verifier/method/actor/time/scope; reconcile unknown/partial, prevent blind retry, retain reservations or conservative accounting, charge partial effects. Restore/reconcile allowance only under documented authoritative confirmed-effect policy, never lease/timeout alone; compensation follows policy.",
+      "required_semantics": "Authoritative outcome references, the verification method, actor, time and scope; reconciliation and recovery state, retry disposition. Unknown outcomes retain reservation or equivalent conservative accounting; partial effects count against cumulative limits and are reconciled or compensated under policy. Allowance is reconciled or restored only under a documented confirmed-effect policy, never on a timeout or a lease expiry alone.",
+      "external_check": "Authenticate actual authoritative outcome references and the verifier, method, actor, time and scope; reconcile unknown and partial outcomes, prevent blind retry, retain reservations or conservative accounting, charge partial effects. Restore or reconcile allowance only under a documented authoritative confirmed-effect policy, never on a lease or a timeout alone; compensation follows policy.",
       "figure_links": "F05/F06/F07",
       "fixture_links": "EV11/EV12",
       "architectural_status": "NOT ASSESSED"

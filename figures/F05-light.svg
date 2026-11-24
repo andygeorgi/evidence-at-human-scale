@@ -17,10 +17,9 @@
 <rect x="197.0" y="93.9" width="153.0" height="147.3" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
 <text x="207.0" y="117.9" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">Bounded</text>
 <text x="207.0" y="136.6" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">grant (C06)</text>
-<text x="207.0" y="157.8" font-size="13" text-anchor="start" fill="#24133F">a standing grant</text>
-<text x="207.0" y="174.9" font-size="13" text-anchor="start" fill="#24133F">for a bounded class</text>
-<text x="207.0" y="192.1" font-size="13" text-anchor="start" fill="#24133F">already covers the</text>
-<text x="207.0" y="209.2" font-size="13" text-anchor="start" fill="#24133F">proposal</text>
+<text x="207.0" y="157.8" font-size="13" text-anchor="start" fill="#24133F">a grant for a class</text>
+<text x="207.0" y="174.9" font-size="13" text-anchor="start" fill="#24133F">of actions already</text>
+<text x="207.0" y="192.1" font-size="13" text-anchor="start" fill="#24133F">covers the proposal</text>
 <path d="M180.0 69.9 L180.0 81.9" fill="none" stroke="#57606a" stroke-width="1.8"/>
 <path d="M180.0 81.9 L86.5 81.9 L86.5 92.9" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <path d="M180.0 81.9 L273.5 81.9 L273.5 92.9" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>

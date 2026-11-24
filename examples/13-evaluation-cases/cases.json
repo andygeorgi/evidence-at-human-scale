@@ -903,7 +903,7 @@
       "case_id": "CASE-DISC-02",
       "family": "disclosure",
       "title": "An entry for a source whose existence the permission decision withholds",
-      "why": "Permission comes before disclosure: if the decision does not let the requester know the source exists, no output may carry an entry for it.",
+      "why": "Permission comes before disclosure: if the decision does not let the requestor know the source exists, no output may carry an entry for it.",
       "expect": [
         "DISC002"
       ],
@@ -939,7 +939,7 @@
       "case_id": "CASE-DISC-03",
       "family": "disclosure",
       "title": "A coverage limitation that says more than the decision permits",
-      "why": "Where the decision lets the requester know that coverage is limited, the output uses its words and adds nothing: not a count, a name, a type or a state.",
+      "why": "Where the decision lets the requestor know that coverage is limited, the output uses its words and adds nothing: not a count, a name, a type or a state.",
       "expect": [
         "DISC003"
       ],
@@ -997,7 +997,7 @@
       "case_id": "CASE-ROLE-02",
       "family": "roles",
       "title": "The requestor is recorded as the reviewer of a packet",
-      "why": "A packet is reviewed by the decision owner, who owns the decision. The person who asked for it reviews nothing on the owner's behalf.",
+      "why": "A packet is reviewed by the Decision Owner, who owns the decision. The person who asked for it reviews nothing on the owner's behalf.",
       "expect": [
         "ROLE003"
       ],
@@ -1018,7 +1018,7 @@
       "case_id": "CASE-ROLE-03",
       "family": "roles",
       "title": "An approval that comes before the review of its packet",
-      "why": "An exact approval follows the decision owner's review of the packet it rests on.",
+      "why": "An exact approval follows the Decision Owner's review of the packet it rests on.",
       "expect": [
         "ROLE004"
       ],

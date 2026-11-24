@@ -327,7 +327,7 @@ def f05(c):
     stem = c.y
     c.y += 24
     boxes = row(c, [dict(kind="own", head="Exact approval (C06)", body=sub("of this proposal version, by the approver, a role distinct from the requestor")),
-                    dict(kind="own", head="Bounded grant (C06)", body=sub("a standing grant for a bounded class already covers the proposal"))], gap=34)
+                    dict(kind="own", head="Bounded grant (C06)", body=sub("a grant for a class of actions already covers the proposal"))], gap=34)
     c.path([(c.w / 2, stem), (c.w / 2, stem + 12)], head=False)
     for b in boxes:
         c.path([(c.w / 2, stem + 12), (b.cx, stem + 12), (b.cx, b.y - 1)])

@@ -14,9 +14,9 @@ Task cost includes retrieval, storage, telemetry, evaluation, inference, retries
 
 Observability records the declared task scope, selected and excluded coverage, consumption, deadlines, partial completion, invalidations, the delivery state of mandatory notifications and action outcomes. It does not capture hidden reasoning. Telemetry must preserve privacy while still supporting accountable records, and retention should be minimal and fit the authorized purpose.
 
-## Adapt the domain, not the architecture
+## What stays fixed and what a domain supplies
 
-A deployment keeps the contracts, selection and lineage, information-flow controls, bounded orchestration, one review interaction, independent mandatory routes, separate action authority (the gateway), degraded modes, and an assurance plan. It supplies domain parameters: source authority, jurisdiction, obligations, severity, freshness, safe states, thresholds, risk acceptance, and who can approve or execute.
+Every deployment keeps the same parts: the seven contracts, selection and lineage, the controls on information flow, limits on calls, time and spend for the whole task, one review interaction, the notification route that does not depend on the assistant, a separate gateway for actions, the degraded modes and an assurance plan. The domain supplies the parameters: source authority, jurisdiction, obligations, severity, freshness, safe states, thresholds, risk acceptance, and who can approve or execute.
 
 Each parameter needs an owner, a typed value or an explicit unresolved state, units and scope, a rationale, the evidence or policy behind it, its review and approval state, and the version that applies. An unresolved parameter blocks the deployment decision or operation that depends on it. It does not block publication of the reference architecture, and it never licenses an assistant to invent a value. The [domain parameter catalogue](../../evaluation/catalogue/README.md) lists the 47 parameters this architecture leaves to domain owners; all are UNSET.
 

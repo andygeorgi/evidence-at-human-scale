@@ -1,6 +1,6 @@
 # Lineage, selection and disclosure
 
-[Architecture reference](README.md) · Paper: [4. Evidence and lineage](../docs/paper/04-evidence-and-lineage.md) · [5. Context and attention](../docs/paper/05-context-and-attention.md) · [8. Uncertainty](../docs/paper/08-uncertainty.md)
+[Architecture reference](README.md) · Paper: [4. Evidence and lineage](../docs/paper/04-evidence-and-lineage.md) · [5. Context and selection](../docs/paper/05-context-and-attention.md) · [8. Uncertainty](../docs/paper/08-uncertainty.md)
 
 A decision packet has to show where each claim comes from and what is missing, without telling the requestor anything it may not know. Records derive from one another in a versioned, acyclic graph, and a correction travels along it. Seven labels say why an input is absent, and permission is decided before any label is shown. Selection applies its constraints before it ranks. Summaries, counts and other derived outputs follow the same disclosure rules as the records they come from.
 
@@ -53,7 +53,7 @@ Keep these apart: the requestor, the read-authorized context service, the worklo
 
 Source content, tool responses and model outputs are untrusted data. They cannot change permissions, controls, priorities, mandatory obligations or executable instructions. An indirect prompt injection must fail at an enforceable boundary. Screening is defense in depth. It is not the authority boundary. A summary, an inferred relationship, a count, a manifest or a limitation can reveal that a protected record exists, even when the raw record is withheld. Every derived output must be filtered to what the requestor may see, in the same way as the raw record.
 
-Isolate tenant, user, purpose, session, cache and log contexts from one another. Recheck disclosure, authorization and freshness at release, at every later view, whenever a cache serves a result, and in every historical view. A revocation applies at each of these points. A released or cached summary is not a standing grant. Removing a citation does not help if the inference that reveals the record stays in.
+Isolate tenant, user, purpose, session, cache and log contexts from one another. Recheck disclosure, authorization and freshness at release, at every later view, whenever a cache serves a result, and in every historical view. A revocation applies at each of these points. A released or cached summary does not carry the permission that allowed it. Removing a citation does not help if the inference that reveals the record stays in.
 
 Source corrections, revocations, late evidence and challenges trigger a reassessment of lineage. They invalidate the affected packets, caches and pending approvals. The feedback must reach the preconditions of an action, not only the summary on screen. The revised current view stays distinct from the history that policy permits the system to retain, and an approved packet never changes silently.
 

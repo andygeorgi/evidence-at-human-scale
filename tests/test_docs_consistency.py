@@ -219,8 +219,9 @@ class OneVocabulary(unittest.TestCase):
         self.assertEqual(found, [])
 
     def test_what_stays_constant_across_domains_is_one_list(self):
-        listed = ("the contracts, selection and lineage, information-flow controls, bounded orchestration, one review interaction, "
-                  "independent mandatory routes, separate action authority (the gateway), degraded modes, and an assurance plan")
+        listed = ("the seven contracts, selection and lineage, the controls on information flow, limits on calls, time and spend for the whole task, "
+                  "one review interaction, the notification route that does not depend on the assistant, a separate gateway for actions, "
+                  "the degraded modes and an assurance plan")
         for page in ("docs/paper/11-costs-and-adaptation.md", "architecture/ownership-and-tradeoffs.md"):
             self.assertIn(listed, text(page), page)
 
@@ -274,19 +275,38 @@ class RetiredWording(unittest.TestCase):
         "accountable approver",
         "Reviewer navigation",
         "reviewer-navigation",
+        "a governed context",
+        "context and attention",
+        "Complexity must earn its place",
+        "Adapt the domain, not the architecture",
+        "Why more output, compression and automation",
+        "standing grant",
+        "standing class",
+        "documentation only",
+        "method/actor/time/scope",
     )
     EXEMPT = ("CHANGELOG.md", "contracts/CHANGES.md")
 
-    def test_no_retired_wording_returns(self):
-        found = []
+    def scanned(self):
         for path in sorted(REPO.rglob("*")):
             relative = path.relative_to(REPO).as_posix()
             if not path.is_file() or ".git" in path.relative_to(REPO).parts or relative.startswith("tests/") or relative in self.EXEMPT:
                 continue
-            if path.suffix not in (".md", ".json", ".py", ".cff", ".yml", ".csv", ".svg", ".txt"):
-                continue
-            body = path.read_text(encoding="utf-8").lower()
-            found += [(relative, phrase) for phrase in self.RETIRED if phrase.lower() in body]
+            if path.suffix in (".md", ".json", ".py", ".cff", ".yml", ".csv", ".svg", ".txt"):
+                yield relative, path.read_text(encoding="utf-8")
+
+    def test_no_retired_wording_returns(self):
+        found = []
+        for relative, body in self.scanned():
+            found += [(relative, phrase) for phrase in self.RETIRED if phrase.lower() in body.lower()]
+        self.assertEqual(found, [])
+
+    def test_each_role_has_one_name(self):
+        # The roles are "requestor" and "Decision Owner" in every page, message and data file.
+        found = []
+        for relative, body in self.scanned():
+            found += [(relative, "requester") for _ in re.finditer("requester", body, re.I)][:1]
+            found += [(relative, "decision owner") for _ in re.finditer("decision owner", body)][:1]
         self.assertEqual(found, [])
 
 

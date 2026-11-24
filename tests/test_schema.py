@@ -54,6 +54,14 @@ class Timestamps(unittest.TestCase):
         self.assertIn("date-time", findings[0].message)
         self.assertNotIn("'reason' is a required property", findings[0].message)
 
+    def test_a_bad_timestamp_is_one_finding_even_though_the_schema_states_it_twice(self):
+        # the schema gives every timestamp both `format: date-time` and a `pattern`; the examples README tells a reader to break one
+        instance = support.read_json("01-source-records/c02-AP-POLICY-4-v1.json")
+        instance["producer_admission"]["admission_time"] = "2026-11-23T07:31:00"
+        findings = validate_instance(support.schema(), instance)
+        self.assertEqual([(f.code, f.location) for f in findings], [("SCH002", "/producer_admission/admission_time")])
+        self.assertIn("date-time", findings[0].message)
+
 
 class Diagnostics(unittest.TestCase):
     def test_no_embedded_invalid_example_reports_the_same_finding_twice(self):

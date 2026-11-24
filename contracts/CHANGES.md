@@ -14,18 +14,19 @@ Annotation-only. No previously valid instance becomes invalid, and none that was
 
 | Change | Previous form | New form | Reason |
 |---|---|---|---|
-| Definition of the `inaccessible` missingness label (the enum description, the canonical definition and the values in the embedded examples) | "Current principal lacks permission; reason/existence disclosed only when permitted." | "Current principal may know the input exists but may not read it; shown only in the wording the permission decision allows." | Permission is decided before anything about an input is shown, so the label applies only where the requester may know that the input exists. |
+| Definition of the `inaccessible` missingness label (the enum description, the canonical definition and the values in the embedded examples) | "Current principal lacks permission; reason/existence disclosed only when permitted." | "Current principal may know the input exists but may not read it; shown only in the wording the permission decision allows." | Permission is decided before anything about an input is shown, so the label applies only where the requestor may know that the input exists. |
 | Definition of the `not_assessed` missingness label (same places) | "Check/assessment not performed; distinct from evaluation/publication NOT ASSESSED (insufficient assessment coverage)." | "Check or assessment of the input was not performed. Not the evaluation status NOT ASSESSED." | The evaluation statuses were redefined; the meaning of the label did not change. |
 | `x-documentation.source.source_type` | "Author's architecture specification, not published" | "Architecture documentation of this repository" | Wording about how the source was prepared was removed. |
 | `x-documentation.architecture_evaluation_status`, `x-contract-crosswalk[].architectural_status` (41 entries) and one note in `x-documentation.external_checks` | `NOT RUN` | `NOT ASSESSED` | The architecture has not been evaluated, and what an evaluation needs does not exist. |
 | Root `description` | A three-sentence slogan followed by the statement about one interaction contract | The statement about one interaction contract, in plain words | The slogan was removed from the schema as it was from the documents. |
+| `x-contract-crosswalk` entries for C02 `validation` and C07 `verification_recovery`: `required_semantics` and `external_check` | Lists joined by slashes, such as "verification method/actor/time/scope" | The same items written as a sentence | Plain wording. What each entry requires and what it checks did not change. |
 
 ### Validation surface
 
 | Property | Value |
 |---|---|
 | File | `schemas/contracts-v1.schema.json` |
-| SHA-256 of the file | `9386d9bcd365c5d00edf2d401f39b30cefc65f41f0df05a32e562a6f6c0fd924` (741,558 bytes) |
+| SHA-256 of the file | `145b315c335d795214a331e30b118e80464c61a72b9efd5f64b9eb3d544461c1` (741,661 bytes) |
 | Validation surface SHA-256 | `48dc0402cc4957d1f3e8583ee408159dcb787cbafdb655708b5c7f5ec69860a3` (unchanged) |
 | Embedded examples | 38 valid instances accepted; 64 invalid instances rejected |
 

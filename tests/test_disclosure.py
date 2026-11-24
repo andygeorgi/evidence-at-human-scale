@@ -1,8 +1,8 @@
 """Permission comes before disclosure.
 
-What a requester is told about an input that is not in front of them depends on two permission questions, asked
+What a requestor is told about an input that is not in front of them depends on two permission questions, asked
 before any state is worked out: may they know it exists, and may they read it? These tests pin the order in the
-reference decision list, in Figure F09 and in the example data, and show that an unauthorized requester gets a safe
+reference decision list, in Figure F09 and in the example data, and show that an unauthorized requestor gets a safe
 generic response from which nothing about a restricted record can be inferred.
 """
 import itertools
@@ -32,13 +32,13 @@ def every_state(**fixed):
 
 
 class DecisionList(unittest.TestCase):
-    def test_a_requester_who_may_not_know_it_exists_learns_nothing_whatever_its_state(self):
-        for item in every_state(requester_may_know_it_exists=False, requester_may_read_it=False, permitted_disclosure=PERMITTED):
+    def test_a_requestor_who_may_not_know_it_exists_learns_nothing_whatever_its_state(self):
+        for item in every_state(requestor_may_know_it_exists=False, requestor_may_read_it=False, permitted_disclosure=PERMITTED):
             self.assertEqual(classify(item), NO_ENTRY, item)
             self.assertIsNone(disclose(item))
 
-    def test_an_input_the_requester_may_know_about_but_not_read_is_inaccessible_whatever_its_state(self):
-        shown = {disclose(item) for item in every_state(requester_may_know_it_exists=True, requester_may_read_it=False, permitted_disclosure=PERMITTED)}
+    def test_an_input_the_requestor_may_know_about_but_not_read_is_inaccessible_whatever_its_state(self):
+        shown = {disclose(item) for item in every_state(requestor_may_know_it_exists=True, requestor_may_read_it=False, permitted_disclosure=PERMITTED)}
         self.assertEqual(len(shown), 1)
         entry = shown.pop()
         self.assertEqual((entry.label, entry.text), ("inaccessible", PERMITTED))
@@ -50,7 +50,7 @@ class DecisionList(unittest.TestCase):
         self.assertNotIn("vendor master", disclose(item).text)
 
     def test_only_a_readable_input_is_classified_and_in_the_order_of_the_figure(self):
-        readable = dict(requester_may_know_it_exists=True, requester_may_read_it=True)
+        readable = dict(requestor_may_know_it_exists=True, requestor_may_read_it=True)
         cases = [
             (dict(record_available=True, record_fresh=False), "stale"),
             (dict(check_performed=False), "not_assessed"),
@@ -71,12 +71,12 @@ class DecisionList(unittest.TestCase):
 
 
 class NoExistenceLeakage(unittest.TestCase):
-    def test_the_view_is_identical_with_and_without_a_restricted_record_the_requester_may_not_know_about(self):
+    def test_the_view_is_identical_with_and_without_a_restricted_record_the_requestor_may_not_know_about(self):
         known = [ExpectedInput("credit notes", True, True, retrieval_completed=True), ExpectedInput("treasury position", True, True, source_answered=False)]
-        for hidden in every_state(requester_may_know_it_exists=False, requester_may_read_it=False, permitted_disclosure=PERMITTED):
+        for hidden in every_state(requestor_may_know_it_exists=False, requestor_may_read_it=False, permitted_disclosure=PERMITTED):
             self.assertEqual(project(known + [hidden], COVERAGE), project(known, COVERAGE))
 
-    def test_an_unauthorized_requester_gets_the_generic_coverage_statement_and_nothing_else(self):
+    def test_an_unauthorized_requestor_gets_the_generic_coverage_statement_and_nothing_else(self):
         hidden = ExpectedInput("investigation file", False, False, record_available=True, record_fresh=False)
         view = project([hidden], COVERAGE)
         self.assertEqual([(e.label, e.text) for e in view], [("coverage", COVERAGE)])
@@ -112,7 +112,7 @@ class TheExampleData(unittest.TestCase):
         for word in ("withheld", "investigation", "authz-read-withheld", "vendor master", "vendor-master"):
             self.assertNotIn(word, blob)
 
-    def test_the_rendered_response_for_the_requester_carries_only_the_permitted_wording_about_the_unreadable_part(self):
+    def test_the_rendered_response_for_the_requestor_carries_only_the_permitted_wording_about_the_unreadable_part(self):
         for packet in self.model.of("C04"):
             statements = render_response(self.model, packet)["statements"]
             inaccessible = [s for s in statements if s["kind"] == "gap" and "(inaccessible)" in s["label"]]

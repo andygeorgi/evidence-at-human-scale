@@ -23,7 +23,7 @@ Compare the native or current workflow, deterministic grouping and templates, an
 
 Four numbered steps are drawn top to bottom. The first is the native or current workflow. The second is deterministic grouping and templates. The third is simple synthesis with zero specialists, which is a complete architecture on its own. The fourth is optional specialists, admitted only for a documented task, permission or isolation need. An arrow between two steps carries a question. The first two arrows ask whether the next step is better on matched tasks. The third asks whether there is a measured, matched need. A card lists the measures: correctness, omissions, evidence actually inspected, decision quality, time and workload. Fluency and how many agents agree are not measures. A last card says: No evaluation result is claimed. No comparison has been run.
 
-[All figures and their descriptions](../../figures/README.md#f08-complexity-must-earn-its-place)
+[All figures and their descriptions](../../figures/README.md#f08-simpler-baselines-before-specialists)
 
 </details>
 <!-- figure:F08:end -->

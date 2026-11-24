@@ -1,16 +1,16 @@
 """Permission before disclosure: the decision list of Figure F09, written as code.
 
-An expected input that is not in front of a requester is described to that requester only after two permission questions
+An expected input that is not in front of a requestor is described to that requestor only after two permission questions
 have been answered, and only as far as the answers allow:
 
-1. May the requester know that the input exists? If not, nothing about it is shown. It adds nothing to the output except
+1. May the requestor know that the input exists? If not, nothing about it is shown. It adds nothing to the output except
    the one coverage statement that every output carries, whether or not anything is withheld.
-2. May the requester read it? If not, and its existence may be disclosed, the entry is ``inaccessible``, in the words the
+2. May the requestor read it? If not, and its existence may be disclosed, the entry is ``inaccessible``, in the words the
    permission decision allows and no others: no name, type, count, state or age.
-3. Only for an input the requester may read is it classified as stale, not assessed, unavailable, missing, negative or
+3. Only for an input the requestor may read is it classified as stale, not assessed, unavailable, missing, negative or
    not retrieved, and only then is anything about its state shown.
 
-The order is the point. Classifying first ("it is stale") and filtering afterwards would tell a requester that a record
+The order is the point. Classifying first ("it is stale") and filtering afterwards would tell a requestor that a record
 exists, and how old it is, before anyone asked whether they may know. The functions here are a reference for that order,
 used by the tests; they are not an implementation of the architecture.
 """
@@ -26,11 +26,11 @@ DECISION_ORDER = (NO_ENTRY, "inaccessible", "stale", "not_assessed", "unavailabl
 
 @dataclass(frozen=True)
 class ExpectedInput:
-    """One input a task expected, with what the system knows about it and what the requester may be told."""
+    """One input a task expected, with what the system knows about it and what the requestor may be told."""
     name: str
-    requester_may_know_it_exists: bool
-    requester_may_read_it: bool
-    #: the wording a permission decision allows for an input the requester may know about but not read
+    requestor_may_know_it_exists: bool
+    requestor_may_read_it: bool
+    #: the wording a permission decision allows for an input the requestor may know about but not read
     permitted_disclosure: str = ""
     record_available: bool = False
     record_fresh: bool = True
@@ -47,10 +47,10 @@ class Entry:
 
 
 def classify(item: ExpectedInput) -> str:
-    """The label the requester sees for an expected input, asking the questions in order. NO_ENTRY means nothing is shown."""
-    if not item.requester_may_know_it_exists:
+    """The label the requestor sees for an expected input, asking the questions in order. NO_ENTRY means nothing is shown."""
+    if not item.requestor_may_know_it_exists:
         return NO_ENTRY
-    if not item.requester_may_read_it:
+    if not item.requestor_may_read_it:
         return "inaccessible"
     if item.record_available and not item.record_fresh:
         return "stale"
@@ -66,7 +66,7 @@ def classify(item: ExpectedInput) -> str:
 
 
 def disclose(item: ExpectedInput) -> Optional[Entry]:
-    """What the requester is told about one input, or None. An unreadable input is described by its permitted wording only."""
+    """What the requestor is told about one input, or None. An unreadable input is described by its permitted wording only."""
     label = classify(item)
     if label == NO_ENTRY:
         return None
@@ -76,5 +76,5 @@ def disclose(item: ExpectedInput) -> Optional[Entry]:
 
 
 def project(items: Sequence[ExpectedInput], coverage_statement: str) -> List[Entry]:
-    """The requester's view of a task: an entry for each input they may know about, then the coverage statement every output carries."""
+    """The requestor's view of a task: an entry for each input they may know about, then the coverage statement every output carries."""
     return [entry for entry in (disclose(item) for item in items) if entry is not None] + [Entry("coverage", coverage_statement)]

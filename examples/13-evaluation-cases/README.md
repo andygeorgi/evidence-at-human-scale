@@ -121,8 +121,8 @@ To try your own, add a case to `scripts/build_example_data.py` (`case_file`) and
 | Case | Mutation | Expect | Why |
 |---|---|---|---|
 | `CASE-ROLE-01` | The requestor approves their own request | `ROLE001`, `ROLE002` | The requestor and the approver are distinct roles. A person who asked for the packet may not approve the action it proposes unless the policy says one person may hold both. |
-| `CASE-ROLE-02` | The requestor is recorded as the reviewer of a packet | `ROLE003` | A packet is reviewed by the decision owner, who owns the decision. The person who asked for it reviews nothing on the owner's behalf. |
-| `CASE-ROLE-03` | An approval that comes before the review of its packet | `ROLE004` | An exact approval follows the decision owner's review of the packet it rests on. |
+| `CASE-ROLE-02` | The requestor is recorded as the reviewer of a packet | `ROLE003` | A packet is reviewed by the Decision Owner, who owns the decision. The person who asked for it reviews nothing on the owner's behalf. |
+| `CASE-ROLE-03` | An approval that comes before the review of its packet | `ROLE004` | An exact approval follows the Decision Owner's review of the packet it rests on. |
 
 ## Three cases that produce more than one code
 

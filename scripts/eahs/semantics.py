@@ -478,10 +478,10 @@ def _holders(roles: dict, role: str) -> Set[str]:
 
 
 def check_accountability(model: Model) -> List[Finding]:
-    """Requestor, decision owner, approver and executor stay distinct unless the registry says one person may hold two.
+    """Requestor, Decision Owner, approver and executor stay distinct unless the registry says one person may hold two.
 
-    An exact approval needs an approver who is not the requestor, and an earlier review of its packet by a decision owner.
-    A packet marked reviewed names a decision owner as the reviewer, and the review log agrees.
+    An exact approval needs an approver who is not the requestor, and an earlier review of its packet by a Decision Owner.
+    A packet marked reviewed names a Decision Owner as the reviewer, and the review log agrees.
     """
     out: List[Finding] = []
     acc = model.registry.accountability
@@ -514,14 +514,14 @@ def check_accountability(model: Model) -> List[Finding]:
             out.append(_f("ROLE002", "%s asked for the packet and also approves the action it proposes; the registry does not let one person hold the requestor and approver roles" % issuer, grant, "/identity_principals/issuer", DOC_ROLES))
         reviewed = [e for e in log if e.get("packet") == "%s %s" % (packet.id, packet.version) and e.get("action") == "reviewed" and e.get("actor") in owners and ts(e["time"]) <= issued]
         if not reviewed:
-            out.append(_f("ROLE004", "no decision owner reviewed packet %s %s at or before the approval (%s): an approval follows the review of the packet it rests on" % (packet.id, packet.version, who["issuance_time"]), grant, "/identity_principals/issuance_time", DOC_ROLES))
+            out.append(_f("ROLE004", "no Decision Owner reviewed packet %s %s at or before the approval (%s): an approval follows the review of the packet it rests on" % (packet.id, packet.version, who["issuance_time"]), grant, "/identity_principals/issuance_time", DOC_ROLES))
     for packet in model.of("C04"):
         history = packet.data["review_version_history"]
         if history["state"] != "reviewed":
             continue
         actor, when = history["actor"].get("value"), history["time"].get("value")
         if actor not in owners:
-            out.append(_f("ROLE003", "packet %s %s was reviewed by %s, who is not a decision owner (%s)" % (packet.id, packet.version, actor, ", ".join(sorted(owners)) or "none"), packet, "/review_version_history/actor", DOC_ROLES))
+            out.append(_f("ROLE003", "packet %s %s was reviewed by %s, who is not a Decision Owner (%s)" % (packet.id, packet.version, actor, ", ".join(sorted(owners)) or "none"), packet, "/review_version_history/actor", DOC_ROLES))
         elif not any(e.get("packet") == "%s %s" % (packet.id, packet.version) and e.get("actor") == actor and e.get("action") == "reviewed" and e.get("time") == when for e in log):
             out.append(_f("ROLE003", "the review of packet %s %s by %s at %s is not in the registry's review log" % (packet.id, packet.version, actor, when), packet, "/review_version_history", DOC_ROLES))
     return out

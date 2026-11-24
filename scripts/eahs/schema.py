@@ -129,9 +129,13 @@ def validate_instance(schema: dict, instance, file: str = "", contract_id: Optio
         return [Finding("SCH001", "contract_id is missing or not one of C01-C07 (got %r)" % (cid,), file, doc="contracts/README.md")]
     findings: List[Finding] = []
     seen = set()
-    for error in sorted(validator_for(schema, cid).iter_errors(instance), key=lambda e: [str(p) for p in e.absolute_path]):
-        shown = _shown_error(error)
+    errors = [(error, _shown_error(error)) for error in sorted(validator_for(schema, cid).iter_errors(instance), key=lambda e: [str(p) for p in e.absolute_path])]
+    # The schema gives a timestamp a `pattern` as well as `format: date-time`, so one bad timestamp breaks both; report it once.
+    bad_format = {tuple(error.absolute_path) for error, shown in errors if shown.validator == "format"}
+    for error, shown in errors:
         parts = list(error.absolute_path)
+        if shown.validator == "pattern" and tuple(parts) in bad_format:
+            continue
         detail = shown.message
         if len(detail) > 220:
             detail = detail[:217] + "..."

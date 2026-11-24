@@ -24,7 +24,7 @@
     "id": "BASE-04",
     "measure": "Latency and lifecycle cost",
     "comparison_baseline": "Native/current workflow",
-    "metric": "Observed configured B_time/B_cost conformance including retrieval/storage/telemetry/evaluation/inference/retries/operations; units and uncertainty explicit.",
+    "metric": "Observed conformance with the configured B_time and B_cost, including retrieval, storage, telemetry, evaluation, inference, retries and operations; units and uncertainty explicit.",
     "status": "NOT ASSESSED"
   },
   {
@@ -52,7 +52,7 @@
     "id": "BASE-08",
     "measure": "Latency and lifecycle cost",
     "comparison_baseline": "Deterministic templates/grouping",
-    "metric": "Observed configured B_time/B_cost conformance including retrieval/storage/telemetry/evaluation/inference/retries/operations; units and uncertainty explicit.",
+    "metric": "Observed conformance with the configured B_time and B_cost, including retrieval, storage, telemetry, evaluation, inference, retries and operations; units and uncertainty explicit.",
     "status": "NOT ASSESSED"
   },
   {
@@ -80,7 +80,7 @@
     "id": "BASE-12",
     "measure": "Latency and lifecycle cost",
     "comparison_baseline": "Simple synthesis with zero specialists",
-    "metric": "Observed configured B_time/B_cost conformance including retrieval/storage/telemetry/evaluation/inference/retries/operations; units and uncertainty explicit.",
+    "metric": "Observed conformance with the configured B_time and B_cost, including retrieval, storage, telemetry, evaluation, inference, retries and operations; units and uncertainty explicit.",
     "status": "NOT ASSESSED"
   }
 ]

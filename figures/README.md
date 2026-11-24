@@ -127,7 +127,7 @@ Source: [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](banne
 
 **Alt text.** A packet lists a proposal. An approver, a role distinct from the requestor, approves the exact proposal version, or a bounded grant covers it. A divider reads Approval is not commit. At commit, the executor rechecks six conditions. If all pass, it reserves allowance and submits; if one fails, nothing is submitted and the receipt is not_executed_verified. An authoritative verification confirms the outcome.
 
-**Description.** At the top, the packet lists the proposal, marked proposed, not executed. Below it, joined by the word or, are an exact approval and a bounded grant. The exact approval is of this proposal version, given by the approver, a role distinct from the requestor. The bounded grant is a standing grant for a bounded class that already covers the proposal. Both are recorded in a delegation (C06). A divider reads Approval is not commit. Below the divider, the executor, also called the action gateway, checks the current state at commit against six conditions. The grant is current and not revoked. The evidence is current and fresh. The preconditions hold. The parameters and target match. The per-action limit holds. The cumulative limit holds, counting consumed and reserved capacity. If every check passes, allowance is reserved and the exact action is submitted to the target. The outcome, or a timeout, is recorded. If a check fails, nothing is submitted. The receipt (C07) records the outcome. After a pass, the outcome is completed_verified, unknown, partial or not_executed_verified. After a failed check, it is not_executed_verified, with the reasons. An authoritative verification against the target confirms or reconciles the outcome.
+**Description.** At the top, the packet lists the proposal, marked proposed, not executed. Below it, joined by the word or, are an exact approval and a bounded grant. The exact approval is of this proposal version, given by the approver, a role distinct from the requestor. The bounded grant is a grant for a class of actions that already covers the proposal. Both are recorded in a delegation (C06). A divider reads Approval is not commit. Below the divider, the executor, also called the action gateway, checks the current state at commit against six conditions. The grant is current and not revoked. The evidence is current and fresh. The preconditions hold. The parameters and target match. The per-action limit holds. The cumulative limit holds, counting consumed and reserved capacity. If every check passes, allowance is reserved and the exact action is submitted to the target. The outcome, or a timeout, is recorded. If a check fails, nothing is submitted. The receipt (C07) records the outcome. After a pass, the outcome is completed_verified, unknown, partial or not_executed_verified. After a failed check, it is not_executed_verified, with the reasons. An authoritative verification against the target confirms or reconciles the outcome.
 
 **Used in:** [9. Authority remains a separate boundary](../docs/paper/09-authority.md); [07 Authority and delegation](../examples/07-authority-and-delegation/README.md).
 
@@ -182,7 +182,7 @@ Also in every state, urgent continuity (independent deterministic notification, 
 
 **Source:** [`figures/src/svg_figures.py`](src/svg_figures.py). Files: [light](F07-light.svg) · [dark](F07-dark.svg).
 
-### F08 Complexity must earn its place
+### F08 Simpler baselines before specialists
 
 <p align="center">
 <picture>

@@ -23,7 +23,7 @@ A packet is not an approval. Authority to act comes from a **grant** ([C06](../.
 <details>
 <summary>Text description of Figure F05</summary>
 
-At the top, the packet lists the proposal, marked proposed, not executed. Below it, joined by the word or, are an exact approval and a bounded grant. The exact approval is of this proposal version, given by the approver, a role distinct from the requestor. The bounded grant is a standing grant for a bounded class that already covers the proposal. Both are recorded in a delegation (C06). A divider reads Approval is not commit. Below the divider, the executor, also called the action gateway, checks the current state at commit against six conditions. The grant is current and not revoked. The evidence is current and fresh. The preconditions hold. The parameters and target match. The per-action limit holds. The cumulative limit holds, counting consumed and reserved capacity. If every check passes, allowance is reserved and the exact action is submitted to the target. The outcome, or a timeout, is recorded. If a check fails, nothing is submitted. The receipt (C07) records the outcome. After a pass, the outcome is completed_verified, unknown, partial or not_executed_verified. After a failed check, it is not_executed_verified, with the reasons. An authoritative verification against the target confirms or reconciles the outcome.
+At the top, the packet lists the proposal, marked proposed, not executed. Below it, joined by the word or, are an exact approval and a bounded grant. The exact approval is of this proposal version, given by the approver, a role distinct from the requestor. The bounded grant is a grant for a class of actions that already covers the proposal. Both are recorded in a delegation (C06). A divider reads Approval is not commit. Below the divider, the executor, also called the action gateway, checks the current state at commit against six conditions. The grant is current and not revoked. The evidence is current and fresh. The preconditions hold. The parameters and target match. The per-action limit holds. The cumulative limit holds, counting consumed and reserved capacity. If every check passes, allowance is reserved and the exact action is submitted to the target. The outcome, or a timeout, is recorded. If a check fails, nothing is submitted. The receipt (C07) records the outcome. After a pass, the outcome is completed_verified, unknown, partial or not_executed_verified. After a failed check, it is not_executed_verified, with the reasons. An authoritative verification against the target confirms or reconciles the outcome.
 
 [All figures and their descriptions](../../figures/README.md#f05-from-proposal-to-commit)
 
@@ -34,9 +34,9 @@ At the top, the packet lists the proposal, marked proposed, not executed. Below 
 
 | File | What it is |
 |---|---|
-| [`c06-GRT-CLASS-HOLD-v1.json`](c06-GRT-CLASS-HOLD-v1.json) | A **standing class grant**: the AP assistant may place reversible holds on open invoices, up to 20 a day. |
+| [`c06-GRT-CLASS-HOLD-v1.json`](c06-GRT-CLASS-HOLD-v1.json) | A **bounded grant**: the AP assistant may place reversible holds on open invoices, up to 20 a day. |
 | [`c06-GRT-APPR-0417-A-v1.json`](c06-GRT-APPR-0417-A-v1.json) | An **exact approval** by the controller for one proposal, `ACT-REL-0417` v1, at the 16:00 payment run. |
-| [`c07-RCP-HOLD-0417-v1.json`](c07-RCP-HOLD-0417-v1.json) | The receipt of the hold, executed at 10:03 under the class grant. |
+| [`c07-RCP-HOLD-0417-v1.json`](c07-RCP-HOLD-0417-v1.json) | The receipt of the hold, executed at 10:03 under the bounded grant. |
 | [`c02-ERP-HOLD-QUERY-0417-v1.json`](c02-ERP-HOLD-QUERY-0417-v1.json) | The authoritative ERP query that shows the invoice is held. It is what verifies the receipt. |
 | [`gateway-scenarios.json`](gateway-scenarios.json) | Six stored what-if evaluations of the commit check. |
 
@@ -44,7 +44,7 @@ The proposals these grants refer to are in [05](../05-decision-packet/README.md)
 
 ## Two shapes of grant
 
-| | Class grant `GRT-CLASS-HOLD` | Exact approval `GRT-APPR-0417-A` |
+| | Bounded grant `GRT-CLASS-HOLD` | Exact approval `GRT-APPR-0417-A` |
 |---|---|---|
 | Binding | `bounded_class`: class `CLASS-AP-HOLD`, bounds "reversible payment holds on open invoices; no funds move; at most 20 per day" | `exact_proposal`: bound to `ACT-REL-0417` v1 and nothing else |
 | Issuer → grantee | role `ap-controller` → workload `ap-assistant` | person `ap-controller-01` → workload `payment-executor` |
@@ -60,7 +60,7 @@ A class is for actions that are low-risk, reversible and bounded. An exact appro
 
 ## What happened at 10:03
 
-The assistant proposed a hold ([05](../05-decision-packet/README.md)). No person approved it, because the class grant already covers it. At commit the gateway re-checked the grant, the evidence the proposal cites, the precondition (the invoice is still open), the parameters, the target and the allowance, and allowed it. The receipt records the effect, the authoritative verification (the ERP query), the settled accounting and `retry_disposition` `not_applicable_completed`.
+The assistant proposed a hold ([05](../05-decision-packet/README.md)). No person approved it, because the bounded grant already covers it. At commit the gateway re-checked the grant, the evidence the proposal cites, the precondition (the invoice is still open), the parameters, the target and the allowance, and allowed it. The receipt records the effect, the authoritative verification (the ERP query), the settled accounting and `retry_disposition` `not_applicable_completed`.
 
 ## The commit check, six times
 

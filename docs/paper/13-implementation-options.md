@@ -1,6 +1,6 @@
 # 13. Implementation options
 
-[← 12. Evaluation](12-evaluation.md) · [Paper contents](README.md) · [Next: start with one decision →](14-start-monday.md)
+[← 12. Evaluation](12-evaluation.md) · [Paper contents](README.md) · [Next: starting with one decision →](14-start-monday.md)
 
 Official Azure sources, verified 17 November 2026 UTC, identify implementation options for the architecture's responsibilities. Each option has qualifications that depend on its configuration and features. The sources are not evidence that this architecture has been deployed, and they do not show that a product on its own establishes source truth, end-user permission or a legitimate human mandate.
 
@@ -12,4 +12,4 @@ Governance and protection controls remain limited to supported infrastructure an
 
 Product capabilities change quickly. The qualifications above were verified on 17 November 2026 UTC. Later edits to this repository do not re-verify them, so check the cited pages before relying on any of them.
 
-[← 12. Evaluation](12-evaluation.md) · [Paper contents](README.md) · [Next: start with one decision →](14-start-monday.md)
+[← 12. Evaluation](12-evaluation.md) · [Paper contents](README.md) · [Next: starting with one decision →](14-start-monday.md)

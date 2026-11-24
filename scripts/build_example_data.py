@@ -52,7 +52,7 @@ T_REVIEW_2 = "2026-11-23T15:10:00Z"   # the controller reviews packet v2, before
 
 # ----------------------------------------------------------------------------- people and permissions
 ANALYST = "person:ap-analyst-02"        # the requestor: asks the assistant for a packet and reads it
-CONTROLLER = "person:ap-controller-01"  # holds role:ap-controller: the decision owner and the approver
+CONTROLLER = "person:ap-controller-01"  # holds role:ap-controller: the Decision Owner and the approver
 PERMISSION_LIMIT_ID = "AUTHZ-READ-LIMIT-0417"      # may be disclosed as a coverage limitation, in these words only
 PERMISSION_WITHHELD_ID = "AUTHZ-READ-WITHHELD-0417"  # existence may not be disclosed: no output mentions it
 COVERAGE_LIMIT_WORDING = "Coverage is limited by access permissions; no protected source identity or content is disclosed."
@@ -212,12 +212,12 @@ def build_registry():
         PERMISSION_WITHHELD_ID + "@v1": "Permission decision: a source that this principal may not read, and whose existence may not be disclosed to them.",
         "BASIS-AP-POLICY-V3@v1": "Authority basis: accounts-payable policy v3 delegates holds to the AP team.",
         "BASIS-AP-CONTROLLER-APPROVAL@v1": "Authority basis: the AP controller may approve payment releases.",
-        "REVCHK-GRT-CLASS-HOLD@v1": "Latest revocation check for the hold class grant.",
+        "REVCHK-GRT-CLASS-HOLD@v1": "Latest revocation check for the hold grant.",
         "REVCHK-GRT-APPR-0417-A@v1": "Latest revocation check for the first exact approval (revoked at 13:45).",
         "ACCT-CHARGE-HOLD-0417@v1": "Allowance charge recorded for the hold.",
         "ACCT-CHARGE-REL-0417-B@v1": "Allowance charge recorded for the second release.",
-        "REVCHK-GRT-CLASS-LOWVAL@v1": "Latest revocation check for the low-value release class grant v1.",
-        "REVCHK-GRT-CLASS-LOWVAL@v2": "Latest revocation check for the low-value release class grant v2.",
+        "REVCHK-GRT-CLASS-LOWVAL@v1": "Latest revocation check for the low-value release grant v1.",
+        "REVCHK-GRT-CLASS-LOWVAL@v2": "Latest revocation check for the low-value release grant v2.",
         "REVCHK-GRT-APPR-0417-B@v1": "Latest revocation check for the second exact approval.",
         "ACCT-AP-HOLDS@v1": "Shared accounting ledger for holds.",
         "ACCT-AP-PAYMENTS@v1": "Shared accounting ledger for payment releases.",
@@ -235,7 +235,7 @@ def build_registry():
         "external_records": dict(sorted(ext.items())),
         "policies": {
             "POL-AP-READ": {"v1": {"type": "read_purpose", "summary": "Accounts-payable staff may read records of an invoice under review."}},
-            "POL-AP-PAY": {"v3": {"type": "payment_policy", "summary": "Payment release needs a passing three-way match, current screening and an approval or a class grant."}},
+            "POL-AP-PAY": {"v3": {"type": "payment_policy", "summary": "Payment release needs a passing three-way match, current screening and an approval or a bounded grant."}},
             "POL-FRESH-SCREEN": {"v1": {"type": "freshness", "max_age_hours": 24, "summary": "Supplier screening must be at most 24 hours old when payment is released."}},
             "POL-FRESH-RECORDS": {"v1": {"type": "freshness", "max_age_hours": 720, "summary": "Ordinary source records are fresh for 30 days."}},
             "POL-FRESH-REFERENCE": {"v1": {"type": "freshness", "max_age_hours": 8760, "summary": "Policy and reference documents are fresh for one year."}},
@@ -263,7 +263,7 @@ def build_registry():
         },
         "accountability": {
             "policy_reference": "POL-AP-PAY@v3",
-            "summary": "Four roles stay distinct. The AP controller is both the decision owner and the approver, and the policy says so; the requestor holds neither role for their own request.",
+            "summary": "Four roles stay distinct. The AP controller is both the Decision Owner and the approver, and the policy says so; the requestor holds neither role for their own request.",
             "roles": {
                 "requestor": {"principals": [ANALYST], "meaning": "Asks the assistant for a packet and reads it. Requests the evaluation; neither reviews on the owner's behalf nor approves."},
                 "decision_owner": {"role": "role:ap-controller", "holders": [CONTROLLER], "meaning": "Reviews the evidence and owns the release decision (the accountable reviewer)."},
@@ -708,7 +708,7 @@ def build_packet(S, version, as_of, selection):
             {"recommendation_id": "REC-0417-1", "text": "Place INV-2026-0417 on payment hold until the quantity difference is resolved.",
              "basis": "Open quantity discrepancy (CONF-QTY) between invoice and goods receipt; policy AP-4; screening is stale.",
              "uncertainty": {"state": "unquantified", "basis": "The cause of the difference is not established."},
-             "accountable_review_requirement": "A hold is within the AP team's standing class authority; the AP controller is notified."},
+             "accountable_review_requirement": "A hold is within the bounded grant of the AP team; the AP controller is notified."},
             {"recommendation_id": "REC-0417-1B", "text": "Release payment at the 16:00 run only if the match passes, screening is current and the invoice is held when the run starts.",
              "basis": "Policy AP-4 requires a passing three-way match; the commit-time preconditions enforce it.",
              "uncertainty": {"state": "unquantified", "basis": "Whether the receipt will be corrected by 16:00 is not known."},
@@ -925,7 +925,7 @@ def build_grants(S, proposals):
 
     out["lowval1"] = lowval("v1", "2026-11-23T07:45:00Z", rref("BASIS-AP-POLICY-V3"), 5000)
     out["lowval2"] = lowval("v2", T_CHANGE, rref("CHG-LOWVAL-0001"), 2500)
-    # the class grants' revocation checks are named per version
+    # the bounded grants' revocation checks are named per version
     out["lowval2"]["limits_lifecycle"]["revocation"]["check_basis"] = rref("REVCHK-GRT-CLASS-LOWVAL", "v2")
     out["lowval1"]["limits_lifecycle"]["revocation"]["check_basis"] = rref("REVCHK-GRT-CLASS-LOWVAL", "v1")
     return out
@@ -1136,7 +1136,7 @@ def scenario_files(model):
     specs = {
         "07-authority-and-delegation/gateway-scenarios.json": {
             "scenario_id": "GW-AUTHORITY-0417",
-            "title": "What a standing class grant does and does not cover",
+            "title": "What a bounded grant does and does not cover",
             "evaluations": [
                 entry("Hold at 10:03 under the standing hold grant", "The hold is inside the class: permitted action, any invoice, permitted parameters, allowance unused.", T_HOLD_SUBMIT, HOLDP, HOLD),
                 entry("A second hold of the same invoice at 10:10", "The first hold already moved the invoice out of the open state, so the precondition no longer holds.", "2026-11-23T10:10:00Z", HOLDP, HOLD),
@@ -1327,17 +1327,17 @@ def case_file(S):
         case("CASE-DISC-01", "disclosure", "A summary that names what the principal may not see", "A permission-safe summary must not name the withheld detail; a derived output can disclose what its source withholds. The summary also departs from the words the decision permits.", ["DISC001", "DISC003"],
              ("C03 SEL-0417 v1", [rep("/conflicts_gaps/missingness/2/permission_safe_summary", leak)]),
              ("C04 PKT-0417 v1", [rep("/coverage_omissions_gaps/missingness/2/permission_safe_summary", leak)])),
-        case("CASE-DISC-02", "disclosure", "An entry for a source whose existence the permission decision withholds", "Permission comes before disclosure: if the decision does not let the requester know the source exists, no output may carry an entry for it.", ["DISC002"],
+        case("CASE-DISC-02", "disclosure", "An entry for a source whose existence the permission decision withholds", "Permission comes before disclosure: if the decision does not let the requestor know the source exists, no output may carry an entry for it.", ["DISC002"],
              ("C03 SEL-0417 v1", [rep("/conflicts_gaps/missingness/2/permission_decision_reference/record_id", PERMISSION_WITHHELD_ID), rep("/retrieval/7/authorization_reference/record_id", PERMISSION_WITHHELD_ID)]),
              ("C04 PKT-0417 v1", [rep("/coverage_omissions_gaps/missingness/2/permission_decision_reference/record_id", PERMISSION_WITHHELD_ID)])),
-        case("CASE-DISC-03", "disclosure", "A coverage limitation that says more than the decision permits", "Where the decision lets the requester know that coverage is limited, the output uses its words and adds nothing: not a count, a name, a type or a state.", ["DISC003"],
+        case("CASE-DISC-03", "disclosure", "A coverage limitation that says more than the decision permits", "Where the decision lets the requestor know that coverage is limited, the output uses its words and adds nothing: not a count, a name, a type or a state.", ["DISC003"],
              ("C03 SEL-0417 v1", [rep("/conflicts_gaps/missingness/2/permission_safe_summary", more_than_permitted), rep("/retrieval/7/summary", more_than_permitted)]),
              ("C04 PKT-0417 v1", [rep("/coverage_omissions_gaps/missingness/2/permission_safe_summary", more_than_permitted)])),
         case("CASE-ROLE-01", "roles", "The requestor approves their own request", "The requestor and the approver are distinct roles. A person who asked for the packet may not approve the action it proposes unless the policy says one person may hold both.", ["ROLE001", "ROLE002"],
              ("C06 GRT-APPR-0417-B v1", [rep("/identity_principals/issuer", ANALYST)])),
-        case("CASE-ROLE-02", "roles", "The requestor is recorded as the reviewer of a packet", "A packet is reviewed by the decision owner, who owns the decision. The person who asked for it reviews nothing on the owner's behalf.", ["ROLE003"],
+        case("CASE-ROLE-02", "roles", "The requestor is recorded as the reviewer of a packet", "A packet is reviewed by the Decision Owner, who owns the decision. The person who asked for it reviews nothing on the owner's behalf.", ["ROLE003"],
              ("C04 PKT-0417 v2", [rep("/review_version_history/actor/value", ANALYST)])),
-        case("CASE-ROLE-03", "roles", "An approval that comes before the review of its packet", "An exact approval follows the decision owner's review of the packet it rests on.", ["ROLE004"],
+        case("CASE-ROLE-03", "roles", "An approval that comes before the review of its packet", "An exact approval follows the Decision Owner's review of the packet it rests on.", ["ROLE004"],
              ("C06 GRT-APPR-0417-B v1", [rep("/identity_principals/issuance_time", "2026-11-23T15:00:00Z")])),
     ]
     return {

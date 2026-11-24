@@ -1,6 +1,6 @@
 """The worked example keeps four roles apart, and its timeline agrees with them.
 
-The requestor asks for a packet and reads it. The decision owner, the accountable reviewer, reviews the packet and owns the
+The requestor asks for a packet and reads it. The Decision Owner, the accountable reviewer, reviews the packet and owns the
 decision. The approver issues the exact approval. The executor performs the action. One person holds two roles only where the
 registry says the policy allows it, and no one reviews or approves on the requestor's behalf.
 """
@@ -132,7 +132,7 @@ class TheNarrative(unittest.TestCase):
     def test_the_conventions_name_the_four_roles_and_the_policy_that_allows_one_person_two_of_them(self):
         readme = self.text("README.md")
         people = readme.split("- **People.**", 1)[1].split("\n- **", 1)[0]
-        for phrase in ("requestor", "decision owner", "approver", "executor", "accountable reviewer", "the registry says so explicitly"):
+        for phrase in ("requestor", "Decision Owner", "approver", "executor", "accountable reviewer", "the registry says so explicitly"):
             self.assertIn(phrase, people)
         self.assertIn("does not let the requestor hold either role", people)
 
@@ -155,7 +155,7 @@ class TheNarrative(unittest.TestCase):
     def test_the_late_correction_page_does_not_say_the_requestor_reviewed_the_packet(self):
         page = self.text("11-late-correction/README.md")
         self.assertNotIn("The reviewer", page)
-        self.assertIn("controller, as decision owner, reviews packet v2", page)
+        self.assertIn("controller, as Decision Owner, reviews packet v2", page)
 
 
 if __name__ == "__main__":

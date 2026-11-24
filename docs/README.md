@@ -19,7 +19,7 @@ Choose a route by what you want to do, or look up a topic in the table.
 
 ## Paths
 
-**Short path: the argument in a few pages.** [Overview](paper/00-overview.md) → [1. Human attention](paper/01-human-attention.md) → [3. A governed context](paper/03-governed-context.md) → [Where the architecture stops](paper/14-start-monday.md#where-the-architecture-stops).
+**Short path: the argument in a few pages.** [Overview](paper/00-overview.md) → [1. Human attention](paper/01-human-attention.md) → [3. The reference architecture](paper/03-governed-context.md) → [Where the architecture stops](paper/14-start-monday.md#where-the-architecture-stops).
 
 **Architect path: the whole paper.** Read the [paper](paper/README.md) in order. Open the [worked example](../examples/README.md) after chapter 6.
 
