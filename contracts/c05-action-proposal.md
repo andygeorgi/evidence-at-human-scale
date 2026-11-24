@@ -4,13 +4,13 @@
 
 **Paper:** [9. Authority remains a separate boundary](../docs/paper/09-authority.md)
 **Reference:** [action and degradation](../architecture/action-and-degradation.md)
-**Figures:** F04, F05 · **Evaluation tests:** EV07, EV11, EV12 (NOT RUN)
+**Figures:** F04, F05 · **Evaluation tests:** EV07, EV11, EV12 (NOT ASSESSED)
 
 A C05 Action proposal is the exact versioned action to consider. Advice is not approval or commit. Approval binds an exact versioned proposal within stated limits, and neither approval nor delegation substitutes for the executor's current checks.
 
 | Group / exact type-cardinality | Emitted group and fields | Required semantics |
 | --- | --- | --- |
-| C05-G01 Identity/binding · Object, 1 | `identity_binding`: `proposal_id`, `version`, `context_reference`, `packet_reference` | Proposal ID/version/schema and exact C01/C04 references. |
+| C05-G01 Identity/binding · Object, 1 | `identity_binding`: `proposal_id`, `version`, `context_reference`, `packet_reference` | Proposal ID, version and schema, and exact C01 and C04 references. |
 | C05-G02 Action · Object, 1 | `action`: `action_kind`, `exact_target`, `typed_parameters`, `evidence_references`, `policy_references`, `preconditions`, `approved_empty_preconditions_justification`, `accounting` | Exact action kind/target and typed parameters; evidence/policy references 1..n; preconditions 0..n. Empty preconditions require explicit approved justification. Accounting identifies units, scope/window and exhaustion behavior as applicable to the bounded action. |
 | C05-G03 Assessment · Object, 1 | `assessment`: `risk`, `expected_effects`, `limitations`, `recovery_conditions`, `status` | Risk, expected effects, limitations and recovery conditions. Status proposed, not executed. |
 

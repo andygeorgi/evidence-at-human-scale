@@ -19,7 +19,7 @@ Before anything is selected, the interaction is bound to a context ([C01](../../
 
 | Group | In this example |
 |---|---|
-| `identity_principal` | Tenant `tenant:calder-works`; requesting principal `person:ap-reviewer-02`; workload identity `workload:ap-assistant`. The person and the workload are separate identities: the assistant acts for the person, it is not the person. |
+| `identity_principal` | Tenant `tenant:calder-works`; requesting principal `person:ap-analyst-02` (the requestor); workload identity `workload:ap-assistant`. The person and the workload are separate identities: the assistant acts for the person, it is not the person. |
 | `task_purpose_entity` | Task "Decide whether to release payment of invoice INV-2026-0417 (supplier S-1042)"; purpose "Accounts-payable payment-release review"; the invoice and the supplier as entities. |
 | `time_risk_policy` | Interval 2025-11-24 to the as-of time; as-of 10:00 (v1) or 14:10 (v2); risk class `payment-release-medium`; policies `POL-AP-READ` v1 and `POL-AP-PAY` v3. |
 | `authorization` | A reference to the read-scope decision `AUTHZ-READ-CTX-0417` (v1 or v2), the deciding actor, the time, and the restriction that sources outside the accounts-payable read scope are not readable. |

@@ -9,7 +9,7 @@ python scripts/check_all.py
 
 ## Run everything
 
-[`check_all.py`](check_all.py) runs the checks below in order, the way continuous integration does, and prints one line for each. It shows a check's own output only when that check fails, or with `--verbose`.
+[`check_all.py`](check_all.py) runs the checks below in order, the way continuous integration does, and prints one line for each. It shows a check's own output only when that check fails, or with `--verbose`. Exit code 0 means every check that ran passed. A run that leaves checks out with `--only` or `--skip` ends with `PASS for the checks that ran` and says how many it skipped and that its result says nothing about them. A run that skips every check checked nothing: it reports `NOT ASSESSED` and exits with 3.
 
 ```bash
 python scripts/check_all.py                  # all checks
@@ -23,10 +23,11 @@ python scripts/check_all.py --skip tests
 | `examples` | `validate_examples.py` | The synthetic examples validate: schema, instances, scenario semantics, gateway scenarios, responses and evaluation cases. |
 | `tests` | `python -m unittest discover -s tests` | The unit tests pass, including the checks that the documents' counts match the data. |
 | `example-data` | `build_example_data.py --check` | The committed example JSON is exactly what its builder writes. |
+| `catalogue` | `build_catalogue.py --check` | The evaluation catalogue's CSV files and the test sections of the oracles page are what its JSON writes, and its tables agree: statuses, run records, references and contracts. |
 | `schema-hash` | `schema_surface_hash.py --check` | The schema's validation surface is unchanged since it was recorded. |
 | `links` | `check_links.py --orphans` | Relative links, anchors, images and alt text resolve, and every page is linked from another. |
 | `structure` | `check_structure.py` | Every page has one H1, no skipped heading levels, no empty table headers and no generic link text. |
-| `figures` | `check_figures.py` | Every figure is complete, accessible, readable at a phone's width and in sync with the documents. |
+| `figures` | `check_figures.py` | Every figure has its metadata, alt text and description, each drawing stays within set width and font-size limits, and the documents are in sync. An automated check on the files: it is not an accessibility assessment and does not show that a figure is usable on a phone. |
 | `svg` | `figures/src/svg_figures.py --check` | The SVGs are what their generator draws. |
 | `hygiene` | `check_hygiene.py` | No private link, local path, credential, e-mail address, internal term or unfinished marker, and no file that would not survive a clone. |
 
@@ -42,15 +43,32 @@ The documented command. It validates the [examples](../examples/README.md) in si
 python scripts/validate_examples.py                  # everything
 python scripts/validate_examples.py --verbose        # the detail line of every stage
 python scripts/validate_examples.py --only schema,semantics
+python scripts/validate_examples.py --skip cases     # everything except the evaluation cases
 python scripts/validate_examples.py --json           # machine-readable result
 python scripts/validate_examples.py --examples DIR   # another folder with the same layout
 ```
 
-Exit code 0 means every stage passed, 1 means at least one finding, 2 means the command could not run (for example `jsonschema` is missing). A finding names a code, the file and location, and the page to read. The [codes](#check-codes) are listed below.
+Every stage ends in one of five states. A stage passes only if it evaluated at least one item, so an empty folder, or a stage with nothing to look at, is never reported as a success.
+
+| State | Meaning |
+|---|---|
+| `PASS` | At least one relevant item was evaluated and every required check passed. |
+| `FAIL` | Evaluated content breaks a rule. Each finding names a code, the file and location, and the page to read. |
+| `SKIPPED` | The stage was left out on purpose, with `--only` or `--skip`. |
+| `NOT ASSESSED` | The input the stage needs does not exist, so nothing was evaluated: an empty folder, or a stage without its input files. |
+| `INPUT ERROR` | The input is malformed or incomplete and cannot support the stage: JSON that does not parse, a document the checks cannot read, a folder that does not exist. The diagnostic names the file and says how to fix it. |
+
+The exit code is 0 for `PASS`, 1 for `FAIL`, 2 for `INPUT ERROR` (and when the command itself cannot run, for example because `jsonschema` is missing) and 3 for `NOT ASSESSED`. When stages disagree, `INPUT ERROR` outranks `FAIL`, and `FAIL` outranks `NOT ASSESSED`. A run in which nothing passed and nothing failed, such as one that skips every stage, is `NOT ASSESSED`. A run that skips some stages and passes the rest ends with `PASS for the stages that ran`, counts the skipped stages and says that the result says nothing about them; its `--json` result has `"passed": false` and `"complete": false` (`passed` is true only when every stage ran and passed, and `status` is the state of the stages that ran) and lists the `skipped_stages`.
+
+The instance stage comes first: the other four stages read the model it checks. A stage you select pulls it in (the output says so), and the stages that depend on it are `NOT ASSESSED` when it fails, never `PASS`. A normal invalid-input condition produces a diagnostic, not a traceback; `--debug` shows the traceback if you want it. The [codes](#check-codes) are listed below.
 
 ### build_example_data.py
 
 Writes the example data (contract instances, registry, raw exports, stored evaluations, responses and cases) from the one scenario defined in the script. `--check` writes nothing and fails if any committed file differs from a fresh build, so a hand edit shows up. `--out DIR` builds somewhere else.
+
+### build_catalogue.py
+
+Writes the CSV copies of the [evaluation catalogue](../evaluation/catalogue/README.md) and the test sections of the [oracles page](../evaluation/oracles.md) from the catalogue's JSON tables, which are the source. `--check` writes nothing. It fails when a copy differs from what the JSON would write, and when the tables contradict one another: a status that is not one of the five defined states, a RUN status without a `run` record (command, input, output), a test that is `RUN / PASS` although one of its fixtures is not, a reference to a test that does not exist, or a `contracts` list that is not what the fixture's own references name.
 
 ### schema_surface_hash.py
 
@@ -87,7 +105,7 @@ A pre-publication scan for what must not reach a public repository: private or t
 Requests every external URL the repository cites and reports the broken ones. It is the only script that uses the network, and it is **not** part of `check_all.py`: a publisher can block a script or be down for reasons that say nothing about this repository. It runs weekly in continuous integration, as an advisory job.
 
 ```bash
-python scripts/check_urls.py --list      # the URLs and where they are cited; no network
+python scripts/check_urls.py --list      # the complete inventory of cited URLs and where each is cited; no network
 python scripts/check_urls.py             # request each; exit 1 if any is broken
 python scripts/check_urls.py --strict    # also fail on refused or unreachable
 ```
@@ -102,19 +120,23 @@ python scripts/check_urls.py --strict    # also fail on refused or unreachable
 |---|---|
 | `schema.py` | Loads the bundle, validates an instance against its contract, checks the embedded examples, and checks RFC 3339 timestamps strictly. |
 | `model.py` | Loads the examples into a model keyed by contract, id and version, with the registry. |
-| `semantics.py` | The checks a schema cannot make: references, lineage, lifecycle, missingness, the packet, authority and accounting, disclosure. |
+| `semantics.py` | The checks a schema cannot make: references, lineage, lifecycle, missingness, the packet, authority and accounting, disclosure, accountability. |
 | `gateway.py` | The reference commit check: given a proposal, a grant, a time and the receipts known so far, it allows or blocks and says why. |
 | `scenarios.py` | Replays the stored gateway evaluations, including counterfactual overrides, and compares them with the recorded decisions. |
-| `response.py` | Renders a response from a packet (a model-free fallback) and checks a stored response against its packet. |
+| `response.py` | Renders a response from a packet (a model-free fallback) and validates a stored response two ways: **canonical** validation compares it with the renderer's output, and **structural** validation checks named constraints. The structural validation does not prove that prose is semantically correct. |
+| `disclosure.py` | The decision list of Figure F09 as code, with the permission questions first. A reference for the order, used by the tests. |
+| `status.py` | The five states a stage can end in (`PASS`, `FAIL`, `SKIPPED`, `NOT ASSESSED`, `INPUT ERROR`) and how they combine. |
 | `cases.py`, `patch.py` | Applies the evaluation cases' mutations in memory and compares the codes the checks produce with the codes each case declares. |
-| `findings.py` | A finding: a code, a message, where it happened and where to read about it. |
+| `findings.py` | A finding: a code, a message, where it happened, what to fix and where to read about it. |
 
 ## Check codes
 
-Each finding has a code. The page named in a finding explains the rule. The [evaluation cases](../examples/13-evaluation-cases/README.md) make eleven of the families fire on purpose (every family except `RESP`, `GW` and `CASE`, which belong to the response and scenario stages and to the case runner itself).
+Each finding has a code. The page named in a finding explains the rule. The [evaluation cases](../examples/13-evaluation-cases/README.md) make twelve of the families fire on purpose (every family except `RESP`, `GW`, `CASE`, `ID` and `INP`, which belong to the response and scenario stages, to the case runner itself and to unreadable input).
 
 | Code | Meaning |
 |---|---|
+| `ID000`–`ID002` | Input that cannot be indexed: a file that is not valid JSON, an identity that is duplicated, an instance without a readable identity. These make the instance stage an `INPUT ERROR`. |
+| `INP001`–`INP003` | Input that cannot support a stage: a folder or the schema bundle that cannot be read, a document the checks cannot evaluate, or a `registry.json` that the stage needs and the folder does not have. These make the stage an `INPUT ERROR`. |
 | `SCH000`–`SCH003` | The schema bundle is invalid; `contract_id` is missing or not C01–C07; an instance does not match its contract; an embedded example does not behave as labeled. |
 | `REF001`–`REF007` | A reference does not name an existing exact version, names the wrong kind, points at a missing payload, is neither a record nor a registered external record, names a retrieval that did not complete, or names an undefined policy. |
 | `LIN001`–`LIN004` | Derivation ancestry has a cycle; a relationship type is not in the vocabulary; a supersession is not mirrored by the superseded version; a record is its own parent. |
@@ -125,8 +147,10 @@ Each finding has a code. The page named in a finding explains the rule. The [eva
 | `PKT001`–`PKT004` | A supported claim differs from its record; the packet and its selection bind different contexts; coverage points elsewhere; a listed proposal is bound to another packet. |
 | `AUTH004`, `AUTH005`, `AUTH007` | A receipt disagrees with the reference commit check: it executed what would be blocked, omits the blocking reasons, or cites a block that would not occur. |
 | `ACC001`–`ACC004` | Accounting is wrong: an unresolved outcome released its reservation, allowance was restored without authoritative reconciliation, a verified outcome is not reconciled, or a later receipt describes another attempt. |
-| `DISC001` | A derived output discloses detail the reader may not see. |
-| `RESP001`–`RESP007` | A stored response uses an unknown statement kind, cites figures the packet lacks, does not label an inference, drops a conflict, gap or recommendation, words a proposal as done, is not withdrawn with its packet, or cites a missing packet. |
+| `DISC001`–`DISC003` | A derived output discloses detail the reader may not see; an entry about an unreadable source exists although its permission decision withholds its existence (or has none); the wording of a coverage limitation goes beyond what the decision permits. |
+| `ROLE001`–`ROLE005` | The roles are not kept apart, or cannot be checked: an exact approval from someone who is not an approver, or from the requestor of the packet; a packet reviewed by someone who is not a Decision Owner; an approval with no earlier review of its packet by a Decision Owner; a registry that names no roles although the folder holds approvals or reviewed packets. |
+| `RESP001`–`RESP013` | A stored response breaks a structural constraint: an unknown statement kind, an uncited or mis-cited statement, a figure or currency the packet lacks, an unlabeled inference, a dropped conflict, gap, recommendation or obligation, an action worded as done, a response not withdrawn with its packet, a missing packet, a conflict or gap closed in words, a missingness label not said, dropped uncertainty, added certainty, a changed status word, or a statement that names a record it does not rest on. |
+| `RESP101`, `RESP102` | A response that says a renderer wrote it differs from the renderer's output (`RESP101`), and the difference adds or removes a negation, changes a status word or a figure, or opens or closes a conflict (`RESP102`). |
 | `GW001`, `GW002` | A stored gateway evaluation no longer gives its recorded decision, or cannot be evaluated. |
 | `CASE001`–`CASE003` | An evaluation case produces other codes than it declares, repeats an id, or has a mutation that cannot be applied. |
 | `HYG101`–`HYG108`, `HYG201`–`HYG207` | The [hygiene](#check_hygienepy) rules; see `check_hygiene.py --rules`. |
@@ -140,6 +164,6 @@ The sixteen reason codes of the commit check itself (for example `GRANT_REVOKED`
 python -m unittest discover -s tests
 ```
 
-The tests in [`tests/`](../tests) cover the schema bundle and the surface hash; the semantic checks (the unmutated example set has no findings, every evaluation case produces exactly its declared codes, and every check family is exercised by a case); the gateway story; the response checker; the catalogue (counts, no results, JSON and CSV agree); the counts the documents state, the code table above and the reason-code table in example 08; and the hygiene and URL scripts. They use only the standard library.
+The tests in [`tests/`](../tests) cover the schema bundle and the surface hash; the five validation states and what the command does with an empty folder, a partial stage selection and malformed input; the semantic checks (the unmutated example set has no findings, every evaluation case produces exactly its declared codes, and every check family is exercised by a case); permission before disclosure, including that an unauthorized requestor's view is the same with and without a restricted record; the distinct roles of requestor, Decision Owner, approver and executor; the gateway story; the canonical and structural response validations and their adversarial cases; the catalogue (counts, the five states and the rule that a run needs its command, input and output, no field repeated, contracts derived from each fixture's own references, and generated copies that agree with the JSON); the counts the documents state, the code table above and the reason-code table in example 08; the Quickstart output in the README; wording that was removed on purpose; and the hygiene and URL scripts. They use only the standard library.
 
 [Examples](../examples/README.md) · [Contributing](../CONTRIBUTING.md)

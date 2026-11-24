@@ -37,7 +37,7 @@ This is a review aid. It is not a decision, an approval or an instruction.
 
 ## Recommendations (for review)
 
-- Recommendation (for review, not a decision): Place INV-2026-0417 on payment hold until the quantity difference is resolved. Basis: Open quantity discrepancy (CONF-QTY) between invoice and goods receipt; policy AP-4; screening is stale. Requires: A hold is within the AP team's standing class authority; the AP reviewer is notified. `[REC-0417-1]`
+- Recommendation (for review, not a decision): Place INV-2026-0417 on payment hold until the quantity difference is resolved. Basis: Open quantity discrepancy (CONF-QTY) between invoice and goods receipt; policy AP-4; screening is stale. Requires: A hold is within the bounded grant of the AP team; the AP controller is notified. `[REC-0417-1]`
 - Recommendation (for review, not a decision): Release payment at the 16:00 run only if the match passes, screening is current and the invoice is held when the run starts. Basis: Policy AP-4 requires a passing three-way match; the commit-time preconditions enforce it. Requires: Exact approval by the AP controller, bound to ACT-REL-0417 v1. `[REC-0417-1B]`
 
 ## Proposed actions (none is executed or approved)

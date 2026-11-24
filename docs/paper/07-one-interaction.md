@@ -1,17 +1,17 @@
-# 7. One interaction does not mean one failure domain
+# 7. One interaction, several runtimes
 
 [← 6. The decision packet](06-decision-packet.md) · [Paper contents](README.md) · [Next: uncertainty →](08-uncertainty.md)
 
-One assistant interaction is a review contract: context, versioned packets, evidence inspection, limitations, challenges, and action review form one coherent experience. It need not be chat-only. It does not require one model, one runtime, or one failure domain, and it does not make every underlying service available merely because the workspace is available.
+One assistant interaction is a review contract: the Decision Owner works with the context, the versioned packets, the evidence, the limitations, the challenges and the action review in one place. The interaction need not be chat-only. It does not mean one model, one runtime or one failure domain. Several models, runtimes and services can sit behind the workspace, and any of them can be unavailable while the workspace is available. If the assistant model is unavailable, for example, the owner can still review from a qualified deterministic template ([chapter 10](10-degraded-operation.md)).
 
-The distinction matters because the human should not have to reconcile an ungoverned crowd of agent interfaces. The workspace can organize a single task without making a single model its source of truth. Domain interfaces and native workflows remain available where their own authorized routes are needed.
+The owner should not have to reconcile one interface per agent, which is why the review is one interaction. That does not make any single model the source of truth for the task. Domain interfaces and native workflows remain available where their own authorized routes are needed.
 
 ## Start with zero specialists
 
-Begin with the native or current workflow, deterministic grouping and templates, and simple synthesis with zero specialist agents. A specialist needs a documented task, permission, or isolation need and an evaluated comparison against matched baselines (the same task, risk, scope and acceptance criteria, handled by a simpler alternative). An evidence gap can justify a task, not new authority. Specialist count is not a quality metric, and specialization must not become a prerequisite for basic control.
+Begin with the native or current workflow, deterministic grouping and templates, and simple synthesis with zero specialist agents. A specialist needs a documented task, permission or isolation need. It also needs an evaluated comparison against matched baselines (the same task, risk, scope and acceptance criteria, handled by a simpler alternative). An evidence gap can justify a task, but it cannot justify new authority. The number of specialists is not a quality metric, and basic control must not depend on any specialist.
 
-An optional specialist has bounded inputs, purpose, output contract, fanout, calls, tokens, elapsed time, retries, and spend. These limits apply across the whole task and are shared by its child tasks and specialists, not set independently for each child. Its outputs are untrusted data returned through admission. A deadline, no response, or partial result cannot enlarge authority or turn a retry into a new mandate.
+An optional specialist has bounded inputs, a defined purpose and an output contract. Its fanout, calls, tokens, elapsed time, retries and spend are limited. These limits are set once for the whole task and are shared by its child tasks and specialists. They are not set separately for each child. A specialist's output is untrusted data that returns through admission. A deadline, a missing response or a partial result cannot enlarge authority, and a retry is not a new mandate.
 
-This is a deliberate tradeoff: a governed interaction asks the architecture to manage contracts and limitations instead of asking the owner to infer them from many messages. The cost is explicit coordination and traceability. The proposed benefit is more inspectable context, not a claimed improvement in speed, accuracy, cost, or decision quality.
+The tradeoff is deliberate. A single review interaction asks the architecture to carry the contracts and limitations, so the owner does not have to infer them from many messages. The cost is explicit coordination and traceability. The proposed benefit is more inspectable context. No gain in speed, accuracy, cost or decision quality is claimed.
 
 [← 6. The decision packet](06-decision-packet.md) · [Paper contents](README.md) · [Next: uncertainty →](08-uncertainty.md)

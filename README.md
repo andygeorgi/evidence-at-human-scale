@@ -4,7 +4,7 @@
 <source media="(min-width: 900px) and (prefers-color-scheme:dark)" srcset="figures/banner-wide-dark.svg">
 <source media="(min-width: 900px)" srcset="figures/banner-wide-light.svg">
 <source media="(prefers-color-scheme: dark)" srcset="figures/banner-dark.svg">
-<img src="figures/banner-light.svg" alt="Evidence at Human Scale. Systems produce evidence, AI makes it consumable, people remain accountable. Evidence is not inference, not recommendation, not authority.">
+<img src="figures/banner-light.svg" alt="Evidence at Human Scale, a reference architecture for accountable decisions in agentic systems. Three steps: versioned records, one decision packet, and a person who approves one exact proposal or holds it. Every item carries its type: record, finding, inference or proposal.">
 </picture>
 </p>
 <!-- banner:end -->
@@ -13,42 +13,36 @@
 
 **Reference architecture for accountable decisions in agentic systems**
 
-> **Systems produce evidence. AI makes it consumable. People remain accountable.**
+*Version `v1.0.1`, 24 November 2026. Licensed under the [MIT License](LICENSE).*
 
-*Version `v1.0.0`, 24 November 2026. Licensed under the [MIT License](LICENSE).*
+## The problem, in one invoice
 
-Agentic systems can produce information faster than people can attend to it. More agents can create more interpretations, and more summaries can merely move the bottleneck. This repository proposes a different unit of design: a **governed decision context**, not an agent hierarchy. Authorized, attributable outputs are selected for a defined task, synthesized within limits and released as a versioned **decision packet** that the accountable person can inspect and challenge. Mandatory obligations and consequential execution keep their own independent paths.
+A supplier invoice is ready to pay, and the goods receipt disagrees with it. The accounts-payable controller has to decide whether to hold or release the payment. The material in front of them comes from several systems and two AI assistants, and part of it is missing, restricted or about to be corrected.
 
-It is an architecture proposition, not a deployment or a benefit claim. **No evaluation has been run.** [Status and limits](#status-and-limits) says exactly what that means.
-
-## What is here
-
-| Goal | Where |
+| | In the example |
 |---|---|
-| **Read** | [The paper](docs/paper/README.md): 15 short chapters, from the problem to "start with one decision, not a platform". |
-| **Check the detail** | [Architecture reference](architecture/README.md) · [seven contracts](contracts/README.md) · [JSON Schema bundle](schemas/README.md). |
-| **Run** | [Examples](examples/README.md): one invented supplier-payment story in 13 folders, and a command that validates it. |
-| **Evaluate** | [Evaluation guide](evaluation/README.md): 12 tests, 70 fixtures and 47 parameters, defined, and all NOT RUN or UNSET. |
-| **Build** | [Implementation guide](docs/implementation-guide.md). |
-| **See** | [Figures](figures/README.md): F01–F11, each with a caption, alt text and a text description. |
-| **Look up** | [Glossary](docs/glossary.md) · [Claims and limits](docs/claims-and-limits.md) · [Sources](references/README.md). |
+| **Records that disagree** | Invoice `INV-2026-0417` says 100 units, EUR 18,400. Goods receipt `GR-5521` version 1 says 60 units received. |
+| **What remains unknown** | Why they differ. Two AI summaries say "probably a receiving delay", but both read the same receipt, so they are one opinion. The treasury service did not answer, and part of the requested scope is outside the requestor's read permissions. |
+| **Decision requested** | Hold the payment or release it. The controller owns the decision. |
+| **What authority permits** | A bounded grant lets the system place holds. Releasing this payment needs the controller's approval of one exact proposal. |
+| **After the correction** | The warehouse finds a second pallet and corrects the receipt to 100 units. The summaries, the packet and the approval built on version 1 stop being current, and the controller reviews a new packet before approving again. |
 
-## What you will understand, and where
+Every name, amount and system in this example is invented. [The full story](examples/README.md#the-story), with times and folders, is in the examples.
 
-| You will understand | Read |
-|---|---|
-| 1. The information-consumption problem | [Chapter 1](docs/paper/01-human-attention.md) |
-| 2. Why adding more agents can make it worse | [Chapter 1](docs/paper/01-human-attention.md), [chapter 7](docs/paper/07-one-interaction.md) |
-| 3. The architectural thesis | [Overview](docs/paper/00-overview.md) |
-| 4. The logical reference architecture | [Chapter 3](docs/paper/03-governed-context.md) (Figure F02) |
-| 5. The evidence and context contracts | [Chapters 4–6](docs/paper/04-evidence-and-lineage.md), [contracts](contracts/README.md) |
-| 6. Authority and accountability boundaries | [Chapter 9](docs/paper/09-authority.md) |
-| 7. Degraded and failure modes | [Chapter 10](docs/paper/10-degraded-operation.md) |
-| 8. How to begin implementing it | [Chapter 14](docs/paper/14-start-monday.md), [implementation guide](docs/implementation-guide.md) |
-| 9. How to evaluate it | [Chapter 12](docs/paper/12-evaluation.md), [evaluation guide](evaluation/README.md) |
-| 10. What it explicitly does not claim | [Claims and limits](docs/claims-and-limits.md), [where the architecture stops](docs/paper/14-start-monday.md#where-the-architecture-stops) |
+## What the architecture does about it
 
-Short on time? [Guided reading paths](docs/README.md) give a few-page route for architects, implementers, reviewers and evaluators.
+It gives the controller one versioned **decision packet** instead of a pile of agent output:
+
+- **Each item says what it is.** A claim cites an exact record version. An inference is labeled as an inference. Two summaries of one receipt count as one origin.
+- **What is unknown stays visible.** A conflict, a gap or an unavailable source stays in the packet with its reason, in the wording the requestor's permissions allow.
+- **Authority stays separate.** A proposal is not an approval, and an approval is not execution. At commit, a gateway rechecks the grant, the evidence, the preconditions and the limits against the current state.
+- **Corrections travel.** When a record is superseded, everything built on the old version, a pending approval included, stops being current.
+
+More agents give the controller more interpretations to read. The unit of design here is the decision context rather than the agent hierarchy, and [the paper](docs/paper/README.md) argues why.
+
+## The smallest useful experiment
+
+You can test the idea on your own work before building anything. Pick one recurring decision where people already struggle with the evidence, and replay one recent case on paper. Write down the decision question, who owns it, which actions could follow, and who may read, approve and execute. List the sources with their versions. Then draft the first view of the packet, with supported claims, labeled inferences, conflicts and the missingness labels that apply, and walk it through the case with the person who owns the decision. The [implementation guide](docs/implementation-guide.md) gives a template for each step, and [chapter 14](docs/paper/14-start-monday.md) explains why to start there.
 
 ## Quickstart
 
@@ -61,51 +55,57 @@ python scripts/check_all.py                 # every repository check, as CI runs
 You need Python 3.9 or later. It is tested on Windows and Linux (nothing in it is platform-specific, so macOS should work too), uses no network, and starts no service or model. The first command should print:
 
 ```text
-Evidence at Human Scale 1.0.0: example validation
+Evidence at Human Scale 1.0.1: example validation
 Synthetic data only. A pass is not evidence about any real system.
 
-[1/6] Schema bundle ...      PASS
-[2/6] Example instances ...  PASS
-[3/6] Scenario semantics ... PASS
-[4/6] Gateway scenarios ...  PASS
-[5/6] Assistant responses ... PASS
-[6/6] Evaluation cases ...   PASS
+[1/6] Schema bundle ...           PASS          102 evaluated
+[2/6] Example instances ...       PASS          37 evaluated
+[3/6] Scenario semantics ...      PASS          37 evaluated
+[4/6] Gateway scenarios ...       PASS          19 evaluated
+[5/6] Assistant responses ...     PASS          3 evaluated
+[6/6] Evaluation cases ...        PASS          37 evaluated
 
-All 6 stages passed.
+Result: PASS. All 6 stages passed, each after evaluating at least one item (235 items in all).
 ```
 
-When a check fails, the message names a code, the file and location, and the contract page to read. The [examples guide](examples/README.md) tells you how to try that on purpose, and [`scripts/README.md`](scripts/README.md) documents every script.
+A stage passes only if it evaluated something. An empty folder is `NOT ASSESSED`, unreadable input is an `INPUT ERROR`, and a broken example is a `FAIL`. When a check fails, the message names a code, the file and location, and the contract page to read. The [examples guide](examples/README.md) tells you how to break something on purpose, and [`scripts/README.md`](scripts/README.md) documents every script.
+
+## Ten-minute path
+
+1. **Read the scenario** above, or [the story](examples/README.md#the-story) for the times.
+2. **Run the Quickstart.**
+3. **Inspect the decision packet** the controller reviews: [05 Decision packet](examples/05-decision-packet/README.md).
+4. **Inspect the blocked action and its receipt**: [08 Blocked action](examples/08-blocked-action/README.md). A queued release is refused at commit, and the receipt shows that nothing happened.
+5. **Continue into the architecture** if you want the reasons: [the paper](docs/paper/README.md), then the [architecture reference](architecture/README.md).
+
+## Where to go next
+
+| Goal | Where |
+|---|---|
+| **Read** | [The paper](docs/paper/README.md): 15 short chapters, from the problem to the first decision to build. |
+| **Check the detail** | [Architecture reference](architecture/README.md) · [seven contracts](contracts/README.md) · [JSON Schema bundle](schemas/README.md). |
+| **Run** | [Examples](examples/README.md): one invented supplier-payment story in 13 folders, and a command that validates it. |
+| **Evaluate** | [Evaluation guide](evaluation/README.md): 12 tests, 70 fixtures and 47 parameters. The tests are defined and none has been run, and every parameter is UNSET. |
+| **Build** | [Implementation guide](docs/implementation-guide.md). |
+| **See** | [Figures](figures/README.md): F01–F11, each with a caption, alt text and a text description. |
+| **Look up** | [Glossary](docs/glossary.md) · [Claims and limits](docs/claims-and-limits.md) · [Sources](references/README.md). |
+| **Short on time** | [Guided reading paths](docs/README.md) for architects, implementers, evaluators and anyone checking the claims. |
+| **Tooling** | [`scripts/`](scripts/README.md) and their [`tests/`](tests). |
 
 ## What a pass means, and what it does not
 
 A pass means the invented examples are structurally valid and internally coherent, and that the deterministic checks behave as documented.
 
-It does **not** mean that any real system, model or process is accountable, safe or correct. It does not establish source truth, legal or regulatory compliance, authorization legitimacy, decision quality, human-review quality, production safety, operational readiness or business value. These checks are not the EV01–EV12 evaluation programme, which has not been run, and they are not model evaluation or human-outcome evaluation.
+It does **not** mean that any real system, model or process is accountable, safe or correct. It does not establish source truth, legal or regulatory compliance, authorization legitimacy, decision quality, human-review quality, production safety, operational readiness or business value. These checks are not the evaluation programme EV01–EV12, which has not been run, and they are not model evaluation or human-outcome evaluation.
 
 ## Status and limits
 
-- **No evaluation has been run.** EV01–EV12 (the twelve evaluation tests), their 70 fixtures and the 12 matched baseline records (a comparison framework of four measures against three simpler baselines) are NOT RUN, which means execution was not attempted. The 47 domain parameters are UNSET, which means no approved value exists. Nothing here reports a result of evaluating the architecture, and the proposed benefit is more inspectable context, not a measured gain in speed, accuracy, cost or decision quality.
+- **A reference architecture, not a deployment.** This is a reference architecture, not a production deployment or benefit claim. The contracts and synthetic examples are tested; real-world effectiveness has not been evaluated. The evaluation programme is defined and none of it has been run ([why](evaluation/README.md#which-tests-can-be-run-today)). The proposed benefit is more inspectable context, not a measured gain in speed, accuracy, cost or decision quality.
 - **All example data is invented.** The buyer, the supplier, the amounts and the systems describe no real organization, person or system.
 - **Case-based, not a client commission.** The design comes from an architecture engagement on a written case about a public-sector fisheries-control authority in Iceland. The authority took no part, and nothing here is a statement by, about or on behalf of it. The observations that came out of the engagement are single dated cases and one internal, AI-assisted test; none measures this architecture's benefit ([claims and limits](docs/claims-and-limits.md) gives their limits).
 - **AI-assisted.** See [AI assistance](#ai-assistance).
-- **Affiliation.** The author is employed by Microsoft, and the optional Azure mapping is one example, not a requirement. See [Disclosure](#disclosure).
 
 The full statement is in [Claims and limits](docs/claims-and-limits.md).
-
-## Repository map
-
-| Folder | What it holds |
-|---|---|
-| [`docs/`](docs/README.md) | The paper, guided reading paths, glossary, claims and limits, implementation guide. |
-| [`architecture/`](architecture/README.md) | The technical reference behind the paper. |
-| [`contracts/`](contracts/README.md) | One page per contract, C01–C07, and the change record for the schema bundle. |
-| [`schemas/`](schemas/README.md) | The machine-readable JSON Schema bundle (Draft 2020-12). |
-| [`examples/`](examples/README.md) | A synthetic scenario that exercises every contract. |
-| [`evaluation/`](evaluation/README.md) | How to evaluate, the oracles, and the catalogue of tests, fixtures and parameters. |
-| [`figures/`](figures/README.md) | Every figure with its source, alt text and description. |
-| [`references/`](references/README.md) | Public sources, their limits, and how engagement records are treated. |
-| [`scripts/`](scripts/README.md), [`tests/`](tests) | The validation tooling and its tests. |
-| [`.github/`](.github) | The continuous-integration workflows and the issue and pull-request templates. |
 
 ## Citing, contributing, security
 
@@ -118,12 +118,10 @@ The full statement is in [Claims and limits](docs/claims-and-limits.md).
 
 This repository is licensed under the [MIT License](LICENSE).
 
-## Disclosure
+## Author
 
-The author is employed by Microsoft. The Azure mapping is one implementation example of the product-neutral architecture, not a requirement to use Microsoft technology. This repository is not an official Microsoft publication, and nothing in it implies Microsoft endorsement. The mapping is in [implementation options](architecture/azure-implementation-options.md) and [chapter 13](docs/paper/13-implementation-options.md); every logical contract and path stands without it.
+Andy Georgi. This is a personal project, not an official Microsoft publication.
 
 ## AI assistance
 
 AI assistance supported drafting, cross-checking and publication production. Andy Georgi is the author and is accountable for this repository. Anyone who reviews it contributes comments, not coauthorship. This repository was assembled with the help of an AI coding assistant (GitHub Copilot) under the author's direction: Markdown conversion, figures, examples and validation scripts.
-
-Author: **Andy Georgi**.

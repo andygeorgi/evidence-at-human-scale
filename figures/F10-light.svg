@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 897" width="360" height="897" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">A late correction reaches a pending approval</title>
-<desc id="d">A vertical timeline in which a correction is admitted, supersedes the earlier record and invalidates what was derived from it; the packet is invalidated, a revised packet is produced and the pending approval is revoked; the queued action is then refused by the executor (action gateway) and a not_executed_verified receipt records why.</desc>
+<desc id="d">A vertical timeline in three phases. Before: an approval is queued for a later run. Then a correction is admitted as a new version. It supersedes the earlier version and invalidates what was derived from it, the packet included. A revised packet is produced and the pending approval is revoked. At commit: the executor (action gateway) refuses the queued action, and a not_executed_verified receipt records why.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
 <rect width="360" height="897" fill="#ffffff"/>
 <text x="42.0" y="26.0" font-size="13" text-anchor="start" font-weight="700" fill="#57606a">BEFORE</text>

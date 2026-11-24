@@ -74,7 +74,7 @@ def fit(s, maxw, size, bold=True, least=14):
 def f01(c):
     c.card("src", "Information production keeps growing", "records · events · deterministic findings\nanalytical results · model interpretations", align="middle")
     c.down(48, label="authorize · select · label")
-    c.card("sel", "Governed decision context", "keeps what could change a decision and shows its source, scope, gaps and owner", x=36, w=288, align="middle")
+    c.card("sel", "Decision context", "keeps what could change a decision and shows its source, scope, gaps and owner", x=36, w=288, align="middle")
     c.down(48, label="one decision packet")
     c.card("own", "Decision Owner", "finite attention · accountable", x=72, w=216, align="middle")
 
@@ -92,7 +92,8 @@ STEPS = [
     ("own", "Review of the packet (C04)", "the Decision Owner inspects and challenges"),
 ]
 MANDATORY = [("Deterministic detection", None), ("Authorized notification and queue", None), ("Acknowledgement or escalation", "receipt, not resolution")]
-ACTION = [("own", "Approval", "of an exact proposal (C05), or a bounded grant (C06)"), ("warn", "Executor", "current checks: permission, limits"),
+ACTION = [("own", "Approval or grant (C06)", "an exact approval of one proposal (C05), or a bounded grant"),
+          ("warn", "Executor (action gateway)", "rechecks at commit: grant, evidence, preconditions, limits"),
           ("src", "Authoritative target", None), ("pkt", "Verified receipt (C07)", None)]
 REASSESS = ("Corrections, revocations, late evidence, challenges and verified outcomes arrive here. This step returns to the registry (step 3): "
             "affected derivatives, packets and pending approvals stop being current.")
@@ -325,8 +326,8 @@ def f05(c):
     c.card("own", "The packet lists the proposal", sub("proposed, not executed"))
     stem = c.y
     c.y += 24
-    boxes = row(c, [dict(kind="own", head="Exact approval (C06)", body=sub("of this proposal version, by the accountable approver, a role distinct from the requestor")),
-                    dict(kind="own", head="Bounded grant (C06)", body=sub("a standing grant for a bounded class already covers the proposal"))], gap=34)
+    boxes = row(c, [dict(kind="own", head="Exact approval (C06)", body=sub("of this proposal version, by the approver, a role distinct from the requestor")),
+                    dict(kind="own", head="Bounded grant (C06)", body=sub("a grant for a class of actions already covers the proposal"))], gap=34)
     c.path([(c.w / 2, stem), (c.w / 2, stem + 12)], head=False)
     for b in boxes:
         c.path([(c.w / 2, stem + 12), (b.cx, stem + 12), (b.cx, b.y - 1)])
@@ -426,14 +427,15 @@ def f08(c):
             c.y += 36
     c.y += 22
     c.card("src", "Measure", sub("correctness · omissions · evidence actually inspected · decision quality · time · workload", "Not fluency. Not how many agents agree."), gap=12)
-    c.card("warn", "No evaluation result is claimed", sub("Every comparison here is NOT RUN."))
+    c.card("warn", "No evaluation result is claimed", sub("No comparison has been run."))
 
 
 # ------------------------------------------------------------------------------------------------------------------ F09
 QUESTIONS = [
+    ("May the reader's principal know that this input exists?", "no", "no entry", "nothing about it is shown, not even its state", "yes"),
+    ("May the reader's principal read it?", "no", "inaccessible", "the permitted wording only: no name, type, count, state or age", "yes"),
     ("Is a record available but failing the freshness requirement?", "yes", "stale", "", "no"),
     ("Was the check or assessment performed?", "no", "not_assessed", "", "yes"),
-    ("May the reader's principal read the source?", "no", "inaccessible", "reason and existence disclosed only when permitted", "yes"),
     ("Did the source or dependency answer?", "no", "unavailable", "not the same as denied", "yes"),
     ("Did a scoped retrieval complete?", "no", "missing", "expected, not obtained; reason may be unknown", "yes"),
     ("Was absence observed, with method, time and complete coverage?", "yes", "negative", "an adequately scoped observation of absence", "no"),
@@ -447,7 +449,7 @@ def f09(c):
     left = c.m + 46
     tw = c.inner - 46 - 12
     for i, (question, answer, name, why, goes_on) in enumerate(QUESTIONS):
-        kind = "pkt" if name == "negative" else "warn"
+        kind = "pkt" if name == "negative" else "stop" if name == "no entry" else "warn"
         q_lines, w_lines = wrap(question, 14.5, False, tw), wrap(why, 13, False, tw) if why else []
         q_h, w_h = len(q_lines) * 14.5 * 1.32, len(w_lines) * 13 * 1.32
         top = c.y
@@ -466,7 +468,8 @@ def f09(c):
         c.down(26, label=goes_on)
     c.card("warn", "not_retrieved", sub("a completed retrieval found nothing; not evidence of absence"), gap=16)
     c.y += c.para(c.m, c.y, c.inner, "Only negative is evidence of absence.", 15, True, c.p["text"], anchor="middle") + 2
-    c.y += c.para(c.m, c.y, c.inner, "Each of the other six labels says why nothing can be concluded from the missing input.", 13, False, c.p["muted"], anchor="middle")
+    c.y += c.para(c.m, c.y, c.inner, "Each of the other six labels says why nothing can be concluded from the missing input.", 13, False, c.p["muted"], anchor="middle") + 6
+    c.y += c.para(c.m, c.y, c.inner, "The two permission questions come first: what a reader may be told is decided before any state is worked out.", 13, False, c.p["muted"], anchor="middle")
 
 
 # ------------------------------------------------------------------------------------------------------------------ F10
@@ -536,12 +539,12 @@ def banner(c):
     c.text(c.w / 2, 38, "Evidence at Human Scale", fit("Evidence at Human Scale", c.inner, 24, least=20), True, c.p["text"], "middle", maxw=c.inner)
     c.y = 54
     c.y += c.para(c.m + 10, c.y, c.inner - 20, "Reference architecture for accountable decisions in agentic systems", 14, False, c.p["muted"], anchor="middle") + 10
-    c.card("src", "Systems produce evidence", sub("typed records with versions and lineage"), align="middle")
+    c.card("src", "Versioned records", sub("typed records with versions and lineage"), align="middle")
     c.down(22)
-    c.card("pkt", "AI makes it consumable", sub("one decision packet: claims, labeled inferences, conflicts, gaps and unexecuted proposals"), align="middle")
+    c.card("pkt", "One decision packet", sub("claims, labeled inferences, conflicts, gaps and unexecuted proposals"), align="middle")
     c.down(22)
-    c.card("own", "People remain accountable", sub("approve one exact proposal, or hold it"), align="middle", gap=14)
-    c.card("note", ["evidence ≠ inference", "≠ recommendation ≠ authority"], align="middle", size=16)
+    c.card("own", "A person decides", sub("approve one exact proposal, or hold it"), align="middle", gap=14)
+    c.card("note", ["every item carries its type:", "record, finding, inference, proposal"], align="middle", size=16)
 
 
 def banner_wide(c):
@@ -558,7 +561,7 @@ def banner_wide(c):
         c.text(xs[i] + widths[i] / 2, top + 30, s, size, True, c.p[kind][2], "middle", maxw=widths[i] - 20)
 
     c.rect(xs[0], top, widths[0], ph, "src", rx=14, sw=2)
-    heading(0, "src", "Systems produce evidence")
+    heading(0, "src", "Versioned records")
     for i, (a, b, k) in enumerate([("S01/v1", "source record", "src"), ("D01/v1", "deterministic finding", "sel"), ("M01/v1", "model inference", "warn")]):
         y = top + 50 + i * 50
         c.rect(xs[0] + 12, y, widths[0] - 24, 42, k, rx=8)
@@ -566,7 +569,7 @@ def banner_wide(c):
         c.text(xs[0] + 24, y + 35, b, 13, False, c.p[k][2], maxw=widths[0] - 48)
     c.text(xs[0] + widths[0] / 2, top + ph - 14, "typed · versioned · with lineage", 13, False, c.p["muted"], "middle", maxw=widths[0] - 16)
     c.rect(xs[1], top, widths[1], ph, "pkt", rx=14, sw=2)
-    heading(1, "pkt", "AI makes it consumable")
+    heading(1, "pkt", "One decision packet")
     for i, (a, b, k) in enumerate([("Claims", "each cites its evidence", "pkt"), ("Inferences", "labeled, never claims", "warn"), ("Conflicts · gaps", "stay visible", "stop"), ("Proposals", "not executed", "own")]):
         y = top + 50 + i * 44
         c.rect(xs[1] + 12, y, widths[1] - 24, 36, k, rx=8, sw=1.3)
@@ -575,7 +578,7 @@ def banner_wide(c):
         c.text(xs[1] + widths[1] - 24, y + 23, b, 13, False, c.p[k][2], "end", maxw=widths[1] - 48 - aw - 8)
     cx = xs[2] + widths[2] / 2
     c.rect(xs[2], top, widths[2], ph, "own", rx=14, sw=2)
-    heading(2, "own", "People remain accountable")
+    heading(2, "own", "A person decides")
     c.parts.append('<circle cx="%.1f" cy="%.1f" r="14" fill="%s" stroke="%s" stroke-width="2"/>' % (cx, top + 70, c.p["own"][0], c.p["own"][1]))
     c.parts.append('<path d="M%.1f %.1f q0 -26 28 -26 q28 0 28 26 z" fill="%s" stroke="%s" stroke-width="2"/>' % (cx - 28, top + 112, c.p["own"][0], c.p["own"][1]))
     approve_w, hold_w = text_w("Approve exactly", 13, True) + 18, text_w("Hold", 13, True) + 30
@@ -587,7 +590,7 @@ def banner_wide(c):
     for a, b in [(0, 1), (1, 2)]:
         c.path([(xs[a] + widths[a] + 1, top + ph / 2), (xs[b] - 1, top + ph / 2)])
     c.rect(xs[0], top + ph + 18, sum(widths) + 2 * gap, 40, "note", rx=10, sw=1.2)
-    c.text(c.w / 2, top + ph + 44, "evidence  ≠  inference  ≠  recommendation  ≠  authority", 17, True, c.p["text"], "middle", maxw=c.inner)
+    c.text(c.w / 2, top + ph + 44, "Every item carries its type: record, finding, inference or proposal", 17, True, c.p["text"], "middle", maxw=c.inner)
 
 
 # ------------------------------------------------------------------------------------------------------------------ build

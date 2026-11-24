@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 715" width="360" height="715" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">Receipt states and recovery</title>
-<desc id="d">A submitted action leads to four states. Unknown and partial (amber) are open: allowance stays reserved or charged, and each lists how it can move on. Completed_verified and not_executed_verified (green) are final. Unknown becomes completed or not executed, and partial becomes completed, only through reconciliation or compensation under policy.</desc>
+<desc id="d">A submitted action leads to four states. Unknown and partial are open, drawn in amber: allowance stays reserved or charged. Only authoritative reconciliation moves unknown to completed_verified or not_executed_verified. Reconciliation or compensation, under policy, moves partial to completed_verified. The states completed_verified and not_executed_verified are final, drawn in green.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
 <rect width="360" height="715" fill="#ffffff"/>
 <rect x="34.0" y="10.0" width="316.0" height="59.9" rx="8" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.6"/>

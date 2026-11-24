@@ -11,7 +11,7 @@ This repository holds documentation, a JSON Schema bundle, an invented example s
 
 ## What to report in an ordinary issue
 
-An error in the architecture, a contract, an example or a figure, a broken link, or an unclear statement. Those are content problems, not vulnerabilities, even when they concern security: the architecture is a proposition that has not been evaluated, and its weaknesses are welcome in the open. See [claims and limits](docs/claims-and-limits.md).
+An error in the architecture, a contract, an example or a figure, a broken link, or an unclear statement. Those are content problems, not vulnerabilities, even when they concern security: this is a reference architecture whose real-world effectiveness has not been evaluated, and its weaknesses are welcome in the open. See [claims and limits](docs/claims-and-limits.md).
 
 ## How to report
 
@@ -27,7 +27,7 @@ This is a single-author repository. Reports are read and answered as soon as pos
 
 - Every example, schema and case file is treated as data. The scripts parse JSON with the Python standard library and `jsonschema`, and never evaluate, import or execute file content.
 - [`validate_examples.py`](scripts/validate_examples.py) and the other checks read files and write nothing. Cases that alter an example do so in memory.
-- The generators write only where they say: [`build_example_data.py`](scripts/build_example_data.py) under `examples/`, [`sync_figures.py`](scripts/sync_figures.py) between figure markers in Markdown, and the figure scripts under `figures/`.
+- The generators write only where they say: [`build_example_data.py`](scripts/build_example_data.py) under `examples/`, [`build_catalogue.py`](scripts/build_catalogue.py) in `evaluation/catalogue/` and between markers in `evaluation/oracles.md`, [`sync_figures.py`](scripts/sync_figures.py) between figure markers in Markdown, and the figure scripts under `figures/`.
 - The checks run in CI with read-only repository permission ([`validate.yml`](.github/workflows/validate.yml)).
 
 A passing check is not a security assessment. It says nothing about whether the architecture is secure when implemented.

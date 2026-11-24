@@ -424,18 +424,115 @@ def _check_receipt_chain(model: Model, first: Instance, later: Instance) -> List
 def check_disclosure(model: Model) -> List[Finding]:
     out: List[Finding] = []
     terms = [t.lower() for t in model.registry.protected_terms]
-    if not terms:
-        return out
-    import json as _json
-    for inst in model.of("C03") + model.of("C04"):
-        text = _json.dumps(inst.data, ensure_ascii=False).lower()
-        for term in terms:
-            if term in text:
-                out.append(_f("DISC001", "derived output mentions protected detail %r that this principal may not see; a summary can disclose what the record withholds" % term, inst, "", DOC_LINEAGE))
+    if terms:
+        import json as _json
+        for inst in model.of("C03") + model.of("C04"):
+            text = _json.dumps(inst.data, ensure_ascii=False).lower()
+            for term in terms:
+                if term in text:
+                    out.append(_f("DISC001", "derived output mentions protected detail %r that this principal may not see; a summary can disclose what the record withholds" % term, inst, "", DOC_LINEAGE))
+    out.extend(_check_existence_disclosure(model))
     return out
 
 
-ALL_CHECKS = [check_references, check_lineage, check_kinds, check_lifecycle, check_missingness, check_packets, check_authority, check_disclosure]
+def _unreadable_entries(inst: Instance):
+    """(location, permission decision reference, wording shown) for every entry that tells the reader a source was not readable."""
+    d = inst.data
+    if inst.contract == "C03":
+        for i, gap in enumerate(d["conflicts_gaps"]["missingness"]):
+            if gap["state"] == "inaccessible":
+                yield "/conflicts_gaps/missingness/%d" % i, gap["permission_decision_reference"], gap["permission_safe_summary"]
+        for i, unit in enumerate(d["retrieval"]):
+            if unit["status"] == "not_permitted":
+                yield "/retrieval/%d" % i, unit["authorization_reference"], unit["summary"]
+    elif inst.contract == "C04":
+        for i, gap in enumerate(d["coverage_omissions_gaps"]["missingness"]):
+            if gap["state"] == "inaccessible":
+                yield "/coverage_omissions_gaps/missingness/%d" % i, gap["permission_decision_reference"], gap["permission_safe_summary"]
+
+
+def _check_existence_disclosure(model: Model) -> List[Finding]:
+    """Permission comes before disclosure: an entry that says a source was not readable exists only if a decision allows saying so."""
+    out: List[Finding] = []
+    decisions = model.registry.permission_decisions
+    for inst in model.of("C03") + model.of("C04"):
+        for loc, ref, shown in _unreadable_entries(inst):
+            decision = decisions.get("%s@%s" % (ref["record_id"], ref["version"]))
+            if decision is None:
+                out.append(_f("DISC002", "this entry tells the reader that a source was not readable, but %s %s has no permission decision in examples/registry.json that allows saying so" % (ref["record_id"], ref["version"]), inst, loc, DOC_LINEAGE))
+            elif not decision.get("disclose_existence_allowed"):
+                out.append(_f("DISC002", "permission decision %s withholds the existence of what it protects: no output may carry an entry for it, only the coverage limitation every output carries" % ref["record_id"], inst, loc, DOC_LINEAGE))
+            elif shown != decision.get("permitted_disclosure"):
+                out.append(_f("DISC003", "the wording shown is not the wording that permission decision %s allows" % ref["record_id"], inst, loc, DOC_LINEAGE))
+    return out
+
+
+# --------------------------------------------------------------------------- accountability
+
+DOC_ROLES = "examples/README.md#conventions"
+
+
+def _holders(roles: dict, role: str) -> Set[str]:
+    entry = roles.get(role, {})
+    return set(entry.get("holders", entry.get("principals", [])))
+
+
+def check_accountability(model: Model) -> List[Finding]:
+    """Requestor, Decision Owner, approver and executor stay distinct unless the registry says one person may hold two.
+
+    An exact approval needs an approver who is not the requestor, and an earlier review of its packet by a Decision Owner.
+    A packet marked reviewed names a Decision Owner as the reviewer, and the review log agrees.
+    """
+    out: List[Finding] = []
+    acc = model.registry.accountability
+    roles = acc.get("roles", {})
+    if not roles:
+        exact = [g for g in model.of("C06") if g.data["scope_binding"]["binding"]["binding_type"] == "exact_proposal"]
+        reviewed = [p for p in model.of("C04") if p.data["review_version_history"]["state"] == "reviewed"]
+        if exact or reviewed:
+            out.append(_f("ROLE005", "the registry names no roles, so the requestor, the Decision Owner and the approver of %d exact approval(s) and %d reviewed packet(s) cannot be checked" % (len(exact), len(reviewed)),
+                          (exact or reviewed)[0], "/", DOC_ROLES))
+        return out
+    approvers, owners = _holders(roles, "approver"), _holders(roles, "decision_owner")
+    together = [set(pair) for pair in acc.get("may_hold_together", [])]
+    log = acc.get("review_log", [])
+    for grant in model.of("C06"):
+        binding = grant.data["scope_binding"]["binding"]
+        if binding["binding_type"] != "exact_proposal":
+            continue
+        who = grant.data["identity_principals"]
+        issuer, issued = who["issuer"], ts(who["issuance_time"])
+        if issuer not in approvers:
+            out.append(_f("ROLE001", "%s issues an exact approval but is not a registered approver (%s)" % (issuer, ", ".join(sorted(approvers)) or "none"), grant, "/identity_principals/issuer", DOC_ROLES))
+        ref = binding["proposal_reference"]
+        proposal = model.get("C05", ref["id"], ref["version"])
+        if proposal is None:
+            continue
+        pref = proposal.data["identity_binding"]["packet_reference"]
+        packet = model.get("C04", pref["id"], pref["version"])
+        if packet is None:
+            continue
+        cref = packet.data["decision_context_as_of"]["context_reference"]
+        context = model.get("C01", cref["id"], cref["version"])
+        requestor = context.data["identity_principal"]["requesting_principal"] if context is not None else None
+        if requestor == issuer and {"requestor", "approver"} not in together:
+            out.append(_f("ROLE002", "%s asked for the packet and also approves the action it proposes; the registry does not let one person hold the requestor and approver roles" % issuer, grant, "/identity_principals/issuer", DOC_ROLES))
+        reviewed = [e for e in log if e.get("packet") == "%s %s" % (packet.id, packet.version) and e.get("action") == "reviewed" and e.get("actor") in owners and ts(e["time"]) <= issued]
+        if not reviewed:
+            out.append(_f("ROLE004", "no Decision Owner reviewed packet %s %s at or before the approval (%s): an approval follows the review of the packet it rests on" % (packet.id, packet.version, who["issuance_time"]), grant, "/identity_principals/issuance_time", DOC_ROLES))
+    for packet in model.of("C04"):
+        history = packet.data["review_version_history"]
+        if history["state"] != "reviewed":
+            continue
+        actor, when = history["actor"].get("value"), history["time"].get("value")
+        if actor not in owners:
+            out.append(_f("ROLE003", "packet %s %s was reviewed by %s, who is not a Decision Owner (%s)" % (packet.id, packet.version, actor, ", ".join(sorted(owners)) or "none"), packet, "/review_version_history/actor", DOC_ROLES))
+        elif not any(e.get("packet") == "%s %s" % (packet.id, packet.version) and e.get("actor") == actor and e.get("action") == "reviewed" and e.get("time") == when for e in log):
+            out.append(_f("ROLE003", "the review of packet %s %s by %s at %s is not in the registry's review log" % (packet.id, packet.version, actor, when), packet, "/review_version_history", DOC_ROLES))
+    return out
+
+
+ALL_CHECKS = [check_references, check_lineage, check_kinds, check_lifecycle, check_missingness, check_packets, check_authority, check_disclosure, check_accountability]
 
 
 def run_all(model: Model) -> List[Finding]:

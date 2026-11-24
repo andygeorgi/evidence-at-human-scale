@@ -1,4 +1,4 @@
-"""The figure checks: that a drawing is readable at a phone's width, that the drawing helpers keep text inside its box, and that every figure is complete and in sync."""
+"""The figure checks: that a drawing stays within the width and font-size limits chosen for a phone, that the drawing helpers keep text inside its box, and that every figure is complete and in sync."""
 import json
 import sys
 import unittest

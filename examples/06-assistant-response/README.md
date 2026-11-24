@@ -6,20 +6,31 @@
 
 ## Purpose
 
-The reviewer usually meets a packet through an assistant's response. This folder shows two things:
+The requestor usually meets a packet through an assistant's response. This folder shows two things:
 
 1. A **template** can write a faithful response from a packet with no model at all. That is a fallback for when the assistant model is unavailable, and a baseline to compare a model against. See [degraded modes](../10-degraded-modes/README.md).
-2. Any response, whoever wrote it, can be **checked against its packet** mechanically: is each statement attributable, do its figures come from the packet, is an inference labeled, is anything the packet flagged left out?
+2. A response can be **checked against its packet** mechanically, in two different ways that answer two different questions. They are set out in [the next section](#two-validations), because the difference decides what a pass means.
 
 The reasoning is in [chapter 7, one interaction](../../docs/paper/07-one-interaction.md) and the [implementation guide](../../docs/implementation-guide.md).
 
+## Two validations
+
+| | CANONICAL RESPONSE VALIDATION | STRUCTURAL FREE-TEXT VALIDATION |
+|---|---|---|
+| **Applies to** | A response that says a renderer wrote it (`produced_by` starts with `template`). | Every response, whoever wrote it. |
+| **What it verifies** | Expected response content against a defined renderer: the response must equal what the renderer writes from its packet, statement by statement. | Named requirements and constraints: citations, figures, status words, labels, uncertainty markers, certainty, and what the response mentions. |
+| **What it catches** | Any change, including a reversed conclusion that keeps the figures and the citations: a negated recommendation, a failed match reworded as passed, contradictory prose around correct fields. | The failures the constraints name. Each is listed below. |
+| **What it does not do** | Verify the packet. | **Prove that the prose is semantically correct.** A sentence can satisfy every constraint and still mislead. |
+
+A canonical response that differs fails with `RESP101`. If the difference adds or removes a negation, changes a status word or a figure, or opens or closes a conflict, it fails with `RESP102`, which names what changed. A free-form response is not compared with the renderer, because there is no single correct wording to compare with. Only a person, or a comparison with a canonical rendering, can judge what such a response means. No model-based judge is used.
+
 ## Files
 
-| File | Written by | Status |
+| File | Written by | Validated as |
 |---|---|---|
-| [`response-PKT-0417-v1-template.json`](response-PKT-0417-v1-template.json) · [`.md`](response-PKT-0417-v1-template.md) | the template, from packet v1 | `withdrawn`: packet v1 was invalidated at 13:45 |
-| [`response-PKT-0417-v1-model-style.json`](response-PKT-0417-v1-model-style.json) | the author, by hand, to show a paraphrasing response that still conforms. **It is not model output.** | `withdrawn`, for the same reason |
-| [`response-PKT-0417-v2-template.json`](response-PKT-0417-v2-template.json) · [`.md`](response-PKT-0417-v2-template.md) | the template, from packet v2 | `current` |
+| [`response-PKT-0417-v1-template.json`](response-PKT-0417-v1-template.json) · [`.md`](response-PKT-0417-v1-template.md) | the template, from packet v1 | canonical and structural; `withdrawn`: packet v1 was invalidated at 13:45 |
+| [`response-PKT-0417-v1-model-style.json`](response-PKT-0417-v1-model-style.json) | the author, by hand, to show a paraphrasing response that still conforms. **It is not model output.** | structural only; `withdrawn`, for the same reason |
+| [`response-PKT-0417-v2-template.json`](response-PKT-0417-v2-template.json) · [`.md`](response-PKT-0417-v2-template.md) | the template, from packet v2 | canonical and structural; `current` |
 
 A response is a list of statements. Each has a `kind` (`claim`, `inference`, `conflict`, `gap`, `recommendation`, `proposal`, `obligation`, `limitation`), a text, and `refs`: JSON pointers into the packet. The Markdown files are the human-readable rendering. An excerpt of the current one:
 
@@ -38,25 +49,40 @@ A response is a list of statements. Each has a `kind` (`claim`, `inference`, `co
 - Proposed (not executed or approved): ACT-REL-0417 v2, release_payment on invoice INV-2026-0417. `[ACT-REL-0417 v2]`
 ```
 
-## What the checker requires
+## What the structural constraints require
+
+Every response is held to these. They are named, mechanical tests. None of them proves that a statement means what its packet means.
 
 | Code | A response fails when… |
 |---|---|
 | `RESP001` | a statement cites nothing, cites something that does not resolve, or cites an item of the wrong kind (an inference cited as a claim) |
-| `RESP002` | a claim, conflict, recommendation or inference contains a figure that is not in the packet items it cites |
+| `RESP002` | a claim, conflict, recommendation or inference contains a figure or a currency that is not in the packet items it cites |
 | `RESP003` | an inference is not labeled as one |
 | `RESP004` | it drops an inference, conflict, gap, recommendation, proposal or obligation of the packet, or omits the packet's coverage limitation |
 | `RESP005` | a proposal does not say it is not executed or approved, or other wording presents an action as approved or done |
 | `RESP006` | it is `current` but its packet has been invalidated, or its as-of time differs |
 | `RESP007` | it cites a packet that does not exist |
+| `RESP008` | wording closes what the packet keeps open: "no conflict", "resolved", "nothing is missing", "already reviewed" |
+| `RESP009` | a gap statement does not say, in words, the missingness label the packet gives that gap |
+| `RESP010` | uncertainty is dropped: an inference with no limits or hedge, a conflict not called unresolved, a recommendation not called "for review" |
+| `RESP011` | it adds certainty ("certainly", "confirmed", "verified", "proves") that the cited items do not state |
+| `RESP012` | a claim, conflict or gap uses a status word (pass, fail, stale, current, superseded, revoked, ...) that the cited items do not use |
+| `RESP013` | a statement names a record that the cited items do not rest on |
 
 A response may be shorter than its packet and may paraphrase. It may not drop a conflict or a gap, and it may not add a figure. The model-style file paraphrases the claims and groups the gaps, and still conforms.
 
-The negative cases for these rules live in [`tests/test_response.py`](../../tests/test_response.py). The first response in the table above, from packet v1, is shown `withdrawn`; the check requires exactly that, because a response from an invalidated packet must not stay current.
+## What each validation does not catch
+
+The constraints look for specific words and patterns, so a change that avoids them passes the structural validation. Two examples from [`tests/test_response.py`](../../tests/test_response.py):
+
+- A recommendation changed to "Do not release payment…", with the same figures and citations, passes the structural constraints. The canonical validation fails it with `RESP102`.
+- A conflict statement with the sentence "Please disregard this and rely on the receipt" added passes the structural constraints. The canonical validation fails it with `RESP101`.
+
+Both validations assume the packet is right. The canonical one also assumes the renderer is. The negative cases live in the same test file, including the six that matter most: a negated conclusion with unchanged pointers, an altered status with unchanged numbers, contradictory prose around correct fields, omitted uncertainty, unsupported certainty, and a claim attributed to the wrong source. The first response in the table above, from packet v1, is shown `withdrawn`; the check requires exactly that, because a response from an invalidated packet must not stay current.
 
 ## What this shows, and what it does not
 
-- **Shows:** that attribution, completeness and honest labeling of a response can be tested without reading it, and that a no-model fallback is possible.
-- **Does not show:** that a real model's response would conform, that conformance makes a response correct, or that reviewers prefer it. The checker compares a response with its packet. It says nothing about whether the packet is right, and it is not a model evaluation.
+- **Shows:** that attribution, completeness and honest labeling of a response can be tested without reading it, that a response from a renderer can be held to exactly what the renderer writes, and that a no-model fallback is possible.
+- **Does not show:** that a real model's response would conform, that conformance makes a response correct, or that requestors prefer it. A structural pass does not prove semantic fidelity; a canonical pass shows only that the response equals the template's output for that packet. Neither says whether the packet is right, and neither is a model evaluation.
 
 [← 05 Decision packet](../05-decision-packet/README.md) · [Examples](../README.md) · [Next: 07 Authority and delegation →](../07-authority-and-delegation/README.md)

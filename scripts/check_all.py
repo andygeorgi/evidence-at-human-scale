@@ -9,7 +9,8 @@
 
 Each check is also a script you can run alone. The external URL check is not included: it needs the network and a
 publisher can fail it for reasons that say nothing about this repository (run ``python scripts/check_urls.py``).
-Exit code 0 means every check passed.
+Exit code 0 means every check that ran passed, 1 that a check failed, and 3 that nothing ran. A run that leaves checks
+out says how many and that its result says nothing about them.
 """
 from __future__ import annotations
 
@@ -30,10 +31,11 @@ CHECKS: Tuple[Tuple[str, str, Tuple[str, ...]], ...] = (
     ("examples", "the synthetic examples validate: schema, instances, semantics, gateway, responses and cases", ("scripts/validate_examples.py",)),
     ("tests", "the unit tests pass", ("-m", "unittest", "discover", "-s", "tests")),
     ("example-data", "the committed example JSON is exactly what its builder writes", ("scripts/build_example_data.py", "--check")),
+    ("catalogue", "the evaluation catalogue's copies are what its JSON writes, and its tables agree", ("scripts/build_catalogue.py", "--check")),
     ("schema-hash", "the schema's validation surface is unchanged since it was recorded", ("scripts/schema_surface_hash.py", "--check")),
     ("links", "relative links, anchors, images and alt text resolve, and every page is linked from another", ("scripts/check_links.py", "--orphans")),
     ("structure", "every page has one H1, no skipped heading levels, no empty table headers and no generic link text", ("scripts/check_structure.py",)),
-    ("figures", "every figure is complete, accessible, readable at a phone's width and in sync with the documents", ("scripts/check_figures.py",)),
+    ("figures", "every figure has its metadata, alt text and description, each drawing stays within set limits, and the documents are in sync", ("scripts/check_figures.py",)),
     ("svg", "the SVGs are what their generator draws", ("figures/src/svg_figures.py", "--check")),
     ("hygiene", "no private link, local path, credential, e-mail address, internal term or unfinished marker", ("scripts/check_hygiene.py",)),
 )
@@ -70,6 +72,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
     chosen = select(args.only, args.skip)
     print("Evidence at Human Scale %s: repository checks\n" % __version__)
+    if not chosen:
+        print("Result: NOT ASSESSED. Every check was skipped, so nothing was checked.")
+        return 3
     failures = []
     for index, (name, what, command) in enumerate(chosen, 1):
         ok, seconds, output = run(name, command)
@@ -78,9 +83,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print("\n".join("        " + line for line in output.splitlines()) + "\n")
         if not ok:
             failures.append(name)
+    left_out = len(CHECKS) - len(chosen)
     if failures:
         print("\n%d of %d checks failed: %s" % (len(failures), len(chosen), ", ".join(failures)))
         return 1
+    if left_out:
+        print("\nPASS for the checks that ran: %d of %d passed. %d check(s) were skipped and not run, so this result says nothing about them." % (len(chosen), len(CHECKS), left_out))
+        return 0
     print("\nAll %d checks passed. A pass says the repository is consistent; it says nothing about any real system." % len(chosen))
     return 0
 

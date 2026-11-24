@@ -28,9 +28,15 @@ The [claims and limits](../docs/claims-and-limits.md) page states the consequenc
 
 ## How this edition was produced
 
-AI assistance supported drafting, cross-checking, and publication production. Andy Georgi is the author and is accountable for this paper; anyone who reviews it contributes comments, not coauthorship. Its central proposition: systems supply evidence, AI makes it consumable, and people retain accountability for consequential decisions.
+AI assistance is disclosed in the [README](../README.md#ai-assistance). The author is accountable for the content.
 
-This repository was assembled with the help of an AI coding assistant (GitHub Copilot) under the author's direction: Markdown conversion, figures, examples and validation scripts. The author is accountable for its content.
+## Checking the URLs
+
+`python scripts/check_urls.py --list` prints the complete inventory of external URLs that the repository cites, and where each is cited, without using the network. Without `--list` the script requests each URL and reports the ones that are broken. See [`scripts/README.md`](../scripts/README.md#check_urlspy).
+
+## Third-party material
+
+The [MIT License](../LICENSE) covers what this repository's author wrote. The sources listed here are cited, not copied or relicensed, and each stays under its owner's terms.
 
 ## Dates and retrieval
 

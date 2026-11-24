@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 406" width="880" height="406" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">Evidence at Human Scale</title>
-<desc id="d">Evidence at Human Scale. Systems produce evidence, AI makes it consumable, people remain accountable. Evidence is not inference, not recommendation, not authority.</desc>
+<desc id="d">Evidence at Human Scale, a reference architecture for accountable decisions in agentic systems. Three steps: versioned records, one decision packet, and a person who approves one exact proposal or holds it. Every item carries its type: record, finding, inference or proposal.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
 <rect width="880" height="406" fill="#ffffff"/>
 <text x="440.0" y="46.0" font-size="34" text-anchor="middle" font-weight="700" fill="#1b1f24">Evidence at Human Scale</text>
 <text x="440.0" y="76.0" font-size="17" text-anchor="middle" fill="#57606a">Reference architecture for accountable decisions in agentic systems</text>
 <rect x="34.0" y="100.0" width="236.0" height="238.0" rx="14" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="2"/>
-<text x="152.0" y="130.0" font-size="14.0" text-anchor="middle" font-weight="700" fill="#0B2540">Systems produce evidence</text>
+<text x="152.0" y="130.0" font-size="17" text-anchor="middle" font-weight="700" fill="#0B2540">Versioned records</text>
 <rect x="46.0" y="150.0" width="212.0" height="42.0" rx="8" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.6"/>
 <text x="58.0" y="168.0" font-size="14" text-anchor="start" font-weight="700" fill="#0B2540">S01/v1</text>
 <text x="58.0" y="185.0" font-size="13" text-anchor="start" fill="#0B2540">source record</text>
@@ -18,7 +18,7 @@
 <text x="58.0" y="285.0" font-size="13" text-anchor="start" fill="#3D2500">model inference</text>
 <text x="152.0" y="324.0" font-size="13" text-anchor="middle" fill="#57606a">typed · versioned · with lineage</text>
 <rect x="296.0" y="100.0" width="288.0" height="238.0" rx="14" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="2"/>
-<text x="440.0" y="130.0" font-size="17" text-anchor="middle" font-weight="700" fill="#0F2E1B">AI makes it consumable</text>
+<text x="440.0" y="130.0" font-size="17" text-anchor="middle" font-weight="700" fill="#0F2E1B">One decision packet</text>
 <rect x="308.0" y="150.0" width="264.0" height="36.0" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.3"/>
 <text x="320.0" y="173.0" font-size="14" text-anchor="start" font-weight="700" fill="#0F2E1B">Claims</text>
 <text x="560.0" y="173.0" font-size="13" text-anchor="end" fill="#0F2E1B">each cites its evidence</text>
@@ -32,7 +32,7 @@
 <text x="320.0" y="305.0" font-size="14" text-anchor="start" font-weight="700" fill="#24133F">Proposals</text>
 <text x="560.0" y="305.0" font-size="13" text-anchor="end" fill="#24133F">not executed</text>
 <rect x="610.0" y="100.0" width="236.0" height="238.0" rx="14" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="2"/>
-<text x="728.0" y="130.0" font-size="14.0" text-anchor="middle" font-weight="700" fill="#24133F">People remain accountable</text>
+<text x="728.0" y="130.0" font-size="17" text-anchor="middle" font-weight="700" fill="#24133F">A person decides</text>
 <circle cx="728.0" cy="170.0" r="14" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="2"/>
 <path d="M700.0 212.0 q0 -26 28 -26 q28 0 28 26 z" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="2"/>
 <rect x="621.7" y="228.0" width="136.9" height="32.0" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.4"/>
@@ -44,5 +44,5 @@
 <path d="M271.0 219.0 L295.0 219.0" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <path d="M585.0 219.0 L609.0 219.0" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <rect x="34.0" y="356.0" width="812.0" height="40.0" rx="10" fill="#F4F4F4" stroke="#6F6F6F" stroke-width="1.2"/>
-<text x="440.0" y="382.0" font-size="17" text-anchor="middle" font-weight="700" fill="#1b1f24">evidence  ≠  inference  ≠  recommendation  ≠  authority</text>
+<text x="440.0" y="382.0" font-size="17" text-anchor="middle" font-weight="700" fill="#1b1f24">Every item carries its type: record, finding, inference or proposal</text>
 </svg>

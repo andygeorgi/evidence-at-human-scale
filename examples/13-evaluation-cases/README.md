@@ -14,7 +14,7 @@ These are deterministic functional checks on synthetic data. They are **not** th
 
 | File | What it is |
 |---|---|
-| [`cases.json`](cases.json) | 32 cases. Each has an id, a family, a title, a reason, the codes it must produce and one or more mutations. A mutation names an instance (`C04 PKT-0417 v2`) and a list of operations (`replace`, `add`, `remove`) at JSON-pointer paths. |
+| [`cases.json`](cases.json) | 37 cases. Each has an id, a family, a title, a reason, the codes it must produce and one or more mutations. A mutation names an instance (`C04 PKT-0417 v2`) and a list of operations (`replace`, `add`, `remove`) at JSON-pointer paths. |
 
 ## How it works
 
@@ -112,12 +112,23 @@ To try your own, add a case to `scripts/build_example_data.py` (`case_file`) and
 
 | Case | Mutation | Expect | Why |
 |---|---|---|---|
-| `CASE-DISC-01` | A summary that names what the principal may not see | `DISC001` | A permission-safe summary must not name the withheld detail; a derived output can disclose what its source withholds. |
+| `CASE-DISC-01` | A summary that names what the requestor may not see | `DISC001`, `DISC003` | A permission-safe summary must not name the withheld detail; a derived output can disclose what its source withholds. The summary also departs from the words the decision permits. |
+| `CASE-DISC-02` | An entry for a source whose existence the permission decision withholds | `DISC002` | Permission comes before disclosure: if the decision does not let the requestor know the source exists, no output may carry an entry for it. |
+| `CASE-DISC-03` | A coverage limitation that says more than the decision permits | `DISC003` | Where the decision lets the requestor know that coverage is limited, the output uses its words and adds nothing: not a count, a name, a type or a state. |
 
-## Two cases that produce two codes
+### Roles
+
+| Case | Mutation | Expect | Why |
+|---|---|---|---|
+| `CASE-ROLE-01` | The requestor approves their own request | `ROLE001`, `ROLE002` | The requestor and the approver are distinct roles. A person who asked for the packet may not approve the action it proposes unless the policy says one person may hold both. |
+| `CASE-ROLE-02` | The requestor is recorded as the reviewer of a packet | `ROLE003` | A packet is reviewed by the Decision Owner, who owns the decision. The person who asked for it reviews nothing on the owner's behalf. |
+| `CASE-ROLE-03` | An approval that comes before the review of its packet | `ROLE004` | An exact approval follows the Decision Owner's review of the packet it rests on. |
+
+## Three cases that produce more than one code
 
 - `CASE-LIFE-02` fires `LIFE003` (the packet is still active but cites superseded records) and `LIFE004` (a newer version exists): two rules, one mistake.
 - `CASE-MISS-03` fires `MISS001` and `REF006`: a failed retrieval makes the `not_retrieved` label unjustified, and also leaves the label's retrieval reference with nothing to point at.
+- `CASE-ROLE-01` fires `ROLE001` (the issuer is not a registered approver) and `ROLE002` (the issuer is the requestor of the packet).
 
 ## What this shows, and what it does not
 

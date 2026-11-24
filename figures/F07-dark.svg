@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 1045" width="360" height="1045" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">Degraded information, closed execution</title>
-<desc id="d">Four information states, each with what the reader sees, what review is possible and whether execution is eligible. Execution is eligible only after the commit checks, and only when authority is valid; it is closed whenever authority is invalid or uncertain, and outright in the last state, where authorization cannot be established.</desc>
+<desc id="d">A note says execution is closed in every state when authority is invalid or uncertain. Four information states follow. Each gives what the reader sees, what review is possible and whether execution is eligible when authority is valid and current. In the last state, where authorization or revocation cannot be established, execution is Closed. A last note says urgent continuity uses its own authorized channel.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8b949e"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8b949e"/></marker></defs>
 <rect width="360" height="1045" fill="#0d1117"/>
 <rect x="10.0" y="10.0" width="340.0" height="136.0" rx="8" fill="#4D1511" stroke="#F85149" stroke-width="1.6"/>

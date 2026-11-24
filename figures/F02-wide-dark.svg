@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 939" width="880" height="939" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">Reference architecture</title>
-<desc id="d">A main path of nine numbered steps from sources to review of one decision packet; a separate mandatory continuity path that branches from the registry; a separate action path that starts from the review; a reassessment and invalidation step that receives corrections and outcomes; and a control plane that constrains every stage.</desc>
+<desc id="d">Nine numbered steps run from sources to the review of one decision packet. A separate mandatory continuity path branches from the registry. A separate action path starts at the review. A reassessment and invalidation step receives corrections and outcomes and returns to the registry. A control plane constrains every stage and path.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8b949e"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8b949e"/></marker></defs>
 <rect width="880" height="939" fill="#0d1117"/>
 <rect x="10.0" y="10.0" width="280.0" height="844.7" rx="12" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
@@ -101,38 +101,44 @@
 <path d="M491.3 274.5 L509.3 274.5" fill="none" stroke="#8b949e" stroke-width="1.8" marker-end="url(#arrs)"/>
 <path d="M674.7 274.5 L692.7 274.5" fill="none" stroke="#8b949e" stroke-width="1.8" marker-end="url(#arrs)"/>
 <path d="M280.0 264.5 L326.0 264.5" fill="none" stroke="#8b949e" stroke-width="1.8" marker-end="url(#arr)"/>
-<rect x="314.0" y="690.6" width="556.0" height="164.1" rx="12" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
-<text x="328.0" y="712.6" font-size="13" text-anchor="start" font-weight="700" fill="#9da7b3">ACTION PATH</text>
-<text x="328.0" y="730.6" font-size="13" text-anchor="start" fill="#9da7b3">starts at step 9, the review; a separate path</text>
-<rect x="326.0" y="740.6" width="119.5" height="102.1" rx="8" fill="#2D2150" stroke="#A371F7" stroke-width="1.6"/>
-<text x="332.0" y="759.6" font-size="14" text-anchor="start" font-weight="700" fill="#E6DAFF">Approval</text>
-<text x="332.0" y="780.4" font-size="13" text-anchor="start" fill="#E6DAFF">of an exact</text>
-<text x="332.0" y="797.6" font-size="13" text-anchor="start" fill="#E6DAFF">proposal (C05),</text>
-<text x="332.0" y="814.8" font-size="13" text-anchor="start" fill="#E6DAFF">or a bounded</text>
-<text x="332.0" y="831.9" font-size="13" text-anchor="start" fill="#E6DAFF">grant (C06)</text>
-<rect x="463.5" y="740.6" width="119.5" height="102.1" rx="8" fill="#4A3200" stroke="#E3B341" stroke-width="1.6"/>
-<text x="469.5" y="759.6" font-size="14" text-anchor="start" font-weight="700" fill="#FFEBC2">Executor</text>
-<text x="469.5" y="780.4" font-size="13" text-anchor="start" fill="#FFEBC2">current checks:</text>
-<text x="469.5" y="797.6" font-size="13" text-anchor="start" fill="#FFEBC2">permission,</text>
-<text x="469.5" y="814.8" font-size="13" text-anchor="start" fill="#FFEBC2">limits</text>
-<rect x="601.0" y="740.6" width="119.5" height="102.1" rx="8" fill="#12304F" stroke="#58A6FF" stroke-width="1.6"/>
-<text x="607.0" y="759.6" font-size="14" text-anchor="start" font-weight="700" fill="#CDE4FF">Authoritative</text>
-<text x="607.0" y="777.1" font-size="14" text-anchor="start" font-weight="700" fill="#CDE4FF">target</text>
-<rect x="738.5" y="740.6" width="119.5" height="102.1" rx="8" fill="#12361F" stroke="#56D364" stroke-width="1.6"/>
-<text x="744.5" y="759.6" font-size="14" text-anchor="start" font-weight="700" fill="#D2F8DB">Verified</text>
-<text x="744.5" y="777.1" font-size="14" text-anchor="start" font-weight="700" fill="#D2F8DB">receipt (C07)</text>
-<path d="M445.5 791.7 L463.5 791.7" fill="none" stroke="#8b949e" stroke-width="1.8" marker-end="url(#arrs)"/>
-<path d="M583.0 791.7 L601.0 791.7" fill="none" stroke="#8b949e" stroke-width="1.8" marker-end="url(#arrs)"/>
-<path d="M720.5 791.7 L738.5 791.7" fill="none" stroke="#8b949e" stroke-width="1.8" marker-end="url(#arrs)"/>
+<rect x="314.0" y="638.4" width="556.0" height="216.3" rx="12" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+<text x="328.0" y="660.4" font-size="13" text-anchor="start" font-weight="700" fill="#9da7b3">ACTION PATH</text>
+<text x="328.0" y="678.4" font-size="13" text-anchor="start" fill="#9da7b3">starts at step 9, the review; a separate path</text>
+<rect x="326.0" y="688.4" width="119.5" height="154.3" rx="8" fill="#2D2150" stroke="#A371F7" stroke-width="1.6"/>
+<text x="332.0" y="707.4" font-size="14" text-anchor="start" font-weight="700" fill="#E6DAFF">Approval or</text>
+<text x="332.0" y="724.9" font-size="14" text-anchor="start" font-weight="700" fill="#E6DAFF">grant (C06)</text>
+<text x="332.0" y="745.8" font-size="13" text-anchor="start" fill="#E6DAFF">an exact</text>
+<text x="332.0" y="762.9" font-size="13" text-anchor="start" fill="#E6DAFF">approval of</text>
+<text x="332.0" y="780.1" font-size="13" text-anchor="start" fill="#E6DAFF">one proposal</text>
+<text x="332.0" y="797.3" font-size="13" text-anchor="start" fill="#E6DAFF">(C05), or a</text>
+<text x="332.0" y="814.4" font-size="13" text-anchor="start" fill="#E6DAFF">bounded grant</text>
+<rect x="463.5" y="688.4" width="119.5" height="154.3" rx="8" fill="#4A3200" stroke="#E3B341" stroke-width="1.6"/>
+<text x="469.5" y="707.4" font-size="14" text-anchor="start" font-weight="700" fill="#FFEBC2">Executor</text>
+<text x="469.5" y="724.9" font-size="14" text-anchor="start" font-weight="700" fill="#FFEBC2">(action</text>
+<text x="469.5" y="742.4" font-size="14" text-anchor="start" font-weight="700" fill="#FFEBC2">gateway)</text>
+<text x="469.5" y="763.3" font-size="13" text-anchor="start" fill="#FFEBC2">rechecks at</text>
+<text x="469.5" y="780.4" font-size="13" text-anchor="start" fill="#FFEBC2">commit: grant,</text>
+<text x="469.5" y="797.6" font-size="13" text-anchor="start" fill="#FFEBC2">evidence,</text>
+<text x="469.5" y="814.8" font-size="13" text-anchor="start" fill="#FFEBC2">preconditions,</text>
+<text x="469.5" y="831.9" font-size="13" text-anchor="start" fill="#FFEBC2">limits</text>
+<rect x="601.0" y="688.4" width="119.5" height="154.3" rx="8" fill="#12304F" stroke="#58A6FF" stroke-width="1.6"/>
+<text x="607.0" y="707.4" font-size="14" text-anchor="start" font-weight="700" fill="#CDE4FF">Authoritative</text>
+<text x="607.0" y="724.9" font-size="14" text-anchor="start" font-weight="700" fill="#CDE4FF">target</text>
+<rect x="738.5" y="688.4" width="119.5" height="154.3" rx="8" fill="#12361F" stroke="#56D364" stroke-width="1.6"/>
+<text x="744.5" y="707.4" font-size="14" text-anchor="start" font-weight="700" fill="#D2F8DB">Verified</text>
+<text x="744.5" y="724.9" font-size="14" text-anchor="start" font-weight="700" fill="#D2F8DB">receipt (C07)</text>
+<path d="M445.5 765.6 L463.5 765.6" fill="none" stroke="#8b949e" stroke-width="1.8" marker-end="url(#arrs)"/>
+<path d="M583.0 765.6 L601.0 765.6" fill="none" stroke="#8b949e" stroke-width="1.8" marker-end="url(#arrs)"/>
+<path d="M720.5 765.6 L738.5 765.6" fill="none" stroke="#8b949e" stroke-width="1.8" marker-end="url(#arrs)"/>
 <path d="M280.0 772.9 L326.0 772.9" fill="none" stroke="#8b949e" stroke-width="1.8" marker-end="url(#arr)"/>
-<rect x="314.0" y="458.5" width="556.0" height="94.2" rx="8" fill="#4A3200" stroke="#E3B341" stroke-width="1.6" stroke-dasharray="5 4"/>
-<text x="324.0" y="482.4" font-size="15" text-anchor="start" font-weight="700" fill="#FFEBC2">Reassessment and invalidation</text>
-<text x="324.0" y="503.6" font-size="13" text-anchor="start" fill="#FFEBC2">Corrections, revocations, late evidence, challenges and verified</text>
-<text x="324.0" y="520.7" font-size="13" text-anchor="start" fill="#FFEBC2">outcomes arrive here. This step returns to the registry (step 3):</text>
-<text x="324.0" y="537.9" font-size="13" text-anchor="start" fill="#FFEBC2">affected derivatives, packets and pending approvals stop being current.</text>
-<path d="M798.2 690.6 L798.2 552.7" fill="none" stroke="#8b949e" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arr)"/>
-<text x="808.2" y="626.2" font-size="13" text-anchor="start" fill="#9da7b3">outcome</text>
-<path d="M314.0 505.6 L302.0 505.6 L302.0 286.4 L280.0 286.4" fill="none" stroke="#8b949e" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+<rect x="314.0" y="432.4" width="556.0" height="94.2" rx="8" fill="#4A3200" stroke="#E3B341" stroke-width="1.6" stroke-dasharray="5 4"/>
+<text x="324.0" y="456.4" font-size="15" text-anchor="start" font-weight="700" fill="#FFEBC2">Reassessment and invalidation</text>
+<text x="324.0" y="477.5" font-size="13" text-anchor="start" fill="#FFEBC2">Corrections, revocations, late evidence, challenges and verified</text>
+<text x="324.0" y="494.7" font-size="13" text-anchor="start" fill="#FFEBC2">outcomes arrive here. This step returns to the registry (step 3):</text>
+<text x="324.0" y="511.8" font-size="13" text-anchor="start" fill="#FFEBC2">affected derivatives, packets and pending approvals stop being current.</text>
+<path d="M798.2 638.4 L798.2 526.6" fill="none" stroke="#8b949e" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+<text x="808.2" y="587.1" font-size="13" text-anchor="start" fill="#9da7b3">outcome</text>
+<path d="M314.0 479.5 L302.0 479.5 L302.0 286.4 L280.0 286.4" fill="none" stroke="#8b949e" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arr)"/>
 <rect x="10.0" y="870.7" width="860.0" height="57.5" rx="12" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
 <text x="24.0" y="895.1" font-size="13" text-anchor="start" font-weight="700" fill="#9da7b3">CONTROL PLANE</text>
 <text x="155.4" y="895.1" font-size="13" text-anchor="start" fill="#9da7b3">constrains every stage and path</text>

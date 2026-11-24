@@ -1,13 +1,20 @@
 import copy
 import unittest
+from pathlib import Path
 
 import support  # noqa: F401
 
 from eahs.patch import apply_ops
-from eahs.response import check_response, render_markdown, render_response
+from eahs.response import check_canonical, check_response, check_structural, is_canonical, render_markdown, render_response
 
 
 def codes(response, path="response.json"):
+    """Codes from STRUCTURAL FREE-TEXT VALIDATION alone: the constraints every response must meet."""
+    return sorted({f.code for f in check_structural(support.example_model(), response, path)})
+
+
+def canonical_codes(response, path="response.json"):
+    """Codes from the full check, including the comparison with the renderer's output for a response that claims to be rendered."""
     return sorted({f.code for f in check_response(support.example_model(), response, path)})
 
 
@@ -18,6 +25,7 @@ class Rendering(unittest.TestCase):
 
     def test_a_template_response_conforms_to_its_packet(self):
         self.assertEqual(codes(render_response(self.model, self.pkt2)), [])
+        self.assertEqual(canonical_codes(render_response(self.model, self.pkt2)), [])
 
     def test_a_response_from_an_invalidated_packet_must_be_withdrawn(self):
         self.assertEqual(codes(render_response(self.model, self.pkt1)), ["RESP006"])
@@ -63,7 +71,11 @@ class Conformance(unittest.TestCase):
 
     def test_an_unlabelled_inference_is_rejected(self):
         i = self.index("inference")
-        self.assertEqual(codes(self.mutate({"op": "replace", "path": "/statements/%d/text" % i, "value": "Both models agree on a receiving delay."})), ["RESP003"])
+        text = "Both models agree on a receiving delay."
+        # Unlabeled and also stripped of its limits: both named failures are reported.
+        self.assertEqual(codes(self.mutate({"op": "replace", "path": "/statements/%d/text" % i, "value": text})), ["RESP003", "RESP010"])
+        hedged = "Both models probably agree on a receiving delay, but they share one origin."
+        self.assertEqual(codes(self.mutate({"op": "replace", "path": "/statements/%d/text" % i, "value": hedged})), ["RESP003"])
 
     def test_dropping_a_conflict_or_a_gap_is_rejected(self):
         conflict, gap = self.index("conflict"), self.index("gap", 2)
@@ -84,6 +96,179 @@ class Conformance(unittest.TestCase):
         style = copy.deepcopy(support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json"))
         style["statements"][1]["text"] = "The goods receipt shows only 65 units received."
         self.assertEqual(codes(style), ["RESP002"])
+
+
+class CanonicalValidation(unittest.TestCase):
+    """A response that says a renderer wrote it must equal what the renderer writes from its packet."""
+
+    def setUp(self):
+        self.model = support.example_model()
+        self.packet = self.model.get("C04", "PKT-0417", "v2")
+        self.response = render_response(self.model, self.packet)
+
+    def findings(self, response):
+        return check_canonical(self.model, response, self.packet, "response.json")
+
+    def test_the_renderer_output_is_canonical_and_the_committed_template_responses_are_too(self):
+        self.assertEqual(self.findings(self.response), [])
+        for name in ("response-PKT-0417-v1-template.json", "response-PKT-0417-v2-template.json"):
+            self.assertTrue(is_canonical(support.read_json("06-assistant-response/" + name)), name)
+        self.assertFalse(is_canonical(support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")))
+
+    def test_any_changed_word_fails_and_names_both_texts(self):
+        changed = copy.deepcopy(self.response)
+        changed["statements"][0]["text"] = changed["statements"][0]["text"].replace("states", "claims")
+        found = self.findings(changed)
+        self.assertEqual([f.code for f in found], ["RESP101"])
+        self.assertIn("Canonical:", found[0].message)
+        self.assertIn("Found:", found[0].message)
+
+    def test_a_dropped_added_or_reordered_statement_fails(self):
+        dropped = copy.deepcopy(self.response)
+        del dropped["statements"][3]
+        self.assertEqual([f.code for f in self.findings(dropped)], ["RESP101"])
+        added = copy.deepcopy(self.response)
+        added["statements"].append({"kind": "claim", "label": "PC-9", "text": "All is well.", "refs": ["/supported_claims_references/0"]})
+        self.assertEqual([f.code for f in self.findings(added)], ["RESP101"])
+        reordered = copy.deepcopy(self.response)
+        reordered["statements"][0], reordered["statements"][1] = reordered["statements"][1], reordered["statements"][0]
+        self.assertEqual([f.code for f in self.findings(reordered)], ["RESP101"])
+
+    def test_changed_citations_fail_even_when_the_text_is_right(self):
+        changed = copy.deepcopy(self.response)
+        changed["statements"][0]["refs"] = ["/supported_claims_references/1"]
+        self.assertEqual([f.code for f in self.findings(changed)], ["RESP101"])
+
+    def test_a_changed_as_of_time_or_response_id_fails(self):
+        changed = copy.deepcopy(self.response)
+        changed["as_of"] = "2026-11-23T10:00:00Z"
+        changed["response_id"] = "RESP-0417-v2-model"
+        self.assertEqual(sorted(f.location for f in self.findings(changed)), ["/as_of", "/response_id"])
+
+    def test_a_field_the_renderer_does_not_write_fails_at_the_top_and_in_a_statement(self):
+        extra = copy.deepcopy(self.response)
+        extra["decision"] = "release the payment"
+        self.assertEqual([(f.code, f.location) for f in self.findings(extra)], [("RESP101", "/decision")])
+        extra = copy.deepcopy(self.response)
+        extra["statements"][0]["verdict"] = "approved"
+        self.assertEqual([(f.code, f.location) for f in self.findings(extra)], [("RESP101", "/statements/0/verdict")])
+
+
+class Adversarial(unittest.TestCase):
+    """Responses whose figures and citations are right and whose meaning is not.
+
+    Every change below fails canonical validation. A free-form response is held only to the named structural
+    constraints, so each test says which constraint catches the change; the last two tests show what the
+    constraints do not catch.
+    """
+
+    def setUp(self):
+        self.model = support.example_model()
+        self.v1 = render_response(self.model, self.model.get("C04", "PKT-0417", "v1"), status="withdrawn", withdrawn_reason="invalidated")
+        self.v2 = render_response(self.model, self.model.get("C04", "PKT-0417", "v2"))
+
+    def reword(self, response, kind, label, text):
+        changed = copy.deepcopy(response)
+        for statement in changed["statements"]:
+            if statement["kind"] == kind and label in statement["label"]:
+                statement["text"] = text(statement["text"]) if callable(text) else text
+                return changed
+        raise AssertionError((kind, label))
+
+    def test_a_negated_conclusion_with_unchanged_pointers(self):
+        changed = self.reword(self.v1, "conflict", "CONF-QTY", "There is no conflict: the invoice (100 units) and the goods receipt (60 units) have been reconciled.")
+        self.assertIn("RESP008", codes(changed))
+        self.assertIn("RESP102", canonical_codes(changed))
+
+    def test_a_negated_recommendation_passes_the_structural_constraints_and_fails_the_canonical_comparison(self):
+        changed = self.reword(self.v2, "recommendation", "REC-0417-2", lambda t: t.replace("Release payment", "Do not release payment"))
+        self.assertEqual(codes(changed), [])
+        self.assertEqual(canonical_codes(changed), ["RESP102"])
+
+    def test_an_altered_status_with_unchanged_numbers(self):
+        changed = self.reword(self.v1, "claim", "PC-4", lambda t: t.replace("FAIL", "PASS"))
+        self.assertEqual(codes(changed), ["RESP012"])
+        self.assertIn("RESP102", canonical_codes(changed))
+
+    def test_a_stale_record_reworded_as_current(self):
+        changed = self.reword(self.v1, "gap", "stale", "Current: SCR-S1042 v1 is up to date. Record is 50.0 h old at evaluation; policy allows 24 h.")
+        self.assertIn("RESP009", codes(changed))
+        self.assertIn("RESP012", codes(changed))
+        self.assertTrue({"RESP101", "RESP102"} & set(canonical_codes(changed)))
+
+    def test_prose_that_contradicts_correct_fields_is_caught_when_it_uses_the_named_words(self):
+        changed = self.reword(self.v1, "conflict", "CONF-QTY", lambda t: t + " In fact the conflict is resolved and there is nothing to review.")
+        self.assertIn("RESP008", codes(changed))
+        self.assertIn("RESP102", canonical_codes(changed))
+
+    def test_other_contradictory_prose_passes_the_structural_constraints_and_fails_the_canonical_comparison(self):
+        changed = self.reword(self.v1, "conflict", "CONF-QTY", lambda t: t + " Please disregard this and rely on the receipt.")
+        self.assertEqual(codes(changed), [])
+        self.assertEqual(canonical_codes(changed), ["RESP101"])
+
+    def test_omitted_uncertainty(self):
+        changed = self.reword(self.v1, "inference", "M01", "Inference: the goods receipt is incomplete; 40 units were delivered on a later date.")
+        self.assertEqual(codes(changed), ["RESP010"])
+        self.assertTrue({"RESP101", "RESP102"} & set(canonical_codes(changed)))
+
+    def test_some_limits_dropped_passes_the_structural_constraints_and_fails_the_canonical_comparison(self):
+        changed = self.reword(self.v1, "inference", "M01", lambda t: t.split(" Limits:")[0])
+        self.assertEqual(codes(changed), [])
+        self.assertTrue({"RESP101", "RESP102"} & set(canonical_codes(changed)))
+
+    def test_unsupported_certainty(self):
+        changed = self.reword(self.v1, "inference", "M02", "Inference: the quantity difference is certainly a receiving delay, and both models confirmed it.")
+        self.assertEqual(codes(changed).count("RESP011"), 1)
+        self.assertEqual(sum(1 for f in check_structural(self.model, changed, "r.json") if f.code == "RESP011"), 2)
+
+    def test_certainty_the_source_itself_states_is_not_added_certainty(self):
+        self.assertEqual(codes(self.v1), [])
+
+    def test_mismatched_source_interpretation_a_claim_attributed_to_another_record(self):
+        changed = self.reword(self.v1, "claim", "PC-3", "Bank statement BANK-STMT-0042 records 60 units received on 2026-11-18.")
+        self.assertIn("RESP013", codes(changed))
+        self.assertTrue({"RESP101", "RESP102"} & set(canonical_codes(changed)))
+
+    def test_mismatched_source_interpretation_a_claim_in_another_currency(self):
+        changed = self.reword(self.v1, "claim", "PC-1", lambda t: t.replace("EUR", "USD"))
+        self.assertEqual(codes(changed), ["RESP002"])
+
+    def test_a_gap_denied_or_a_closed_obligation_is_caught(self):
+        gap = self.reword(self.v1, "gap", "missing", "Nothing is missing: the carrier proof of delivery for a second pallet of 40 units was found.")
+        self.assertIn("RESP008", codes(gap))
+        obligation = self.reword(self.v1, "obligation", "OBL-0417-REVIEW", "Obligation OBL-0417-REVIEW: already reviewed, owner role:ap-controller.")
+        self.assertIn("RESP008", codes(obligation))
+
+
+class ClaimBoundary(unittest.TestCase):
+    """What each validation promises. The documents must say the same, and the code must not promise more."""
+
+    def setUp(self):
+        self.model = support.example_model()
+        self.v2 = render_response(self.model, self.model.get("C04", "PKT-0417", "v2"))
+
+    def test_a_response_that_does_not_say_it_was_rendered_is_not_compared_with_the_renderer(self):
+        reversed_free_form = copy.deepcopy(self.v2)
+        reversed_free_form["produced_by"] = "an-assistant-model"
+        for statement in reversed_free_form["statements"]:
+            if statement["kind"] == "recommendation":
+                statement["text"] = statement["text"].replace("Release payment", "Do not release payment")
+        self.assertEqual(canonical_codes(reversed_free_form), [])
+        reversed_template = copy.deepcopy(reversed_free_form)
+        reversed_template["produced_by"] = "template-fallback-1"
+        self.assertEqual(canonical_codes(reversed_template), ["RESP102"])
+
+    def test_the_documents_name_both_validations_and_deny_that_the_structural_one_proves_meaning(self):
+        text = (support.EXAMPLES / "06-assistant-response" / "README.md").read_text(encoding="utf-8")
+        for phrase in ("CANONICAL RESPONSE VALIDATION", "STRUCTURAL FREE-TEXT VALIDATION", "does not prove"):
+            self.assertIn(phrase, text)
+        scripts = (support.SCRIPTS / "README.md").read_text(encoding="utf-8")
+        for phrase in ("canonical", "structural", "does not prove"):
+            self.assertIn(phrase, scripts.lower() if phrase != "does not prove" else scripts)
+
+    def test_the_module_does_not_claim_semantic_fidelity_for_free_form_text(self):
+        import eahs.response as response
+        self.assertIn("do NOT show that the prose is\nsemantically correct", response.__doc__)
 
 
 if __name__ == "__main__":

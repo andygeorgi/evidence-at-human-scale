@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check that the external URLs the repository cites still resolve. Needs network access; no other check depends on it.
 
-    python scripts/check_urls.py --list           # print each URL and the files that cite it; no network
+    python scripts/check_urls.py --list           # the complete inventory: each URL and the files that cite it; no network
     python scripts/check_urls.py                  # request each URL once; exit 1 if any is broken
     python scripts/check_urls.py --strict         # also exit 1 when a server refuses an automated request or cannot be reached
     python scripts/check_urls.py --timeout 20 --workers 6
@@ -154,7 +154,7 @@ def summarize(results: Sequence[Result]) -> str:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--root", default=str(REPO), help="folder to read (default: this repository)")
-    parser.add_argument("--list", action="store_true", help="print the URLs and where they are cited; make no request")
+    parser.add_argument("--list", action="store_true", help="print the complete inventory of cited URLs and where each is cited; make no request")
     parser.add_argument("--strict", action="store_true", help="also fail on refused and unreachable URLs")
     parser.add_argument("--json", action="store_true", help="print a machine-readable result")
     parser.add_argument("--timeout", type=float, default=15.0, help="seconds to wait for each request (default 15)")

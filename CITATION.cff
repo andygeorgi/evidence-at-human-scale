@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "Please cite this repository by its version."
 title: "Evidence at Human Scale: Reference Architecture for Accountable Decisions in Agentic Systems"
 type: software
-version: "1.0.0"
+version: "1.0.1"
 date-released: "2026-11-24"
 license: MIT
 authors:
@@ -11,11 +11,10 @@ authors:
 repository-code: "https://github.com/andygeorgi/evidence-at-human-scale"
 abstract: >-
   A reference architecture, documentation contracts, a synthetic worked example and
-  evaluation guidance for accountable decisions in agentic systems. Systems produce
-  evidence, AI makes it consumable, and people remain accountable. This is an
-  architecture proposition, not a deployment or benefit claim. No evaluation has
-  been run, and the example checks do not establish truth, compliance, production
-  safety or business value.
+  evaluation guidance for decisions that rest on what many systems and AI agents
+  produce. This is a reference architecture, not a production deployment or benefit
+  claim. The contracts and synthetic examples are tested; real-world effectiveness
+  has not been evaluated.
 keywords:
   - accountable decisions
   - agentic systems
@@ -31,6 +30,6 @@ preferred-citation:
       given-names: Andy
   year: 2026
   month: 11
-  version: "1.0.0"
+  version: "1.0.1"
   url: "https://github.com/andygeorgi/evidence-at-human-scale"
   notes: "AI assistance is disclosed in the repository README."

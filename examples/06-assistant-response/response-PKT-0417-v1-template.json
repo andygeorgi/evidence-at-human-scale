@@ -149,7 +149,7 @@
     {
       "kind": "recommendation",
       "label": "REC-0417-1",
-      "text": "Recommendation (for review, not a decision): Place INV-2026-0417 on payment hold until the quantity difference is resolved. Basis: Open quantity discrepancy (CONF-QTY) between invoice and goods receipt; policy AP-4; screening is stale. Requires: A hold is within the AP team's standing class authority; the AP reviewer is notified.",
+      "text": "Recommendation (for review, not a decision): Place INV-2026-0417 on payment hold until the quantity difference is resolved. Basis: Open quantity discrepancy (CONF-QTY) between invoice and goods receipt; policy AP-4; screening is stale. Requires: A hold is within the bounded grant of the AP team; the AP controller is notified.",
       "refs": [
         "/recommendations/0"
       ]

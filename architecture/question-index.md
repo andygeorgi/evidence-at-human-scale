@@ -1,0 +1,25 @@
+# Question index
+
+[Architecture reference](README.md)
+
+This index starts from the questions a reader is likely to ask and points to the paper chapters, reference pages, figures and evaluation tests that answer them. All evaluation tests are NOT ASSESSED, and none has been run.
+
+| Question | Where it is answered | Figures; evaluation tests |
+| --- | --- | --- |
+| What is reusable and domain-specific? | Paper: [3. The reference architecture](../docs/paper/03-governed-context.md); [11. Costs and adaptation](../docs/paper/11-costs-and-adaptation.md). Reference: [ownership, parameters and tradeoffs](ownership-and-tradeoffs.md). | F02; EV01–EV12 as applicable |
+| How does evidence differ from inference? | Paper: [4. Evidence keeps its type and its ancestry](../docs/paper/04-evidence-and-lineage.md). Reference: [evidence semantics](evidence-semantics.md). Contracts: [C02](../contracts/c02-evidence.md) and [C04](../contracts/c04-decision-packet.md). | F03; EV01, EV02, EV03 |
+| What are the canonical paths and controls? | Paper: [3. The reference architecture](../docs/paper/03-governed-context.md). Reference: [lineage, selection and disclosure](lineage-selection-disclosure.md), [action and degradation](action-and-degradation.md), [ownership and tradeoffs](ownership-and-tradeoffs.md). | F02; EV06, EV08, EV09, EV11 |
+| Does agreement between sources mean they are independent? | Paper: [4. Evidence and lineage](../docs/paper/04-evidence-and-lineage.md). Reference: [lineage, selection and disclosure](lineage-selection-disclosure.md#versioned-ancestry-and-missingness). | F03; EV03, EV04, EV12 |
+| How does a packet show omitted or unavailable evidence? | Paper: [5. Context and selection](../docs/paper/05-context-and-attention.md); [8. Uncertainty is part of the result](../docs/paper/08-uncertainty.md). Reference: [lineage, selection and disclosure](lineage-selection-disclosure.md). Contracts: [C03](../contracts/c03-selection.md) and [C04](../contracts/c04-decision-packet.md). | F03, F04, F09; EV05, EV06, EV10 |
+| What reaches the Decision Owner? | Paper: [6. The decision packet](../docs/paper/06-decision-packet.md). Reference: [constraints before ranking](lineage-selection-disclosure.md#constraints-before-ranking-mandatory-continuity). Contract: [C04](../contracts/c04-decision-packet.md). | F04; EV01, EV04, EV05 |
+| Who reads, approves, delegates and executes? | Paper: [9. Authority remains a separate boundary](../docs/paper/09-authority.md). Reference: [action and degradation](action-and-degradation.md). Contracts: [C01](../contracts/c01-context.md), [C05](../contracts/c05-action-proposal.md), [C06](../contracts/c06-delegation.md), [C07](../contracts/c07-execution-receipt.md). | F05, F06; EV06, EV07, EV11 |
+| What happens after a failure, a partial effect or an unknown outcome? | Paper: [10. Information can degrade without widening authority](../docs/paper/10-degraded-operation.md). Reference: [action and degradation](action-and-degradation.md). | F06, F07; EV09, EV10, EV11 |
+| What are the evaluation targets, and what has been achieved? | Paper: [12. Evaluate simpler baselines before multi-agent value](../docs/paper/12-evaluation.md). See also the [evaluation oracles](../evaluation/oracles.md) and the [evaluation guide](../evaluation/README.md). | F08; EV01–EV12 NOT ASSESSED |
+| Can the fisheries domain and Azure be removed? | Paper: [11. Costs and adaptation](../docs/paper/11-costs-and-adaptation.md); [13. Implementation options](../docs/paper/13-implementation-options.md). Reference: [ownership and tradeoffs](ownership-and-tradeoffs.md), [implementation options](azure-implementation-options.md). | Logical boundaries unchanged |
+| Where are the exact fields, the schema limits and the sources? | Paper: [14. Technical scrutiny and sources](../docs/paper/14-start-monday.md#technical-scrutiny-and-sources). Reference: [evidence semantics](evidence-semantics.md); all 41 groups in the [contract reference](../contracts/README.md); [sources](../references/README.md). | JSON Schema bundle and evaluation catalogue |
+| Where did the design come from? | Paper: [2. What the engagement showed](../docs/paper/02-engagement.md). See also the [sources](../references/README.md), including the [engagement records](../references/engagement-records.md). | Engagement sources only |
+| What should an architect do first? | Paper: [14. Starting with one decision](../docs/paper/14-start-monday.md). See also the [implementation guide](../docs/implementation-guide.md). | EV01–EV12 NOT ASSESSED |
+
+Each contract page begins with the paper chapters, reference pages, figures and evaluation tests that apply to it, followed by its field groups. The prose of the paper and of this reference carries the semantics. `schemas/contracts-v1.schema.json` carries the formal structure. The [evaluation catalogue](../evaluation/catalogue/README.md) carries the evaluation tests, fixtures and parameters. The rendered figures derive from their editable sources. They are not independent masters.
+
+[← Implementation options](azure-implementation-options.md) · [Architecture reference](README.md)

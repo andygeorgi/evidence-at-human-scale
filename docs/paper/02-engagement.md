@@ -1,21 +1,21 @@
 # 2. What the engagement showed
 
-[← 1. Human attention](01-human-attention.md) · [Paper contents](README.md) · [Next: a governed context →](03-governed-context.md)
+[← 1. Human attention](01-human-attention.md) · [Paper contents](README.md) · [Next: the reference architecture →](03-governed-context.md)
 
-The architecture began with a case-based architecture engagement, not a client commission: the author acted as architect on a written case brief about a national fisheries-control authority in Iceland that registers catches and landings, confirms quota transfers and takes appealable enforcement decisions. The engagement combined the brief, research into the authority's public record, and prototypes the author built and tested on synthetic data, including a demonstrator assistant. The authority took no part: no interview, data, approval or outcome from it forms part of this evidence. Nothing in this repository is a statement by, about or on behalf of the authority.
+The architecture grew out of a case-based architecture engagement. There was no client commission: the author acted as architect on a written case brief about a national fisheries-control authority in Iceland that registers catches and landings, confirms quota transfers and takes enforcement decisions that can be appealed. The work combined the brief, research into the authority's public record, and prototypes that the author built and tested on synthetic data, including a demonstrator assistant. The authority took no part: no interview, data, approval or outcome from it forms part of this evidence. Nothing in this repository is a statement by, about or on behalf of the authority.
 
-Seven observations shaped the design; none measures the benefit of this architecture. Public records (EN) are dated single cases, not evidence of a systemic failure. Engagement records (IN) are the author's internal, AI-assisted working documents; the unpublished case brief is treated as unverified. Contract (C) and evaluation-test (EV) identifiers are introduced later; the [glossary](../glossary.md) lists them. Every source is described, with its limits, in the [sources](../../references/README.md).
+Seven observations from this work shaped the design, and each is listed below with its limits. Each is a single dated case or one internal test, so none of them measures the benefit of this architecture. Sources are tagged EN for a public record and IN for one of the author's internal, AI-assisted working documents. The unpublished case brief is treated as unverified. Contract (C) and evaluation-test (EV) identifiers appear later and are listed in the [glossary](../glossary.md). The [sources](../../references/README.md) describe every source with its limits.
 
 ## 1. Monitoring data can outgrow the people who must act on it
 
 A national audit follow-up found that real-time electronic monitoring needs enough staff to process the information and respond to deviations.
 
 - **Evidence and its limits:** EN01: audit finding, May 2023; current status unknown.
-- **Design decision it informed:** Treat human attention, not data supply, as the binding constraint; design the governed decision context, not more output.
+- **Design decision it informed:** Treat human attention as the binding constraint, and design the decision context a person reviews instead of adding output.
 
 ## 2. Proposed agents showed no value of their own
 
-In the author's test of the agents that the case brief proposed, none showed evidence-backed value alone; evidence-backed value also came from controls around the agents and from platform continuity.
+In the author's test of the agents that the case brief proposed, none showed evidence-backed value alone. Evidence-backed value also came from controls that are not agents and from platform continuity.
 
 - **Evidence and its limits:** IN01: the author's AI-assisted agent-value test, 16 October 2026; one internal test within a single case-based engagement, not statistical evidence.
 - **Design decision it informed:** Start with zero specialists; admit one only for a documented task, permission or isolation need after a matched comparison (adopted in IN02).
@@ -25,7 +25,7 @@ In the author's test of the agents that the case brief proposed, none showed evi
 A landing record was corrected months after an over-catch fee decision relied on it; the decision was not reopened, and an appeal ruling later annulled it because the fee rested on the uncorrected record.
 
 - **Evidence and its limits:** EN02: appeal ruling, 14 April 2026; single case, later outcome unknown.
-- **Design decision it informed:** Corrections invalidate affected derivatives, packets and pending approvals; feedback must reach action preconditions (contract [C02](../../contracts/c02-evidence.md), evaluation test [EV12](../../evaluation/oracles.md)).
+- **Design decision it informed:** Corrections invalidate affected derivatives, packets and pending approvals, and they must reach the preconditions an action is checked against (contract [C02](../../contracts/c02-evidence.md), evaluation test [EV12](../../evaluation/oracles.md)).
 
 ## 4. A system flag led to a decision on the wrong basis
 
@@ -34,7 +34,7 @@ A catch-share cancellation began when the catch-registration system indicated un
 - **Evidence and its limits:** EN03: appeal ruling, 7 November 2025; single documented case.
 - **Design decision it informed:** A deterministic finding states its rule version, inputs, reference period and scope; review inspects that basis. A flag is never a decision.
 
-## 5. Capability is not a mandate
+## 5. Technical capability gave no lawful basis
 
 A data-protection ruling found that drone video monitoring of a fishing vessel lacked a lawful basis under the law then in force; the regulator's AI guidance asks whether a solution without AI could achieve the same aim, possibly at lower risk.
 
@@ -48,7 +48,7 @@ A deployment tool reported failure when a ten-minute status window closed, altho
 - **Evidence and its limits:** IN03: root-cause report, 6 November 2026; demonstrator infrastructure, synthetic data.
 - **Design decision it informed:** An executor's status is not outcome evidence: verify against the authoritative target. Unknown stays unresolved; failure or timeout is never a verified no-effect, the `not_executed_verified` state (contract [C07](../../contracts/c07-execution-receipt.md)).
 
-## 7. A request is not permission
+## 7. A request was read as permission
 
 In live-model tests, a request to open source records could be read as permission to switch workflows (since fixed); replies failing source or refusal checks were withheld, as designed, not repaired.
 
@@ -57,10 +57,10 @@ In live-model tests, a request to open source records could be read as permissio
 
 ## Coverage
 
-The demonstrator also taught a lesson about coverage (IN04, synthetic data). Its fleet view could show a whole fleet while case records existed for only part of it; the vessels without case records had to be labeled unassessed so that a fleet-scale picture would not imply a fleet-scale assessment. Coverage and missingness therefore belong to every result in this architecture. Runtime, human, cost and latency evaluation of the architecture remain NOT RUN.
+The demonstrator also taught a lesson about coverage (IN04, synthetic data). Its fleet view could show a whole fleet while case records existed for only part of it; the vessels without case records had to be labeled unassessed so that a fleet-scale picture would not imply a fleet-scale assessment. Coverage and missingness therefore belong to every result in this architecture. Runtime, human, cost and latency evaluation of the architecture have not been done.
 
 ## What is new here
 
-Published guidance already sets the obligation. Trustworthy AI should be accountable, transparent, explainable and interpretable (RG01), and high-risk AI must enable the people who oversee it to interpret its output, stay aware of automation bias, and override or interrupt it (RG02). The engagement showed how the conditions for such oversight fail in practice, in record- and rule-based decisions and in a synthetic demonstrator: a correction that never reaches the decision, a rule applied over the wrong period, a status mistaken for an outcome, a picture that implies coverage it does not have. This paper contributes the contracts that make those failures visible to an accountable owner: typed evidence with lineage, seven missingness labels, a decision packet that separates claims from inferences, and an action boundary with current checks, shared accounting and verified receipts. Its sharpest recommendation, to begin with zero specialist agents, follows from the same engagement: the author's internal, AI-assisted test (IN01) found no evidence-backed value in the proposed agents alone. That is one observation within a single case-based engagement, not statistical evidence.
+Published guidance already sets the obligation. Trustworthy AI should be accountable, transparent, explainable and interpretable (RG01), and high-risk AI must enable the people who oversee it to interpret its output, stay aware of automation bias, and override or interrupt it (RG02). The engagement showed how the conditions for such oversight fail in practice, in record- and rule-based decisions and in a synthetic demonstrator: a correction that never reaches the decision, a rule applied over the wrong period, a status mistaken for an outcome, a picture that implies coverage it does not have. This paper adds contracts that make those failures visible to the Decision Owner: typed evidence with lineage, seven missingness labels, a decision packet that separates claims from inferences, and an action boundary with current checks, shared accounting and verified receipts. The recommendation to begin with zero specialist agents follows from the same engagement: the author's internal, AI-assisted test (IN01) found no evidence-backed value in the proposed agents alone. That is one observation within a single case-based engagement, not statistical evidence.
 
-[← 1. Human attention](01-human-attention.md) · [Paper contents](README.md) · [Next: a governed context →](03-governed-context.md)
+[← 1. Human attention](01-human-attention.md) · [Paper contents](README.md) · [Next: the reference architecture →](03-governed-context.md)

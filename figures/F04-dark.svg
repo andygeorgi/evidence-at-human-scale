@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 1202" width="360" height="1202" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">Anatomy of a decision packet</title>
-<desc id="d">The Decision Owner reviews a decision packet of nine groups, G01 to G09. Tags show that claims, inferences and conflicts point to evidence records (C02), coverage and obligations to the selection manifest (C03), and action proposals to action proposal records (C05).</desc>
+<desc id="d">The Decision Owner reviews a decision packet (C04) of nine groups, G01 to G09. Tags show that the groups for claims, inferences and conflicts point to evidence records (C02), the groups for coverage and obligations to the selection manifest (C03), and the group for action proposals to action proposal records (C05). A band below names the three contracts that the tags point to.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8b949e"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8b949e"/></marker></defs>
 <rect width="360" height="1202" fill="#0d1117"/>
 <rect x="80.0" y="10.0" width="200.0" height="77.1" rx="8" fill="#2D2150" stroke="#A371F7" stroke-width="1.6"/>

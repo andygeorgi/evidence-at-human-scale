@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Check the figures: metadata, drawings, readability on a phone, accessibility and sync with the documents.
+"""Check the figures: required metadata, drawing properties and sync with the documents.
 
     python scripts/check_figures.py
 
-Exit code 0 means every figure has what it needs, every drawing is readable at the size a phone shows it, and every block in
-the documents matches its source.
+Exit code 0 means every figure has its metadata, alt text and description, every drawing has a title and a description element and
+stays within the width and font-size limits set below, and every block in the documents matches its source. These are automated
+checks on the files. They are not an accessibility assessment (conformance to a standard is NOT ASSESSED), and they do not show
+that a figure is usable on a phone: the limits are a proxy that was chosen to keep text from being scaled down.
 """
 from __future__ import annotations
 
@@ -42,7 +44,7 @@ def svg_facts(svg: str):
 
 
 def drawing_problems(fid, name, svg, wide):
-    """What a drawing needs to be accessible, safe and readable at the size it is shown."""
+    """What a drawing needs to carry its own title and description, and to keep its text from being scaled down where it is shown."""
     problems = []
     if "<title" not in svg or "<desc" not in svg:
         problems.append("%s: %s has no <title> and <desc>" % (fid, name))
@@ -175,7 +177,7 @@ def main():
     if problems:
         print("\n%d figure problem(s)." % len(problems))
         return 1
-    print("Figures are complete, accessible, readable on a phone and in sync (%d figures and a banner)." % len(sync_figures.load()[0]))
+    print("Figures pass the automated checks: metadata, drawing limits and sync (%d figures and a banner). This is not an accessibility assessment." % len(sync_figures.load()[0]))
     return 0
 
 
