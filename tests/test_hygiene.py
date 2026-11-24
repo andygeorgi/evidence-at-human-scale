@@ -52,6 +52,9 @@ class TheRepository(unittest.TestCase):
         findings, _notices, _count = hyg.scan(support.REPO, private_terms=[])
         self.assertEqual([f.format() for f in findings], [])
         self.assertTrue(hyg.NAME_STEMS and all(len(digest) == 64 for _length, digest in hyg.NAME_STEMS))
+        with mock.patch.object(hyg, "PUBLIC_SOURCE_LINES", ()):
+            unpinned, _notices, _count = hyg.scan(support.REPO, private_terms=[])
+        self.assertTrue(unpinned and {f.code for f in unpinned} == {"HYG105"}, "the same scan, with no pin and no list, finds the name by its digest: the clean result above is not vacuous")
 
     SELF = ("scripts/check_hygiene.py", "tests/test_hygiene.py")
 
@@ -145,8 +148,24 @@ class TheRepository(unittest.TestCase):
                 self.assertEqual([f.code for f in hyg.scan_bytes(elsewhere, (sample + "\n").encode())], ["HYG104"], elsewhere)
             for altered in (sample + " ", sample + " and " + STRANGER, "# " + sample, sample.replace("someone", "another")):
                 self.assertEqual([f.code for f in hyg.scan_bytes("tests/test_hygiene.py", (altered + "\n").encode())], ["HYG104"], repr(altered))
-            with_label = (sample + " Internal " + "Use Only").encode()
-            self.assertEqual({f.code for f in hyg.scan_bytes("tests/test_hygiene.py", with_label)}, {"HYG104", "HYG105"}, "a pin excuses one rule only")
+
+    def test_a_pin_excuses_one_rule_of_a_line_that_two_rules_match_and_the_other_still_finds_it(self):
+        """One unchanged line, matched by two rules and pinned for one of them: the pin does not reach the other rule."""
+        line = "Contact someone@" + "contoso.com, marked Internal " + "Use Only"
+        digest = hyg.line_digest(line)
+        hyg.use_private_terms([])
+        both_match = {rule.code for rule in hyg.RULES if next(hyg.find_matches(rule, "tests/test_hygiene.py", line), None) is not None}
+        self.assertEqual(both_match, {"HYG104", "HYG105"}, "the sample line is one that two rules match")
+
+        def found(pinned_rules):
+            pins = tuple(hyg.QuotedLines("tests/test_hygiene.py", rule, (digest,), "a sample") for rule in pinned_rules)
+            with mock.patch.object(hyg, "QUOTED_LINES", pins):
+                return {f.code for f in hyg.scan_bytes("tests/test_hygiene.py", (line + "\n").encode())}
+
+        self.assertEqual(found(()), {"HYG104", "HYG105"})
+        self.assertEqual(found(("HYG104",)), {"HYG105"})
+        self.assertEqual(found(("HYG105",)), {"HYG104"})
+        self.assertEqual(found(("HYG104", "HYG105")), set())
 
     def test_the_pinned_lines_are_exactly_the_lines_that_name_the_authority(self):
         """With no pin, the scan must flag the pinned lines and nothing else; so no pin is stale, and no other line names the authority."""
@@ -264,6 +283,28 @@ class Detection(unittest.TestCase):
         shown = [f.excerpt for f in hyg.scan_bytes("docs/page.md", (found[0] + "\n").encode())]
         self.assertEqual(shown, ["%s publication" % OFFICIAL], "only the claim that nothing negates is reported")
 
+    def test_the_tail_of_a_longer_word_is_not_a_denial(self):
+        """The text before a claim is cut at 160 characters. A cut that splits a word ("knot" cut to "not") must not turn it into a denial."""
+        claim = "%s version" % OFFICIAL
+        lead = "not" + " " * 153 + "the "
+        self.assertEqual(len(lead), 160)
+        self.assertEqual(codes_for_text(" " + lead + claim), [], "a denial just inside the text that is read excuses the claim")
+        for word_start in ("k", "bla", "x_"):
+            with self.subTest(word_start):
+                self.assertEqual(codes_for_text(word_start + lead + claim), ["HYG108"], "the tail of %snot is not a denial" % word_start)
+
+    def test_the_text_before_a_match_starts_at_a_whole_word(self):
+        self.assertEqual(hyg._before("knot the x", 9, 8), " the ")      # a cut inside "knot" would leave "not the "
+        self.assertEqual(hyg._before("a not the x", 10, 8), "not the ")
+        self.assertEqual(hyg._before("short", 5), "short")
+        self.assertEqual(hyg._before("a" * 400, 400, 160), "", "a run of word characters with no break leaves nothing to read")
+
+    def test_a_private_pattern_anchored_to_the_line_matches_in_a_file_with_windows_line_endings(self):
+        self.assertEqual(codes_for({"docs/page.md": b"Zebracorp\r\nsecond line\r\n"}, terms=[r"^Zebracorp$"]), ["HYG105"])
+        self.assertEqual(codes_for({"docs/page.md": b"A line.\r\nZebracorp\r\n"}, terms=[r"^Zebracorp$", r"line\.$"]), ["HYG105"])
+        self.assertEqual(codes_for({"docs/page.md": b"x Zebracorp\r\n"}, terms=[r"^Zebracorp$"]), [], "an anchored pattern still means the whole line")
+        self.assertEqual(codes_for({"docs/page.md": b"Zebracorp\n"}, terms=[r"^Zebracorp$"]), ["HYG105"])
+
 
 class PrivateTerms(unittest.TestCase):
     """The list of private terms lives outside the repository, so the scanner must find it and must never publish it."""
@@ -296,9 +337,78 @@ class PrivateTerms(unittest.TestCase):
                     target = Path(tmp) / rel
                     target.parent.mkdir(parents=True)
                     target.write_text("Zebracorp\n%s\nsomeone@" % PRIVATE_TERM + "contoso.com\n", encoding="utf-8")
-                    findings, _, _ = hyg.scan(Path(tmp), private_terms=["Zebracorp", PRIVATE_TERM])
+                    opened, scanned = [], []
+                    original = Path.read_bytes
+                    with mock.patch.object(Path, "read_bytes", lambda self: opened.append(self.name) or original(self)), \
+                            mock.patch.object(hyg, "scan_bytes", wraps=hyg.scan_bytes) as scan_bytes:
+                        findings, _, _ = hyg.scan(Path(tmp), private_terms=["Zebracorp", PRIVATE_TERM])
+                    scanned = [call.args[0] for call in scan_bytes.call_args_list]
                 self.assertEqual([(f.code, f.path) for f in findings], [("HYG207", rel)])
                 self.assertEqual([f.excerpt for f in findings], [""], "nothing from the list is printed")
+                self.assertNotIn(target.name, opened, "the list is not opened")
+                self.assertNotIn(rel, scanned, "the list is not scanned")
+
+    def test_a_list_the_environment_names_inside_the_folder_is_a_finding_under_any_name_and_is_never_read(self):
+        """A path in the environment variable may point at a file of the folder: it would be published, and the scan would print each term against itself."""
+        self.addCleanup(hyg._LIST_PATHS.clear)
+        for rel in ("notes/terms.txt", "TERMS.TXT", "a/b/words.md"):
+            with self.subTest(rel):
+                with tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    target = root / rel
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text("# my terms\nZebracorp\n%s\n" % PRIVATE_TERM, encoding="utf-8")
+                    (root / "page.md").write_text("Notes from Zebracorp.\n", encoding="utf-8")
+                    opened = []
+                    original = Path.read_bytes
+                    with mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(target)}), mock.patch.object(Path, "read_bytes", lambda self: opened.append(self.name) or original(self)):
+                        findings, _, _ = hyg.scan(root)
+                        findings_listed, _, _ = hyg.scan(root, files=[rel, "page.md"])
+                self.assertEqual(sorted((f.code, f.path) for f in findings), [("HYG105", "page.md"), ("HYG207", rel)], "the terms are used, and the list is a finding")
+                self.assertEqual(sorted((f.code, f.path) for f in findings_listed), [("HYG105", "page.md"), ("HYG207", rel)])
+                self.assertNotIn(target.name, opened, "the list is not read as a file of the folder")
+                self.assertEqual([f.excerpt for f in findings if f.code == "HYG207"], [""], "nothing from the list is printed")
+                self.assertNotIn(PRIVATE_TERM, "\n".join(f.format() for f in findings))
+
+    def test_a_list_the_environment_names_outside_the_folder_is_not_a_file_of_it(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as elsewhere:
+            listing = Path(elsewhere) / "terms.txt"
+            listing.write_text("Zebracorp\n", encoding="utf-8")
+            (Path(tmp) / "page.md").write_text("Notes from Zebracorp.\n", encoding="utf-8")
+            with mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(listing)}):
+                self.assertEqual(hyg.private_list_paths(Path(tmp)), [])
+                findings, _, _ = hyg.scan(Path(tmp))
+        self.assertEqual([(f.code, f.path) for f in findings], [("HYG105", "page.md")])
+
+    def test_a_list_that_is_not_utf8_is_read_with_replacement_and_never_stops_the_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / hyg.PRIVATE_TERMS_FILE).write_bytes(b"Zebracorp\n\xff\xfe broken\nQuartz\n")
+            terms = hyg.load_private_terms(root, environ={})
+            self.assertEqual(terms[0], "Zebracorp")
+            self.assertEqual(terms[-1], "Quartz")
+            self.assertEqual(len(terms), 3)
+            listing = root / "elsewhere.txt"
+            listing.write_bytes(b"Borealis\n\x80\x81\n")
+            self.assertEqual(hyg.load_private_terms(root / "empty", environ={hyg.PRIVATE_TERMS_ENV: str(listing)})[0], "Borealis")
+
+    def test_the_pin_helpers_never_print_a_line_of_a_list(self):
+        self.addCleanup(hyg._LIST_PATHS.clear)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for rel in (hyg.PRIVATE_TERMS_FILE, "docs/" + hyg.PRIVATE_TERMS_FILE, "docs/.Hygiene-Private-Terms", "notes/terms.txt"):
+                target = root / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("%s\n" % PRIVATE_TERM, encoding="utf-8")
+                with self.subTest(rel), mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(root / "notes/terms.txt")}):
+                    with self.assertRaises(ValueError) as refused:
+                        hyg.pin_entry(root, rel + ":1")
+                    self.assertIn("private term list", str(refused.exception))
+                    self.assertNotIn(PRIVATE_TERM, str(refused.exception))
+                    with self.assertRaises(ValueError):
+                        hyg.pin_quoted(root, rel + ":1")
+            (root / "page.md").write_text("A line\n", encoding="utf-8")
+            self.assertEqual(hyg.pin_entry(root, "page.md:1")[0], "A line")
 
     def test_a_list_at_a_nested_path_is_found_in_the_history_too(self):
         try:
@@ -311,6 +421,34 @@ class PrivateTerms(unittest.TestCase):
         history, _, _ = hyg.scan_history(root, private_terms=[])
         self.assertEqual(head, [])
         self.assertEqual([(f.code, f.path.split(" @ ")[0]) for f in history], [("HYG207", nested)])
+
+    def test_a_list_in_the_history_is_found_by_its_name_and_its_content_is_never_read(self):
+        try:
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+        nested = "docs/" + hyg.PRIVATE_TERMS_FILE
+        root = History.repository(self, [("add a note", {nested: "ListOnly" + "Content\n"}, NOREPLY), ("remove it", {nested: None, "docs/page.md": "A clean page\n"}, NOREPLY)])
+        blob = git_out(root, "rev-parse", "HEAD~1:" + nested)
+        with mock.patch.object(hyg, "read_blobs", wraps=hyg.read_blobs) as reader:
+            history, _, _ = hyg.scan_history(root, private_terms=["ListOnly"])
+        asked = {name for call in reader.call_args_list for name in call.args[1]}
+        self.assertNotIn(blob, asked, "the blob of the list is not read")
+        self.assertEqual([(f.code, f.path.split(" @ ")[0], f.excerpt) for f in history], [("HYG207", nested, "")])
+
+    def test_a_list_the_environment_names_is_found_in_the_history_under_its_own_name(self):
+        try:
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+        self.addCleanup(hyg._LIST_PATHS.clear)
+        root = History.repository(self, [("add terms", {"notes/terms.txt": "ListOnly" + "Content\n"}, NOREPLY), ("add a page", {"docs/page.md": "A clean page\n"}, NOREPLY)])
+        blob = git_out(root, "rev-parse", "HEAD:notes/terms.txt")
+        with mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(root / "notes" / "terms.txt")}), mock.patch.object(hyg, "read_blobs", wraps=hyg.read_blobs) as reader:
+            history, _, _ = hyg.scan_history(root)
+        asked = {name for call in reader.call_args_list for name in call.args[1]}
+        self.assertNotIn(blob, asked)
+        self.assertEqual([(f.code, f.path.split(" @ ")[0], f.excerpt) for f in history], [("HYG207", "notes/terms.txt", "")])
 
     def test_a_scan_without_a_list_says_so(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -601,11 +739,16 @@ class Speed(unittest.TestCase):
 NOREPLY = ("Test Author", "1+test@users.noreply.github.com")
 
 
-def git(root, *args, who=NOREPLY):
+def git_out(root, *args, who=NOREPLY):
     env = dict(os.environ, GIT_AUTHOR_NAME=who[0], GIT_AUTHOR_EMAIL=who[1], GIT_COMMITTER_NAME=who[0], GIT_COMMITTER_EMAIL=who[1])
     done = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false"] + list(args), capture_output=True, env=env)
     if done.returncode:
         raise RuntimeError("git %s failed: %s" % (" ".join(args), done.stderr.decode("utf-8", "replace")))
+    return done.stdout.decode("utf-8", "replace").strip()
+
+
+def git(root, *args, who=NOREPLY):
+    git_out(root, *args, who=who)
 
 
 class History(unittest.TestCase):
@@ -644,6 +787,38 @@ class History(unittest.TestCase):
         self.assertEqual([f.code for f in history], ["HYG105"])
         self.assertRegex(history[0].path, r"^docs/page\.md @ [0-9a-f]{7}$")
         self.assertEqual((counts["commits"], counts["file_versions"]), (2, 2))
+
+    def test_a_replaced_commit_cannot_hide_what_a_push_would_publish(self):
+        """`git replace` makes every Git command show a stand-in for a commit. The scan reads the originals, which are what a push publishes."""
+        root = self.repository([("add a page", {"docs/page.md": "Zebracorp wrote this\n"}, NOREPLY), ("remove the term", {"docs/page.md": "A clean page\n"}, NOREPLY)])
+        first = git_out(root, "rev-list", "--max-parents=0", "HEAD")
+        stand_in = git_out(root, "commit-tree", git_out(root, "rev-parse", "HEAD^{tree}"), "-m", "a clean stand-in")
+        git(root, "replace", first, stand_in)
+
+        def honouring_replacements():
+            return {key: value for key, value in os.environ.items() if key != "GIT_NO_REPLACE_OBJECTS"}
+
+        with mock.patch.object(hyg, "_git_env", honouring_replacements):
+            hidden, _, _ = hyg.scan_history(root, private_terms=list(SYNTHETIC_TERMS))
+        self.assertEqual(hidden, [], "with replacement objects honoured, the term is hidden: the control for the check below")
+        found, _, _ = hyg.scan_history(root, private_terms=list(SYNTHETIC_TERMS))
+        self.assertEqual([f.code for f in found], ["HYG105"], "the original commit is read, not its stand-in")
+
+    def test_a_character_inside_a_message_or_a_name_cannot_end_a_record_early(self):
+        """Fields are framed by NUL, which no message or name can hold, so a record separator inside a field is only a character."""
+        message = "head\x1fmiddle\x1etail mentions Zebracorp"
+        odd = ("Some\x1fone", "some" + "one@" + "contoso.com")
+        root = self.repository([("a page", {"a.md": "x\n"}, NOREPLY), (message, {"a.md": "y\n"}, odd), ("a third", {"a.md": "z\n"}, NOREPLY)])
+        history, _, counts = hyg.scan_history(root, private_terms=list(SYNTHETIC_TERMS))
+        self.assertEqual(counts["commits"], 3)
+        self.assertEqual(sorted((f.code, f.path.split(" ", 2)[-1]) for f in history), [("HYG104", "author"), ("HYG104", "committer"), ("HYG105", "message")])
+
+    def test_output_that_does_not_divide_into_whole_records_is_refused_not_read_as_far_as_it_goes(self):
+        self.assertEqual(hyg._fields(b"a\0b\0c\0d\0", 2, "x"), [["a", "b"], ["c", "d"]])
+        self.assertEqual(hyg._fields(b"", 6, "x"), [])
+        for broken in (b"a\0b", b"a\0b\0c", b"a\0b\0c\0d"):
+            with self.subTest(broken), self.assertRaises(hyg.HistoryError):
+                hyg._fields(broken, 2, "the commits")
 
     def test_a_blocked_file_that_was_committed_and_removed_is_found(self):
         root = self.repository([("add a report", {"docs/report.docx": b"PK\x03\x04\x00\x00"}, NOREPLY), ("remove it", {"docs/report.docx": None}, NOREPLY)])

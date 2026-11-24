@@ -31,6 +31,13 @@ line in a file named ``.hygiene-private-terms`` in the repository folder (Git ig
 variable ``EAHS_PRIVATE_TERMS``, which holds either a path to such a file or the lines themselves. Continuous integration
 has no such list, so a maintainer who has one runs the scan locally before a release. Without a list the scan still runs,
 says so, and looks for confidentiality-label wording and for the authority's name, which it knows as a digest (below).
+A list inside the folder is never published silently and never read as a file of the repository: a file with the list's name,
+at any path, and the file that the environment variable names when it lies inside the folder are a finding (HYG207) by their
+names alone, and their content is not scanned, not printed and not echoed by ``--pin``.
+
+Git commands run with replacement objects off (``GIT_NO_REPLACE_OBJECTS``), so a ``git replace`` cannot show the scan another
+commit in place of the one a push would publish. Commit messages, identities and refs are read as NUL-separated fields, so that
+no character in a message or a name can end a record early.
 """
 from __future__ import annotations
 
@@ -45,7 +52,7 @@ import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Set, Tuple
 
 REPO = Path(__file__).resolve().parents[1]
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache"}
@@ -236,21 +243,64 @@ def _term_lines(text: str) -> List[str]:
     return [line.strip() for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")]
 
 
+def _read_list(path: Path) -> str:
+    """The text of a list file. A byte that is not UTF-8 is replaced and does not stop the scan: the list is read, not rejected."""
+    return path.read_text(encoding="utf-8", errors="replace")
+
+
+def _env_list_file(environ: Mapping[str, str]) -> Optional[Path]:
+    """The file the environment variable names, or None when it holds the terms themselves or names nothing."""
+    value = environ.get(PRIVATE_TERMS_ENV, "").strip()
+    if not value or "\n" in value:
+        return None
+    try:
+        path = Path(value)
+        return path if path.is_file() else None
+    except (OSError, ValueError):
+        return None
+
+
 def load_private_terms(root: Path = REPO, environ: Optional[Mapping[str, str]] = None) -> List[str]:
     """The private-term patterns: those in the environment variable first, then those in the file in the folder."""
     environ = os.environ if environ is None else environ
     terms: List[str] = []
     value = environ.get(PRIVATE_TERMS_ENV, "").strip()
     if value:
-        try:
-            from_file = "\n" not in value and Path(value).is_file()
-        except OSError:
-            from_file = False
-        terms += _term_lines(Path(value).read_text(encoding="utf-8") if from_file else value)
+        listing = _env_list_file(environ)
+        terms += _term_lines(_read_list(listing) if listing is not None else value)
     local = root / PRIVATE_TERMS_FILE
     if local.is_file():
-        terms += _term_lines(local.read_text(encoding="utf-8"))
+        terms += _term_lines(_read_list(local))
     return terms
+
+
+#: Repository paths (lower case) of private term lists that sit inside the folder under a name of their own: the environment variable can point at one.
+_LIST_PATHS: Set[str] = set()
+
+
+def private_list_paths(root: Path = REPO, environ: Optional[Mapping[str, str]] = None) -> List[str]:
+    """The repository-relative paths of the private term lists that lie inside the folder under any name: the file the environment variable names, if it is one of the folder's.
+
+    A list inside the folder is published with it, and a scan that read it would match each term against its own line and print the term.
+    So such a file is a finding (HYG207) at whatever path it has, and its content is never read, scanned or printed.
+    """
+    path = _env_list_file(os.environ if environ is None else environ)
+    if path is None:
+        return []
+    try:
+        return [path.resolve().relative_to(root.resolve()).as_posix()]
+    except (OSError, ValueError):
+        return []
+
+
+def use_list_paths(root: Path, environ: Optional[Mapping[str, str]] = None) -> None:
+    _LIST_PATHS.clear()
+    _LIST_PATHS.update(path.lower() for path in private_list_paths(root, environ))
+
+
+def is_list_path(rel: str) -> bool:
+    """True for a file that is a private term list: one named like the list at any path, or the one the environment variable names inside the folder."""
+    return PurePosixPath(rel).name.lower() == PRIVATE_TERMS_FILE or rel.lower() in _LIST_PATHS
 
 
 def use_private_terms(terms: Sequence[str]) -> List[int]:
@@ -259,7 +309,7 @@ def use_private_terms(terms: Sequence[str]) -> List[int]:
     invalid = []
     for number, term in enumerate(terms, 1):
         try:
-            _PRIVATE.append(re.compile(term))
+            _PRIVATE.append(re.compile(term, re.MULTILINE))
         except re.error:
             invalid.append(number)
     return invalid
@@ -325,17 +375,26 @@ def _private_matches(line: str) -> Iterator[str]:
 _SENTENCE_END = re.compile(r"[.!?;:](?=\s|$)")
 
 
+def _before(line: str, end: int, width: int = 160) -> str:
+    """The text just before `end`, at most `width` characters, and never starting inside a word: a word that the cut would split ("knot" cut to "not") is dropped."""
+    start = max(0, end - width)
+    while 0 < start < end and (line[start - 1].isalnum() or line[start - 1] == "_") and (line[start].isalnum() or line[start] == "_"):
+        start += 1
+    return line[start:end]
+
+
 def find_matches(rule: Rule, rel: str, line: str) -> Iterator[str]:
     """Every match of the rule on this line that the rule itself does not ignore, in order.
 
     For HYG105 a private term or a name known as a digest comes after the label wording, and is excused only on a line pinned in
     PUBLIC_SOURCE_LINES; label wording never is. A rule that a denial can excuse (HYG108) looks at each match with the sentence
-    before it, so that a denial excuses the claim it negates and not another claim on the same line.
+    before it, so that a denial excuses the claim it negates and not another claim on the same line. The text before a match is
+    cut at a whole word, so that the tail of a longer word is never read as a denial.
     """
     for match in _COMPILED[rule.code].finditer(line):
         if rule.ignore_match and re.fullmatch(rule.ignore_match, match.group(0)):
             continue
-        if rule.ignore_before and re.search(rule.ignore_before, _SENTENCE_END.split(line[max(0, match.start() - 160):match.start()])[-1]):
+        if rule.ignore_before and re.search(rule.ignore_before, _SENTENCE_END.split(_before(line, match.start()))[-1]):
             continue
         yield match.group(0)
     if rule.code == "HYG105" and not is_public_source_line(rel, line):
@@ -361,12 +420,17 @@ def _may_match(rule: Rule, text: str) -> bool:
     return rule.code == "HYG105" and (any(pattern.search(text) for pattern in _PRIVATE) or bool(name_words(text)))
 
 
+def _git_env() -> Dict[str, str]:
+    """The environment for every Git command here. Replacement objects are off: a replaced commit would show the scan another commit's content in its place, and a push publishes the original."""
+    return dict(os.environ, GIT_NO_REPLACE_OBJECTS="1")
+
+
 def candidate_files(root: Path) -> List[str]:
     """Repository-relative POSIX paths of everything that would be published, sorted."""
     if (root / ".git").exists():
         try:
             done = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-                                  capture_output=True, check=True)
+                                  capture_output=True, check=True, env=_git_env())
             names = [n for n in done.stdout.decode("utf-8", "replace").split("\0") if n]
             return sorted(n for n in set(names) if (root / n).is_file())
         except (OSError, subprocess.CalledProcessError):
@@ -387,7 +451,7 @@ def check_names(paths: Iterable[str]) -> List[Finding]:
         name = rel.rsplit("/", 1)[-1]
         low = name.lower()
         suffix = ("." + low.rsplit(".", 1)[-1]) if "." in low else ""
-        if name.lower() == PRIVATE_TERMS_FILE:
+        if is_list_path(rel):
             findings.append(Finding("HYG207", rel, 0, "the private term list is part of what would be published, and it names the private origin of the material. Keep it out of Git (add it to .gitignore)"))
         if rel not in ALLOWED_FILES:
             if suffix in BLOCKED_SUFFIXES:
@@ -424,11 +488,11 @@ def read_text(path: Path) -> Optional[str]:
 def scan_bytes(rel: str, data: bytes) -> List[Finding]:
     """The findings in one file, given its repository-relative path and its content."""
     findings: List[Finding] = []
+    if is_list_path(rel):
+        # Always a finding (HYG207, from the file name), at any path. Its content is not read, so that no finding can print the terms the list holds.
+        return findings
     if len(data) > MAX_BYTES and rel not in ALLOWED_FILES:
         findings.append(Finding("HYG202", rel, 0, "larger than 1 MiB (%d bytes); the repository is for text and small figures" % len(data)))
-    if PurePosixPath(rel).name.lower() == PRIVATE_TERMS_FILE:
-        # Always a finding (HYG207), at any path. Its content is not read, so that no finding can print the terms the list holds.
-        return findings
     for rule in RULES:
         if rule.on_names:
             hit = apply_rule(rule, rel, rel)
@@ -441,10 +505,11 @@ def scan_bytes(rel: str, data: bytes) -> List[Finding]:
     if text is None:
         findings.append(Finding("HYG203", rel, 0, "not UTF-8 text; every file here should be readable as text"))
         return findings
-    active = [rule for rule in RULES if _may_match(rule, text)]
+    active = [rule for rule in RULES if _may_match(rule, text.replace("\r\n", "\n"))]
     if not active:
         return findings
     for number, line in enumerate(text.split("\n"), 1):
+        line = line.rstrip("\r")
         for rule in active:
             hit = apply_rule(rule, rel, line)
             if hit:
@@ -454,6 +519,9 @@ def scan_bytes(rel: str, data: bytes) -> List[Finding]:
 
 
 def scan_file(root: Path, rel: str) -> List[Finding]:
+    """The findings in one file of the folder. A private term list is not opened at all: it is a finding by its name (HYG207) and nothing in it is read."""
+    if is_list_path(rel):
+        return []
     return scan_bytes(rel, (root / rel).read_bytes())
 
 
@@ -464,6 +532,7 @@ def scan(root: Path = REPO, files: Optional[Sequence[str]] = None, private_terms
     """
     terms = load_private_terms(root) if private_terms is None else list(private_terms)
     invalid = use_private_terms(terms)
+    use_list_paths(root)
     names = list(files) if files is not None else candidate_files(root)
     findings = check_names(names)
     findings += [Finding("HYG206", PRIVATE_TERMS_FILE, 0, "private term number %d is not a valid regular expression, so it was not used" % number) for number in invalid]
@@ -486,7 +555,7 @@ class HistoryError(RuntimeError):
 
 def _git(root: Path, *args: str, data: Optional[bytes] = None) -> bytes:
     try:
-        done = subprocess.run(["git", "-C", str(root)] + list(args), capture_output=True, check=True, input=data)
+        done = subprocess.run(["git", "-C", str(root)] + list(args), capture_output=True, check=True, input=data, env=_git_env())
     except OSError as exc:
         raise HistoryError("git is not available: %s" % exc) from exc
     except subprocess.CalledProcessError as exc:
@@ -554,6 +623,7 @@ def scan_text(label: str, text: str) -> List[Finding]:
     """Every rule, applied to each line of a piece of text that is not a file: a commit message, an identity, a ref."""
     findings: List[Finding] = []
     for number, line in enumerate(text.split("\n"), 1):
+        line = line.rstrip("\r")
         for rule in RULES:
             hit = apply_rule(rule, "", line)
             if hit:
@@ -577,16 +647,24 @@ def history_name_findings(root: Path, commits: Sequence[str]) -> Tuple[List[Find
     return findings, len(paths)
 
 
+def _fields(output: bytes, width: int, what: str) -> List[List[str]]:
+    """Records of `width` fields each from NUL-separated Git output. A NUL byte cannot occur inside a field, so no field's content can end or start a record.
+
+    Output that does not divide into whole records is refused instead of read as far as it goes: a scan of a history it could not read
+    must not report it clean.
+    """
+    fields = output.decode("utf-8", "replace").split("\0")
+    if len(fields) % width != 1 or fields[-1].strip():
+        raise HistoryError("git gave %s that cannot be read as records of %d fields (a NUL byte inside a field?)" % (what, width))
+    return [fields[start:start + width] for start in range(0, len(fields) - 1, width)]
+
+
 def history_message_findings(root: Path) -> List[Finding]:
     """The rules on every commit message, and on the name and address of every author and committer."""
-    fmt = "%H%x1f%an%x1f%ae%x1f%cn%x1f%ce%x1f%B%x1e"
     findings: List[Finding] = []
     reported = set()
-    for record in _git(root, "log", "--all", "--format=" + fmt).decode("utf-8", "replace").split("\x1e"):
-        record = record.lstrip("\n")
-        if not record:
-            continue
-        commit, author, author_mail, committer, committer_mail, message = record.split("\x1f", 5)
+    for commit, author, author_mail, committer, committer_mail, message in _fields(
+            _git(root, "log", "--all", "-z", "--format=%H%x00%an%x00%ae%x00%cn%x00%ce%x00%B"), 6, "the commits"):
         for role, name, mail in (("author", author, author_mail), ("committer", committer, committer_mail)):
             for finding in scan_text("commit %s %s" % (commit[:7], role), "%s <%s>" % (name, mail)):
                 key = (finding.code, finding.excerpt, role)
@@ -601,11 +679,11 @@ def history_ref_findings(root: Path) -> Tuple[List[Finding], List[str]]:
     """The rules on every ref name and tag message, and the refs that are not branches."""
     findings: List[Finding] = []
     others = []
-    for record in _git(root, "for-each-ref", "--format=%(refname)%1f%(taggername)%1f%(taggeremail)%1f%(contents)%1e").decode("utf-8", "replace").split("\x1e"):
-        record = record.lstrip("\n")
-        if not record:
+    for ref, tagger, tagger_mail, contents in _fields(
+            _git(root, "for-each-ref", "--format=%(refname)%00%(taggername)%00%(taggeremail)%00%(contents)%00"), 4, "the refs"):
+        ref = ref.lstrip("\n")   # a record ends with a line feed after its last NUL
+        if not ref:
             continue
-        ref, tagger, tagger_mail, contents = record.split("\x1f", 3)
         if not ref.startswith("refs/heads/"):
             others.append(ref)
         findings += scan_text("ref %s" % ref, "%s\n%s <%s>\n%s" % (ref, tagger, tagger_mail, contents) if tagger or contents.strip() else ref)
@@ -624,6 +702,7 @@ def scan_history(root: Path = REPO, private_terms: Optional[Sequence[str]] = Non
     (HistoryError) instead of being reported as clean: fetch the full history first.
     """
     use_private_terms(load_private_terms(root) if private_terms is None else list(private_terms))
+    use_list_paths(root)
     commits = history_commits(root)
     if _git(root, "rev-parse", "--is-shallow-repository").strip() == b"true":
         raise HistoryError("this is a shallow clone, so most of the history is missing and a scan would pass on commits it never read. "
@@ -631,6 +710,8 @@ def scan_history(root: Path = REPO, private_terms: Optional[Sequence[str]] = Non
     versions = history_versions(root, commits)
     held_at: Dict[str, List[Tuple[str, str]]] = {}
     for (blob, path), commit in versions.items():
+        if is_list_path(path):
+            continue   # a private term list is a finding by its name (HYG207) wherever it was held, and its content is never read
         held_at.setdefault(blob, []).append((path, commit))
     findings: List[Finding] = []
     unreadable = 0
@@ -681,7 +762,8 @@ def describe_rules() -> str:
               "  HYG204  file name Windows cannot create, or a path over 200 characters",
               "  HYG205  two files that differ only by case",
               "  HYG206  an entry in the private term list is not a valid regular expression",
-              "  HYG207  the private term list is among the files that would be published",
+              "  HYG207  the private term list is among the files that would be published (a file with its name at any path, or the file that",
+              "          the environment variable names, if that lies inside the folder): its content is never read, scanned or printed",
               "", "With --history, every rule above is also applied to each file version that any commit added or changed, at each path that held it",
               "(reported as path @ commit), to the path names in every commit, to every commit message, to every author and committer, and to every ref.",
               "A shallow clone is refused: its missing history would pass unread.",
@@ -702,6 +784,10 @@ def pin_entry(root: Path, spec: str) -> Tuple[str, str]:
     target = (root / path).resolve()
     if root.resolve() not in target.parents or not target.is_file():
         raise ValueError("%s is not a file inside %s" % (path, root))
+    rel = target.relative_to(root.resolve()).as_posix()
+    use_list_paths(root)
+    if is_list_path(rel):
+        raise ValueError("%s is a private term list: it is never read, and none of its lines is printed" % path)
     text = read_text(target)
     if text is None:
         raise ValueError("%s is not UTF-8 text" % path)
@@ -709,7 +795,6 @@ def pin_entry(root: Path, spec: str) -> Tuple[str, str]:
     if int(number) > len(rows):
         raise ValueError("%s has only %d lines" % (path, len(rows)))
     line = rows[int(number) - 1].rstrip("\r")
-    rel = target.relative_to(root.resolve()).as_posix()
     return line, 'PublicSourceLine("%s", "%s", "<which record, and its title or its address>"),' % (rel, line_digest(line))
 
 
