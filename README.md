@@ -1,3 +1,9 @@
+# Evidence at Human Scale
+
+**Reference architecture for accountable decisions in agentic systems**
+
+When several systems and AI assistants feed one decision, the person who decides cannot easily tell what is a source record, what is a model's inference and what is missing. This repository shows, with one invented invoice, how to give that person one decision packet that keeps them apart, and how to keep advice, approval and execution separate. **[Start with the ten-minute path](#ten-minute-path).**
+
 <!-- banner:start -->
 <p align="center">
 <picture>
@@ -8,12 +14,6 @@
 </picture>
 </p>
 <!-- banner:end -->
-
-# Evidence at Human Scale
-
-**Reference architecture for accountable decisions in agentic systems**
-
-When several systems and AI assistants feed one decision, the person who decides cannot easily tell what is a source record, what is a model's inference and what is missing. This repository shows, with one invented invoice, how to give that person one decision packet that keeps them apart, and how to keep advice, approval and execution separate. **[Start with the ten-minute path](#ten-minute-path).**
 
 ## The problem, in one invoice
 

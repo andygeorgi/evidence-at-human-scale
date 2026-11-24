@@ -34,8 +34,8 @@
 <text x="202.0" y="548.2" font-size="13" text-anchor="start" fill="#9da7b3">grant</text>
 <rect x="44.0" y="558.6" width="292.0" height="77.1" rx="8" fill="#12361F" stroke="#56D364" stroke-width="1.6"/>
 <text x="54.0" y="582.6" font-size="15" text-anchor="start" font-weight="700" fill="#D2F8DB">Execution receipt (C07)</text>
-<text x="54.0" y="603.7" font-size="13" text-anchor="start" fill="#D2F8DB">verified outcome; references</text>
-<text x="54.0" y="620.9" font-size="13" text-anchor="start" fill="#D2F8DB">one proposal and one grant</text>
+<text x="54.0" y="603.7" font-size="13" text-anchor="start" fill="#D2F8DB">outcome and verification state;</text>
+<text x="54.0" y="620.9" font-size="13" text-anchor="start" fill="#D2F8DB">references one proposal and one grant</text>
 <path d="M20.0 87.1 L20.0 597.2" fill="none" stroke="#8b949e" stroke-width="1.8" stroke-dasharray="5 4"/>
 <path d="M20.0 228.9 L43.0 228.9" fill="none" stroke="#8b949e" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arr)"/>
 <path d="M20.0 318.8 L43.0 318.8" fill="none" stroke="#8b949e" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arr)"/>

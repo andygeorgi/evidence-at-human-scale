@@ -52,9 +52,11 @@ Then keep five headings, in this order, and never merge them:
 
 1. **Supported claims**, each with the exact record version and claim identifier it rests on.
 2. **Labeled inferences**, each marked as an interpretation with its method and limits.
-3. **Recommendations** and their basis, clearly not instructions.
-4. **Conflicts and gaps**, using the seven labels: `missing`, `not_retrieved`, `inaccessible`, `unavailable`, `negative`, `not_assessed`, `stale` ([how to choose one](paper/08-uncertainty.md)).
+3. **Conflicts and gaps**, using the seven labels: `missing`, `not_retrieved`, `inaccessible`, `unavailable`, `negative`, `not_assessed`, `stale` ([how to choose one](paper/08-uncertainty.md)).
+4. **Recommendations** and their basis, clearly not instructions.
 5. **Proposed actions**, marked "not executed".
+
+The response renderer in [example 06](../examples/06-assistant-response/README.md) writes the same order. It gives the conflicts and the gaps a heading each, and ends with the obligations and the limits of the view.
 
 Then walk it through a recent case with the Decision Owner. Ask: what would have changed the decision, and is it visible on the first screen? Two agents that restate one source are one source ([lineage](../architecture/lineage-selection-disclosure.md)).
 

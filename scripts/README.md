@@ -102,7 +102,7 @@ Checks the structure a screen-reader user navigates by, on every Markdown page: 
 
 The [figures](../figures/README.md) have one source of truth, [`figures/figures.json`](../figures/figures.json) plus the files in `figures/src/`.
 
-- `sync_figures.py` writes the figure blocks into the pages that use them, between `<!-- figure:Fxx:start -->` and `<!-- figure:Fxx:end -->` markers, the banner at the top of the README, between `<!-- banner:start -->` and `<!-- banner:end -->`, and the gallery. `--check` writes nothing and fails if one of them is out of date.
+- `sync_figures.py` writes the figure blocks into the pages that use them, between `<!-- figure:Fxx:start -->` and `<!-- figure:Fxx:end -->` markers, the banner in the README (below its first paragraph, so that the title and the first paragraph come first on a narrow screen), between `<!-- banner:start -->` and `<!-- banner:end -->`, and the gallery. `--check` writes nothing and fails if one of them is out of date.
 - `check_figures.py` checks that every figure has a caption, alt text, a long description and a place in the documents, that every picture exists and has a title and a description, that a default drawing is at most 380 px wide and a wide drawing 800 to 900 px, that no text is smaller than 13 px, that no document contains a Mermaid block, and that the blocks are in sync.
 - `figures/src/svg_figures.py` draws every figure and the banner, in light and dark, with the helpers in `figures/src/kit.py`. It is deterministic. `--check` fails if a committed SVG differs. It takes the title and the description inside each file from `figures/figures.json`. It needs nothing beyond Python.
 

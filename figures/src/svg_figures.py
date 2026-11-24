@@ -512,7 +512,7 @@ def f10(c):
 CHAIN = [("sel", "Context (C01)", "who, what, why, as of when", None), ("sel", "Selection manifest (C03)", "manifest, gaps, obligations", "context"),
          ("pkt", "Decision packet (C04)", "claims, inferences, gaps", "context + selection"), ("own", "Action proposal (C05)", "proposed, not executed", "context + packet"),
          ("own", "Delegation (C06)", "exact approval or bounded class", "bound to"),
-         ("pkt", "Execution receipt (C07)", "verified outcome; references one proposal and one grant", "grant")]
+         ("pkt", "Execution receipt (C07)", "outcome and verification state; references one proposal and one grant", "grant")]
 
 
 def f11(c):

@@ -46,34 +46,34 @@ If a check fails, the message names a code, the file and location, and the contr
 
 ### What a pass means, and what it does not
 
-A pass means the synthetic examples are structurally valid, internally coherent, and that the deterministic checks behave as documented. It does not mean any real system, model or process is accountable, safe or correct. These are deterministic functional checks. They are **not** the [EV01–EV12 evaluation programme](../evaluation/README.md), which has not been run, and they are not model evaluation, human-outcome evaluation or production evidence.
+A pass means the synthetic examples are internally coherent and the checks behave as documented. It says nothing about any real system, and it is not the [evaluation programme](../evaluation/README.md), which has not been run. The full statement is on the [Claims and limits](../docs/claims-and-limits.md) page.
 
 ## The story
 
 All times are UTC on 2026-11-23 unless stated.
 
-| Time | What happens | Folder |
+| Time | What happens | Read more |
 |---|---|---|
-| 11-18 14:05 | Goods receipt `GR-5521` v1 records 60 units for purchase order `PO-77231` (100 ordered) | [01](01-source-records/README.md) |
-| 07:30 | Invoice `INV-2026-0417` arrives: 100 units at EUR 184.00, total EUR 18,400.00 | [01](01-source-records/README.md) |
-| 07:45 | The controller issues two bounded grants for the day's payment work: place payment holds, and release low-value payments | [07](07-authority-and-delegation/README.md) · [12](12-controlled-change/README.md) |
-| 09:35 | The three-way match `M3W-0417` v1 fails: 100 units invoiced against 60 received, a variance of 40% against a tolerance of 2% | [03](03-lineage-and-common-origin/README.md) |
-| 09:41–09:44 | Two AI summaries both suggest a receiving delay. Both rest on `GR-5521` v1 alone and say nothing about the invoice | [03](03-lineage-and-common-origin/README.md) |
-| 09:45–09:59 | Retrieval for the review. The treasury service returns HTTP 503. Part of the requested scope is outside the requestor's read permissions | [04](04-selection-and-missingness/README.md) |
-| 10:00 | Context `CTX-0417` v1, selection `SEL-0417` v1 and decision packet `PKT-0417` v1 are produced for the requestor. A first response is written from the packet | [02](02-context-and-normalization/README.md) · [05](05-decision-packet/README.md) · [06](06-assistant-response/README.md) |
-| 10:03 | A payment hold is placed on the invoice under a bounded grant. The receipt says `completed_verified` | [07](07-authority-and-delegation/README.md) |
-| 10:35 | The controller, who owns the decision, reviews packet v1 | [11](11-late-correction/README.md) |
-| 10:40 | The controller gives an exact approval for a conditional release at the 16:00 payment run | [07](07-authority-and-delegation/README.md) |
-| 13:30 | Supplier screening is re-run (`SCR-S1042` v2) | [11](11-late-correction/README.md) |
-| 13:40 | The warehouse scans the second pallet it received on 11-20. `GR-5521` v2 supersedes v1: 100 units received | [11](11-late-correction/README.md) |
-| 13:45 | Both summaries and the packet built on v1 stop being current, and the first approval is revoked. The match result is recomputed and replaced at 13:51 | [11](11-late-correction/README.md) |
-| 14:10 | Context v2, selection v2, packet v2 and proposal v2 are produced from the corrected record | [11](11-late-correction/README.md) |
-| 14:30 | The controller lowers the per-payment limit of a low-value release class from EUR 5,000 to EUR 2,500 | [12](12-controlled-change/README.md) |
-| 15:10 | The controller reviews packet v2 | [11](11-late-correction/README.md) |
-| 15:20 | A second exact approval, bound to proposal v2 | [11](11-late-correction/README.md) |
-| 16:00:00 | The queued release under the first approval is rejected at commit and nothing is submitted. A check of the ERP then verifies no effect for that attempt: receipt `not_executed_verified` | [08](08-blocked-action/README.md) |
-| 16:00:05 | The release under the second approval passes the commit check. The bank interface times out. Receipt `unknown`, allowance reserved | [09](09-unknown-outcome/README.md) |
-| 16:07 · 16:20 | The bank books the payment. Reconciliation against the bank statement upgrades the receipt to `completed_verified` | [09](09-unknown-outcome/README.md) |
+| 11-18 14:05 | Goods receipt `GR-5521` v1 records 60 units for purchase order `PO-77231` (100 ordered) | [Source records](01-source-records/README.md) |
+| 07:30 | Invoice `INV-2026-0417` arrives: 100 units at EUR 184.00, total EUR 18,400.00 | [Source records](01-source-records/README.md) |
+| 07:45 | The controller issues two bounded grants for the day's payment work: place payment holds, and release low-value payments | [Authority and delegation](07-authority-and-delegation/README.md) · [Controlled change](12-controlled-change/README.md) |
+| 09:35 | The three-way match `M3W-0417` v1 fails: 100 units invoiced against 60 received, a variance of 40% against a tolerance of 2% | [Lineage and common origin](03-lineage-and-common-origin/README.md) |
+| 09:41–09:44 | Two AI summaries both suggest a receiving delay. Both rest on `GR-5521` v1 alone and say nothing about the invoice | [Lineage and common origin](03-lineage-and-common-origin/README.md) |
+| 09:45–09:59 | Retrieval for the review. The treasury service returns HTTP 503. Part of the requested scope is outside the requestor's read permissions | [Selection and missingness](04-selection-and-missingness/README.md) |
+| 10:00 | Context `CTX-0417` v1, selection `SEL-0417` v1 and decision packet `PKT-0417` v1 are produced for the requestor. A first response is written from the packet | [Context and normalization](02-context-and-normalization/README.md) · [Decision packet](05-decision-packet/README.md) · [Assistant response](06-assistant-response/README.md) |
+| 10:03 | A payment hold is placed on the invoice under a bounded grant. The receipt says `completed_verified` | [Authority and delegation](07-authority-and-delegation/README.md) |
+| 10:35 | The controller, who owns the decision, reviews packet v1 | [Late correction](11-late-correction/README.md) |
+| 10:40 | The controller gives an exact approval for a conditional release at the 16:00 payment run | [Authority and delegation](07-authority-and-delegation/README.md) |
+| 13:30 | Supplier screening is re-run (`SCR-S1042` v2) | [Late correction](11-late-correction/README.md) |
+| 13:40 | The warehouse scans the second pallet it received on 11-20. `GR-5521` v2 supersedes v1: 100 units received | [Late correction](11-late-correction/README.md) |
+| 13:45 | Both summaries and the packet built on v1 stop being current, and the first approval is revoked. The match result is recomputed and replaced at 13:51 | [Late correction](11-late-correction/README.md) |
+| 14:10 | Context v2, selection v2, packet v2 and proposal v2 are produced from the corrected record | [Late correction](11-late-correction/README.md) |
+| 14:30 | The controller lowers the per-payment limit of a low-value release class from EUR 5,000 to EUR 2,500 | [Controlled change](12-controlled-change/README.md) |
+| 15:10 | The controller reviews packet v2 | [Late correction](11-late-correction/README.md) |
+| 15:20 | A second exact approval, bound to proposal v2 | [Late correction](11-late-correction/README.md) |
+| 16:00:00 | The queued release under the first approval is rejected at commit and nothing is submitted. A check of the ERP then verifies no effect for that attempt: receipt `not_executed_verified` | [Blocked action](08-blocked-action/README.md) |
+| 16:00:05 | The release under the second approval passes the commit check. The bank interface times out. Receipt `unknown`, allowance reserved | [Unknown outcome](09-unknown-outcome/README.md) |
+| 16:07 · 16:20 | The bank books the payment. Reconciliation against the bank statement upgrades the receipt to `completed_verified` | [Unknown outcome](09-unknown-outcome/README.md) |
 
 The [degraded modes](10-degraded-modes/README.md) folder replays the commit check with parts of its input missing. The [evaluation cases](13-evaluation-cases/README.md) break the story on purpose, 37 ways.
 

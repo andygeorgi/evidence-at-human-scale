@@ -65,6 +65,13 @@ class TheFirstScreen(unittest.TestCase):
         self.assertNotIn("not a production deployment", screen)
         self.assertEqual(screen.count("](#"), 1, "one way in, not several")
 
+    def test_the_title_and_the_first_paragraph_come_before_the_banner(self):
+        """The narrow banner is tall: on a phone it would fill the whole first screen, so the reader meets what this is, and what to do, before it."""
+        readme = text("README.md")
+        self.assertTrue(readme.startswith("# Evidence at Human Scale"))
+        self.assertLess(readme.index("[Start with the ten-minute path](#ten-minute-path)"), readme.index("<!-- banner:start -->"))
+        self.assertLess(readme.index("<!-- banner:end -->"), readme.index("## The problem, in one invoice"))
+
     def test_the_one_path_has_its_steps_and_the_quickstart_it_sends_to(self):
         readme = text("README.md")
         self.assertEqual(readme.count("## Ten-minute path"), 1)
