@@ -360,7 +360,8 @@ _TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9_]*|\d+|[^\sA-Za-z0-9_]")
 def _decimal(value) -> Optional[Decimal]:
     """A number exactly as written: 40.000000000000001 is not 40.0. Decimal compares by value, so 40.0 and 40 are the same number.
 
-    A float of the payload is read by its shortest text (0.1 is 0.1, not 0.1000000000000000055...), as JSON wrote it.
+    A float of the payload is read by its shortest text (0.1 is 0.1, not 0.1000000000000000055...), as JSON wrote it. The reader
+    refuses a number that a double cannot hold digit for digit (loads_strict), so no loaded float has been rounded on the way in.
     """
     try:
         if isinstance(value, str):
@@ -436,14 +437,19 @@ def _named_numbers(node, name: str = "") -> List[Tuple[str, Decimal]]:
     return []
 
 
+def _name_words(name: str) -> List[str]:
+    """The words of a field name, in order: quantity_invoiced and quantityInvoiced are "quantity", "invoiced"."""
+    return re.findall(r"[A-Za-z]{3,}", re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name))
+
+
 def _word_before(clause: str) -> Optional[str]:
-    """The word that names the figure which follows `clause`: the last word, if only white space, a colon, an equals sign and filler words lie after it.
+    """The word that names the figure which follows `clause`: the last word, if only white space, a colon, an equals sign, a quotation mark and filler words lie after it.
 
     A comma, a bracket or another figure between the word and the figure means that the word belongs to something else:
     in "60 units invoiced, 100 units received" the word "invoiced" does not name 100.
     """
     for token in reversed(_TOKEN.findall(clause[-64:])):
-        if token in (":", "=") or token.lower() in _BETWEEN:
+        if token in (":", "=", '"', "'", "`") or token.lower() in _BETWEEN:
             continue
         return token if token[0].isalpha() else None
     return None
@@ -458,18 +464,30 @@ def _word_after(rest: str) -> Optional[str]:
     return None
 
 
+def _named_fields(word: Optional[str], by_word: Dict[str, List[Tuple[str, Decimal]]]) -> List[Tuple[str, Decimal]]:
+    """The payload fields that `word` names: those that carry it. A field's own name written out ("quantity_invoiced", "quantityInvoiced") names
+    the fields that carry all of its words, so that "variance_pct" is the variance and not every field that ends in "pct"."""
+    fields: Optional[List[Tuple[str, Decimal]]] = None
+    for part in _name_words(word or ""):
+        known = by_word.get(_stem(part))
+        if known is not None:
+            fields = list(known) if fields is None else [pair for pair in fields if pair in known]
+    return fields or []
+
+
 def _label_findings(text: str, payload, skip: Set[Decimal]) -> List[Tuple[Decimal, str, List[str]]]:
     """Figures in `text` that sit beside the name of a payload field and are not that field's value: (the figure, the word, the fields' values).
 
     "invoiced 60" is wrong when the payload's quantity_invoiced is 100, even though 60 is in the payload: the figure is tied to the
     field by the word in front of it, or, when no field's name is in front of it, by the word after it ("60 units invoiced"). A word
     names a figure only when nothing but white space, a colon, an equals sign, filler words or units lies between them, so that
-    swapping "invoiced 100 units, received 60 units" into "60 units invoiced, 100 units received" is found. A figure that sits
-    beside no field's name is not tied to anything and is not judged here, and a figure in `skip` has been reported already.
+    swapping "invoiced 100 units, received 60 units" into "60 units invoiced, 100 units received" is found. A field's name written
+    out ("quantity_invoiced 60") names it by its own words. A figure that sits beside no field's name is not tied to anything and
+    is not judged here, and a figure in `skip` has been reported already.
     """
     by_word: Dict[str, List[Tuple[str, Decimal]]] = {}
     for name, value in _named_numbers(payload):
-        for word in re.findall(r"[A-Za-z]{3,}", re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name)):
+        for word in _name_words(name):
             by_word.setdefault(_stem(word), []).append((name, value))
     found: List[Tuple[Decimal, str, List[str]]] = []
     text = text.replace("\u2212", "-")
@@ -478,11 +496,12 @@ def _label_findings(text: str, payload, skip: Set[Decimal]) -> List[Tuple[Decima
         if figure is None:
             continue
         word = _word_before(_BOUNDARY.split(text[max(0, match.start() - 96):match.start()])[-1])
-        if word is None or _stem(word) not in by_word:
+        fields = _named_fields(word, by_word)
+        if not fields:
             word = _word_after(_BOUNDARY.split(text[match.end():match.end() + 96])[0])
-        if word is None or _stem(word) not in by_word:
+            fields = _named_fields(word, by_word)
+        if not fields:
             continue
-        fields = by_word[_stem(word)]
         if figure not in skip and figure not in {value for _, value in fields}:
             found.append((figure, word, ["%s is %s" % (name, _show_number(value)) for name, value in dict.fromkeys(fields)]))
     return found

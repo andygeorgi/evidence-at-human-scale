@@ -237,6 +237,36 @@ class WhatAPayloadClaimMustSay(unittest.TestCase):
                 text = said(PAYLOAD_CLAIM).replace("invoiced 100 units, received 60 units", new_text)
                 self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, text)), [])
 
+    def test_a_field_name_written_out_names_its_figure_like_any_other_word(self):
+        """"quantity_invoiced 60" used to be one unknown word, so the swapped figure beside it was tied to nothing and passed."""
+        for old_text, new_text in (("invoiced 100 units, received 60 units", "quantity_invoiced 60, quantity_received 100"),
+                                   ("invoiced 100 units, received 60 units", "quantityInvoiced=60; quantityReceived=100"),
+                                   ("invoiced 100 units, received 60 units", '"quantity_invoiced": 60, "quantity_received": 100'),
+                                   ("invoiced 100 units, received 60 units", "60 quantity_invoiced, 100 quantity_received"),
+                                   ("variance 40.0%, tolerance 2%", "variance_pct 2, tolerance_pct 40.0"),
+                                   ("variance 40.0%, tolerance 2%", "tolerance_pct 40.0 variance_pct 2")):
+            with self.subTest(new_text):
+                found = claim_findings(with_claim(PAYLOAD_CLAIM, said(PAYLOAD_CLAIM).replace(old_text, new_text)))
+                self.assertEqual([f.code for f in found], ["PKT005", "PKT005"], [f.message for f in found])
+                self.assertTrue(all("holds" in f.message for f in found), [f.message for f in found])
+
+    def test_a_field_name_written_out_beside_its_own_figure_passes(self):
+        for old_text, new_text in (("invoiced 100 units, received 60 units", "quantity_invoiced 100, quantity_received 60"),
+                                   ("invoiced 100 units, received 60 units", "quantityInvoiced=100; quantityReceived=60"),
+                                   ("invoiced 100 units, received 60 units", '"quantity_invoiced": 100, "quantity_received": 60'),
+                                   ("variance 40.0%, tolerance 2%", "variance_pct 40.0, tolerance_pct 2")):
+            with self.subTest(new_text):
+                self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, said(PAYLOAD_CLAIM).replace(old_text, new_text))), [])
+
+    def test_a_name_written_out_names_the_fields_that_carry_all_of_its_words(self):
+        from eahs.semantics import _label_findings
+        payload = {"quantity_invoiced": 100, "quantity_received": 60, "variance_pct": 40.0, "tolerance_pct": 2}
+        found = _label_findings("quantity_invoiced 7", payload, set())
+        self.assertEqual([(str(figure), word, fields) for figure, word, fields in found], [("7", "quantity_invoiced", ["quantity_invoiced is 100"])])
+        self.assertEqual([word for _, word, _ in _label_findings("tolerance_pct 7", payload, set())], ["tolerance_pct"], "not every field that ends in pct")
+        self.assertEqual(_label_findings("quantity_invoiced 100 and tolerance_pct 2 and variance_pct 40", payload, set()), [])
+        self.assertEqual(_label_findings("quantity_variance 7", payload, set()), [], "a name that no field has is tied to nothing")
+
     def test_a_figure_that_differs_only_beyond_the_precision_of_a_float_is_a_different_figure(self):
         for new in ("40.000000000000001", "40.00000000000000001", "39.999999999999999"):
             with self.subTest(new):

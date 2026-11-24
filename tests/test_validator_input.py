@@ -459,6 +459,8 @@ class StrictJson(Scratch, Actionable):
 
     BAD = (("NaN", '{"evaluations": [], "x": NaN}'), ("Infinity", '{"evaluations": [], "x": Infinity}'), ("-Infinity", '{"x": -Infinity}'),
            ("a number too large for a float", '{"x": 1e999}'), ("a whole number too large for a float", '{"x": 1%s}' % ("0" * 400)),
+           ("a number with more digits than a double keeps", '{"x": 40.000000000000001}'), ("a number too small for a double", '{"x": 1e-400}'),
+           ("a number with an exponent no reader holds", '{"x": 1e-9999999999999999999999}'),
            ("a repeated key", '{"evaluations": [], "evaluations": [1]}'), ("a repeated key in a nested object", '{"evaluations": [{"a": 1, "a": 2}]}'))
 
     def test_each_is_an_input_error_in_a_stage_file_and_blocks_the_stages_that_need_the_model(self):
@@ -524,6 +526,18 @@ class StrictJson(Scratch, Actionable):
     def test_ordinary_numbers_still_read(self):
         from eahs.model import loads_strict
         self.assertEqual(loads_strict('{"a": 1, "b": -2.5, "c": 1e3, "d": [true, false, null], "e": {"a": 1}}'), {"a": 1, "b": -2.5, "c": 1000.0, "d": [True, False, None], "e": {"a": 1}})
+        self.assertEqual(loads_strict('[0.1, 1e-7, 0.30000000000000004, -0.0, 18400.00, 40.0, 0.5000000000000000000000, 5e-324, 1.7976931348623157e308]'),
+                         [0.1, 1e-07, 0.30000000000000004, -0.0, 18400.0, 40.0, 0.5, 5e-324, 1.7976931348623157e308])
+
+    def test_a_number_that_a_double_cannot_hold_digit_for_digit_says_what_to_do(self):
+        """40.000000000000001 reads as 40.0 here and may read as something else elsewhere, and a claim that states 40.0 would then pass for it."""
+        from eahs.model import loads_strict
+        for text in ("40.000000000000001", "0.1000000000000000055", "1e-400", "123456789012345678901234567890.0"):
+            with self.subTest(text):
+                with self.assertRaises(ValueError) as caught:
+                    loads_strict('{"variance": %s}' % text)
+                self.assertIn("more digits", str(caught.exception))
+                self.assertIn("write it with fewer digits, or as a string", str(caught.exception))
 
 
 class ADocumentNestedTooDeeplyIsRefusedWhereItIsRead(Scratch, Actionable):

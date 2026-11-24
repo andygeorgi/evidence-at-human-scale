@@ -5,6 +5,7 @@ import json
 import math
 import re
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Dict, Iterable, Iterator, List, Optional, Tuple
 
@@ -229,9 +230,16 @@ def _no_constant(name):
 
 
 def _finite(text):
+    """A fraction or exponent number, read as a double only when the double holds every digit written: other readers round the rest."""
     value = float(text)
     if value in (float("inf"), float("-inf")):
         raise ValueError("the number %s is too large to read as a number" % text[:20])
+    try:
+        kept = Decimal(repr(value)) == Decimal(text)
+    except InvalidOperation:
+        kept = False
+    if not kept:
+        raise ValueError("the number %s has more digits, or a smaller size, than a double keeps (a reader that uses one reads it as %r), so it would mean one thing here and another elsewhere: write it with fewer digits, or as a string" % (text[:40], value))
     return value
 
 
@@ -272,7 +280,8 @@ def _nested_deeper_than(value, limit: int) -> bool:
 
 def loads_strict(text: str):
     """JSON as RFC 8259 defines it. Python also reads NaN, Infinity and -Infinity, a number too large for a float (a whole number
-    as well as a fraction) and an object that repeats a key (the last value silently wins): other parsers do not, so a file that
+    as well as a fraction), a number with more digits than a double keeps (40.000000000000001 reads as 40.0, and other readers
+    round it) and an object that repeats a key (the last value silently wins): other parsers do not, so a file that
     depends on them means one thing here and another elsewhere. All of them are refused (ValueError, like any other malformed
     JSON), and so is a document nested too deeply for the reader (more than MAX_DEPTH levels)."""
     try:
