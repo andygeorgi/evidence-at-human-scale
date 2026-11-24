@@ -128,14 +128,15 @@ def _tv(value: dict) -> str:
 
 
 def gap_text(g: dict) -> str:
+    """The text for a gap whose own fields the viewer may see. An inaccessible gap is never rendered from its own fields."""
     state, expected = g["state"], g["expected_evidence"]
+    if state == "inaccessible":
+        raise ValueError("an inaccessible gap is rendered from its permission decision, never from its own fields")
     if state == "missing":
         return "Missing: %s. %s" % (expected, _tv(g["reason"]))
     if state == "not_retrieved":
         return "Not retrieved: %s. Retrieval %s completed with %d relevant records; an empty result does not prove absence." % (
             expected, g["retrieval_reference"]["record_id"], g["relevant_record_count"])
-    if state == "inaccessible":
-        return "Inaccessible: %s" % g["permission_safe_summary"]
     if state == "unavailable":
         return "Unavailable: %s. %s Nothing was read or assumed." % (expected, _tv(g["reason"]))
     if state == "negative":
@@ -189,8 +190,18 @@ def render_response(model: Model, packet: Instance, produced_by: str = "template
         add("inference", inf["inference_id"], "Inference (model-generated, not verified): %s Limits: %s" % (inf["text"], " ".join(inf["limitations"])), "%s%d" % (KIND_PREFIX["inference"], i))
     for i, c in enumerate(d["conflicts_uncertainty"]["conflicts"]):
         add("conflict", c["conflict_id"], "Unresolved conflict %s: %s Materiality: %s." % (c["conflict_id"], c["reason"], c["materiality"].replace("_", " ")), "%s%d" % (KIND_PREFIX["conflict"], i))
+    from .semantics import permitted_wording
     for i, g in enumerate(d["coverage_omissions_gaps"]["missingness"]):
-        add("gap", "gap %d (%s)" % (i + 1, g["state"]), gap_text(g), "%s%d" % (KIND_PREFIX["gap"], i))
+        if g["state"] == "inaccessible":
+            # Rendered from the permission decision, not from the packet's entry: the viewer is shown the permitted wording only,
+            # and nothing at all if no decision bound to this viewer lets them know that the input exists.
+            wording = permitted_wording(model, packet, g.get("permission_decision_reference", {}))
+            if wording is None:
+                continue
+            text = "Inaccessible: %s" % wording
+        else:
+            text = gap_text(g)
+        add("gap", "gap %d (%s)" % (i + 1, g["state"]), text, "%s%d" % (KIND_PREFIX["gap"], i))
     for i, r in enumerate(d["recommendations"]):
         lead = "Recommendation from the withdrawn packet (not current advice; for review, not a decision)" if withdrawn else "Recommendation (for review, not a decision)"
         add("recommendation", r["recommendation_id"], "%s: %s Basis: %s Requires: %s" % (lead, r["text"], r["basis"], r["accountable_review_requirement"]), "%s%d" % (KIND_PREFIX["recommendation"], i))
@@ -410,6 +421,8 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
         if kind not in ("claim", "conflict") and DECISION_WORDING.search(text):
             findings.append(Finding("RESP005", "wording presents an action as approved or done, which the packet does not support", file, loc, "contracts/c05-action-proposal.md"))
         findings += _free_text_findings(kind, text, str(st.get("label", "")), " ".join(subtree), resolved, d, file, loc)
+        if kind == "gap":
+            findings += _unreadable_gap_findings(model, packet, text, resolved, file, loc)
     sections = {
         "inference": len(d["labeled_inferences"]), "conflict": len(d["conflicts_uncertainty"]["conflicts"]), "gap": len(d["coverage_omissions_gaps"]["missingness"]),
         "recommendation": len(d["recommendations"]), "proposal": len(d["action_proposals"]), "obligation": len(d["priority_mandatory_obligations"]["obligation_references"]),
@@ -417,11 +430,47 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
     for kind in REQUIRED_COVERAGE:
         for i in range(sections[kind]):
             pointer = "%s%d" % (KIND_PREFIX[kind], i)
+            if kind == "gap" and _withheld_gap(model, packet, d["coverage_omissions_gaps"]["missingness"][i]):
+                continue
             if pointer not in cited[kind]:
                 findings.append(Finding("RESP004", "the packet's %s item %d is not mentioned: a response may be shorter than its packet but may not drop a %s" % (kind, i + 1, kind), file, "/statements", DOC))
     if KIND_PREFIX["limitation"] not in cited["limitation"]:
         findings.append(Finding("RESP004", "the response does not state the packet's coverage limitation", file, "/statements", DOC))
     return findings
+
+
+def _withheld_gap(model: Model, packet: Instance, gap: dict) -> bool:
+    """True for an inaccessible gap that no permission decision bound to this viewer lets them know about: nothing about it may be said."""
+    from .semantics import permitted_wording
+    return isinstance(gap, dict) and gap.get("state") == "inaccessible" and permitted_wording(model, packet, _object(gap.get("permission_decision_reference"))) is None
+
+
+def _normal(text: str) -> str:
+    return " ".join(text.lower().split())
+
+
+def _unreadable_gap_findings(model: Model, packet: Instance, text: str, pointers: List[str], file: str, loc: str) -> List[Finding]:
+    """A statement about an input the viewer may not read uses the permitted wording, or says nothing about it.
+
+    Where no decision bound to the viewer lets them know the input exists, the statement may not cite it at all. Where one
+    does, the statement must carry the decision's words verbatim. Whatever else it says about the other gaps it groups
+    with is held to the usual constraints. These are mechanical tests: they do not read the prose for hidden detail.
+    """
+    from .semantics import permitted_wording
+    out: List[Finding] = []
+    for pointer in pointers:
+        try:
+            gap = resolve_pointer(packet.data, pointer)
+        except (KeyError, IndexError, ValueError, TypeError):
+            continue
+        if not isinstance(gap, dict) or gap.get("state") != "inaccessible":
+            continue
+        wording = permitted_wording(model, packet, _object(gap.get("permission_decision_reference")))
+        if wording is None:
+            out.append(Finding("RESP017", "this statement tells the reader about an input that no permission decision bound to them lets them know exists: it may not be mentioned", file, loc, DOC_RESPONSE))
+        elif _normal(wording) not in _normal(text):
+            out.append(Finding("RESP017", "a statement about an input the reader may not read must use the wording the permission decision allows: %r" % wording, file, loc, DOC_RESPONSE))
+    return out
 
 
 # ---------------------------------------------------------------------------------------------- canonical validation

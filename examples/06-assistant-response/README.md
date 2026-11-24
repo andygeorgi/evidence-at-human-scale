@@ -75,6 +75,7 @@ Every response is held to these. They are named, mechanical tests. None of them 
 | `RESP014` | its status is missing, or is anything other than `current` or `withdrawn` |
 | `RESP015` | the withdrawal reason is missing, or contradicts the packet's own history: it does not name the packet or say what happened to it, it undoes the withdrawal, or it names another record or time; or a response about an active packet carries a withdrawal reason |
 | `RESP016` | a withdrawn response phrases a recommendation, proposal or obligation as current advice instead of saying it is withdrawn |
+| `RESP017` | a statement about a part of the scope the reader may not read does not use the wording the permission decision allows, or mentions a part whose existence no decision bound to the reader lets them know |
 
 A response may be shorter than its packet and may paraphrase. It may not drop a conflict or a gap, and it may not add a figure. The model-style file paraphrases the claims and groups the gaps, and still conforms.
 

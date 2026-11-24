@@ -10,8 +10,9 @@ Passing proves the example set is internally coherent. It proves nothing about a
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
+from .disclosure import Decision, Viewer, binding_problems, differences, gap_entry, may_know, retrieval_entry
 from .findings import Finding, doc_for_contract
 from .gateway import GATE_CODES, age_hours, evaluate_commit, freshness_max_age, is_current_at, ledger_from_receipts, ts
 from .model import Instance, Model, claims_of, iter_refs, payload_object_of, resolve_pointer
@@ -422,6 +423,13 @@ def _check_receipt_chain(model: Model, first: Instance, later: Instance) -> List
 # --------------------------------------------------------------------------- disclosure
 
 def check_disclosure(model: Model) -> List[Finding]:
+    """SNAPSHOT VALIDATION of disclosure: stored C03/C04 outputs against the stored permission decisions.
+
+    The primary rule is constructive. Every entry that tells the viewer a source was not readable must be exactly the entry
+    the viewer projection builds from a permission decision bound to the viewer (DISC002-DISC004), and every record an
+    output names must belong to the viewer's tenant and purpose (DISC005). The protected-term scan (DISC001) is a backstop
+    only: a list of words cannot enumerate what an output may not say. None of this enforces authorization.
+    """
     out: List[Finding] = []
     terms = [t.lower() for t in model.registry.protected_terms]
     if terms:
@@ -432,38 +440,111 @@ def check_disclosure(model: Model) -> List[Finding]:
                 if term in text:
                     out.append(_f("DISC001", "derived output mentions protected detail %r that this principal may not see; a summary can disclose what the record withholds" % term, inst, "", DOC_LINEAGE))
     out.extend(_check_existence_disclosure(model))
+    out.extend(_check_evidence_binding(model))
     return out
 
 
+def viewer_of(model: Model, inst: Instance) -> Optional[Viewer]:
+    """Who a C03 selection or C04 packet is for: the requesting principal, tenant and purpose of the C01 context it names."""
+    if inst.contract == "C03":
+        ref = inst.data["identity_scope"]["context_reference"]
+    else:
+        ref = inst.data["decision_context_as_of"]["context_reference"]
+    context = model.get("C01", ref["id"], ref["version"])
+    if context is None:
+        return None
+    who, task = context.data["identity_principal"], context.data["task_purpose_entity"]
+    return Viewer(who["requesting_principal"], who["tenant"], task["permitted_purpose"], tuple(task["entity_references"]))
+
+
+def permitted_wording(model: Model, inst: Instance, reference: dict) -> Optional[str]:
+    """The wording a bound permission decision lets this viewer see for an unreadable input, or None if nothing may be shown."""
+    viewer = viewer_of(model, inst)
+    raw = model.registry.permission_decisions.get("%s@%s" % (reference.get("record_id"), reference.get("version")))
+    if viewer is None or raw is None:
+        return None
+    decision = Decision.from_registry(raw)
+    return decision.permitted_disclosure if may_know(decision, viewer) and decision.disclose_existence_allowed and decision.permitted_disclosure else None
+
+
 def _unreadable_entries(inst: Instance):
-    """(location, permission decision reference, wording shown) for every entry that tells the reader a source was not readable."""
+    """(location, kind, permission decision reference, entry) for every entry that tells the reader a source was not readable."""
     d = inst.data
     if inst.contract == "C03":
         for i, gap in enumerate(d["conflicts_gaps"]["missingness"]):
             if gap["state"] == "inaccessible":
-                yield "/conflicts_gaps/missingness/%d" % i, gap["permission_decision_reference"], gap["permission_safe_summary"]
+                yield "/conflicts_gaps/missingness/%d" % i, "gap", gap["permission_decision_reference"], gap
         for i, unit in enumerate(d["retrieval"]):
             if unit["status"] == "not_permitted":
-                yield "/retrieval/%d" % i, unit["authorization_reference"], unit["summary"]
+                yield "/retrieval/%d" % i, "retrieval", unit["authorization_reference"], unit
     elif inst.contract == "C04":
         for i, gap in enumerate(d["coverage_omissions_gaps"]["missingness"]):
             if gap["state"] == "inaccessible":
-                yield "/coverage_omissions_gaps/missingness/%d" % i, gap["permission_decision_reference"], gap["permission_safe_summary"]
+                yield "/coverage_omissions_gaps/missingness/%d" % i, "gap", gap["permission_decision_reference"], gap
 
 
 def _check_existence_disclosure(model: Model) -> List[Finding]:
-    """Permission comes before disclosure: an entry that says a source was not readable exists only if a decision allows saying so."""
+    """Permission comes before disclosure: an entry that says a source was not readable exists only if a decision bound to the viewer allows it.
+
+    The order is the order of the projection: the decision exists, it binds to the exact requesting principal (and to the
+    tenant and purpose it claims), it lets the viewer know the input exists, and then the entry must be exactly the generic
+    disclosure the decision configures. A sibling field that says more than the decision does is a finding like a wrong summary.
+    """
     out: List[Finding] = []
     decisions = model.registry.permission_decisions
     for inst in model.of("C03") + model.of("C04"):
-        for loc, ref, shown in _unreadable_entries(inst):
-            decision = decisions.get("%s@%s" % (ref["record_id"], ref["version"]))
-            if decision is None:
+        viewer = viewer_of(model, inst)
+        for loc, kind, ref, entry in _unreadable_entries(inst):
+            raw = decisions.get("%s@%s" % (ref["record_id"], ref["version"]))
+            if raw is None:
                 out.append(_f("DISC002", "this entry tells the reader that a source was not readable, but %s %s has no permission decision in examples/registry.json that allows saying so" % (ref["record_id"], ref["version"]), inst, loc, DOC_LINEAGE))
-            elif not decision.get("disclose_existence_allowed"):
+                continue
+            decision = Decision.from_registry(raw)
+            if viewer is None:
+                out.append(_f("DISC004", "permission decision %s cannot be bound to the requesting principal: the output names no readable C01 context" % ref["record_id"], inst, loc, DOC_LINEAGE))
+                continue
+            problems = binding_problems(decision, viewer)
+            if problems:
+                for problem in problems:
+                    out.append(_f("DISC004", "permission decision %s does not bind to this viewer, so it allows no entry: %s" % (ref["record_id"], problem), inst, loc, DOC_LINEAGE))
+                continue
+            if not decision.disclose_existence_allowed and not decision.read_allowed:
                 out.append(_f("DISC002", "permission decision %s withholds the existence of what it protects: no output may carry an entry for it, only the coverage limitation every output carries" % ref["record_id"], inst, loc, DOC_LINEAGE))
-            elif shown != decision.get("permitted_disclosure"):
-                out.append(_f("DISC003", "the wording shown is not the wording that permission decision %s allows" % ref["record_id"], inst, loc, DOC_LINEAGE))
+                continue
+            expected = gap_entry(decision, viewer, ref) if kind == "gap" else retrieval_entry(decision, ref)
+            for pointer, want in differences(expected, entry):
+                if pointer in ("/permission_safe_summary", "/summary"):
+                    out.append(_f("DISC003", "the wording shown is not the wording that permission decision %s allows" % ref["record_id"], inst, loc + pointer, DOC_LINEAGE))
+                else:
+                    out.append(_f("DISC003", "this entry says more or other than the generic disclosure that permission decision %s configures: the field %s must be %s" % (ref["record_id"], pointer, _show(want)), inst, loc + pointer, DOC_LINEAGE))
+    return out
+
+
+def _show(value) -> str:
+    import json as _json
+    return "absent" if value is None else _json.dumps(value, ensure_ascii=False)
+
+
+def _check_evidence_binding(model: Model) -> List[Finding]:
+    """A record an output names must belong to the viewer's tenant, and be permitted for the viewer's purpose, where the record says so."""
+    out: List[Finding] = []
+    for inst in model.of("C03") + model.of("C04"):
+        viewer = viewer_of(model, inst)
+        if viewer is None:
+            continue
+        seen = set()
+        for ref in iter_refs(inst.data):
+            if ref.kind not in ("evidence", "support") or (ref.record_id, ref.version) in seen:
+                continue
+            seen.add((ref.record_id, ref.version))
+            record = model.get("C02", ref.record_id, ref.version)
+            if record is None:
+                continue
+            claimed = record.data.get("disclosure_permissions", {})
+            if claimed.get("tenant") and claimed["tenant"] != viewer.tenant:
+                out.append(_f("DISC005", "the output names %s %s, which belongs to tenant %s, not to the tenant %s of the requesting context" % (record.id, record.version, claimed["tenant"], viewer.tenant), inst, ref.path, DOC_LINEAGE))
+            elif claimed.get("purpose") and claimed["purpose"] != viewer.purpose:
+                out.append(_f("DISC005", "the output names %s %s, which is permitted only for the purpose %r, not for %r" % (record.id, record.version, claimed["purpose"], viewer.purpose), inst, ref.path, DOC_LINEAGE))
     return out
 
 

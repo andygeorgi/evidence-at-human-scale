@@ -183,7 +183,7 @@
         "state": "not_applicable",
         "reason": "Not attempted: outside this principal's permissions."
       },
-      "reason": "Permission decision applies to this principal. Carried over from SEL-0417 v1.",
+      "reason": "Permission decision applies to this principal.",
       "summary_visibility": "permission_safe",
       "summary": "Coverage is limited by access permissions; no protected source identity or content is disclosed."
     },

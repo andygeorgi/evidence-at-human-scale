@@ -56,6 +56,7 @@ CONTROLLER = "person:ap-controller-01"  # holds role:ap-controller: the Decision
 PERMISSION_LIMIT_ID = "AUTHZ-READ-LIMIT-0417"      # may be disclosed as a coverage limitation, in these words only
 PERMISSION_WITHHELD_ID = "AUTHZ-READ-WITHHELD-0417"  # existence may not be disclosed: no output mentions it
 COVERAGE_LIMIT_WORDING = "Coverage is limited by access permissions; no protected source identity or content is disclosed."
+PURPOSE = "Accounts-payable payment-release review"
 # A time that was not recorded, written the way the contracts write a legitimately unknown time.
 UNKNOWN_TIME = {"state": "unknown", "reason": "The producing system did not record this time."}
 
@@ -183,7 +184,7 @@ def evidence(rid, v, kind, producer, content, *, event, ingestion, source, scope
         "coverage_uncertainty": {"coverage_statement": coverage, "uncertainty": {"state": uncertainty[0].replace("-", "_"), "basis": uncertainty[1]}, "limitations": list(limits)},
         "validation": list(validation),
         "disclosure_permissions": {
-            "tenant": TENANT, "classification": "synthetic-internal", "purpose": "Accounts-payable payment-release review",
+            "tenant": TENANT, "classification": "synthetic-internal", "purpose": PURPOSE,
             "disclosure_restrictions": [], "permission_policy_references": [pol("POL-AP-READ")],
         },
         "lifecycle": lc,
@@ -193,6 +194,69 @@ def evidence(rid, v, kind, producer, content, *, event, ingestion, source, scope
 
 def hashed(content):
     return {"state": "present", "hash": content_hash(content), "algorithm": "sha-256", "origin_metadata": "Computed over the admitted content when the record was ingested."}
+
+
+# ----------------------------------------------------------------------------- permission decisions and the viewer they bind to
+def permission_decisions():
+    """What each permission decision lets one requesting principal be told, and for which tenant and purpose.
+
+    A decision for an input the principal may know about but may not read carries the whole generic disclosure
+    (`permitted_view`): the viewer projection builds the C03 and C04 entries from it, so that no field of an entry
+    comes from the restricted input. A decision that withholds existence permits no entry, and carries no view.
+    """
+    generic_scope = {
+        "task": "Part of the requested scope that this principal may not read",
+        "jurisdiction": SCOPE_NA_JURISDICTION,
+        "units": na("No unit applies to this statement."),
+        "interpretation": known("Statement of a source system or analysis as recorded; not independently verified."),
+    }
+    not_attempted = {"state": "not_applicable", "reason": "Not attempted: outside this principal's permissions."}
+    return {
+        PERMISSION_LIMIT_ID + "@v1": {
+            "principal": ANALYST, "tenant": TENANT, "purpose": PURPOSE,
+            "read_allowed": False, "disclose_existence_allowed": True, "permitted_disclosure": COVERAGE_LIMIT_WORDING,
+            "permitted_view": {
+                "gap": {
+                    "scope": generic_scope,
+                    "expected_evidence": "Evidence in the requested scope that this principal may not read",
+                    "materiality": "unknown",
+                    "reason": known("Part of the requested scope is outside this principal's read permissions."),
+                    "assessment_basis": "Permission decision %s applies. It allows a coverage limitation and nothing else: no source, type, count, state or age is disclosed." % PERMISSION_LIMIT_ID,
+                },
+                "retrieval": {
+                    "retrieval_unit_id": "RETR-SCOPE-0417",
+                    "authorized_scope": "Outside this principal's read scope",
+                    "attempted_at": not_attempted,
+                    "completed_at": not_attempted,
+                    "reason": "Permission decision applies to this principal.",
+                },
+            },
+            "summary": "Part of the requested scope is not readable by this principal. The policy lets an output say that coverage is limited by permissions, in the words given here, and nothing else about it. Every field of the entry comes from this decision, and none from what it protects.",
+        },
+        PERMISSION_WITHHELD_ID + "@v1": {
+            "principal": ANALYST, "tenant": TENANT, "purpose": PURPOSE,
+            "read_allowed": False, "disclose_existence_allowed": False, "permitted_disclosure": "", "permitted_view": {},
+            "summary": "An investigation file that this principal may not read, and whose existence may not be disclosed to them. No output carries an entry, a count, a state or an age for it; it adds nothing to the coverage statement that every output carries.",
+        },
+    }
+
+
+def viewer():
+    """The viewer of the example outputs: the requesting principal, tenant, purpose and entities of the C01 context."""
+    from eahs.disclosure import Viewer
+    return Viewer(ANALYST, TENANT, PURPOSE, (INV_ENT, SUP_ENT))
+
+
+def unreadable_gap():
+    """The C03/C04 entry for the part of the scope this principal may not read, built by the viewer projection."""
+    from eahs.disclosure import Decision, gap_entry
+    return gap_entry(Decision.from_registry(permission_decisions()[PERMISSION_LIMIT_ID + "@v1"]), viewer(), rref(PERMISSION_LIMIT_ID, "v1"))
+
+
+def unreadable_unit():
+    """The C03 retrieval unit for the part of the scope this principal may not read, built by the viewer projection."""
+    from eahs.disclosure import Decision, retrieval_entry
+    return retrieval_entry(Decision.from_registry(permission_decisions()[PERMISSION_LIMIT_ID + "@v1"]), rref(PERMISSION_LIMIT_ID, "v1"))
 
 
 # ----------------------------------------------------------------------------- the registry (external references and domain rules)
@@ -253,16 +317,7 @@ def build_registry():
         },
         "relationship_types": ["contradiction", "supersession", "validation", "invalidation"],
         "protected_terms": ["bank-detail", "bank detail", "BA-S1042", "bank account", "investigation file", "vendor master", "vendor-master"],
-        "permission_decisions": {
-            PERMISSION_LIMIT_ID + "@v1": {
-                "principal": ANALYST, "read_allowed": False, "disclose_existence_allowed": True, "permitted_disclosure": COVERAGE_LIMIT_WORDING,
-                "summary": "Part of the requested scope is not readable by this principal. The policy lets an output say that coverage is limited by permissions, in the words given here, and nothing else about it.",
-            },
-            PERMISSION_WITHHELD_ID + "@v1": {
-                "principal": ANALYST, "read_allowed": False, "disclose_existence_allowed": False, "permitted_disclosure": "",
-                "summary": "An investigation file that this principal may not read, and whose existence may not be disclosed to them. No output carries an entry, a count, a state or an age for it; it adds nothing to the coverage statement that every output carries.",
-            },
-        },
+        "permission_decisions": permission_decisions(),
         "accountability": {
             "policy_reference": "POL-AP-PAY@v3",
             "summary": "Four roles stay distinct. The AP controller is both the Decision Owner and the approver, and the policy says so; the requestor holds neither role for their own request.",
@@ -470,7 +525,7 @@ def context(ctx_id, v, as_of, interval_start, restrictions):
             "requesting_principal": ANALYST, "workload_identity": "workload:ap-assistant",
         },
         "task_purpose_entity": {
-            "task": TASK, "permitted_purpose": "Accounts-payable payment-release review", "entity_references": [INV_ENT, SUP_ENT],
+            "task": TASK, "permitted_purpose": PURPOSE, "entity_references": [INV_ENT, SUP_ENT],
         },
         "time_risk_policy": {
             "time_interval": {"start": interval_start, "end": as_of}, "as_of": as_of, "risk_class": "payment-release-medium",
@@ -523,7 +578,7 @@ def build_selection(S, version, as_of):
         unit("RETR-LEDGER-0417", "AUTHZ-READ-CTX-0417", "completed", at("2026-11-23T09:51:00Z"), at("2026-11-23T09:51:00Z"), "Exact-match duplicate query over the declared window.", "Duplicate check DUP-0417 retrieved.", "Invoice ledger, 2025-11-24 to 2026-11-23"),
         unit("RETR-CREDIT-0417", "AUTHZ-READ-CTX-0417", "completed", at("2026-11-23T09:52:00Z"), at("2026-11-23T09:52:00Z"), "Credit-note ledger query for supplier S-1042, last 90 days.", "The credit-note ledger query completed and returned no relevant records.", "Credit-note ledger for supplier S-1042"),
         unit("RETR-TREASURY-0417", "AUTHZ-READ-CTX-0417", "failed", at("2026-11-23T09:58:00Z"), {"state": "unknown", "reason": "The service returned HTTP 503; the retrieval did not complete."}, "Dependency unavailable.", "Cash-position service unavailable; nothing was read.", "Treasury cash-position service"),
-        unit("RETR-SCOPE-0417", PERMISSION_LIMIT_ID, "not_permitted", {"state": "not_applicable", "reason": "Not attempted: outside this principal's permissions."}, {"state": "not_applicable", "reason": "Not attempted: outside this principal's permissions."}, "Permission decision applies to this principal.", COVERAGE_LIMIT_WORDING, "Outside this principal's read scope", visibility="permission_safe"),
+        unreadable_unit(),
         unit("RETR-DERIVED-0417", "AUTHZ-READ-CTX-0417", "completed", at("2026-11-23T09:44:00Z" if not v2 else "2026-11-23T13:55:00Z"), at("2026-11-23T09:44:00Z" if not v2 else "2026-11-23T13:55:00Z"), "Derived records for the invoice.", "Three-way match result %s %s%s retrieved." % ("M3W-0417", m3w["identity_schema"]["version"], "" if v2 else "; model summaries SUM-A-0417 and SUM-B-0417 retrieved"), "Derived records for INV-2026-0417"),
     ]
     for u in units:
@@ -549,7 +604,7 @@ def build_selection(S, version, as_of):
         ):
             disp.append(disposition(R[old], "excluded", why))
         for u in units:
-            if u["retrieval_unit_id"] in ("RETR-LEDGER-0417", "RETR-CREDIT-0417", "RETR-TREASURY-0417", "RETR-SCOPE-0417", "RETR-POLICY-0417"):
+            if u["retrieval_unit_id"] in ("RETR-LEDGER-0417", "RETR-CREDIT-0417", "RETR-TREASURY-0417", "RETR-POLICY-0417"):
                 u["reason"] += " Carried over from SEL-0417 v1."
     else:
         disp.append(disposition(R[("SUM-A-0417", "v1")], "included", "Model summary, labeled as an inference."))
@@ -605,15 +660,7 @@ def missingness_entries(S, version, as_of, scr, dup):
             "retrieval_reference": rref("RETR-CREDIT-0417", version), "retrieval_completed": True, "relevant_record_count": 0,
             "completed_at": "2026-11-23T09:52:00Z",
         },
-        {
-            "state": "inaccessible", "scope": gap_scope("Part of the requested scope that this principal may not read"),
-            "expected_evidence": "Evidence in the requested scope that this principal may not read",
-            "materiality": "unknown",
-            "reason": known("Part of the requested scope is outside this principal's read permissions."),
-            "assessment_basis": "Permission decision %s applies. It allows a coverage limitation and nothing else: no source, type, count, state or age is disclosed." % PERMISSION_LIMIT_ID,
-            "permission_decision_reference": rref(PERMISSION_LIMIT_ID, "v1"),
-            "permission_safe_summary": COVERAGE_LIMIT_WORDING,
-        },
+        unreadable_gap(),
         {
             "state": "unavailable", "scope": gap_scope("Treasury cash position for the payment date", "EUR"),
             "expected_evidence": "Treasury cash position for 2026-11-23",
@@ -1228,7 +1275,7 @@ def response_files(model):
             {"kind": "claim", "label": "PC-4", "text": "The automated three-way match fails: the variance between invoiced and received quantity is 40.0%, against a tolerance of 2%.", "refs": ["/supported_claims_references/3"]},
             {"kind": "conflict", "label": "CONF-QTY", "text": "The invoice and the goods receipt disagree on quantity (100 against 60) and nobody has resolved it yet.", "refs": ["/conflicts_uncertainty/conflicts/0"]},
             {"kind": "inference", "label": "M01, M02", "text": "Inference (model-generated, not verified): both model summaries suggest a receiving delay, but they share one origin, the goods receipt, so they do not corroborate each other.", "refs": ["/labeled_inferences/0", "/labeled_inferences/1"]},
-            {"kind": "gap", "label": "gaps 1-7", "text": "Several things could not be checked: no record of a second delivery; credit notes (the query returned nothing, which does not prove there are none); part of the requested scope that is outside your read permissions; the treasury cash position (service unavailable); early-payment discount (not assessed); and supplier screening is stale. A duplicate check found nothing in its declared window.",
+            {"kind": "gap", "label": "gaps 1-7", "text": "Several things could not be checked: no record of a second delivery; credit notes (the query returned nothing, which does not prove there are none); the treasury cash position (service unavailable); early-payment discount (not assessed); and supplier screening is stale. A duplicate check found nothing in its declared window. Coverage is limited by access permissions; no protected source identity or content is disclosed.",
              "refs": ["/coverage_omissions_gaps/missingness/%d" % i for i in range(7)]},
             {"kind": "recommendation", "label": "REC-0417-1, REC-0417-1B", "text": "Withdrawn recommendation, no longer current (for review, not a decision): hold the invoice now; release at the 16:00 run only if the match passes, screening is current and the invoice is held.", "refs": ["/recommendations/0", "/recommendations/1"]},
             {"kind": "proposal", "label": "ACT-HOLD-0417 v1, ACT-REL-0417 v1", "text": "Withdrawn proposal, no longer current (not executed or approved): a payment hold and a conditional release at the 16:00 run.", "refs": ["/action_proposals/0", "/action_proposals/1"]},
