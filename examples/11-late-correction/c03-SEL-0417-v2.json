@@ -168,10 +168,10 @@
       "summary": "Cash-position service unavailable; nothing was read."
     },
     {
-      "retrieval_unit_id": "RETR-RESTRICTED-0417",
+      "retrieval_unit_id": "RETR-SCOPE-0417",
       "authorized_scope": "Outside this principal's read scope",
       "authorization_reference": {
-        "record_id": "AUTHZ-DENY-RESTRICTED-0417",
+        "record_id": "AUTHZ-READ-LIMIT-0417",
         "version": "v1"
       },
       "status": "not_permitted",
@@ -183,7 +183,7 @@
         "state": "not_applicable",
         "reason": "Not attempted: outside this principal's permissions."
       },
-      "reason": "Access decision denies this principal. Carried over from SEL-0417 v1.",
+      "reason": "Permission decision applies to this principal. Carried over from SEL-0417 v1.",
       "summary_visibility": "permission_safe",
       "summary": "Coverage is limited by access permissions; no protected source identity or content is disclosed."
     },
@@ -422,7 +422,7 @@
               "entity_id": "S-1042"
             }
           ],
-          "task": "Evidence outside this principal's read scope",
+          "task": "Part of the requested scope that this principal may not read",
           "jurisdiction": {
             "state": "not_applicable",
             "reason": "Internal accounts-payable review; no external jurisdiction asserted."
@@ -436,15 +436,15 @@
             "value": "Statement of a source system or analysis as recorded; not independently verified."
           }
         },
-        "expected_evidence": "Evidence not readable by this principal",
+        "expected_evidence": "Evidence in the requested scope that this principal may not read",
         "materiality": "unknown",
         "reason": {
           "state": "known",
-          "value": "The current principal lacks permission to read this source."
+          "value": "Part of the requested scope is outside this principal's read permissions."
         },
-        "assessment_basis": "Access decision AUTHZ-DENY-RESTRICTED-0417 applies. The source and its content are not disclosed to this principal.",
+        "assessment_basis": "Permission decision AUTHZ-READ-LIMIT-0417 applies. It allows a coverage limitation and nothing else: no source, type, count, state or age is disclosed.",
         "permission_decision_reference": {
-          "record_id": "AUTHZ-DENY-RESTRICTED-0417",
+          "record_id": "AUTHZ-READ-LIMIT-0417",
           "version": "v1"
         },
         "permission_safe_summary": "Coverage is limited by access permissions; no protected source identity or content is disclosed."

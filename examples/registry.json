@@ -84,9 +84,10 @@
     "ACCT-AP-PAYMENTS@v1": "Shared accounting ledger for payment releases.",
     "ACCT-CHARGE-HOLD-0417@v1": "Allowance charge recorded for the hold.",
     "ACCT-CHARGE-REL-0417-B@v1": "Allowance charge recorded for the second release.",
-    "AUTHZ-DENY-RESTRICTED-0417@v1": "Permission decision: one restricted vendor-master source is not readable by this principal.",
     "AUTHZ-READ-CTX-0417@v1": "Read-scope decision for the first context (principal, purpose, scope).",
     "AUTHZ-READ-CTX-0417@v2": "Read-scope decision for the revised context.",
+    "AUTHZ-READ-LIMIT-0417@v1": "Permission decision: part of the requested scope is not readable by this principal; a coverage limitation may be disclosed.",
+    "AUTHZ-READ-WITHHELD-0417@v1": "Permission decision: a source that this principal may not read, and whose existence may not be disclosed to them.",
     "BASIS-AP-CONTROLLER-APPROVAL@v1": "Authority basis: the AP controller may approve payment releases.",
     "BASIS-AP-POLICY-V3@v1": "Authority basis: accounts-payable policy v3 delegates holds to the AP team.",
     "REVCHK-GRT-APPR-0417-A@v1": "Latest revocation check for the first exact approval (revoked at 13:45).",
@@ -190,8 +191,79 @@
     "bank-detail",
     "bank detail",
     "BA-S1042",
-    "bank account"
+    "bank account",
+    "investigation file",
+    "vendor master",
+    "vendor-master"
   ],
+  "permission_decisions": {
+    "AUTHZ-READ-LIMIT-0417@v1": {
+      "principal": "person:ap-analyst-02",
+      "read_allowed": false,
+      "disclose_existence_allowed": true,
+      "permitted_disclosure": "Coverage is limited by access permissions; no protected source identity or content is disclosed.",
+      "summary": "Part of the requested scope is not readable by this principal. The policy lets an output say that coverage is limited by permissions, in the words given here, and nothing else about it."
+    },
+    "AUTHZ-READ-WITHHELD-0417@v1": {
+      "principal": "person:ap-analyst-02",
+      "read_allowed": false,
+      "disclose_existence_allowed": false,
+      "permitted_disclosure": "",
+      "summary": "An investigation file that this principal may not read, and whose existence may not be disclosed to them. No output carries an entry, a count, a state or an age for it; it adds nothing to the coverage statement that every output carries."
+    }
+  },
+  "accountability": {
+    "policy_reference": "POL-AP-PAY@v3",
+    "summary": "Four roles stay distinct. The AP controller is both the decision owner and the approver, and the policy says so; the requestor holds neither role for their own request.",
+    "roles": {
+      "requestor": {
+        "principals": [
+          "person:ap-analyst-02"
+        ],
+        "meaning": "Asks the assistant for a packet and reads it. Requests the evaluation; neither reviews on the owner's behalf nor approves."
+      },
+      "decision_owner": {
+        "role": "role:ap-controller",
+        "holders": [
+          "person:ap-controller-01"
+        ],
+        "meaning": "Reviews the evidence and owns the release decision (the accountable reviewer)."
+      },
+      "approver": {
+        "role": "role:ap-controller",
+        "holders": [
+          "person:ap-controller-01"
+        ],
+        "meaning": "Issues the exact approval of one proposal version."
+      },
+      "executor": {
+        "principals": [
+          "workload:payment-executor"
+        ],
+        "meaning": "Performs the authorized action after the commit check."
+      }
+    },
+    "may_hold_together": [
+      [
+        "decision_owner",
+        "approver"
+      ]
+    ],
+    "review_log": [
+      {
+        "packet": "PKT-0417 v1",
+        "action": "reviewed",
+        "actor": "person:ap-controller-01",
+        "time": "2026-11-23T10:35:00Z"
+      },
+      {
+        "packet": "PKT-0417 v2",
+        "action": "reviewed",
+        "actor": "person:ap-controller-01",
+        "time": "2026-11-23T15:10:00Z"
+      }
+    ]
+  },
   "target_states": [
     {
       "entity_id": "INV-2026-0417",

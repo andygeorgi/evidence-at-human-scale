@@ -55,7 +55,7 @@
     {
       "kind": "gap",
       "label": "gaps 1-7",
-      "text": "Several things could not be checked: no record of a second delivery; credit notes (the query returned nothing, which does not prove there are none); one source outside your permissions; the treasury cash position (service unavailable); early-payment discount (not assessed); and supplier screening is stale. A duplicate check found nothing in its declared window.",
+      "text": "Several things could not be checked: no record of a second delivery; credit notes (the query returned nothing, which does not prove there are none); part of the requested scope that is outside your read permissions; the treasury cash position (service unavailable); early-payment discount (not assessed); and supplier screening is stale. A duplicate check found nothing in its declared window.",
       "refs": [
         "/coverage_omissions_gaps/missingness/0",
         "/coverage_omissions_gaps/missingness/1",

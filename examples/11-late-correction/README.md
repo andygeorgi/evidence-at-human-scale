@@ -38,7 +38,7 @@ A vertical timeline in three phases, each event tagged with the actor that perfo
 | [`c02-M3W-0417-v2.json`](c02-M3W-0417-v2.json) | The three-way match recomputed from the corrected receipt: invoiced 100, received 100, variance 0.0%, **PASS**. |
 | [`c02-SCR-S1042-v2.json`](c02-SCR-S1042-v2.json) | Supplier screening re-run at 13:30. Replaces the stale v1. |
 | [`c03-SEL-0417-v2.json`](c03-SEL-0417-v2.json) | The selection as of 14:10: no conflict, six gaps (the stale label is gone), unchanged retrievals marked "carried over". |
-| [`c04-PKT-0417-v2.json`](c04-PKT-0417-v2.json) | The revised packet: seven supported claims, no inferences, six gaps, reviewed at 15:10. Lists `PKT-0417` v1 as its prior version. |
+| [`c04-PKT-0417-v2.json`](c04-PKT-0417-v2.json) | The revised packet: seven supported claims, no inferences, six gaps, reviewed by the controller at 15:10. Lists `PKT-0417` v1 as its prior version. |
 | [`c05-ACT-REL-0417-v2.json`](c05-ACT-REL-0417-v2.json) | The release proposal re-bound to the revised packet and citing the corrected evidence. |
 | [`c06-GRT-APPR-0417-B-v1.json`](c06-GRT-APPR-0417-B-v1.json) | A second exact approval, at 15:20, bound to proposal v2 only. |
 
@@ -46,15 +46,19 @@ The raw second-pallet receipt is in [01](../01-source-records/README.md), the co
 
 ## What happened
 
+The files show end-of-day snapshots, so a state that was later replaced is not in them. The registry's `review_log` keeps the two reviews, and the checks use it: an exact approval must come after the decision owner's review of the packet it rests on (`ROLE004`).
+
 | Time | Event |
 |---|---|
+| 10:35 | The controller, as decision owner, reviews packet v1. The review is in the registry's log; the packet file shows only its final state, `invalidated`. |
+| 10:40 | The controller, as approver, gives the first exact approval. |
 | 13:30 | Screening re-run. `SCR-S1042` v2 is admitted; v1 is superseded. |
 | 13:40 | The warehouse supervisor admits `GR-5521` v2. The record asserts four typed relationships, each naming who asserted it: **supersession** of v1 (by the supervisor) and **invalidation** of `M3W-0417` v1, `SUM-A-0417` v1 and `SUM-B-0417` v1 (by the lineage service). |
 | 13:45 | The invalidations take effect. The packet that rested on them, `PKT-0417` v1, is invalidated, with a challenge link to the correction. The approval that relied on that packet, `GRT-APPR-0417-A`, is revoked. |
 | 13:50 | The three-way match is recomputed from the corrected receipt. `M3W-0417` v2 (PASS) is admitted at 13:51, and v1 is superseded. |
 | 14:10 | A new context, selection, packet and proposal are produced from the corrected record. |
-| 15:10 | The reviewer reviews packet v2. |
-| 15:20 | The controller gives a new exact approval, bound to proposal v2. |
+| 15:10 | The controller, as decision owner, reviews packet v2. The requestor read it through the assistant but is not its reviewer. |
+| 15:20 | The controller, as approver, gives a new exact approval, bound to proposal v2. |
 
 ## What changed, record by record
 
@@ -64,12 +68,12 @@ The raw second-pallet receipt is in [01](../01-source-records/README.md), the co
 | `GR-5521` v1 | current | `superseded` at 13:40, replacement v2 | correction |
 | `M3W-0417` v1 (FAIL) | current | `superseded` at 13:51, replacement v2 (PASS) | its input was corrected, and the match was recomputed |
 | `SUM-A-0417` v1, `SUM-B-0417` v1 | current | `withdrawn` at 13:45 | their only basis was superseded; they are not recomputed |
-| `PKT-0417` v1 | `awaiting_review` | `invalidated` at 13:45 | it cites superseded records |
+| `PKT-0417` v1 | `reviewed` by the controller at 10:35 | `invalidated` at 13:45 | it cites superseded records |
 | `GRT-APPR-0417-A` | not revoked | `revoked` at 13:45 | its basis packet was invalidated |
 | `ACT-REL-0417` v1 | proposed | unchanged, history | still describes what was proposed on v1 evidence |
 | (new) `PKT-0417` v2, `ACT-REL-0417` v2, `GRT-APPR-0417-B` | | current | built on the corrected record |
 
-The earlier versions are not rewritten to look as though they were always right. That would destroy the answer to "what did the reviewer see at 10:00?"
+The earlier versions are not rewritten to look as though they were always right. That would destroy the answer to "what did the requestor see at 10:00?"
 
 ## Why the first approval did not carry over
 

@@ -10,7 +10,7 @@ In the lineage figure (Figure F03, [chapter 4](../docs/paper/04-evidence-and-lin
 | --- | --- |
 | `missing` | Expected input not obtained; reason may be unknown. |
 | `not_retrieved` | Completed scoped retrieval returned no relevant record. Not evidence of absence. |
-| `inaccessible` | Current principal lacks permission. Reason or existence is disclosed only when permitted. |
+| `inaccessible` | The requester may know the input exists but may not read it. It is shown in the wording the permission decision allows, and in no other. |
 | `unavailable` | Source or dependency could not provide data; distinct from permission denial. |
 | `negative` | Explicit adequately scoped observation reports absence, with method, time and coverage. |
 | `not_assessed` | A check or assessment was not performed. |
@@ -19,6 +19,17 @@ In the lineage figure (Figure F03, [chapter 4](../docs/paper/04-evidence-and-lin
 Evaluation/publication NOT ASSESSED separately means insufficient declared assessment coverage, not a source negative. Retrieval silence cannot become proof of absence. A manifest with no dispositions cannot imply whole-corpus absence. Authorized coverage must describe the assessed scope and limitations without exposing protected names, counts, relationships or existence.
 
 The schema requires different evidence for each label (for example, a completed retrieval reference for `not_retrieved`, an observation reference and coverage for `negative`, a permission decision for `inaccessible`). A [worked packet](../examples/04-selection-and-missingness/README.md) carries all seven.
+
+## Permission comes before disclosure
+
+An expected input that is not in front of the requester is handled in this order, and the order is part of the design (Figure F09):
+
+1. **Decide whether the requester may know that the record or category exists.** If not, nothing about it appears: no entry, no state, no age, no count. It adds nothing to the coverage statement that every output carries, whether or not anything is withheld.
+2. **Apply the safe-disclosure policy.** If the requester may know that something exists but may not read it, the entry is `inaccessible`, in the wording the permission decision allows: no name, type, count, state or age.
+3. **Classify only what the requester may read** as stale, not assessed, unavailable, missing, negative or not retrieved.
+4. **Expose only what the requester is permitted to see** about each of them.
+
+The other order leaks. Working out that a record is stale, and then deciding what to show, tells an unauthorized requester that the record exists and how old it is. So would a count of restricted records, the existence of a restricted investigation, or the fact that a restricted evidence category was checked. An unauthorized requester receives the same output whether or not the restricted record exists. [`tests/test_disclosure.py`](../tests/test_disclosure.py) shows this for every combination of states, and the [registry of the worked example](../examples/04-selection-and-missingness/README.md#permission-before-disclosure) holds one permission decision that allows a coverage limitation and one that allows nothing.
 
 ## Constraints before ranking, mandatory continuity
 

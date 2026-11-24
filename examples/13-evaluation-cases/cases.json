@@ -429,8 +429,20 @@
           "ops": [
             {
               "op": "replace",
-              "path": "/review_version_history/state",
-              "value": "reviewed"
+              "path": "/review_version_history",
+              "value": {
+                "state": "reviewed",
+                "actor": {
+                  "state": "known",
+                  "value": "person:ap-controller-01"
+                },
+                "time": {
+                  "state": "known",
+                  "value": "2026-11-23T10:35:00Z"
+                },
+                "prior_version_references": [],
+                "challenge_links": []
+              }
             }
           ]
         }
@@ -859,9 +871,10 @@
       "case_id": "CASE-DISC-01",
       "family": "disclosure",
       "title": "A summary that names what the principal may not see",
-      "why": "A permission-safe summary must not name the withheld detail; a derived output can disclose what its source withholds.",
+      "why": "A permission-safe summary must not name the withheld detail; a derived output can disclose what its source withholds. The summary also departs from the words the decision permits.",
       "expect": [
-        "DISC001"
+        "DISC001",
+        "DISC003"
       ],
       "mutations": [
         {
@@ -881,6 +894,142 @@
               "op": "replace",
               "path": "/coverage_omissions_gaps/missingness/2/permission_safe_summary",
               "value": "Vendor bank account change history is not readable by this principal."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-DISC-02",
+      "family": "disclosure",
+      "title": "An entry for a source whose existence the permission decision withholds",
+      "why": "Permission comes before disclosure: if the decision does not let the requester know the source exists, no output may carry an entry for it.",
+      "expect": [
+        "DISC002"
+      ],
+      "mutations": [
+        {
+          "target": "C03 SEL-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/conflicts_gaps/missingness/2/permission_decision_reference/record_id",
+              "value": "AUTHZ-READ-WITHHELD-0417"
+            },
+            {
+              "op": "replace",
+              "path": "/retrieval/7/authorization_reference/record_id",
+              "value": "AUTHZ-READ-WITHHELD-0417"
+            }
+          ]
+        },
+        {
+          "target": "C04 PKT-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/coverage_omissions_gaps/missingness/2/permission_decision_reference/record_id",
+              "value": "AUTHZ-READ-WITHHELD-0417"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-DISC-03",
+      "family": "disclosure",
+      "title": "A coverage limitation that says more than the decision permits",
+      "why": "Where the decision lets the requester know that coverage is limited, the output uses its words and adds nothing: not a count, a name, a type or a state.",
+      "expect": [
+        "DISC003"
+      ],
+      "mutations": [
+        {
+          "target": "C03 SEL-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/conflicts_gaps/missingness/2/permission_safe_summary",
+              "value": "Coverage is limited by access permissions; one source was not read."
+            },
+            {
+              "op": "replace",
+              "path": "/retrieval/7/summary",
+              "value": "Coverage is limited by access permissions; one source was not read."
+            }
+          ]
+        },
+        {
+          "target": "C04 PKT-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/coverage_omissions_gaps/missingness/2/permission_safe_summary",
+              "value": "Coverage is limited by access permissions; one source was not read."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-ROLE-01",
+      "family": "roles",
+      "title": "The requestor approves their own request",
+      "why": "The requestor and the approver are distinct roles. A person who asked for the packet may not approve the action it proposes unless the policy says one person may hold both.",
+      "expect": [
+        "ROLE001",
+        "ROLE002"
+      ],
+      "mutations": [
+        {
+          "target": "C06 GRT-APPR-0417-B v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/identity_principals/issuer",
+              "value": "person:ap-analyst-02"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-ROLE-02",
+      "family": "roles",
+      "title": "The requestor is recorded as the reviewer of a packet",
+      "why": "A packet is reviewed by the decision owner, who owns the decision. The person who asked for it reviews nothing on the owner's behalf.",
+      "expect": [
+        "ROLE003"
+      ],
+      "mutations": [
+        {
+          "target": "C04 PKT-0417 v2",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/review_version_history/actor/value",
+              "value": "person:ap-analyst-02"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "CASE-ROLE-03",
+      "family": "roles",
+      "title": "An approval that comes before the review of its packet",
+      "why": "An exact approval follows the decision owner's review of the packet it rests on.",
+      "expect": [
+        "ROLE004"
+      ],
+      "mutations": [
+        {
+          "target": "C06 GRT-APPR-0417-B v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/identity_principals/issuance_time",
+              "value": "2026-11-23T15:00:00Z"
             }
           ]
         }

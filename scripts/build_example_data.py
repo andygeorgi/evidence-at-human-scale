@@ -47,6 +47,15 @@ T_RUN_A = "2026-11-23T16:00:00Z"
 T_RUN_B = "2026-11-23T16:00:05Z"
 T_BANK = "2026-11-23T16:07:00Z"
 T_RECON = "2026-11-23T16:20:00Z"
+T_REVIEW_1 = "2026-11-23T10:35:00Z"   # the controller reviews packet v1, before the first approval at 10:40
+T_REVIEW_2 = "2026-11-23T15:10:00Z"   # the controller reviews packet v2, before the second approval at 15:20
+
+# ----------------------------------------------------------------------------- people and permissions
+ANALYST = "person:ap-analyst-02"        # the requestor: asks the assistant for a packet and reads it
+CONTROLLER = "person:ap-controller-01"  # holds role:ap-controller: the decision owner and the approver
+PERMISSION_LIMIT_ID = "AUTHZ-READ-LIMIT-0417"      # may be disclosed as a coverage limitation, in these words only
+PERMISSION_WITHHELD_ID = "AUTHZ-READ-WITHHELD-0417"  # existence may not be disclosed: no output mentions it
+COVERAGE_LIMIT_WORDING = "Coverage is limited by access permissions; no protected source identity or content is disclosed."
 
 
 # ----------------------------------------------------------------------------- small constructors
@@ -199,7 +208,8 @@ def build_registry():
     ext = {
         "AUTHZ-READ-CTX-0417@v1": "Read-scope decision for the first context (principal, purpose, scope).",
         "AUTHZ-READ-CTX-0417@v2": "Read-scope decision for the revised context.",
-        "AUTHZ-DENY-RESTRICTED-0417@v1": "Permission decision: one restricted vendor-master source is not readable by this principal.",
+        PERMISSION_LIMIT_ID + "@v1": "Permission decision: part of the requested scope is not readable by this principal; a coverage limitation may be disclosed.",
+        PERMISSION_WITHHELD_ID + "@v1": "Permission decision: a source that this principal may not read, and whose existence may not be disclosed to them.",
         "BASIS-AP-POLICY-V3@v1": "Authority basis: accounts-payable policy v3 delegates holds to the AP team.",
         "BASIS-AP-CONTROLLER-APPROVAL@v1": "Authority basis: the AP controller may approve payment releases.",
         "REVCHK-GRT-CLASS-HOLD@v1": "Latest revocation check for the hold class grant.",
@@ -240,7 +250,32 @@ def build_registry():
             "PRE-SCREEN-FRESH": {"type": "evidence_fresh", "record_prefix": "SCR-", "max_age_hours": 24},
         },
         "relationship_types": ["contradiction", "supersession", "validation", "invalidation"],
-        "protected_terms": ["bank-detail", "bank detail", "BA-S1042", "bank account"],
+        "protected_terms": ["bank-detail", "bank detail", "BA-S1042", "bank account", "investigation file", "vendor master", "vendor-master"],
+        "permission_decisions": {
+            PERMISSION_LIMIT_ID + "@v1": {
+                "principal": ANALYST, "read_allowed": False, "disclose_existence_allowed": True, "permitted_disclosure": COVERAGE_LIMIT_WORDING,
+                "summary": "Part of the requested scope is not readable by this principal. The policy lets an output say that coverage is limited by permissions, in the words given here, and nothing else about it.",
+            },
+            PERMISSION_WITHHELD_ID + "@v1": {
+                "principal": ANALYST, "read_allowed": False, "disclose_existence_allowed": False, "permitted_disclosure": "",
+                "summary": "An investigation file that this principal may not read, and whose existence may not be disclosed to them. No output carries an entry, a count, a state or an age for it; it adds nothing to the coverage statement that every output carries.",
+            },
+        },
+        "accountability": {
+            "policy_reference": "POL-AP-PAY@v3",
+            "summary": "Four roles stay distinct. The AP controller is both the decision owner and the approver, and the policy says so; the requestor holds neither role for their own request.",
+            "roles": {
+                "requestor": {"principals": [ANALYST], "meaning": "Asks the assistant for a packet and reads it. Requests the evaluation; neither reviews on the owner's behalf nor approves."},
+                "decision_owner": {"role": "role:ap-controller", "holders": [CONTROLLER], "meaning": "Reviews the evidence and owns the release decision (the accountable reviewer)."},
+                "approver": {"role": "role:ap-controller", "holders": [CONTROLLER], "meaning": "Issues the exact approval of one proposal version."},
+                "executor": {"principals": ["workload:payment-executor"], "meaning": "Performs the authorized action after the commit check."},
+            },
+            "may_hold_together": [["decision_owner", "approver"]],
+            "review_log": [
+                {"packet": "PKT-0417 v1", "action": "reviewed", "actor": CONTROLLER, "time": T_REVIEW_1},
+                {"packet": "PKT-0417 v2", "action": "reviewed", "actor": CONTROLLER, "time": T_REVIEW_2},
+            ],
+        },
         "target_states": [
             {"entity_id": "INV-2026-0417", "at": T_INV_EVENT, "state": {"status": "open"}},
             {"entity_id": "INV-2026-0417", "at": T_HOLD_OBS, "state": {"status": "held"}},
@@ -304,7 +339,7 @@ def build_evidence(S: Scenario):
     m3w1_payload = {"rule": "M3W", "rule_version": "2.0", "invoice_id": "INV-2026-0417", "quantity_invoiced": 100,
                     "quantity_received": 60, "tolerance_pct": 2, "variance_pct": 40.0, "result": "FAIL"}
     m3w_val = [{"validation_id": "V-M3W-0417-01", "version": "v1", "target": rref("M3W-0417", "v1"), "method": "Independent recomputation of the arithmetic",
-                "actor": "person:ap-reviewer-02", "time": "2026-11-23T09:40:00Z", "scope": "Arithmetic of the variance only; not the correctness of the input records",
+                "actor": "person:ap-analyst-02", "time": "2026-11-23T09:40:00Z", "scope": "Arithmetic of the variance only; not the correctness of the input records",
                 "outcome": "arithmetic_confirmed", "limitations": ["Does not validate the goods receipt or the invoice."]}]
     S.add(F3, evidence(
         "M3W-0417", "v1", "deterministic_finding", "producer:rules-engine", payload("SCHEMA-M3W-RESULT", m3w1_payload),
@@ -430,7 +465,7 @@ def context(ctx_id, v, as_of, interval_start, restrictions):
         "contract_id": "C01", "schema_version": SV,
         "identity_principal": {
             "context_id": ctx_id, "version": v, "tenant": TENANT,
-            "requesting_principal": "person:ap-reviewer-02", "workload_identity": "workload:ap-assistant",
+            "requesting_principal": ANALYST, "workload_identity": "workload:ap-assistant",
         },
         "task_purpose_entity": {
             "task": TASK, "permitted_purpose": "Accounts-payable payment-release review", "entity_references": [INV_ENT, SUP_ENT],
@@ -486,7 +521,7 @@ def build_selection(S, version, as_of):
         unit("RETR-LEDGER-0417", "AUTHZ-READ-CTX-0417", "completed", at("2026-11-23T09:51:00Z"), at("2026-11-23T09:51:00Z"), "Exact-match duplicate query over the declared window.", "Duplicate check DUP-0417 retrieved.", "Invoice ledger, 2025-11-24 to 2026-11-23"),
         unit("RETR-CREDIT-0417", "AUTHZ-READ-CTX-0417", "completed", at("2026-11-23T09:52:00Z"), at("2026-11-23T09:52:00Z"), "Credit-note ledger query for supplier S-1042, last 90 days.", "The credit-note ledger query completed and returned no relevant records.", "Credit-note ledger for supplier S-1042"),
         unit("RETR-TREASURY-0417", "AUTHZ-READ-CTX-0417", "failed", at("2026-11-23T09:58:00Z"), {"state": "unknown", "reason": "The service returned HTTP 503; the retrieval did not complete."}, "Dependency unavailable.", "Cash-position service unavailable; nothing was read.", "Treasury cash-position service"),
-        unit("RETR-RESTRICTED-0417", "AUTHZ-DENY-RESTRICTED-0417", "not_permitted", {"state": "not_applicable", "reason": "Not attempted: outside this principal's permissions."}, {"state": "not_applicable", "reason": "Not attempted: outside this principal's permissions."}, "Access decision denies this principal.", "Coverage is limited by access permissions; no protected source identity or content is disclosed.", "Outside this principal's read scope", visibility="permission_safe"),
+        unit("RETR-SCOPE-0417", PERMISSION_LIMIT_ID, "not_permitted", {"state": "not_applicable", "reason": "Not attempted: outside this principal's permissions."}, {"state": "not_applicable", "reason": "Not attempted: outside this principal's permissions."}, "Permission decision applies to this principal.", COVERAGE_LIMIT_WORDING, "Outside this principal's read scope", visibility="permission_safe"),
         unit("RETR-DERIVED-0417", "AUTHZ-READ-CTX-0417", "completed", at("2026-11-23T09:44:00Z" if not v2 else "2026-11-23T13:55:00Z"), at("2026-11-23T09:44:00Z" if not v2 else "2026-11-23T13:55:00Z"), "Derived records for the invoice.", "Three-way match result %s %s%s retrieved." % ("M3W-0417", m3w["identity_schema"]["version"], "" if v2 else "; model summaries SUM-A-0417 and SUM-B-0417 retrieved"), "Derived records for INV-2026-0417"),
     ]
     for u in units:
@@ -512,7 +547,7 @@ def build_selection(S, version, as_of):
         ):
             disp.append(disposition(R[old], "excluded", why))
         for u in units:
-            if u["retrieval_unit_id"] in ("RETR-LEDGER-0417", "RETR-CREDIT-0417", "RETR-TREASURY-0417", "RETR-RESTRICTED-0417", "RETR-POLICY-0417"):
+            if u["retrieval_unit_id"] in ("RETR-LEDGER-0417", "RETR-CREDIT-0417", "RETR-TREASURY-0417", "RETR-SCOPE-0417", "RETR-POLICY-0417"):
                 u["reason"] += " Carried over from SEL-0417 v1."
     else:
         disp.append(disposition(R[("SUM-A-0417", "v1")], "included", "Model summary, labeled as an inference."))
@@ -569,13 +604,13 @@ def missingness_entries(S, version, as_of, scr, dup):
             "completed_at": "2026-11-23T09:52:00Z",
         },
         {
-            "state": "inaccessible", "scope": gap_scope("Evidence outside this principal's read scope"),
-            "expected_evidence": "Evidence not readable by this principal",
+            "state": "inaccessible", "scope": gap_scope("Part of the requested scope that this principal may not read"),
+            "expected_evidence": "Evidence in the requested scope that this principal may not read",
             "materiality": "unknown",
-            "reason": known("The current principal lacks permission to read this source."),
-            "assessment_basis": "Access decision AUTHZ-DENY-RESTRICTED-0417 applies. The source and its content are not disclosed to this principal.",
-            "permission_decision_reference": rref("AUTHZ-DENY-RESTRICTED-0417", "v1"),
-            "permission_safe_summary": "Coverage is limited by access permissions; no protected source identity or content is disclosed.",
+            "reason": known("Part of the requested scope is outside this principal's read permissions."),
+            "assessment_basis": "Permission decision %s applies. It allows a coverage limitation and nothing else: no source, type, count, state or age is disclosed." % PERMISSION_LIMIT_ID,
+            "permission_decision_reference": rref(PERMISSION_LIMIT_ID, "v1"),
+            "permission_safe_summary": COVERAGE_LIMIT_WORDING,
         },
         {
             "state": "unavailable", "scope": gap_scope("Treasury cash position for the payment date", "EUR"),
@@ -664,7 +699,7 @@ def build_packet(S, version, as_of, selection):
         }]
         proposals = [cref("C05", "ACT-REL-0417", "v2")]
         reasons = [{"item_id": "gap:unavailable", "reason": "The treasury cash position is unknown; payment timing is not checked against cash."}]
-        history = {"state": "reviewed", "actor": known("person:ap-reviewer-02"), "time": known("2026-11-23T15:10:00Z"),
+        history = {"state": "reviewed", "actor": known(CONTROLLER), "time": known(T_REVIEW_2),
                    "prior_version_references": [cref("C04", "PKT-0417", "v1")], "challenge_links": []}
         uncertainty = {"state": "unquantified", "basis": "The source records agree after the correction; the correction is itself a source assertion."}
         summary = "Selected sources for this invoice and supplier only; sources outside this principal's permissions and the treasury cash position are not covered."
@@ -673,7 +708,7 @@ def build_packet(S, version, as_of, selection):
             {"recommendation_id": "REC-0417-1", "text": "Place INV-2026-0417 on payment hold until the quantity difference is resolved.",
              "basis": "Open quantity discrepancy (CONF-QTY) between invoice and goods receipt; policy AP-4; screening is stale.",
              "uncertainty": {"state": "unquantified", "basis": "The cause of the difference is not established."},
-             "accountable_review_requirement": "A hold is within the AP team's standing class authority; the AP reviewer is notified."},
+             "accountable_review_requirement": "A hold is within the AP team's standing class authority; the AP controller is notified."},
             {"recommendation_id": "REC-0417-1B", "text": "Release payment at the 16:00 run only if the match passes, screening is current and the invoice is held when the run starts.",
              "basis": "Policy AP-4 requires a passing three-way match; the commit-time preconditions enforce it.",
              "uncertainty": {"state": "unquantified", "basis": "Whether the receipt will be corrected by 16:00 is not known."},
@@ -1180,7 +1215,7 @@ def response_files(model):
             {"kind": "claim", "label": "PC-4", "text": "The automated three-way match fails: the variance between invoiced and received quantity is 40.0%, against a tolerance of 2%.", "refs": ["/supported_claims_references/3"]},
             {"kind": "conflict", "label": "CONF-QTY", "text": "The invoice and the goods receipt disagree on quantity (100 against 60) and nobody has resolved it yet.", "refs": ["/conflicts_uncertainty/conflicts/0"]},
             {"kind": "inference", "label": "M01, M02", "text": "Inference (model-generated, not verified): both model summaries suggest a receiving delay, but they share one origin, the goods receipt, so they do not corroborate each other.", "refs": ["/labeled_inferences/0", "/labeled_inferences/1"]},
-            {"kind": "gap", "label": "gaps 1-7", "text": "Several things could not be checked: no record of a second delivery; credit notes (the query returned nothing, which does not prove there are none); one source outside your permissions; the treasury cash position (service unavailable); early-payment discount (not assessed); and supplier screening is stale. A duplicate check found nothing in its declared window.",
+            {"kind": "gap", "label": "gaps 1-7", "text": "Several things could not be checked: no record of a second delivery; credit notes (the query returned nothing, which does not prove there are none); part of the requested scope that is outside your read permissions; the treasury cash position (service unavailable); early-payment discount (not assessed); and supplier screening is stale. A duplicate check found nothing in its declared window.",
              "refs": ["/coverage_omissions_gaps/missingness/%d" % i for i in range(7)]},
             {"kind": "recommendation", "label": "REC-0417-1, REC-0417-1B", "text": "Recommendation (for review, not a decision): hold the invoice now; release at the 16:00 run only if the match passes, screening is current and the invoice is held.", "refs": ["/recommendations/0", "/recommendations/1"]},
             {"kind": "proposal", "label": "ACT-HOLD-0417 v1, ACT-REL-0417 v1", "text": "Proposed (not executed or approved): a payment hold and a conditional release at the 16:00 run.", "refs": ["/action_proposals/0", "/action_proposals/1"]},
@@ -1218,6 +1253,7 @@ def case_file(S):
         "freshness": dict(freshness("POL-FRESH-SCREEN", T_SCR2_EVENT, T_ASOF2), state="fails_policy"),
     }
     leak = "Vendor bank account change history is not readable by this principal."
+    more_than_permitted = "Coverage is limited by access permissions; one source was not read."
     rejected_hold = {
         "state": "not_executed_verified", "observed_effects": [], "unresolved_conditions": [],
         "timestamps": {"submitted": T_HOLD_SUBMIT, "observed": known(T_HOLD_OBS)},
@@ -1259,7 +1295,7 @@ def case_file(S):
         case("CASE-LIFE-01", "lifecycle", "A late correction that does not reach a derived record", "When a record is superseded, every derivation that rests on it must stop being current.", ["LIFE002"],
              ("C02 M3W-0417 v1", [rep("/lifecycle", {"state": "current", "effective_time": "2026-11-23T09:36:00Z", "reason": "Initial admitted version."})])),
         case("CASE-LIFE-02", "lifecycle", "A newer packet exists but the old one still looks active", "A packet that cites superseded records, or has a newer version, must not stay active.", ["LIFE003", "LIFE004"],
-             ("C04 PKT-0417 v1", [rep("/review_version_history/state", "reviewed")])),
+             ("C04 PKT-0417 v1", [rep("/review_version_history", {"state": "reviewed", "actor": known(CONTROLLER), "time": known(T_REVIEW_1), "prior_version_references": [], "challenge_links": []})])),
         case("CASE-LIFE-03", "lifecycle", "A pending approval survives the invalidation of its basis", "An approval cannot outlive the packet it relied on: when the basis is invalidated, the approval is revoked.", ["LIFE005"],
              ("C06 GRT-APPR-0417-A v1", [rep("/limits_lifecycle/revocation/state", "not_revoked")])),
         case("CASE-MISS-01", "missingness", "Labeled stale although it is fresh", "A stale label must be justified by the freshness policy; a fresh record cannot be called stale.", ["MISS003"],
@@ -1288,9 +1324,21 @@ def case_file(S):
              ("C07 RCP-REL-0417-B v2", [rep("/identity_binding/execution_attempt_id", "ATT-REL-0417-B-2")])),
         case("CASE-ACC-02", "accounting", "A verified outcome whose accounting is still only reserved", "A reservation becomes settled only on authoritative reconciliation.", ["ACC002", "ACC003"],
              ("C07 RCP-REL-0417-B v2", [rep("/verification_recovery/accounting", open_accounting())])),
-        case("CASE-DISC-01", "disclosure", "A summary that names what the principal may not see", "A permission-safe summary must not name the withheld detail; a derived output can disclose what its source withholds.", ["DISC001"],
+        case("CASE-DISC-01", "disclosure", "A summary that names what the principal may not see", "A permission-safe summary must not name the withheld detail; a derived output can disclose what its source withholds. The summary also departs from the words the decision permits.", ["DISC001", "DISC003"],
              ("C03 SEL-0417 v1", [rep("/conflicts_gaps/missingness/2/permission_safe_summary", leak)]),
              ("C04 PKT-0417 v1", [rep("/coverage_omissions_gaps/missingness/2/permission_safe_summary", leak)])),
+        case("CASE-DISC-02", "disclosure", "An entry for a source whose existence the permission decision withholds", "Permission comes before disclosure: if the decision does not let the requester know the source exists, no output may carry an entry for it.", ["DISC002"],
+             ("C03 SEL-0417 v1", [rep("/conflicts_gaps/missingness/2/permission_decision_reference/record_id", PERMISSION_WITHHELD_ID), rep("/retrieval/7/authorization_reference/record_id", PERMISSION_WITHHELD_ID)]),
+             ("C04 PKT-0417 v1", [rep("/coverage_omissions_gaps/missingness/2/permission_decision_reference/record_id", PERMISSION_WITHHELD_ID)])),
+        case("CASE-DISC-03", "disclosure", "A coverage limitation that says more than the decision permits", "Where the decision lets the requester know that coverage is limited, the output uses its words and adds nothing: not a count, a name, a type or a state.", ["DISC003"],
+             ("C03 SEL-0417 v1", [rep("/conflicts_gaps/missingness/2/permission_safe_summary", more_than_permitted), rep("/retrieval/7/summary", more_than_permitted)]),
+             ("C04 PKT-0417 v1", [rep("/coverage_omissions_gaps/missingness/2/permission_safe_summary", more_than_permitted)])),
+        case("CASE-ROLE-01", "roles", "The requestor approves their own request", "The requestor and the approver are distinct roles. A person who asked for the packet may not approve the action it proposes unless the policy says one person may hold both.", ["ROLE001", "ROLE002"],
+             ("C06 GRT-APPR-0417-B v1", [rep("/identity_principals/issuer", ANALYST)])),
+        case("CASE-ROLE-02", "roles", "The requestor is recorded as the reviewer of a packet", "A packet is reviewed by the decision owner, who owns the decision. The person who asked for it reviews nothing on the owner's behalf.", ["ROLE003"],
+             ("C04 PKT-0417 v2", [rep("/review_version_history/actor/value", ANALYST)])),
+        case("CASE-ROLE-03", "roles", "An approval that comes before the review of its packet", "An exact approval follows the decision owner's review of the packet it rests on.", ["ROLE004"],
+             ("C06 GRT-APPR-0417-B v1", [rep("/identity_principals/issuance_time", "2026-11-23T15:00:00Z")])),
     ]
     return {
         "synthetic": True,

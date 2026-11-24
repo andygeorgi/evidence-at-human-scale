@@ -5,7 +5,7 @@
     "context_id": "CTX-0417",
     "version": "v1",
     "tenant": "tenant:calder-works",
-    "requesting_principal": "person:ap-reviewer-02",
+    "requesting_principal": "person:ap-analyst-02",
     "workload_identity": "workload:ap-assistant"
   },
   "task_purpose_entity": {
