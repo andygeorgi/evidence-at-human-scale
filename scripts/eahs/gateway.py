@@ -17,23 +17,35 @@ from typing import Dict, List, Optional
 
 from .model import Instance, Model, claims_of, payload_of, resolve_pointer
 
-# The same shape as the schema's date-time pattern: a zone designator is required.
-_RFC3339 = re.compile(r"(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:([Zz])|([+-])(\d{2}):(\d{2}))")
+# The same shape as the schema's date-time pattern: a zone designator is required. ASCII digits only: \d would also match the digits of other scripts.
+_RFC3339 = re.compile(r"(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:([Zz])|([+-])(\d{2}):(\d{2}))", re.ASCII)
 
 
 def parse_time(value) -> Optional[datetime]:
-    """An aware datetime for an RFC 3339 timestamp, or None if the value is missing, tagged unknown, malformed or has no zone."""
+    """An aware datetime for an RFC 3339 timestamp, or None if it cannot be compared exactly.
+
+    None means missing, tagged unknown, malformed, without a zone, with a zone offset that is not a real offset (hours 00-23, minutes
+    00-59), or finer than a microsecond: a time is compared to the microsecond, and a fraction beyond that which is not zero would be
+    rounded down, so that an observation made after the attempt could look as if it had been made at it. A time that cannot be
+    compared exactly is not trusted.
+    """
     if not isinstance(value, str):
         return None
     match = _RFC3339.fullmatch(value)
     if match is None:
         return None
     year, month, day, hour, minute, second = (int(match.group(i)) for i in range(1, 7))
-    micro = int((match.group(7) or "0")[:6].ljust(6, "0"))
+    fraction = match.group(7) or ""
+    if fraction[6:].strip("0"):
+        return None
+    micro = int(fraction[:6].ljust(6, "0"))
     try:
         zone = timezone.utc
         if match.group(9):
-            offset = timedelta(hours=int(match.group(10)), minutes=int(match.group(11)))
+            offset_hours, offset_minutes = int(match.group(10)), int(match.group(11))
+            if offset_hours > 23 or offset_minutes > 59:
+                return None
+            offset = timedelta(hours=offset_hours, minutes=offset_minutes)
             zone = timezone(offset if match.group(9) == "+" else -offset)
         return datetime(year, month, day, hour, minute, second, micro, tzinfo=zone)
     except ValueError:
@@ -90,7 +102,7 @@ class LedgerEntry:
     units: str
     quantity: float
     state: str          # consumed | reserved
-    start: datetime
+    start: Optional[datetime]   # None: the attempt's time is unknown, so the entry counts in every window (the conservative reading)
     receipt: str = ""
 
 
@@ -326,11 +338,15 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
     reserve = None
     for limit in life["cumulative_limits"]:
         qty = action_quantity(p, limit["units"])
-        window_start, window_end = ts(limit["accounting_window"]["start"]), ts(limit["accounting_window"]["end"])
+        window = _object(limit.get("accounting_window"))
+        window_start, window_end = parse_time(window.get("start")), parse_time(window.get("end"))
+        if window_start is None or window_end is None:
+            reasons.append(Reason("GRANT_TIME_UNKNOWN", "the accounting window of the %s limit has a start or an end that is missing or unknown, so the capacity already used in it cannot be established" % limit.get("units")))
+            continue
         used = sum(
             e.quantity for e in ledger
             if e.grant_id == grant.id and e.accounting_scope == limit["accounting_scope"] and e.units == limit["units"]
-            and window_start <= e.start < window_end
+            and (e.start is None or window_start <= e.start < window_end)
         )
         if used + qty > limit["quantity"]:
             reasons.append(Reason("CUMULATIVE_LIMIT", "%s already counted plus %s would exceed %s %s in the window" % (_fmt(used), _fmt(qty), _fmt(limit["quantity"]), limit["units"])))
@@ -344,12 +360,15 @@ def _fmt(x: float) -> str:
     return ("%d" % x) if float(x).is_integer() else ("%.2f" % x)
 
 
-def receipt_known_at(receipt: dict) -> datetime:
-    """When this version of a receipt became known: its authoritative verification time, otherwise its submission time."""
-    ver = receipt["verification_recovery"]["verification"]
-    if ver["state"] == "authoritatively_verified":
-        return ts(ver["time"])
-    return ts(receipt["outcome"]["timestamps"]["submitted"])
+def receipt_known_at(receipt: dict) -> Optional[datetime]:
+    """When this version of a receipt became known: its authoritative verification time, otherwise its submission time.
+
+    None when that time is missing or cannot be compared exactly: such a receipt is counted as already known (see the ledger).
+    """
+    ver = _object(_object(receipt.get("verification_recovery")).get("verification"))
+    if ver.get("state") == "authoritatively_verified":
+        return parse_time(ver.get("time"))
+    return parse_time(_object(_object(receipt.get("outcome")).get("timestamps")).get("submitted"))
 
 
 def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str = "") -> List[LedgerEntry]:
@@ -357,10 +376,13 @@ def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str
 
     A receipt known at exactly `before` is not counted: replaying an attempt (a stored evaluation, or its own receipt)
     must not charge the attempt against itself, and a commit serializes its reservation with the one it follows.
+    A receipt whose time is unknown cannot be shown to come after `before`, so it is counted: capacity is never freed by a time
+    that cannot be read.
     """
     latest: Dict[str, Instance] = {}
     for rec in model.of("C07"):
-        if rec.id == exclude_receipt_id or receipt_known_at(rec.data) >= before:
+        known = receipt_known_at(rec.data)
+        if rec.id == exclude_receipt_id or (known is not None and known >= before):
             continue
         cur = latest.get(rec.id)
         if cur is None or _vn(rec.version) > _vn(cur.version):
@@ -368,7 +390,7 @@ def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str
     entries: List[LedgerEntry] = []
     for rec in latest.values():
         d = rec.data
-        submitted = ts(d["outcome"]["timestamps"]["submitted"])
+        submitted = parse_time(_object(_object(d.get("outcome")).get("timestamps")).get("submitted"))
         grant_ref = d["identity_binding"]["grant_reference"]
         grant = model.get("C06", grant_ref["id"], grant_ref["version"])
         proposal_ref = d["identity_binding"]["proposal_reference"]

@@ -215,6 +215,51 @@ class GrantValidity(unittest.TestCase):
         self.assertFalse(decision.allow)
 
 
+class ATimeThatCannotBeComparedExactly(unittest.TestCase):
+    """A time that cannot be compared to the attempt exactly is not trusted, so it blocks and names the time to supply."""
+
+    def test_an_observation_a_hundred_nanoseconds_after_the_attempt_is_not_rounded_into_it(self):
+        late = "2026-11-23T10:03:00.0000001Z"
+        for label, mutation, expected in (("admission", admitted_at(late), "EVIDENCE_TIME_UNKNOWN"), ("revocation check", revocation_checked_at(late), "REVOCATION_TIME_UNKNOWN"),
+                                          ("grant issuance", replace("C06 GRT-CLASS-HOLD v1", "/identity_principals/issuance_time", late), "GRANT_TIME_UNKNOWN")):
+            with self.subTest(label):
+                decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", mutation)
+                self.assertEqual((decision.allow, decision.codes), (False, [expected]))
+
+    def test_an_offset_that_is_not_real_cannot_move_a_check_before_the_attempt(self):
+        decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", revocation_checked_at("2026-11-23T10:04:00+00:60"))
+        self.assertEqual((decision.allow, decision.codes), (False, ["REVOCATION_TIME_UNKNOWN"]))
+
+    def test_a_fraction_of_zeros_is_the_same_time(self):
+        self.assertEqual(decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", revocation_checked_at("2026-11-23T10:03:00.0000000Z")).codes, [])
+
+
+class AccountingWindows(unittest.TestCase):
+    """A window of a cumulative limit with a time that cannot be read blocks with a reason. It never raises, and it never allows."""
+
+    WINDOW = "C06 GRT-CLASS-HOLD v1"
+    START = "/limits_lifecycle/cumulative_limits/0/accounting_window/start"
+
+    def test_an_unreadable_start_or_end_blocks_and_says_so(self):
+        for end in (False, True):
+            path = self.START.replace("start", "end") if end else self.START
+            for label, value in (("tagged unknown", UNKNOWN), ("not a time", "bad-time"), ("no zone", "2026-11-23T00:00:00"), ("null", None)):
+                with self.subTest("%s %s" % ("end" if end else "start", label)):
+                    decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", replace(self.WINDOW, path, value))
+                    self.assertEqual((decision.allow, decision.codes), (False, ["GRANT_TIME_UNKNOWN"]))
+                    self.assertIn("accounting window", decision.reasons[0].message)
+
+    def test_a_window_without_its_start_blocks_and_does_not_crash(self):
+        decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", {"target": self.WINDOW, "ops": [{"op": "remove", "path": self.START}]})
+        self.assertEqual((decision.allow, decision.codes), (False, ["GRANT_TIME_UNKNOWN"]))
+
+    def test_a_receipt_whose_time_cannot_be_read_still_counts_against_the_limit(self):
+        """Capacity is never freed by a time that cannot be read: the reservation is counted in every window."""
+        decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", replace("C07 RCP-REL-0417-B v1", "/outcome/timestamps/submitted", "unreadable"), ledger=True)
+        self.assertIn("CUMULATIVE_LIMIT", decision.codes)
+        self.assertFalse(decision.allow)
+
+
 class TheAttemptTime(unittest.TestCase):
     def test_a_missing_or_naive_attempt_time_is_refused_rather_than_guessed(self):
         model = support.example_model()
@@ -226,10 +271,26 @@ class TheAttemptTime(unittest.TestCase):
 
 class ParsingTimes(unittest.TestCase):
     def test_rfc3339_with_a_zone_is_accepted(self):
-        for text in ("2026-11-23T10:03:00Z", "2026-11-23t10:03:00z", "2026-11-23T10:03:00.5Z", "2026-11-23T12:03:00+02:00", "2026-11-23T10:03:00.123456789-00:00"):
+        for text in ("2026-11-23T10:03:00Z", "2026-11-23t10:03:00z", "2026-11-23T10:03:00.5Z", "2026-11-23T12:03:00+02:00", "2026-11-23T10:03:00.123456000-00:00", "2026-11-23T10:03:00.0000000Z"):
             with self.subTest(text):
                 self.assertIsNotNone(parse_time(text))
         self.assertEqual(parse_time("2026-11-23T12:03:00+02:00"), parse_time("2026-11-23T10:03:00Z"))
+        self.assertEqual(parse_time("2026-11-23T10:03:00.0000000Z"), parse_time("2026-11-23T10:03:00Z"))
+
+    def test_a_fraction_finer_than_a_microsecond_is_not_rounded_down_into_the_attempt(self):
+        for text in ("2026-11-23T10:03:00.0000001Z", "2026-11-23T10:03:00.1234567Z", "2026-11-23T10:03:00.123456789-00:00"):
+            with self.subTest(text):
+                self.assertIsNone(parse_time(text))
+
+    def test_an_offset_that_is_not_a_real_offset_is_unknown(self):
+        for text in ("2026-11-23T10:04:00+00:60", "2026-11-23T10:04:00+01:75", "2026-11-23T10:04:00-24:00", "2026-11-23T10:04:00+99:99"):
+            with self.subTest(text):
+                self.assertIsNone(parse_time(text))
+        self.assertIsNotNone(parse_time("2026-11-23T10:04:00+23:59"))
+
+    def test_only_ascii_digits_are_digits(self):
+        self.assertIsNone(parse_time("2026-11-23T10:03:00Z".replace("0", "\u0660")))
+        self.assertIsNone(parse_time("\uff12\uff10\uff12\uff16-11-23T10:03:00Z"))
 
     def test_anything_else_is_unknown(self):
         for value in (None, "", " 2026-11-23T10:03:00Z", "2026-11-23T10:03:00Z ", "2026-11-23 10:03:00Z", "2026-11-23T10:03:00", "2026-11-23", "2026-13-23T10:03:00Z",
