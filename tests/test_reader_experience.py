@@ -157,6 +157,14 @@ class HumanNamesBeforeIdentifiers(unittest.TestCase):
         self.assertIn("Goods receipt `GR-5521` v1", story)
         self.assertIn("Invoice `INV-2026-0417` arrives", story)
 
+    def test_a_table_of_a_first_use_example_names_a_record_before_its_identifier(self):
+        starts_with_an_identifier = re.compile(r"^\|\s*`[A-Z]{2,5}-[A-Z0-9-]+`")
+        for page in ("examples/04-selection-and-missingness/README.md", "examples/05-decision-packet/README.md", "examples/11-late-correction/README.md"):
+            self.assertEqual([line[:70] for line in text(page).split("\n") if starts_with_an_identifier.match(line)], [], page)
+        packet = text("examples/05-decision-packet/README.md")
+        self.assertIn("Hold the invoice (`REC-0417-1`)", packet)
+        self.assertLess(packet.index("Hold the invoice (`REC-0417-1`)"), packet.index("`REC-0417-1B`"))
+
     def test_the_abstract_labels_are_explained_where_the_reference_material_uses_them(self):
         page = text("examples/README.md").split("## Reading the abstract labels in the reference material", 1)[1]
         for label in ("`S01/v1`", "`S02/v1`", "`V01/v1`", "`P01`"):

@@ -59,8 +59,8 @@ Two permission decisions in [`registry.json`](../registry.json) show the two cas
 
 | Decision | The requestor may read it | May the requestor know it exists | What an output may say |
 |---|---|---|---|
-| `AUTHZ-READ-LIMIT-0417` | No | Yes, as a coverage limitation | "Coverage is limited by access permissions; no protected source identity or content is disclosed." This is the `inaccessible` entry, the `not_permitted` retrieval unit and the summary in the packet. **Every field of those entries comes from the decision** (its `permitted_view`): the wording, the scope, the materiality, the reason and the basis. None comes from the source, so none names a source, count, state or age. |
-| `AUTHZ-READ-WITHHELD-0417` | No | **No** | Nothing. No entry, no retrieval unit, no count. The source adds nothing to the coverage statement that every packet carries ("sources outside this principal's permissions … are not covered"), which reads the same whether or not anything is withheld. |
+| The coverage-limit decision (`AUTHZ-READ-LIMIT-0417`) | No | Yes, as a coverage limitation | "Coverage is limited by access permissions; no protected source identity or content is disclosed." This is the `inaccessible` entry, the `not_permitted` retrieval unit and the summary in the packet. **Every field of those entries comes from the decision** (its `permitted_view`): the wording, the scope, the materiality, the reason and the basis. None comes from the source, so none names a source, count, state or age. |
+| The withheld-source decision (`AUTHZ-READ-WITHHELD-0417`) | No | **No** | Nothing. No entry, no retrieval unit, no count. The source adds nothing to the coverage statement that every packet carries ("sources outside this principal's permissions … are not covered"), which reads the same whether or not anything is withheld. |
 
 The second decision is used by no instance, on purpose: its source does not appear in the selection or the packet, and a test checks that no output names it. The identifiers follow the same rule: the retrieval unit is `RETR-SCOPE-0417` and the decision is `AUTHZ-READ-LIMIT-0417`, not names that announce a restricted source.
 
