@@ -360,13 +360,17 @@ def _fmt(x: float) -> str:
     return ("%d" % x) if float(x).is_integer() else ("%.2f" % x)
 
 
-def receipt_known_at(receipt: dict) -> Optional[datetime]:
-    """When this version of a receipt became known: its authoritative verification time, otherwise its submission time.
+def receipt_known_at(receipt: dict, first_version: bool = False) -> Optional[datetime]:
+    """When this version of a receipt became known.
+
+    The first version of a receipt records the attempt itself, and an attempt holds its reservation from the moment it is submitted,
+    so it is known from its submission time, even when the version that is stored also carries a later verification. A later
+    version is known from its authoritative verification time, otherwise from its submission time.
 
     None when that time is missing or cannot be compared exactly: such a receipt is counted as already known (see the ledger).
     """
     ver = _object(_object(receipt.get("verification_recovery")).get("verification"))
-    if ver.get("state") == "authoritatively_verified":
+    if ver.get("state") == "authoritatively_verified" and not first_version:
         return parse_time(ver.get("time"))
     return parse_time(_object(_object(receipt.get("outcome")).get("timestamps")).get("submitted"))
 
@@ -376,12 +380,16 @@ def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str
 
     A receipt known at exactly `before` is not counted: replaying an attempt (a stored evaluation, or its own receipt)
     must not charge the attempt against itself, and a commit serializes its reservation with the one it follows.
-    A receipt whose time is unknown cannot be shown to come after `before`, so it is counted: capacity is never freed by a time
-    that cannot be read.
+    An attempt is known from its submission, so a receipt that already carries its verification still holds its reservation
+    between the two. A receipt whose time is unknown cannot be shown to come after `before`, so it is counted: capacity is
+    never freed by a time that cannot be read.
     """
+    first: Dict[str, int] = {}
+    for rec in model.of("C07"):
+        first[rec.id] = min(first.get(rec.id, _vn(rec.version)), _vn(rec.version))
     latest: Dict[str, Instance] = {}
     for rec in model.of("C07"):
-        known = receipt_known_at(rec.data)
+        known = receipt_known_at(rec.data, first_version=_vn(rec.version) == first[rec.id])
         if rec.id == exclude_receipt_id or (known is not None and known >= before):
             continue
         cur = latest.get(rec.id)

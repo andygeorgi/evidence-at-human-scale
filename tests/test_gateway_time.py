@@ -269,6 +269,41 @@ class AccountingWindows(unittest.TestCase):
         self.assertFalse(decision.allow)
 
 
+class TheLedgerFollowsTheAttempt(unittest.TestCase):
+    """An attempt holds its reservation from its submission, not from the later time at which its receipt was verified."""
+
+    def held(self, at):
+        return sorted(e.receipt for e in ledger_from_receipts(support.example_model(), ts(at)))
+
+    def test_a_receipt_that_carries_its_verification_still_holds_its_reservation_between_submission_and_verification(self):
+        # RCP-HOLD-0417 v1 was submitted at 10:03:00 and verified at 10:04:00.
+        self.assertEqual(self.held("2026-11-23T10:03:30Z"), ["RCP-HOLD-0417"])
+        self.assertEqual(self.held("2026-11-23T10:04:00Z"), ["RCP-HOLD-0417"])
+
+    def test_an_attempt_is_not_charged_against_itself_and_nothing_counts_before_it(self):
+        self.assertEqual(self.held("2026-11-23T10:03:00Z"), [])
+        self.assertEqual(self.held("2026-11-23T10:02:59Z"), [])
+
+    def test_a_later_version_is_known_from_its_verification_so_the_earlier_one_holds_in_between(self):
+        model = support.example_model()
+        versions = {r.version: r for r in model.of("C07") if r.id == "RCP-REL-0417-B"}
+        self.assertEqual(sorted(versions), ["v1", "v2"])
+        between = [e for e in ledger_from_receipts(model, ts("2026-11-23T16:10:00Z")) if e.receipt == "RCP-REL-0417-B"]
+        self.assertEqual([e.state for e in between], ["reserved"])
+        after = [e for e in ledger_from_receipts(model, ts("2026-11-23T16:21:00Z")) if e.receipt == "RCP-REL-0417-B"]
+        self.assertEqual([e.state for e in after], ["consumed"])
+
+    def test_a_second_attempt_at_the_limit_is_blocked_while_the_first_is_not_yet_verified(self):
+        # Make the hold grant allow one action in its window: a second hold at 10:03:30 must see the first one's reservation.
+        one = replace("C06 GRT-CLASS-HOLD v1", "/limits_lifecycle/cumulative_limits/0/quantity", 1)
+        decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:30Z", one, ledger=True)
+        self.assertFalse(decision.allow)
+        self.assertIn("CUMULATIVE_LIMIT", decision.codes)
+        self.assertEqual(decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", one, ledger=True).codes, [], "the attempt itself is not charged against itself")
+        without = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:30Z", one, ledger=False)
+        self.assertNotIn("CUMULATIVE_LIMIT", without.codes, "without the ledger nothing is counted, which is the difference this change makes")
+
+
 class TheAttemptTime(unittest.TestCase):
     def test_a_missing_or_naive_attempt_time_is_refused_rather_than_guessed(self):
         model = support.example_model()
