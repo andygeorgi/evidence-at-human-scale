@@ -26,9 +26,10 @@ Authority changes. A controller lowers a limit after a risk review. In this arch
 | Per-payment limit | EUR 5,000 | EUR 2,500 |
 | Daily limit | EUR 25,000 | EUR 25,000 |
 | Class version | 1 | 2 |
+| Grantee | the payment executor (the assistant proposes the payments and holds no grant) | the payment executor |
 | Everything else | same actions, same targets, same parameters, same expiry | |
 
-The change is traceable: the new grant points at the decision that justifies it, and the decision says who, when and why.
+The change is traceable: the new grant points at the decision that justifies it, and the decision says who, when and why. Both versions name the executor as their grantee, so the new version replaces the old one for the same principal and gives the assistant no authority (`ROLE006`–`ROLE008`).
 
 ## The four stored evaluations
 
@@ -45,7 +46,7 @@ In this reference check the limit is data on the grant, so the change needs no c
 
 ## Checks that run here
 
-Stage 2 validates all three records. Stage 4 replays the four evaluations. Stage 3 resolves the authority basis of v2, which is an evidence record, and the decision record's kind and producer (`KIND001`).
+Stage 2 validates all three records. Stage 4 replays the four evaluations. Stage 3 resolves the authority basis of v2, which is an evidence record, and the decision record's kind and producer (`KIND001`), and checks that each version names a registered executor as its grantee (`ROLE007`).
 
 ## What this shows, and what it does not
 

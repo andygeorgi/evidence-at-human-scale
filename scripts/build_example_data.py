@@ -53,6 +53,8 @@ T_REVIEW_2 = "2026-11-23T15:10:00Z"   # the controller reviews packet v2, before
 # ----------------------------------------------------------------------------- people and permissions
 ANALYST = "person:ap-analyst-02"        # the requestor: asks the assistant for a packet and reads it
 CONTROLLER = "person:ap-controller-01"  # holds role:ap-controller: the Decision Owner and the approver
+ASSISTANT = "workload:ap-assistant"     # the assistant workload: proposes, and never receives authority to execute
+EXECUTOR = "workload:payment-executor"  # the executor: receives authority from a grant and performs the action after the commit check
 PERMISSION_LIMIT_ID = "AUTHZ-READ-LIMIT-0417"      # may be disclosed as a coverage limitation, in these words only
 PERMISSION_WITHHELD_ID = "AUTHZ-READ-WITHHELD-0417"  # existence may not be disclosed: no output mentions it
 COVERAGE_LIMIT_WORDING = "Coverage is limited by access permissions; no protected source identity or content is disclosed."
@@ -325,7 +327,7 @@ def build_registry():
                 "requestor": {"principals": [ANALYST], "meaning": "Asks the assistant for a packet and reads it. Requests the evaluation; neither reviews on the owner's behalf nor approves."},
                 "decision_owner": {"role": "role:ap-controller", "holders": [CONTROLLER], "meaning": "Reviews the evidence and owns the release decision (the accountable reviewer)."},
                 "approver": {"role": "role:ap-controller", "holders": [CONTROLLER], "meaning": "Issues the exact approval of one proposal version."},
-                "executor": {"principals": ["workload:payment-executor"], "meaning": "Performs the authorized action after the commit check."},
+                "executor": {"principals": [EXECUTOR], "meaning": "Performs the authorized action after the commit check. Every grant names it as its grantee, and every execution receipt is made by the grantee of the grant it cites."},
             },
             "may_hold_together": [["decision_owner", "approver"]],
             "review_log": [
@@ -522,7 +524,7 @@ def context(ctx_id, v, as_of, interval_start, restrictions):
         "contract_id": "C01", "schema_version": SV,
         "identity_principal": {
             "context_id": ctx_id, "version": v, "tenant": TENANT,
-            "requesting_principal": ANALYST, "workload_identity": "workload:ap-assistant",
+            "requesting_principal": ANALYST, "workload_identity": ASSISTANT,
         },
         "task_purpose_entity": {
             "task": TASK, "permitted_purpose": PURPOSE, "entity_references": [INV_ENT, SUP_ENT],
@@ -724,7 +726,7 @@ def build_packet(S, version, as_of, selection):
         ("PC-3", claim_text(gr), [support(gr, "c1")]),
         ("PC-4", "Three-way match M3W 2.0 on INV-2026-0417: %s (invoiced %d units, received %d units, variance %.1f%%, tolerance %d%%)." % (
             m3w_payload["result"], m3w_payload["quantity_invoiced"], m3w_payload["quantity_received"], m3w_payload["variance_pct"], m3w_payload["tolerance_pct"]),
-         [support(m3w, pointer="/value/result")]),
+         [support(m3w, pointer="/value")]),
         ("PC-5", claim_text(scr), [support(scr, "c1")]),
         ("PC-6", claim_text(dup), [support(dup, "c1")]),
         ("PC-7", claim_text(pol4), [support(pol4, "c1")]),
@@ -924,7 +926,7 @@ def build_grants(S, proposals):
     pol4 = R[("AP-POLICY-4", "v1")]
     out = {}
     out["hold"] = build_grant(
-        "GRT-CLASS-HOLD", "v1", "role:ap-controller", "workload:ap-assistant", "2026-11-23T07:45:00Z", rref("BASIS-AP-POLICY-V3"),
+        "GRT-CLASS-HOLD", "v1", "role:ap-controller", EXECUTOR, "2026-11-23T07:45:00Z", rref("BASIS-AP-POLICY-V3"),
         ["hold_payment"], [{"entity_type": "invoice", "entity_id": "*"}],
         [{"name": "reason_code", "data_type": "string", "constraint": "An AP hold reason code (QTY-MISMATCH, PRICE-MISMATCH, DUPLICATE-SUSPECTED)", "policy_reference": pol("POL-AP-PAY", "v3")},
          {"name": "block_code", "data_type": "string", "constraint": "Payment block B-1 only", "policy_reference": pol("POL-AP-PAY", "v3")}],
@@ -941,7 +943,7 @@ def build_grants(S, proposals):
     def approval(gid, issued, proposal, revoked_state, check_id, checked_by, checked_at, scope_id):
         refs = copy.deepcopy(proposal["action"]["evidence_references"])
         return build_grant(
-            gid, "v1", "person:ap-controller-01", "workload:payment-executor", issued, rref("BASIS-AP-CONTROLLER-APPROVAL"),
+            gid, "v1", "person:ap-controller-01", EXECUTOR, issued, rref("BASIS-AP-CONTROLLER-APPROVAL"),
             ["release_payment"], [dict(INV_ENT)], permitted_release_params("Exactly 18,400 EUR, the approved amount", "RUN-2026-11-23-1600 only"),
             "Release payment of INV-2026-0417 at the 16:00 payment run",
             {"binding_type": "exact_proposal", "proposal_reference": cref("C05", proposal["identity_binding"]["proposal_id"], proposal["identity_binding"]["version"])},
@@ -958,7 +960,7 @@ def build_grants(S, proposals):
 
     def lowval(v, issued, basis, amount):
         return build_grant(
-            "GRT-CLASS-LOWVAL", v, "role:ap-controller", "workload:ap-assistant", issued, basis,
+            "GRT-CLASS-LOWVAL", v, "role:ap-controller", EXECUTOR, issued, basis,
             ["release_payment"], [{"entity_type": "invoice", "entity_id": "*"}],
             permitted_release_params("At most the per-action limit of this class", "Any scheduled payment run on the same day"),
             "Release low-value payments with a passing three-way match",
@@ -1006,13 +1008,14 @@ def open_accounting(shared="ACCT-AP-PAYMENTS"):
     return {"state": "reserved", "shared_accounting_reference": rref(shared), "known_partial_effects_charged": True, "confirmed_effect_policy": copy.deepcopy(CONFIRMED)}
 
 
-def receipt(rid, v, prop, grant, attempt, executor, outcome, vr):
+def receipt(rid, v, prop, grant, attempt, outcome, vr):
+    """An execution receipt. Its executor is the grantee of the grant it cites: no receipt is made under another principal's grant."""
     return {
         "contract_id": "C07", "schema_version": SV,
         "identity_binding": {
             "receipt_id": rid, "version": v, "proposal_reference": action_ref(prop),
             "grant_reference": cref("C06", grant["identity_principals"]["grant_id"], grant["identity_principals"]["version"]),
-            "execution_attempt_id": attempt, "executor": executor, "target": dict(INV_ENT),
+            "execution_attempt_id": attempt, "executor": grant["identity_principals"]["grantee"], "target": dict(INV_ENT),
         },
         "outcome": outcome, "verification_recovery": vr,
     }
@@ -1023,7 +1026,7 @@ def build_receipts(S, proposals, grants, block_codes):
     hold, rel1, rel2 = proposals["hold"], proposals["relv1"], proposals["relv2"]
     recon_done = {"state": "complete", "owner": "role:ap-reconciliation", "policy_reference": pol("POL-RECOVERY-AP")}
     out["hold"] = receipt(
-        "RCP-HOLD-0417", "v1", hold, grants["hold"], "ATT-HOLD-0417-1", "workload:payment-executor",
+        "RCP-HOLD-0417", "v1", hold, grants["hold"], "ATT-HOLD-0417-1",
         {"state": "completed_verified",
          "observed_effects": [{"effect_id": "EFF-HOLD-0417", "description": "Payment block B-1 set on invoice INV-2026-0417.", "target": dict(INV_ENT), "action_reference": action_ref(hold),
                                "quantity": 1, "units": "holds", "observed_at": T_HOLD_OBS, "accounting_reference": rref("ACCT-CHARGE-HOLD-0417")}],
@@ -1032,7 +1035,7 @@ def build_receipts(S, proposals, grants, block_codes):
          "reconciliation": dict(recon_done), "recovery_state": "none_required", "retry_disposition": "not_applicable_completed",
          "accounting": settled("ERP-HOLD-QUERY-0417", shared="ACCT-AP-HOLDS")})
     out["rel_a"] = receipt(
-        "RCP-REL-0417-A", "v1", rel1, grants["appr_a"], "ATT-REL-0417-A-1", "workload:payment-executor",
+        "RCP-REL-0417-A", "v1", rel1, grants["appr_a"], "ATT-REL-0417-A-1",
         {"state": "not_executed_verified", "observed_effects": [], "unresolved_conditions": [],
          "timestamps": {"submitted": T_RUN_A, "observed": known("2026-11-23T16:00:20Z")},
          "reason": "Blocked at commit by the action gateway: %s. No payment instruction was sent." % ", ".join(block_codes),
@@ -1041,7 +1044,7 @@ def build_receipts(S, proposals, grants, block_codes):
          "reconciliation": dict(recon_done), "recovery_state": "none_required", "retry_disposition": "new_proposal_and_approval_required",
          "accounting": settled("ERP-PAYMENTS-QUERY-0417-A")})
     out["rel_b1"] = receipt(
-        "RCP-REL-0417-B", "v1", rel2, grants["appr_b"], "ATT-REL-0417-B-1", "workload:payment-executor",
+        "RCP-REL-0417-B", "v1", rel2, grants["appr_b"], "ATT-REL-0417-B-1",
         {"state": "unknown", "observed_effects": [],
          "unresolved_conditions": ["The bank interface timed out after submission; whether the instruction was accepted is not known."],
          "timestamps": {"submitted": T_RUN_B, "observed": {"state": "unknown", "reason": "The bank interface timed out; no response was received."}}},
@@ -1050,7 +1053,7 @@ def build_receipts(S, proposals, grants, block_codes):
          "recovery_state": "awaiting_authoritative_reconciliation", "retry_disposition": "blocked_pending_reconciliation",
          "accounting": open_accounting()})
     out["rel_b2"] = receipt(
-        "RCP-REL-0417-B", "v2", rel2, grants["appr_b"], "ATT-REL-0417-B-1", "workload:payment-executor",
+        "RCP-REL-0417-B", "v2", rel2, grants["appr_b"], "ATT-REL-0417-B-1",
         {"state": "completed_verified",
          "observed_effects": [{"effect_id": "EFF-REL-0417-B", "description": "Payment PAY-88421 of EUR 18,400.00 booked for supplier S-1042.", "target": dict(INV_ENT), "action_reference": action_ref(rel2),
                                "quantity": 18400, "units": "EUR", "observed_at": T_BANK, "accounting_reference": rref("ACCT-CHARGE-REL-0417-B")}],

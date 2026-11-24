@@ -5,7 +5,7 @@
     "grant_id": "GRT-CLASS-LOWVAL",
     "version": "v2",
     "issuer": "role:ap-controller",
-    "grantee": "workload:ap-assistant",
+    "grantee": "workload:payment-executor",
     "tenant": "tenant:calder-works",
     "issuance_time": "2026-11-23T14:30:00Z",
     "authority_basis": {

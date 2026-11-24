@@ -185,7 +185,7 @@
           },
           "evidence_kind": "deterministic_finding",
           "reference_type": "payload_reference",
-          "payload_location": "/value/result"
+          "payload_location": "/value"
         }
       ]
     },

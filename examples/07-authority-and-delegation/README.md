@@ -34,7 +34,7 @@ At the top, the packet lists the proposal, marked proposed, not executed. Below 
 
 | File | What it is |
 |---|---|
-| [`c06-GRT-CLASS-HOLD-v1.json`](c06-GRT-CLASS-HOLD-v1.json) | A **bounded grant**: the AP assistant may place reversible holds on open invoices, up to 20 a day. |
+| [`c06-GRT-CLASS-HOLD-v1.json`](c06-GRT-CLASS-HOLD-v1.json) | A **bounded grant**: the payment executor may place reversible holds on open invoices, up to 20 a day. The assistant only proposes them. |
 | [`c06-GRT-APPR-0417-A-v1.json`](c06-GRT-APPR-0417-A-v1.json) | An **exact approval** by the controller for one proposal, `ACT-REL-0417` v1, at the 16:00 payment run. |
 | [`c07-RCP-HOLD-0417-v1.json`](c07-RCP-HOLD-0417-v1.json) | The receipt of the hold, executed at 10:03 under the bounded grant. |
 | [`c02-ERP-HOLD-QUERY-0417-v1.json`](c02-ERP-HOLD-QUERY-0417-v1.json) | The authoritative ERP query that shows the invoice is held. It is what verifies the receipt. |
@@ -47,7 +47,7 @@ The proposals these grants refer to are in [05](../05-decision-packet/README.md)
 | | Bounded grant `GRT-CLASS-HOLD` | Exact approval `GRT-APPR-0417-A` |
 |---|---|---|
 | Binding | `bounded_class`: class `CLASS-AP-HOLD`, bounds "reversible payment holds on open invoices; no funds move; at most 20 per day" | `exact_proposal`: bound to `ACT-REL-0417` v1 and nothing else |
-| Issuer → grantee | role `ap-controller` → workload `ap-assistant` | person `ap-controller-01` → workload `payment-executor` |
+| Issuer → grantee | role `ap-controller` → workload `payment-executor` | person `ap-controller-01` → workload `payment-executor` |
 | Actions · targets | `hold_payment` · any invoice (`*`) | `release_payment` · invoice `INV-2026-0417` |
 | Parameters | `reason_code`, `block_code` | `amount_eur` (exactly 18,400), `currency`, `payment_run` |
 | Limits | 1 hold per action, 20 per day | EUR 18,400 per action and in total: **one execution** |
@@ -58,9 +58,11 @@ The proposals these grants refer to are in [05](../05-decision-packet/README.md)
 
 A class is for actions that are low-risk, reversible and bounded. An exact approval is for anything that is not. Neither is an instruction to act: each is a ceiling the gateway enforces at the moment of execution.
 
+**The assistant proposes, and the executor receives the authority.** Both shapes name the same grantee, the payment executor. The assistant workload (`ap-assistant`) writes the packet and the proposals and holds no grant. The receipt of the hold was made by the executor, the grantee of the grant it cites, and a receipt that names anyone else cannot validate under that grant. The checks are `ROLE006` (the receipt's executor is the grant's grantee), `ROLE007` (the grantee and the executor hold the registered executor role) and `ROLE008` (the assistant workload is neither).
+
 ## What happened at 10:03
 
-The assistant proposed a hold ([05](../05-decision-packet/README.md)). No person approved it, because the bounded grant already covers it. At commit the gateway re-checked the grant, the evidence the proposal cites, the precondition (the invoice is still open), the parameters, the target and the allowance, and allowed it. It judged each of them as of 10:03:00: the match result it relies on had been admitted at 09:36, and the revocation check was made at 07:45. The receipt records the effect, the authoritative verification (the ERP query), the settled accounting and `retry_disposition` `not_applicable_completed`.
+The assistant proposed a hold ([05](../05-decision-packet/README.md)). No person approved it, because the bounded grant already covers it. At commit the executor (the grantee of that grant, acting as the action gateway) re-checked the grant, the evidence the proposal cites, the precondition (the invoice is still open), the parameters, the target and the allowance, and allowed it. It judged each of them as of 10:03:00: the match result it relies on had been admitted at 09:36, and the revocation check was made at 07:45. The receipt records the effect, the authoritative verification (the ERP query), the settled accounting and `retry_disposition` `not_applicable_completed`.
 
 ## The commit check, eight times
 

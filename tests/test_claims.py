@@ -1,0 +1,225 @@
+"""A supported claim is held to every reference that supports it.
+
+A claim that cites a payload must not state a status (pass or fail) or a figure that the payload does not hold. A claim that cites
+claims must say what they say together, in the order cited. A claim that mixes both quotes each cited claim and stays within the
+statuses and figures of what it cites. These are structured values compared exactly: they are necessary conditions, and none of
+them reads prose for meaning. A claim that passes can still say what its sources do not support.
+"""
+import copy
+import unittest
+
+import support  # noqa: F401  (puts scripts/ on the path)
+
+from eahs import semantics
+from eahs.cases import mutate_model
+from eahs.semantics import _numbers_in, _statuses_in
+
+PACKET = "C04 PKT-0417 v1"
+PAYLOAD_CLAIM = 3          # PC-4, the three-way match, rests on a payload_reference
+GOODS_RECEIPT_CLAIM, INVOICE_CLAIM = 2, 0
+
+
+def claim_findings(model, packet_id="PKT-0417", version="v1"):
+    packet = model.get("C04", packet_id, version)
+    return [f for f in semantics.check_packets(model) if f.file == packet.file and "/supported_claims_references/" in f.location]
+
+
+def codes(model, **kwargs):
+    return [(f.code, f.location.split("/")[2]) for f in claim_findings(model, **kwargs)]
+
+
+def with_claim(index, text=None, references=None, packet=PACKET):
+    """A copy of the example set in which one supported claim has another text, or another list of supporting references."""
+    model = support.example_model()
+    claim = copy.deepcopy(model.get("C04", *packet.split()[1:]).data["supported_claims_references"][index])
+    if text is not None:
+        claim["text"] = text
+    if references is not None:
+        claim["supporting_references"] = references
+    mutated, _ = mutate_model(model, [{"target": packet, "ops": [{"op": "replace", "path": "/supported_claims_references/%d" % index, "value": claim}]}])
+    return mutated
+
+
+def reference(index, which=0, packet="PKT-0417", version="v1"):
+    return copy.deepcopy(support.example_model().get("C04", packet, version).data["supported_claims_references"][index]["supporting_references"][which])
+
+
+def said(index, packet="PKT-0417", version="v1"):
+    return support.example_model().get("C04", packet, version).data["supported_claims_references"][index]["text"]
+
+
+class TheExampleSet(unittest.TestCase):
+    def test_every_existing_packet_still_passes(self):
+        self.assertEqual(claim_findings(support.example_model()), [])
+        self.assertEqual(claim_findings(support.example_model(), version="v2"), [])
+
+    def test_the_payload_claim_cites_the_whole_match_result_it_summarizes(self):
+        ref = reference(PAYLOAD_CLAIM)
+        self.assertEqual((ref["reference_type"], ref["payload_location"]), ("payload_reference", "/value"))
+
+
+class OnePayloadReference(unittest.TestCase):
+    """The claim says 'FAIL (invoiced 100 units, received 60 units, variance 40.0%, tolerance 2%)' and its payload says the same."""
+
+    def test_a_failed_match_restated_as_passed_is_found(self):
+        model = with_claim(PAYLOAD_CLAIM, said(PAYLOAD_CLAIM).replace("FAIL", "PASS"))
+        found = claim_findings(model)
+        self.assertEqual([f.code for f in found], ["PKT005"])
+        self.assertIn("'pass'", found[0].message)
+
+    def test_a_payload_changed_from_fail_to_pass_makes_the_unchanged_claim_wrong(self):
+        model, _ = mutate_model(support.example_model(), [{"target": "C02 M3W-0417 v1", "ops": [{"op": "replace", "path": "/content/payload/value/result", "value": "PASS"}]}])
+        self.assertEqual([f.code for f in claim_findings(model)], ["PKT005"])
+
+    def test_the_status_is_read_in_any_case_and_inflection(self):
+        for word in ("failed", "Fail", "FAILS"):
+            self.assertEqual(codes(with_claim(PAYLOAD_CLAIM, said(PAYLOAD_CLAIM).replace("FAIL", word))), [], word)
+        self.assertEqual(codes(with_claim(PAYLOAD_CLAIM, said(PAYLOAD_CLAIM).replace("FAIL", "passed"))), [("PKT005", "3")])
+
+    def test_a_changed_figure_is_found_whichever_figure_it_is(self):
+        for old, new in (("100 units, received", "110 units, received"), ("60 units", "65 units"), ("40.0%", "35.0%"), ("tolerance 2%", "tolerance 5%")):
+            with self.subTest(new):
+                model = with_claim(PAYLOAD_CLAIM, said(PAYLOAD_CLAIM).replace(old, new))
+                found = claim_findings(model)
+                self.assertEqual([f.code for f in found], ["PKT005"])
+                self.assertIn("figure", found[0].message)
+
+    def test_a_payload_whose_numbers_changed_makes_the_unchanged_claim_wrong(self):
+        for path, value in (("/content/payload/value/quantity_received", 65), ("/content/payload/value/variance_pct", 35.0), ("/content/payload/value/tolerance_pct", 5)):
+            with self.subTest(path):
+                model, _ = mutate_model(support.example_model(), [{"target": "C02 M3W-0417 v1", "ops": [{"op": "replace", "path": path, "value": value}]}])
+                self.assertEqual({f.code for f in claim_findings(model)}, {"PKT005"})
+
+    def test_a_figure_added_to_the_claim_that_the_payload_does_not_hold_is_found(self):
+        model = with_claim(PAYLOAD_CLAIM, said(PAYLOAD_CLAIM).rstrip(".") + ", and 12 invoices were affected.")
+        self.assertEqual(codes(model), [("PKT005", "3")])
+
+    def test_a_pointer_that_resolves_to_less_than_the_claim_states_is_found(self):
+        ref = reference(PAYLOAD_CLAIM)
+        ref["payload_location"] = "/value/result"
+        model = with_claim(PAYLOAD_CLAIM, references=[ref])
+        self.assertEqual({f.code for f in claim_findings(model)}, {"PKT005"})
+
+    def test_a_pointer_that_does_not_resolve_is_a_reference_finding_and_the_claim_is_not_compared_against_less(self):
+        ref = reference(PAYLOAD_CLAIM)
+        for pointer in ("/value/outcome", "/nothing", "/value/quantity_received/x", "value", "//value", "/value/", "~value"):
+            with self.subTest(pointer):
+                ref["payload_location"] = pointer
+                model = with_claim(PAYLOAD_CLAIM, references=[copy.deepcopy(ref)])
+                self.assertEqual(codes(model), [])
+                self.assertIn("REF003", {f.code for f in semantics.check_references(model)})
+
+    def test_a_record_with_no_payload_or_no_such_record_is_a_reference_finding_not_a_crash(self):
+        ref = reference(PAYLOAD_CLAIM)
+        ref["record_id"] = "INV-2026-0417"
+        model = with_claim(PAYLOAD_CLAIM, references=[ref])
+        self.assertEqual(codes(model), [])
+        self.assertIn("REF003", {f.code for f in semantics.check_references(model)})
+        ref["record_id"] = "NO-SUCH-RECORD"
+        model = with_claim(PAYLOAD_CLAIM, references=[ref])
+        self.assertEqual(codes(model), [])
+        self.assertIn("REF001", {f.code for f in semantics.check_references(model)})
+
+
+class OneClaimReference(unittest.TestCase):
+    """The behaviour that exists today is kept: the claim says exactly what the cited claim says."""
+
+    def test_a_claim_that_says_more_or_less_or_other_is_found(self):
+        for text in (said(GOODS_RECEIPT_CLAIM) + " Nothing else is outstanding.", said(GOODS_RECEIPT_CLAIM).replace("60", "61"), "Goods receipt GR-5521 records 60 units."):
+            with self.subTest(text):
+                self.assertEqual(codes(with_claim(GOODS_RECEIPT_CLAIM, text)), [("PKT001", "2")])
+
+    def test_the_finding_names_the_record_and_the_claim(self):
+        found = claim_findings(with_claim(GOODS_RECEIPT_CLAIM, "Something else."))
+        self.assertIn("GR-5521 v1 claim c1", found[0].message)
+
+
+class SeveralReferences(unittest.TestCase):
+    """A claim cannot escape the check by citing more than one reference."""
+
+    def two_claims(self, first=GOODS_RECEIPT_CLAIM, second=INVOICE_CLAIM):
+        return [reference(first), reference(second)]
+
+    def test_a_valid_claim_that_says_what_two_claims_say_together_passes(self):
+        text = said(GOODS_RECEIPT_CLAIM) + " " + said(INVOICE_CLAIM)
+        self.assertEqual(codes(with_claim(GOODS_RECEIPT_CLAIM, text, self.two_claims())), [])
+
+    def test_the_order_cited_is_the_order_said(self):
+        text = said(INVOICE_CLAIM) + " " + said(GOODS_RECEIPT_CLAIM)
+        self.assertEqual(codes(with_claim(GOODS_RECEIPT_CLAIM, text, self.two_claims())), [("PKT001", "2")])
+
+    def test_a_fabricated_claim_with_several_references_is_found(self):
+        for text in ("The goods receipt and the invoice agree on 100 units.", "Goods receipt GR-5521 records 60 units received on 2026-11-18. The invoice is correct.",
+                     said(GOODS_RECEIPT_CLAIM), said(INVOICE_CLAIM)):
+            with self.subTest(text):
+                self.assertEqual(codes(with_claim(GOODS_RECEIPT_CLAIM, text, self.two_claims())), [("PKT001", "2")])
+
+    def test_padding_a_true_claim_with_an_extra_reference_does_not_make_a_false_one_pass(self):
+        padded = self.two_claims() + [reference(1)]
+        text = said(GOODS_RECEIPT_CLAIM) + " " + said(INVOICE_CLAIM)
+        self.assertEqual(codes(with_claim(GOODS_RECEIPT_CLAIM, text, padded)), [("PKT001", "2")])
+
+    def test_every_reference_is_still_validated_not_only_the_first(self):
+        stale = self.two_claims()
+        stale[1]["scope"] = {"entity_references": [], "task": "another task"}
+        model = with_claim(GOODS_RECEIPT_CLAIM, said(GOODS_RECEIPT_CLAIM) + " " + said(INVOICE_CLAIM), stale)
+        found = [f for f in semantics.check_references(model) if f.code == "REF002" and "supporting_references/1" in f.location]
+        self.assertEqual(len(found), 1)
+
+    def test_a_claim_that_mixes_a_claim_and_a_payload_quotes_the_claim_and_stays_within_both(self):
+        refs = [reference(INVOICE_CLAIM), reference(PAYLOAD_CLAIM)]
+        valid = said(INVOICE_CLAIM) + " " + said(PAYLOAD_CLAIM)
+        self.assertEqual(codes(with_claim(INVOICE_CLAIM, valid, refs)), [])
+        self.assertEqual(codes(with_claim(INVOICE_CLAIM, valid.replace("FAIL", "PASS"), refs)), [("PKT005", "0")])
+        self.assertEqual(codes(with_claim(INVOICE_CLAIM, valid.replace("variance 40.0%", "variance 4.0%"), refs)), [("PKT005", "0")])
+        self.assertEqual(codes(with_claim(INVOICE_CLAIM, said(PAYLOAD_CLAIM) + " The invoice is payable.", refs)), [("PKT001", "0")])
+
+    def test_several_payloads_support_a_claim_together_and_not_with_figures_from_neither(self):
+        payloads = [reference(PAYLOAD_CLAIM), reference(PAYLOAD_CLAIM)]
+        self.assertEqual(codes(with_claim(PAYLOAD_CLAIM, references=payloads)), [])
+        self.assertEqual(codes(with_claim(PAYLOAD_CLAIM, said(PAYLOAD_CLAIM) + " 7 days late.", payloads)), [("PKT005", "3")])
+
+    def test_a_reference_that_does_not_resolve_is_reported_by_its_reference_check_once(self):
+        refs = self.two_claims()
+        refs[1]["claim_id"] = "c9"
+        model = with_claim(GOODS_RECEIPT_CLAIM, said(GOODS_RECEIPT_CLAIM) + " " + said(INVOICE_CLAIM), refs)
+        self.assertEqual(codes(model), [])
+        self.assertEqual([f.code for f in semantics.check_references(model) if "supported_claims_references/2" in f.location], ["REF002"])
+
+
+class WhatIsCompared(unittest.TestCase):
+    def test_figures_are_numbers_that_no_identifier_date_or_time_owns_and_each_statement_counts(self):
+        self.assertEqual(sorted(_numbers_in("Three-way match M3W 2.0 on INV-2026-0417: FAIL (invoiced 100 units, variance 40.0%, tolerance 2%).").elements()), [2.0, 2.0, 40.0, 100.0])
+        self.assertEqual(sorted(_numbers_in("Supplier FC-88231 dated 2026-11-22 at 13:45 owes EUR 18,400.00 by 2026-11-30.").elements()), [18400.0])
+        self.assertEqual(sorted(_numbers_in("PO-77231 and S-1042 and 5521").elements()), [5521.0])
+
+    def test_one_figure_cannot_cover_two_statements_of_it(self):
+        # The rule version 2.0 and the tolerance 2% are the same number: a payload that holds only one of them accounts for one.
+        model, _ = mutate_model(support.example_model(), [{"target": "C02 M3W-0417 v1", "ops": [{"op": "replace", "path": "/content/payload/value/tolerance_pct", "value": 5}]}])
+        found = claim_findings(model)
+        self.assertEqual([f.code for f in found], ["PKT005"])
+        self.assertIn("figure 2", found[0].message)
+
+    def test_statuses_are_the_pass_and_fail_family_only(self):
+        self.assertEqual(_statuses_in("PASS and failed, then passes; Failure"), {"pass", "fail"})
+        self.assertEqual(_statuses_in("The match is current and verified"), set())
+
+    def test_the_module_does_not_claim_to_understand_prose(self):
+        doc = " ".join(semantics._check_claim_support.__doc__.split())
+        self.assertIn("Nothing here reads prose for meaning", doc)
+        self.assertIn("necessary conditions", doc)
+
+
+class TheDocuments(unittest.TestCase):
+    def text(self, relative):
+        return (support.REPO / relative).read_text(encoding="utf-8")
+
+    def test_the_code_table_and_the_packet_page_describe_the_claim_rules_and_their_limit(self):
+        self.assertIn("PKT001`–`PKT005", self.text("scripts/README.md"))
+        page = self.text("examples/05-decision-packet/README.md")
+        for phrase in ("PKT005", "Every reference counts", "does not show that a claim is true"):
+            self.assertIn(phrase, page)
+
+
+if __name__ == "__main__":
+    unittest.main()

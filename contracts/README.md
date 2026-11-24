@@ -24,7 +24,7 @@ The group tables below list the local group property and emitted field names or 
 
 The JSON examples in this repository are self-contained snapshots, written for the wire and for audit. Each one can be read, validated and archived without opening another file, so a packet, a selection or a proposal repeats the metadata of the records it cites.
 
-That copying is intentional. A supporting reference names an exact record ID and version, which is what binds it. It also repeats the cited record's kind, scope and original locator, so that a stored packet still says what it relied on after the registry has moved on. The check `REF002` compares every copy with the record it cites, so an altered or stale copy is reported rather than trusted. Claim text is copied the same way and checked by `PKT001`.
+That copying is intentional. A supporting reference names an exact record ID and version, which is what binds it. It also repeats the cited record's kind, scope and original locator, so that a stored packet still says what it relied on after the registry has moved on. The check `REF002` compares every copy with the record it cites, so an altered or stale copy is reported rather than trusted. Claim text is copied the same way and checked against every reference that supports it (`PKT001`, `PKT005`).
 
 A snapshot is not what a person reads. The compact human view of a contract is the group table on its page, and for a packet it is the [reading table in example 05](../examples/05-decision-packet/README.md#reading-the-packet). Start there, and open the JSON to check a detail.
 

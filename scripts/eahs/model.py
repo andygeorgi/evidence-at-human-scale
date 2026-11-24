@@ -308,13 +308,20 @@ def payload_object_of(record: dict):
 
 
 def resolve_pointer(document, pointer: str):
-    """Resolve an RFC 6901 JSON pointer; raise KeyError when it does not resolve."""
+    """Resolve an RFC 6901 JSON pointer ('/' alone names the whole document here); raise KeyError when it does not resolve.
+
+    A pointer that does not start with '/', and a list index that is not a plain number, do not resolve.
+    """
     if pointer in ("", "/"):
         return document
+    if not isinstance(pointer, str) or not pointer.startswith("/"):
+        raise KeyError(pointer)
     current = document
-    for token in pointer.lstrip("/").split("/"):
+    for token in pointer[1:].split("/"):
         token = token.replace("~1", "/").replace("~0", "~")
         if isinstance(current, list):
+            if not re.fullmatch(r"0|[1-9][0-9]*", token):
+                raise KeyError(pointer)
             current = current[int(token)]
         elif isinstance(current, dict):
             current = current[token]

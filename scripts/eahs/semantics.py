@@ -10,6 +10,7 @@ Passing proves the example set is internally coherent. It proves nothing about a
 from __future__ import annotations
 
 import re
+from collections import Counter
 from typing import Dict, List, Optional, Set, Tuple
 
 from .disclosure import Decision, Viewer, binding_problems, differences, gap_entry, may_know, retrieval_entry
@@ -305,17 +306,117 @@ def check_packets(model: Model) -> List[Finding]:
         if d["coverage_omissions_gaps"]["coverage_reference"]["selection_reference"] != sel_ref:
             out.append(_f("PKT003", "coverage must point at the packet's own selection", pkt, "/coverage_omissions_gaps/coverage_reference"))
         for i, claim in enumerate(d["supported_claims_references"]):
-            refs = claim["supporting_references"]
-            if len(refs) == 1 and refs[0]["reference_type"] == "claim_reference":
-                rec = model.get("C02", refs[0]["record_id"], refs[0]["version"])
-                src = claims_of(rec.data).get(refs[0]["claim_id"]) if rec else None
-                if src is not None and src["text"] != claim["text"]:
-                    out.append(_f("PKT001", "a supported claim must say what its record says; the text differs from %s %s claim %s" % (rec.id, rec.version, src["claim_id"]), pkt, "/supported_claims_references/%d/text" % i, DOC_EVIDENCE))
+            out.extend(_check_claim_support(model, pkt, i, claim))
         for i, prop in enumerate(d["action_proposals"]):
             pr = model.get("C05", prop["proposal_reference"]["id"], prop["proposal_reference"]["version"])
             if pr is not None and pr.data["identity_binding"]["packet_reference"] != {"contract_id": "C04", "id": pkt.id, "version": pkt.version}:
                 out.append(_f("PKT004", "the listed proposal is bound to a different packet", pkt, "/action_proposals/%d" % i, "contracts/c05-action-proposal.md"))
         out.extend(_check_corroboration(model, pkt))
+    return out
+
+
+#: Numbers a claim states: decimals that are not part of an identifier, a date or a time (no letter, hyphen, colon or slash touches them).
+_NUMBER = re.compile(r"(?<![\w.,/:-])\d[\d,]*(?:\.\d+)?(?![\w:/-]|\.\d)")
+#: The status vocabulary a payload can state and a claim can restate. Only these words are compared: no other prose is interpreted.
+_STATUS = re.compile(r"\b(pass|fail)(?:ed|es|s|ing|ure)?\b", re.IGNORECASE)
+
+
+def _numbers_in(text: str) -> Counter:
+    """Every number a text states, once for each time it states it."""
+    found: Counter = Counter()
+    for token in _NUMBER.findall(text):
+        try:
+            found[float(token.replace(",", ""))] += 1
+        except ValueError:
+            continue
+    return found
+
+
+def _statuses_in(text: str) -> Set[str]:
+    return {m.group(1).lower() for m in _STATUS.finditer(text)}
+
+
+def _content_values(node) -> Tuple[Counter, Set[str]]:
+    """The numbers and status words that structured content states: each numeric leaf is one number, and string leaves are read for both."""
+    numbers: Counter = Counter()
+    statuses: Set[str] = set()
+    stack = [node]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, bool) or item is None:
+            continue
+        if isinstance(item, (int, float)):
+            numbers[float(item)] += 1
+        elif isinstance(item, str):
+            numbers.update(_numbers_in(item))
+            statuses |= _statuses_in(item)
+        elif isinstance(item, dict):
+            stack.extend(item.values())
+        elif isinstance(item, list):
+            stack.extend(item)
+    return numbers, statuses
+
+
+def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -> List[Finding]:
+    """Hold a supported claim to every reference that supports it, not only to a lone claim_reference.
+
+    A claim whose references are all claim references must say exactly what they say, in the order cited (for one
+    reference, exactly what that claim says). A claim that rests on a payload must not state a status (pass or fail) that
+    the payload does not hold, and every figure it states must be accounted for by a figure of what it cites, once for each
+    time it is stated (so a claim cannot reuse one figure to cover two). A claim that mixes both quotes each cited claim and
+    stays within the statuses and figures of everything it cites. These are structured values, compared exactly. They are
+    necessary conditions: a claim that passes them can still say something its sources do not support. Nothing here reads
+    prose for meaning.
+
+    A reference that does not resolve is reported by REF001-REF003, so the claim is not compared against less than it cites.
+    """
+    out: List[Finding] = []
+    loc = "/supported_claims_references/%d" % index
+    quoted: List[Tuple[str, str]] = []   # (what a referenced claim says, its name)
+    payloads: List[object] = []
+    sources: List[str] = []
+    for ref in claim["supporting_references"]:
+        rec = model.get("C02", ref["record_id"], ref["version"])
+        if rec is None:
+            return out
+        if ref["reference_type"] == "claim_reference":
+            source = claims_of(rec.data).get(ref.get("claim_id"))
+            if source is None:
+                return out
+            name = "%s %s claim %s" % (rec.id, rec.version, ref.get("claim_id"))
+            quoted.append((source["text"], name))
+            sources.append(name)
+        else:
+            payload = payload_object_of(rec.data)
+            if payload is None:
+                return out
+            try:
+                payloads.append(resolve_pointer(payload, ref.get("payload_location", "")))
+            except (KeyError, IndexError, ValueError, TypeError):
+                return out
+            sources.append("%s %s payload %s" % (rec.id, rec.version, ref.get("payload_location")))
+    text = claim["text"]
+    cited = ", ".join(sources)
+    texts = [t for t, _ in quoted]
+    if texts and not payloads:
+        if text != " ".join(texts):
+            how = "exactly what they say together, in the order cited" if len(texts) > 1 else "what its record says"
+            out.append(_f("PKT001", "a supported claim must say %s; the text differs from %s" % (how, cited), pkt, loc + "/text", DOC_EVIDENCE))
+        return out
+    for said, name in quoted:
+        if said not in text:
+            out.append(_f("PKT001", "a claim that cites %s must say what it says; the text does not contain it" % name, pkt, loc + "/text", DOC_EVIDENCE))
+    supported_numbers: Counter = Counter()
+    supported_statuses: Set[str] = set()
+    for node in payloads + texts:
+        numbers, statuses = _content_values(node)
+        supported_numbers.update(numbers)
+        supported_statuses |= statuses
+    for status in sorted(_statuses_in(text) - supported_statuses):
+        out.append(_f("PKT005", "the claim states %r, which what it cites does not hold (%s)" % (status, cited), pkt, loc + "/text", DOC_EVIDENCE))
+    unaccounted = _numbers_in(text) - supported_numbers
+    for number in sorted(unaccounted):
+        out.append(_f("PKT005", "the claim states the figure %g%s, which what it cites does not account for (%s)" % (number, " more than once" if unaccounted[number] > 1 else "", cited), pkt, loc + "/text", DOC_EVIDENCE))
     return out
 
 
@@ -558,21 +659,56 @@ def _holders(roles: dict, role: str) -> Set[str]:
     return set(entry.get("holders", entry.get("principals", [])))
 
 
+def _check_authority_binding(model: Model, roles: dict) -> List[Finding]:
+    """Authority goes to the executor, and only the executor that holds it acts on it.
+
+    ROLE006: the executor of a receipt is the grantee of the grant the receipt cites. ROLE007: a grantee, and the executor of
+    a receipt, hold the registered executor role. ROLE008: the workload that proposes (the assistant workload of a C01
+    context) is neither a grantee nor an executor: the assistant proposes, the executor receives authority.
+    """
+    out: List[Finding] = []
+    executors = _holders(roles, "executor")
+    assistants = {c.data["identity_principal"]["workload_identity"] for c in model.of("C01")}
+
+    def role_problem(who: str, grant_or_receipt: Instance, location: str, what: str) -> None:
+        if who in assistants:
+            out.append(_f("ROLE008", "%s is the assistant workload that proposes actions, and it is %s: the assistant proposes, and the executor receives authority" % (who, what), grant_or_receipt, location, DOC_ROLES))
+        elif roles and who not in executors:
+            out.append(_f("ROLE007", "%s is %s but is not a registered executor (%s)" % (who, what, ", ".join(sorted(executors)) or "none registered"), grant_or_receipt, location, DOC_ROLES))
+
+    for grant in model.of("C06"):
+        role_problem(grant.data["identity_principals"]["grantee"], grant, "/identity_principals/grantee", "the grantee of the %s %s" % (grant.data["scope_binding"]["binding"]["binding_type"].replace("_", " "), grant.id))
+    for receipt in model.of("C07"):
+        binding = receipt.data["identity_binding"]
+        executor, ref = binding["executor"], binding["grant_reference"]
+        role_problem(executor, receipt, "/identity_binding/executor", "the executor of receipt %s" % receipt.id)
+        grant = model.get("C06", ref["id"], ref["version"])
+        if grant is not None and executor != grant.data["identity_principals"]["grantee"]:
+            out.append(_f("ROLE006", "receipt %s was made by %s, but grant %s %s names %s as its grantee: no receipt validates under another principal's grant" % (
+                receipt.id, executor, grant.id, grant.version, grant.data["identity_principals"]["grantee"]), receipt, "/identity_binding/executor", DOC_ROLES))
+    return out
+
+
 def check_accountability(model: Model) -> List[Finding]:
     """Requestor, Decision Owner, approver and executor stay distinct unless the registry says one person may hold two.
 
     An exact approval needs an approver who is not the requestor, and an earlier review of its packet by a Decision Owner.
-    A packet marked reviewed names a Decision Owner as the reviewer, and the review log agrees.
+    A packet marked reviewed names a Decision Owner as the reviewer, and the review log agrees. The assistant proposes and the
+    executor receives authority: a grant names a registered executor as its grantee, never the assistant workload, and an
+    execution receipt is made by the grantee of the grant it cites and by no one else. Both grant shapes (an exact approval
+    and a bounded class) follow the same rule; the shape decides what the grant covers, not who may act under it.
     """
     out: List[Finding] = []
     acc = model.registry.accountability
     roles = acc.get("roles", {})
+    out.extend(_check_authority_binding(model, roles))
     if not roles:
         exact = [g for g in model.of("C06") if g.data["scope_binding"]["binding"]["binding_type"] == "exact_proposal"]
         reviewed = [p for p in model.of("C04") if p.data["review_version_history"]["state"] == "reviewed"]
-        if exact or reviewed:
-            out.append(_f("ROLE005", "the registry names no roles, so the requestor, the Decision Owner and the approver of %d exact approval(s) and %d reviewed packet(s) cannot be checked" % (len(exact), len(reviewed)),
-                          (exact or reviewed)[0], "/", DOC_ROLES))
+        grants, receipts = model.of("C06"), model.of("C07")
+        if exact or reviewed or grants or receipts:
+            out.append(_f("ROLE005", "the registry names no roles, so the requestor, the Decision Owner and the approver of %d exact approval(s) and %d reviewed packet(s), and the executor of %d grant(s) and %d receipt(s), cannot be checked" % (
+                len(exact), len(reviewed), len(grants), len(receipts)), (exact or reviewed or grants or receipts)[0], "/", DOC_ROLES))
         return out
     approvers, owners = _holders(roles, "approver"), _holders(roles, "decision_owner")
     together = [set(pair) for pair in acc.get("may_hold_together", [])]

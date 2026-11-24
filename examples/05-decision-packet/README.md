@@ -37,7 +37,7 @@ This table is the human view: what a reader needs from `PKT-0417` v1, group by g
 | Group | What is in `PKT-0417` v1 |
 |---|---|
 | G01 Context and as-of | Exact references to `CTX-0417` v1 and `SEL-0417` v1; as-of 2026-11-23T10:00:00Z. |
-| G02 Supported claims | Seven claims, `PC-1` to `PC-7`: the invoice, the order, the receipt (60 units), the match result (**FAIL**), the screening, the duplicate check, the policy. Each cites an exact record version and claim, or a payload location. Each says what its record says and no more. |
+| G02 Supported claims | Seven claims, `PC-1` to `PC-7`: the invoice, the order, the receipt (60 units), the match result (**FAIL**), the screening, the duplicate check, the policy. Each cites an exact record version and claim, or a payload location. A claim that cites a claim says exactly what it says. The match result rests on the whole payload, so its status and every figure in it are checked against that payload. |
 | G03 Labeled inferences | Two, `M01` and `M02`, one per model summary. Neither is a supported claim. Each states its method and its limitations, including **common origin**. |
 | G04 Recommendations | `REC-0417-1` hold the invoice; `REC-0417-1B` release at 16:00 only if the match passes, screening is current and the invoice is held. Each names the accountable review requirement. |
 | G05 Conflicts and uncertainty | `CONF-QTY` carried over from the selection, uncertainty "unquantified: the cause is not established". |
@@ -65,13 +65,16 @@ A proposal ([C05](../../contracts/c05-action-proposal.md)) names an exact action
 
 | Code | Rule | Case that breaks it |
 |---|---|---|
-| `PKT001` | A supported claim says what its record says | `CASE-PKT-01` |
+| `PKT001` | A claim that cites claims says exactly what they say, in the order cited: for one reference, exactly what that claim says | `CASE-PKT-01` |
 | `PKT002` | The packet and its selection bind one context and one as-of time | `CASE-PKT-02` |
 | `PKT003` | Coverage points at the packet's own selection | (checked on the whole set) |
 | `PKT004` | A listed proposal is bound to this packet | (checked on the whole set) |
+| `PKT005` | A claim that rests on a payload states no status (pass or fail) and no figure that the payload does not hold | `tests/test_claims.py` |
 | `KIND002` | A model inference is never a supported claim | `CASE-KIND-02` |
 | `COR001` / `COR002` | No independent corroboration without independence | `CASE-COR-02`, `CASE-COR-01` |
 | `LIFE003` / `LIFE004` | A packet that cites superseded records, or has a newer version, is not active | `CASE-LIFE-02` |
+
+**Every reference counts.** A claim cannot escape these checks by citing a payload or by citing several references. Each supporting reference is validated for its record, kind, locator, scope, claim and pointer (`REF001`–`REF003`), a claim that cites several claims must say them all together, and a claim that cites a payload is compared with it as structured values. The comparison is deliberately narrow: it checks the pass or fail status and the figures, compared exactly, and it does not read prose for meaning. It does not show that a claim is true, or that a sentence that passes means what its sources mean; it shows only that the claim does not state a status or a figure that its sources do not hold.
 
 ## What this shows, and what it does not
 

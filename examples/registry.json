@@ -284,7 +284,7 @@
         "principals": [
           "workload:payment-executor"
         ],
-        "meaning": "Performs the authorized action after the commit check."
+        "meaning": "Performs the authorized action after the commit check. Every grant names it as its grantee, and every execution receipt is made by the grantee of the grant it cites."
       }
     },
     "may_hold_together": [
