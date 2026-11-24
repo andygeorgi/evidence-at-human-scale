@@ -15,7 +15,7 @@ IN01, IN03 and IN04 were AI-assisted and, where reviewed, AI-reviewed; IN02 is t
 
 | ID | Evidence class | Limits |
 | --- | --- | --- |
-| IN01 | Author's AI-assisted assessment | One internal test; not an independent evaluation. |
+| IN01 | Author's AI-assisted assessment | One internal test within a single case-based engagement; not an independent evaluation and not statistical evidence. |
 | IN02 | The author's own decision | A decision record, not evidence of effect. |
 | IN03 | Real internal record; demonstrator infrastructure, synthetic data | Describes one deployment tool and one failure. |
 | IN04 | Real internal record; synthetic data | Technical acceptance only. |

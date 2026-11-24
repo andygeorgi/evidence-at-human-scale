@@ -17,7 +17,7 @@ A national audit follow-up found that real-time electronic monitoring needs enou
 
 In the author's test of the agents that the case brief proposed, none showed evidence-backed value alone; evidence-backed value also came from controls around the agents and from platform continuity.
 
-- **Evidence and its limits:** IN01: the author's AI-assisted agent-value test, 16 October 2026; one internal test.
+- **Evidence and its limits:** IN01: the author's AI-assisted agent-value test, 16 October 2026; one internal test within a single case-based engagement, not statistical evidence.
 - **Design decision it informed:** Start with zero specialists; admit one only for a documented task, permission or isolation need after a matched comparison (adopted in IN02).
 
 ## 3. A correction did not reach the decision built on it
@@ -61,6 +61,6 @@ The demonstrator also taught a lesson about coverage (IN04, synthetic data). Its
 
 ## What is new here
 
-Published guidance already sets the obligation. Trustworthy AI should be accountable, transparent, explainable and interpretable (RG01), and high-risk AI must enable the people who oversee it to interpret its output, stay aware of automation bias, and override or interrupt it (RG02). The engagement showed how the conditions for such oversight fail in practice, in record- and rule-based decisions and in a synthetic demonstrator: a correction that never reaches the decision, a rule applied over the wrong period, a status mistaken for an outcome, a picture that implies coverage it does not have. This paper contributes the contracts that make those failures visible to an accountable owner: typed evidence with lineage, seven missingness labels, a decision packet that separates claims from inferences, and an action boundary with current checks, shared accounting and verified receipts. Its sharpest recommendation, to begin with zero specialist agents, follows from the same engagement, where the proposed agents did not demonstrate value of their own in the author's internal, AI-assisted test (IN01).
+Published guidance already sets the obligation. Trustworthy AI should be accountable, transparent, explainable and interpretable (RG01), and high-risk AI must enable the people who oversee it to interpret its output, stay aware of automation bias, and override or interrupt it (RG02). The engagement showed how the conditions for such oversight fail in practice, in record- and rule-based decisions and in a synthetic demonstrator: a correction that never reaches the decision, a rule applied over the wrong period, a status mistaken for an outcome, a picture that implies coverage it does not have. This paper contributes the contracts that make those failures visible to an accountable owner: typed evidence with lineage, seven missingness labels, a decision packet that separates claims from inferences, and an action boundary with current checks, shared accounting and verified receipts. Its sharpest recommendation, to begin with zero specialist agents, follows from the same engagement: the author's internal, AI-assisted test (IN01) found no evidence-backed value in the proposed agents alone. That is one observation within a single case-based engagement, not statistical evidence.
 
 [← 1. Human attention](01-human-attention.md) · [Paper contents](README.md) · [Next: a governed context →](03-governed-context.md)

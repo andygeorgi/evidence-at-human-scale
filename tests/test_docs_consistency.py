@@ -238,6 +238,45 @@ class OneVocabulary(unittest.TestCase):
         self.assertNotIn('"issuer"', context)
 
 
+class EngagementWithoutScale(unittest.TestCase):
+    """The engagement is described by what it showed and by its limits, not by its scale.
+
+    The two pages that describe it state no count of agents, vessels, records or values, and no ratio. The test cannot know which
+    numbers would be private, so it allows only dates, identifiers and the numbers of headings and observations, and no number
+    word attached to something that is counted.
+    """
+
+    PAGES = ("docs/paper/02-engagement.md", "references/engagement-records.md")
+    MONTH = r"(?:January|February|March|April|May|June|July|August|September|October|November|December)"
+    NUMBER_WORD = r"(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|dozens?|hundreds?|thousands?)"
+    COUNTED = r"(?:agents?|specialists?|vessels?|boats?|records?|values?|controls?|cases?|licen[cs]es?|landings?)"
+
+    def prose(self, page):
+        body = text(page)
+        body = re.sub(r"^\[\u2190.*$", "", body, flags=re.M)  # the navigation line
+        body = re.sub(r"\]\([^)]*\)", "]", body)  # link targets
+        body = re.sub(r"\b[A-Z]{1,3}\d{2,3}\b", "", body)  # identifiers such as EN01, IN04, C02, EV12, RG01
+        body = re.sub(r"\b\d{1,2} %s \d{4}\b|\b%s \d{4}\b" % (self.MONTH, self.MONTH), "", body)  # dates
+        body = re.sub(r"^#+ \d+\. ", "", body, flags=re.M)  # numbered headings
+        return re.sub(r"\b(?:observations? \d+(?:, \d+)*(?: and \d+)?|chapter \d+)\b", "", body)
+
+    def test_the_pages_state_no_figure_beyond_dates_and_identifiers(self):
+        for page in self.PAGES:
+            self.assertEqual(re.findall(r"\d+", self.prose(page)), [], page)
+
+    def test_the_pages_count_nothing_in_words_either(self):
+        counted = re.compile(r"\b%s\b(?:\s+[\w-]+){0,2}?\s+%s\b" % (self.NUMBER_WORD, self.COUNTED), re.I)
+        for page in self.PAGES:
+            self.assertEqual([m.group(0) for m in counted.finditer(self.prose(page))], [], page)
+
+    def test_the_check_notices_what_it_is_for(self):
+        counted = re.compile(r"\b%s\b(?:\s+[\w-]+){0,2}?\s+%s\b" % (self.NUMBER_WORD, self.COUNTED), re.I)
+        for sentence in ("The test covered three proposed agents.", "Three autonomous agents were tested.", "Only four carry case records.", "Six such values came from controls."):
+            self.assertTrue(counted.search(sentence), sentence)
+        for sentence in ("Seven observations shaped the design.", "A ten-minute status window.", "One internal test within a single case-based engagement."):
+            self.assertFalse(counted.search(sentence), sentence)
+
+
 def excerpt_differences(excerpt, actual, path="$"):
     """Where `excerpt` says something `actual` does not. A list may show only its first items, and "…" matches anything."""
     if excerpt == "…":
