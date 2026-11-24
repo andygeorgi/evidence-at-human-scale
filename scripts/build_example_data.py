@@ -1362,7 +1362,7 @@ def case_file(S):
              ("C02 M3W-0417 v1", [rep("/lifecycle", {"state": "current", "effective_time": "2026-11-23T09:36:00Z", "reason": "Initial admitted version."})])),
         case("CASE-LIFE-02", "lifecycle", "A newer packet exists but the old one still looks active", "A packet that cites superseded records, or has a newer version, must not stay active.", ["LIFE003", "LIFE004"],
              ("C04 PKT-0417 v1", [rep("/review_version_history", {"state": "reviewed", "actor": known(CONTROLLER), "time": known(T_REVIEW_1), "prior_version_references": [], "challenge_links": []})])),
-        case("CASE-LIFE-03", "lifecycle", "A pending approval survives the invalidation of its basis", "An approval cannot outlive the packet it relied on: when the basis is invalidated, the approval is revoked.", ["LIFE005"],
+        case("CASE-LIFE-03", "lifecycle", "A pending approval survives the invalidation of its basis", "An approval cannot outlive the packet it relied on: when the basis is invalidated, the approval is revoked. The rejection that cited the revocation then cites a check that no longer fails.", ["AUTH007", "LIFE005"],
              ("C06 GRT-APPR-0417-A v1", [rep("/limits_lifecycle/revocation/state", "not_revoked")])),
         case("CASE-MISS-01", "missingness", "Labeled stale although it is fresh", "A stale label must be justified by the freshness policy; a fresh record cannot be called stale.", ["MISS003"],
              ("C03 SEL-0417 v2", [{"op": "add", "path": "/conflicts_gaps/missingness/-", "value": stale_gap}]),

@@ -18,7 +18,7 @@ from typing import Dict, List, Optional, Set, Tuple
 from .disclosure import Decision, Viewer, binding_problems, differences, gap_entry, may_know, retrieval_entry
 from .findings import Finding, doc_for_contract
 from .gateway import GATE_CODES, age_hours, availability_problem, evaluate_commit, freshness_max_age, is_current_at, ledger_from_receipts, parse_time, ts
-from .model import Instance, Model, claims_of, iter_refs, payload_object_of, resolve_pointer
+from .model import Instance, Model, claims_of, iter_refs, payload_object_of, resolve_pointer, version_number as _vn
 
 DOC_EVIDENCE = "architecture/evidence-semantics.md"
 DOC_LINEAGE = "architecture/lineage-selection-disclosure.md"
@@ -253,11 +253,6 @@ def _packet_evidence_refs(d: dict) -> List[dict]:
     for i in d["labeled_inferences"]:
         refs.extend(i["supporting_references"])
     return refs
-
-
-def _vn(version: str) -> int:
-    digits = "".join(c for c in version if c.isdigit())
-    return int(digits) if digits else 0
 
 
 # --------------------------------------------------------------------------- missingness
@@ -640,7 +635,7 @@ def check_authority(model: Model) -> List[Finding]:
     for versions in by_id.values():
         versions.sort(key=lambda i: _vn(i.version))
         first = versions[0]
-        out.extend(_check_receipt(model, first))
+        out.extend(_check_receipt(model, first, versions))
         for later in versions[1:]:
             out.extend(_check_receipt_chain(model, first, later))
         for rec in versions:
@@ -730,8 +725,15 @@ def _entity_name(entity) -> str:
     return "%s %s" % (entity.get("entity_type"), entity.get("entity_id"))
 
 
-def _check_receipt(model: Model, rec: Instance) -> List[Finding]:
+def _check_receipt(model: Model, first: Instance, versions: List[Instance]) -> List[Finding]:
+    """What a receipt says about its attempt, against what the reference commit check decides for that attempt.
+
+    The attempt (its proposal, its grant and its submission time) is the same in every version of a receipt, so the gateway's decision is
+    worked out once, from the first version, and every version is held to it: a later version that calls an allowed attempt a rejection,
+    or says that a blocked one ran, is as wrong as the first would be.
+    """
     out: List[Finding] = []
+    rec = first
     d = rec.data
     pref, gref = d["identity_binding"]["proposal_reference"], d["identity_binding"]["grant_reference"]
     prop, grant = model.get("C05", pref["id"], pref["version"]), model.get("C06", gref["id"], gref["version"])
@@ -742,19 +744,36 @@ def _check_receipt(model: Model, rec: Instance) -> List[Finding]:
     named, proposed = d["identity_binding"].get("target"), _object_of(prop.data["action"]).get("exact_target")
     if named != proposed:
         out.append(_f("AUTH009", "the receipt says the attempt concerned %s, but the proposal it executes names %s: a receipt is for the target of its proposal" % (_entity_name(named), _entity_name(proposed)), rec, "/identity_binding/target", DOC_ACTION))
-    at = ts(d["outcome"]["timestamps"]["submitted"])
+    submitted = d["outcome"]["timestamps"]["submitted"]
+    at = parse_time(submitted)
+    if at is None:
+        raise ValueError("%s: receipt %s %s has a submission time (%r) that is not an RFC 3339 time with a zone and at most six fractional digits, so the attempt it describes "
+                         "cannot be compared with the grant and the evidence exactly. Correct the time" % (rec.file, rec.id, rec.version, submitted))
     decision = evaluate_commit(model, prop, grant, at, ledger_from_receipts(model, at, exclude_receipt_id=rec.id))
+    for version in versions:
+        out.extend(_check_outcome(version, decision))
+    return out
+
+
+def _check_outcome(rec: Instance, decision) -> List[Finding]:
+    """One version of a receipt: what it says happened, against what the gateway decides for the attempt."""
+    out: List[Finding] = []
+    d = rec.data
     state = d["outcome"]["state"]
+    reason = d["outcome"].get("reason", "")
+    cited = [c for c in GATE_CODE.findall(reason) if c in GATE_CODES]
     if not decision.allow:
         if state != "not_executed_verified":
             out.append(_f("AUTH004", "the gateway would have blocked this attempt (%s) but the receipt says %s" % (", ".join(sorted(set(decision.codes))), state), rec, "/outcome/state", DOC_ACTION))
         else:
-            reason = d["outcome"].get("reason", "")
             missing = sorted({c for c in decision.codes if c not in reason})
             if missing:
                 out.append(_f("AUTH005", "the receipt reason must name the blocking checks; missing %s" % ", ".join(missing), rec, "/outcome/reason", DOC_ACTION))
+            extra = sorted({c for c in cited if c not in decision.codes})
+            if extra:
+                out.append(_f("AUTH007", "the receipt cites %s, but the gateway does not fail %s for this attempt (it fails %s)" % (
+                    ", ".join(extra), "that check" if len(extra) == 1 else "those checks", ", ".join(sorted(set(decision.codes)))), rec, "/outcome/reason", DOC_ACTION))
     elif state == "not_executed_verified":
-        cited = [c for c in GATE_CODE.findall(d["outcome"].get("reason", "")) if c in GATE_CODES]
         if cited:
             out.append(_f("AUTH007", "the receipt cites %s, but the gateway passes this attempt" % ", ".join(cited), rec, "/outcome/reason", DOC_ACTION))
         if d["outcome"].get("no_effect_basis") == "rejection":
@@ -771,6 +790,9 @@ def _check_receipt_chain(model: Model, first: Instance, later: Instance) -> List
     for key in ("proposal_reference", "grant_reference", "execution_attempt_id", "target"):
         if a[key] != b[key]:
             out.append(_f("ACC004", "a later version of a receipt must describe the same attempt (%s changed)" % key, later, "/identity_binding/" + key, DOC_ACTION))
+    first_submitted, later_submitted = (_object_of(_object_of(v.data["outcome"]).get("timestamps")).get("submitted") for v in (first, later))
+    if first_submitted != later_submitted:
+        out.append(_f("ACC004", "a later version of a receipt must describe the same attempt (the submission time changed from %s to %s)" % (first_submitted, later_submitted), later, "/outcome/timestamps/submitted", DOC_ACTION))
     if first.data["outcome"]["state"] in ("unknown", "partial") and later.data["outcome"]["state"] == "completed_verified":
         acct = later.data["verification_recovery"]["accounting"]
         if acct["state"] != "reconciled" or "authoritative_reconciliation_reference" not in acct:

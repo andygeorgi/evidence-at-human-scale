@@ -96,11 +96,13 @@ class Model:
         return [i for k, i in sorted(self.instances.items()) if k[0] == contract]
 
     def versions(self, contract: str, id_: str) -> List[Instance]:
-        return sorted((i for k, i in self.instances.items() if k[0] == contract and k[1] == id_), key=lambda i: _vnum(i.version))
+        return sorted((i for k, i in self.instances.items() if k[0] == contract and k[1] == id_), key=lambda i: version_number(i.version))
 
 
-def _vnum(version: str) -> int:
-    digits = "".join(c for c in version if c.isdigit())
+def version_number(version: str) -> int:
+    """The number in a version name ("v2" is 2, "v10" is 10, a name with no digit is 0). Only the digits 0-9 count: a digit of another
+    script ("v²", "v٢") is a character, not a number, and int() would refuse it."""
+    digits = "".join(c for c in version if "0" <= c <= "9")
     return int(digits) if digits else 0
 
 

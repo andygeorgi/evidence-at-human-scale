@@ -452,8 +452,9 @@
       "case_id": "CASE-LIFE-03",
       "family": "lifecycle",
       "title": "A pending approval survives the invalidation of its basis",
-      "why": "An approval cannot outlive the packet it relied on: when the basis is invalidated, the approval is revoked.",
+      "why": "An approval cannot outlive the packet it relied on: when the basis is invalidated, the approval is revoked. The rejection that cited the revocation then cites a check that no longer fails.",
       "expect": [
+        "AUTH007",
         "LIFE005"
       ],
       "mutations": [

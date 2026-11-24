@@ -14,9 +14,11 @@ import math
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+from fractions import Fraction
 from typing import Dict, Iterable, List, Optional
 
-from .model import Instance, Model, claims_of, payload_of, resolve_pointer
+from .model import Instance, Model, claims_of, payload_of, resolve_pointer, version_number as _vn
 
 # The same shape as the schema's date-time pattern: a zone designator is required. ASCII digits only: \d would also match the digits of other scripts.
 _RFC3339 = re.compile(r"(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:([Zz])|([+-])(\d{2}):(\d{2}))", re.ASCII)
@@ -101,7 +103,7 @@ class LedgerEntry:
     grant_id: str
     accounting_scope: str
     units: str
-    quantity: float
+    quantity: float     # a number; infinity stands for an attempt whose amount could not be read, which counts without limit
     state: str          # consumed | reserved
     start: Optional[datetime]   # None: the attempt's time is unknown, so the entry counts in every window (the conservative reading)
     receipt: str = ""
@@ -112,18 +114,55 @@ def action_quantity(proposal: dict, units: str) -> Optional[float]:
 
     None when the proposal states no readable amount in EUR: a limit in EUR cannot then be checked, and the check blocks. An amount
     is readable when it is one number that is finite and not negative. A negative amount would give capacity back to the limit
-    instead of using it, a parameter that is stated twice leaves it unclear which amount counts, and neither is guessed.
+    instead of using it, a parameter that is stated twice leaves it unclear which amount counts, and neither is guessed. The amount
+    is returned as it is written (an integer stays an integer), so that nothing is rounded before it is compared.
     """
     if units == "EUR":
         amounts = [p.get("value") for p in _list(_object(proposal.get("action")).get("typed_parameters")) if isinstance(p, dict) and p.get("name") == "amount_eur"]
         if len(amounts) != 1 or isinstance(amounts[0], bool) or not isinstance(amounts[0], (int, float)):
             return None
-        try:
-            amount = float(amounts[0])
-        except OverflowError:
+        amount = amounts[0]
+        if isinstance(amount, float) and not math.isfinite(amount):
             return None
-        return amount if math.isfinite(amount) and amount >= 0 else None
+        return amount if amount >= 0 else None
     return 1.0
+
+
+def _exact(value) -> Fraction:
+    """A finite number as it was written: an integer exactly, any other number by its shortest decimal text, so that 0.1 and 0.2 add up to 0.3
+    and a number beyond the 53 bits of a double is not rounded."""
+    return Fraction(value) if isinstance(value, int) else Fraction(Decimal(repr(value)))
+
+
+def _plain(value: Optional[Fraction]):
+    """A sum as the plain number a reader expects: an integer when it is one, infinity when it was without limit (None)."""
+    if value is None:
+        return float("inf")
+    if value.denominator == 1:
+        return int(value)
+    try:
+        return float(value)
+    except OverflowError:
+        return int(value)
+
+
+def _used(entries: List["LedgerEntry"]) -> Optional[Fraction]:
+    """What the entries hold together, exactly. None when one of them is without limit (an attempt whose amount could not be read)."""
+    total = Fraction(0)
+    for entry in entries:
+        if isinstance(entry.quantity, float) and math.isinf(entry.quantity):
+            return None
+        total += _exact(entry.quantity)
+    return total
+
+
+def _over(used: Optional[Fraction], qty, cap) -> bool:
+    """Whether what is already used (None: without limit) plus this amount is more than the cap, compared exactly."""
+    if isinstance(cap, float) and math.isinf(cap):
+        return cap < 0
+    if used is None:
+        return True
+    return used + _exact(qty) > _exact(cap)
 
 
 def _object(value) -> dict:
@@ -194,14 +233,18 @@ def usable_at(record: Instance, at: datetime) -> bool:
 
 
 def freshness_max_age(model: Model, record: dict) -> Optional[float]:
-    """The longest age, in hours, that the record's freshness policy allows; None when no freshness policy applies to the record.
+    """The longest age, in hours, that the record's freshness policy allows; None when the policy that applies to the record is not one of freshness.
 
-    Raises ValueError when a freshness policy applies but states no limit that can be read. That is not the same as no limit:
-    a record cannot be shown to be fresh under a policy whose limit cannot be read.
+    Raises ValueError when the record cannot be shown to be fresh: it names no freshness policy (C02 requires one), the policy it
+    names is not in the registry, or the policy states no limit that can be read. None of that is the same as no limit.
     """
     ref = _object(_object(_object(record.get("times")).get("freshness")).get("policy_reference"))
     policy_id, version = ref.get("policy_id"), ref.get("version")
-    policy = _object(_object(model.registry.policies.get(policy_id)).get(version)) if isinstance(policy_id, str) and isinstance(version, str) else {}
+    if not isinstance(policy_id, str) or not isinstance(version, str):
+        raise ValueError("the record names no freshness policy (a policy id and a version)")
+    policy = _object(_object(model.registry.policies.get(policy_id)).get(version))
+    if not policy:
+        raise ValueError("the freshness policy %s %s that the record names is not in the registry" % (policy_id, version))
     if policy.get("type") != "freshness":
         return None
     value = policy.get("max_age_hours")
@@ -244,11 +287,19 @@ def evidence_refs(proposal: dict, grant: dict) -> List[dict]:
 
 
 def _target_state(model: Model, entity: str, at: datetime) -> dict:
-    """The latest recorded state of the target at or before `at`. An entry with no usable time is not an observation."""
+    """The latest recorded state of the target at or before `at`.
+
+    An entry for the target whose time cannot be read cannot be placed before the attempt or after it: it could be the state that
+    holds at the attempt, so the state at the attempt cannot be established, and nothing is returned. The older state is not used instead.
+    """
     latest, latest_at = {}, None
     for item in map(_object, model.registry.target_states):
+        if item.get("entity_id") != entity:
+            continue
         seen = parse_time(item.get("at"))
-        if item.get("entity_id") == entity and seen is not None and seen <= at and (latest_at is None or seen >= latest_at):
+        if seen is None:
+            return {}
+        if seen <= at and (latest_at is None or seen >= latest_at):
             latest, latest_at = _object(item.get("state")), seen
     return latest
 
@@ -369,8 +420,13 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         reasons.append(Reason("PRECONDITION_UNDEFINED", "the proposal states no list of preconditions (the field is missing or is not a list), so it cannot be shown that nothing needed checking"))
     elif not preconditions:
         why = _object(action.get("approved_empty_preconditions_justification"))
+        approved_at = parse_time(why.get("approved_at"))
         if not all(isinstance(why.get(key), str) and why.get(key).strip() for key in ("reason", "approved_by")):
             reasons.append(Reason("PRECONDITION_UNDEFINED", "the proposal lists no preconditions and states no approved justification for that (a reason and who approved it), so it cannot be shown that nothing needed checking"))
+        elif approved_at is None:
+            reasons.append(Reason("PRECONDITION_UNDEFINED", "the justification for listing no preconditions has an approval time (approved_at) that is missing or unknown, so it cannot be shown to have been approved by the attempt"))
+        elif approved_at > at:
+            reasons.append(Reason("PRECONDITION_UNDEFINED", "the justification for listing no preconditions was approved at %s, after the attempt, so it could not vouch for it" % why["approved_at"]))
     for pre in map(_object, _list(preconditions)):
         condition_id = pre.get("condition_id")
         rule = _object(model.registry.preconditions.get(condition_id)) if isinstance(condition_id, str) else {}
@@ -413,6 +469,9 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         elif qty > cap:
             reasons.append(Reason("PER_ACTION_LIMIT", "%s %s exceeds the per-action limit of %s %s" % (_fmt(qty), units, _fmt(cap), units)))
     reserve = None
+    if not isinstance(ledger, list):
+        reasons.append(Reason("CUMULATIVE_LIMIT", "the capacity already used is not given as a list of ledger entries, so it cannot be established"))
+        ledger = []
     if not isinstance(cumulative, list):
         reasons.append(Reason("GRANT_TIME_UNKNOWN", "the grant lists no cumulative limits, so no accounting window can be read and the capacity already used cannot be established"))
         cumulative = []
@@ -427,17 +486,22 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         if qty is None or not _is_quantity(cap) or not isinstance(scope_name, str):
             reasons.append(Reason("CUMULATIVE_LIMIT", "the cumulative limit in %s cannot be checked: the proposal states no readable amount in that unit (one number that is finite and not negative), or the limit states no readable unit, quantity or scope" % units))
             continue
-        # Only what the ledger held by the attempt counts: an entry that starts after it is information from the future.
-        # An entry whose start or quantity cannot be read cannot be shown to be small or early, so it blocks instead of being guessed.
+        # Only what the ledger held by the attempt counts: an entry that starts after it is information from the future, whatever else it says.
+        # An entry whose start cannot be read cannot be shown to be early, and an entry that counts and whose quantity cannot be read cannot be
+        # shown to be small, so each blocks instead of being guessed.
         applicable = [e for e in ledger if not isinstance(e, LedgerEntry) or (e.grant_id == grant.id and e.accounting_scope == scope_name and e.units == units)]
-        if not all(_entry_readable(e) for e in applicable):
-            reasons.append(Reason("CUMULATIVE_LIMIT", "a ledger entry for the %s limit has a start or a quantity that cannot be read, so the capacity already used in the window cannot be established" % units))
+        if not all(isinstance(e, LedgerEntry) and _start_readable(e) for e in applicable):
+            reasons.append(Reason("CUMULATIVE_LIMIT", "a ledger entry for the %s limit has a start that cannot be read, so it cannot be shown to come before the attempt and the capacity already used in the window cannot be established" % units))
             continue
-        used = sum(e.quantity for e in applicable if e.start is None or (window_start <= e.start < window_end and e.start <= at))
-        if used + qty > cap:
-            reasons.append(Reason("CUMULATIVE_LIMIT", "%s already counted plus %s would exceed %s %s in the window" % (_fmt(used), _fmt(qty), _fmt(cap), units)))
+        counting = [e for e in applicable if e.start is None or (window_start <= e.start < window_end and e.start <= at)]
+        if not all(_is_quantity(e.quantity) and e.quantity >= 0 for e in counting):
+            reasons.append(Reason("CUMULATIVE_LIMIT", "a ledger entry that counts for the %s limit has a quantity that cannot be read, so the capacity already used in the window cannot be established" % units))
+            continue
+        used = _used(counting)
+        if _over(used, qty, cap):
+            reasons.append(Reason("CUMULATIVE_LIMIT", "%s already counted plus %s would exceed %s %s in the window" % (_fmt(_plain(used)), _fmt(qty), _fmt(cap), units)))
         else:
-            reserve = {"units": units, "quantity": qty, "counted_before": used}
+            reserve = {"units": units, "quantity": qty, "counted_before": _plain(used)}
     allow = not reasons
     return Decision(allow, reasons, reserve if allow else None)
 
@@ -447,12 +511,9 @@ def _is_quantity(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and value == value
 
 
-def _entry_readable(entry) -> bool:
-    """A ledger entry can be counted only if its start is a time with a zone (or is None: unknown, counted in every window) and its quantity is a number that is not negative."""
-    if not isinstance(entry, LedgerEntry):
-        return False
-    start_ok = entry.start is None or (isinstance(entry.start, datetime) and entry.start.tzinfo is not None)
-    return start_ok and _is_quantity(entry.quantity) and entry.quantity >= 0
+def _start_readable(entry: "LedgerEntry") -> bool:
+    """A ledger entry can be placed in time only if its start is a time with a zone, or is None (unknown: it counts in every window)."""
+    return entry.start is None or (isinstance(entry.start, datetime) and entry.start.tzinfo is not None)
 
 
 def _fmt(x) -> str:
@@ -493,19 +554,20 @@ def attempt_receipt_ids(model: Model, proposal: Instance, grant: Instance, at: d
     return found
 
 
-def _capacity_held(receipt: dict, first_version: bool, before: datetime) -> Optional[str]:
+def _capacity_held(receipt: dict, before: datetime) -> Optional[str]:
     """How this version of a receipt holds capacity at `before`: "consumed", "reserved", or None when it holds none.
 
-    Capacity comes back only through an authoritative verification that is already available at `before`. A rejection by the
-    gateway never reserved any. A cancellation, or a failure before any effect, keeps its reservation until the verification that
-    shows no effect, so a version that already carries a later verification still holds it until then. An outcome that is
+    Capacity comes back only through an authoritative verification that is already available at `before`, in whichever version of
+    the receipt it is stated: a verification whose time cannot be read, or lies after `before`, gives nothing back. A rejection by
+    the gateway never reserved any. A cancellation, or a failure before any effect, keeps its reservation until the verification
+    that shows no effect, so a version that already carries a later verification still holds it until then. An outcome that is
     not yet known to be complete or to have had no effect holds capacity as reserved.
     """
     outcome = _object(receipt.get("outcome"))
     state = outcome.get("state")
     verification = _object(_object(receipt.get("verification_recovery")).get("verification"))
     verified_at = parse_time(verification.get("time")) if verification.get("state") == "authoritatively_verified" else None
-    pending = first_version and (verified_at is None or verified_at > before)
+    pending = verified_at is None or verified_at > before
     if state == "not_executed_verified":
         if outcome.get("no_effect_basis") == "rejection":
             return None
@@ -546,7 +608,7 @@ def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str
         proposal = model.get("C05", proposal_ref.get("id"), proposal_ref.get("version")) if isinstance(proposal_ref.get("id"), str) and isinstance(proposal_ref.get("version"), str) else None
         if grant is None or proposal is None:
             continue
-        held = _capacity_held(d, first_version=_vn(rec.version) == first[rec.id], before=before)
+        held = _capacity_held(d, before=before)
         if held is None:
             continue
         for limit in map(_object, _list(_object(grant.data.get("limits_lifecycle")).get("cumulative_limits"))):
@@ -557,8 +619,3 @@ def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str
             qty = action_quantity(proposal.data, limit["units"])
             entries.append(LedgerEntry(grant.id, scope, limit["units"], float("inf") if qty is None else qty, held, submitted, rec.id))
     return entries
-
-
-def _vn(version: str) -> int:
-    digits = "".join(c for c in version if c.isdigit())
-    return int(digits) if digits else 0

@@ -149,6 +149,89 @@ class ARejectionIsARejectionOnlyIfTheGatewayRejected(unittest.TestCase):
         self.assertEqual([f for f in semantics.check_authority(support.example_model()) if f.code in ("AUTH004", "AUTH005", "AUTH007")], [])
 
 
+class EveryVersionOfAReceiptIsHeldToTheDecision(unittest.TestCase):
+    """The attempt is the same in every version, so the gateway's decision is too. The first version used to be the only one compared with it."""
+
+    RELEASE_B = "C07 RCP-REL-0417-B v2"        # the attempt the gateway allows: completed and verified in this version
+    LATER = [rep("/outcome/state", "not_executed_verified"), rep("/outcome/observed_effects", []), {"op": "add", "path": "/outcome/no_business_effect", "value": True},
+             {"op": "add", "path": "/outcome/reason", "value": "Not executed."}]
+
+    def codes(self, *ops):
+        return [c for c in after(self.RELEASE_B, *ops) if c.startswith(("AUTH00", "ACC00"))]
+
+    def test_a_later_version_that_calls_an_allowed_attempt_a_rejection_is_found(self):
+        self.assertEqual(self.codes(*self.LATER, {"op": "add", "path": "/outcome/no_effect_basis", "value": "rejection"}), ["AUTH007"])
+
+    def test_a_later_version_that_says_no_effect_for_another_reason_is_not(self):
+        for basis in ("cancellation", "failed_before_effect"):
+            with self.subTest(basis):
+                self.assertEqual(self.codes(*self.LATER, {"op": "add", "path": "/outcome/no_effect_basis", "value": basis}), [])
+
+    def test_a_later_version_that_cites_a_check_the_gateway_passes_is_found(self):
+        reason = {"op": "add", "path": "/outcome/reason", "value": "Rejected before submission by the action gateway: GRANT_EXPIRED."}
+        self.assertEqual(self.codes(*self.LATER[:-1], reason, {"op": "add", "path": "/outcome/no_effect_basis", "value": "cancellation"}), ["AUTH007"])
+
+    def test_a_later_version_that_says_the_action_ran_when_the_gateway_blocks_it_is_found(self):
+        """Receipt A is the attempt the gateway blocks (a revoked grant). A second version that says it was completed contradicts the decision."""
+        import copy
+        from eahs import semantics
+        from eahs.model import Instance, Model
+        base = support.example_model()
+        first = base.get("C07", "RCP-REL-0417-A", "v1")
+        data = copy.deepcopy(first.data)
+        data["outcome"]["state"] = "completed_verified"
+        data["identity_binding"]["receipt_version"] = "v2"
+        instances = dict(base.instances)
+        instances[("C07", first.id, "v2")] = Instance(first.contract, first.id, "v2", data, first.path)
+        found = [(f.code, f.location) for f in semantics.check_authority(Model(instances, base.registry, base.root)) if f.code in ("AUTH004", "AUTH005", "AUTH007")]
+        self.assertEqual(found, [("AUTH004", "/outcome/state")])
+
+    def test_a_later_version_that_moves_the_attempt_in_time_describes_another_attempt(self):
+        """The verification and the record it cites are held to the attempt of their own version, so moving that attempt moves the bar. The attempt does not move."""
+        found = after_all({"target": self.RELEASE_B, "ops": [rep("/outcome/timestamps/submitted", "2026-11-23T16:00:04Z")]},
+                          {"target": "C02 BANK-STMT-0042 v1", "ops": [rep("/times/event/value", "2026-11-23T16:00:04Z")]})
+        self.assertIn("ACC004", found)
+
+    def test_the_stored_versions_agree_with_the_first(self):
+        from eahs import semantics
+        self.assertEqual([f for f in semantics.check_authority(support.example_model()) if f.code in ("AUTH004", "AUTH005", "AUTH007", "ACC004")], [])
+
+
+class AReceiptThatCitesACheckTheGatewayPassesIsFoundAlsoWhenTheGatewayBlocksForOtherReasons(unittest.TestCase):
+    """The receipt of the queued release says why the gateway rejected it. A reason that names a check which did not fail is wrong, even though the attempt was rejected."""
+
+    def test_an_extra_code_is_found_and_the_real_ones_are_not(self):
+        from eahs import semantics
+        from eahs.cases import mutate_model
+        reason = "Rejected before submission by the action gateway: GRANT_REVOKED, EVIDENCE_NOT_CURRENT, EVIDENCE_STALE, PRECONDITION_FAILED, GRANT_EXPIRED."
+        model, _ = mutate_model(support.example_model(), [{"target": REJECTED, "ops": [rep("/outcome/reason", reason)]}])
+        found = [f for f in semantics.check_authority(model) if f.code == "AUTH007"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("GRANT_EXPIRED", found[0].message)
+        self.assertNotIn("GRANT_REVOKED", found[0].message.split("(it fails")[0])
+        self.assertEqual(found[0].location, "/outcome/reason")
+
+    def test_dropping_a_real_code_is_still_a_missing_reason_and_not_an_extra_one(self):
+        reason = "Rejected before submission by the action gateway: GRANT_REVOKED, EVIDENCE_NOT_CURRENT, EVIDENCE_STALE."
+        self.assertEqual(after(REJECTED, rep("/outcome/reason", reason)), ["AUTH005"])
+
+
+class AnAttemptTimeThatCannotBeComparedIsRejectedWithTheReceiptNamed(unittest.TestCase):
+    """A fraction finer than a microsecond cannot be compared with the grant and the evidence exactly. The stage reports an input error that names the receipt."""
+
+    def test_the_diagnostic_names_the_file_the_receipt_and_the_time(self):
+        from eahs import semantics
+        from eahs.cases import mutate_model
+        model, _ = mutate_model(support.example_model(), [{"target": REJECTED, "ops": [rep("/outcome/timestamps/submitted", "2026-11-23T16:00:00.0000001Z")]}])
+        with self.assertRaises(ValueError) as caught:
+            semantics.check_authority(model)
+        message = str(caught.exception)
+        self.assertIn("c07-RCP-REL-0417-A-v1.json", message)
+        self.assertIn("RCP-REL-0417-A v1", message)
+        self.assertIn("2026-11-23T16:00:00.0000001Z", message)
+        self.assertIn("Correct the time", message)
+
+
 class TheRecordsAVerificationCites(unittest.TestCase):
     """The labels of a verification are not enough: the record it cites must be about the target and must come from after the attempt."""
 
