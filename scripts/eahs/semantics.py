@@ -706,6 +706,11 @@ def _object_of(value) -> dict:
     return value if isinstance(value, dict) else {}
 
 
+def _entity_name(entity) -> str:
+    entity = _object_of(entity)
+    return "%s %s" % (entity.get("entity_type"), entity.get("entity_id"))
+
+
 def _check_receipt(model: Model, rec: Instance) -> List[Finding]:
     out: List[Finding] = []
     d = rec.data
@@ -713,6 +718,11 @@ def _check_receipt(model: Model, rec: Instance) -> List[Finding]:
     prop, grant = model.get("C05", pref["id"], pref["version"]), model.get("C06", gref["id"], gref["version"])
     if prop is None or grant is None:
         return out
+    # A receipt is for the target its proposal names. A verification can show only what happened to the receipt's own target, so a
+    # receipt that names another target would carry a verified outcome for something the action never concerned.
+    named, proposed = d["identity_binding"].get("target"), _object_of(prop.data["action"]).get("exact_target")
+    if named != proposed:
+        out.append(_f("AUTH009", "the receipt says the attempt concerned %s, but the proposal it executes names %s: a receipt is for the target of its proposal" % (_entity_name(named), _entity_name(proposed)), rec, "/identity_binding/target", DOC_ACTION))
     at = ts(d["outcome"]["timestamps"]["submitted"])
     decision = evaluate_commit(model, prop, grant, at, ledger_from_receipts(model, at, exclude_receipt_id=rec.id))
     state = d["outcome"]["state"]
@@ -728,6 +738,9 @@ def _check_receipt(model: Model, rec: Instance) -> List[Finding]:
         cited = [c for c in GATE_CODE.findall(d["outcome"].get("reason", "")) if c in GATE_CODES]
         if cited:
             out.append(_f("AUTH007", "the receipt cites %s, but the gateway passes this attempt" % ", ".join(cited), rec, "/outcome/reason", DOC_ACTION))
+        if d["outcome"].get("no_effect_basis") == "rejection":
+            # A rejection reserves nothing, so a receipt that calls an allowed attempt a rejection would free the capacity the attempt holds.
+            out.append(_f("AUTH007", "the receipt says the gateway rejected this attempt before submission, but the gateway passes it: a rejection that did not happen cannot free the capacity the attempt holds", rec, "/outcome/no_effect_basis", DOC_ACTION))
     if state in ("unknown", "partial") and d["verification_recovery"]["accounting"]["state"] not in ("reserved", "conservatively_accounted"):
         out.append(_f("ACC001", "an unresolved outcome must keep its reservation or conservative accounting", rec, "/verification_recovery/accounting/state", DOC_ACTION))
     return out

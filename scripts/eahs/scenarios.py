@@ -11,7 +11,7 @@ from dataclasses import replace
 from typing import List
 
 from .findings import Finding, InputProblem, describe_error, rel
-from .gateway import Decision, evaluate_commit, ledger_from_receipts, ts
+from .gateway import Decision, attempt_receipt_ids, evaluate_commit, ledger_from_receipts, ts
 from .model import Instance, Model
 from .patch import apply_ops
 
@@ -50,7 +50,7 @@ def evaluate_entry(model: Model, entry: dict) -> Decision:
     grant = Instance(grant.contract, grant.id, grant.version, apply_overrides(grant.data, overrides, "grant"), grant.path)
     model = with_evidence_overrides(model, overrides)
     when = ts(entry["at"])
-    ledger = ledger_from_receipts(model, when) if entry.get("ledger", "from_receipts") == "from_receipts" else []
+    ledger = ledger_from_receipts(model, when, exclude_receipt_ids=attempt_receipt_ids(model, proposal, grant, when)) if entry.get("ledger", "from_receipts") == "from_receipts" else []
     return evaluate_commit(model, proposal, grant, when, ledger)
 
 

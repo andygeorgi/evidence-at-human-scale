@@ -126,8 +126,9 @@ class GatewayStory(unittest.TestCase):
 
     def test_a_ledger_built_from_receipts_ignores_attempts_not_yet_known(self):
         model = support.example_model()
-        early = ledger_from_receipts(model, ts("2026-11-23T16:00:05Z"))
-        self.assertEqual([e.grant_id for e in early], ["GRT-CLASS-HOLD"])
+        self.assertEqual([e.grant_id for e in ledger_from_receipts(model, ts("2026-11-23T16:00:04Z"))], ["GRT-CLASS-HOLD"], "the release was submitted at 16:00:05")
+        self.assertEqual([e.grant_id for e in ledger_from_receipts(model, ts("2026-11-23T16:00:05Z"))], ["GRT-CLASS-HOLD", "GRT-APPR-0417-B"], "a reservation at the attempt time was available")
+        self.assertEqual([e.grant_id for e in ledger_from_receipts(model, ts("2026-11-23T16:00:05Z"), exclude_receipt_id="RCP-REL-0417-B")], ["GRT-CLASS-HOLD"], "except the attempt's own")
 
     def test_the_decision_has_reasons_a_person_can_read(self):
         model = support.example_model()

@@ -13,7 +13,7 @@ import support  # noqa: F401  (puts scripts/ on the path)
 
 from eahs import semantics
 from eahs.cases import mutate_model
-from eahs.gateway import GATE_CODES, LedgerEntry, evaluate_commit, ledger_from_receipts, parse_time, ts
+from eahs.gateway import GATE_CODES, LedgerEntry, attempt_receipt_ids, evaluate_commit, ledger_from_receipts, parse_time, ts
 
 HOLD, HOLD_GRANT = ("ACT-HOLD-0417", "v1"), ("GRT-CLASS-HOLD", "v1")
 RELEASE_B, APPROVAL_B = ("ACT-REL-0417", "v2"), ("GRT-APPR-0417-B", "v1")
@@ -29,15 +29,22 @@ def remove(target, path):
     return {"target": target, "ops": [{"op": "remove", "path": path}]}
 
 
+def add(target, path, value):
+    return {"target": target, "ops": [{"op": "add", "path": path, "value": value}]}
+
+
 def unique(codes):
     return list(dict.fromkeys(codes))
 
 
 def decide(proposal, grant, at, *mutations, ledger=False):
-    """The reference decision at `at`, with in-memory mutations applied to a copy of the example set."""
+    """The reference decision at `at`, with in-memory mutations applied to a copy of the example set.
+
+    With `ledger`, the capacity already held comes from the receipts, except the receipt of the attempt itself (a replay never charges an attempt against itself).
+    """
     model, _ = mutate_model(support.example_model(), list(mutations))
     p, g = model.get("C05", *proposal), model.get("C06", *grant)
-    entries = ledger_from_receipts(model, ts(at)) if ledger else []
+    entries = ledger_from_receipts(model, ts(at), exclude_receipt_ids=attempt_receipt_ids(model, p, g, ts(at))) if ledger else []
     return evaluate_commit(model, p, g, ts(at), entries)
 
 
@@ -269,8 +276,9 @@ class AccountingWindows(unittest.TestCase):
                 self.assertIn("out of order", decision.reasons[0].message)
 
     def test_a_receipt_whose_time_cannot_be_read_still_counts_against_the_limit(self):
-        """Capacity is never freed by a time that cannot be read: the reservation is counted in every window."""
-        decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", replace("C07 RCP-REL-0417-B v1", "/outcome/timestamps/submitted", "unreadable"), ledger=True)
+        """Capacity is never freed by a time that cannot be read: the reservation is counted in every window, and the receipt cannot be shown to be the attempt's own."""
+        unreadable = [replace("C07 RCP-REL-0417-B %s" % version, "/outcome/timestamps/submitted", "unreadable") for version in ("v1", "v2")]
+        decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", *unreadable, ledger=True)
         self.assertIn("CUMULATIVE_LIMIT", decision.codes)
         self.assertFalse(decision.allow)
 
@@ -278,17 +286,36 @@ class AccountingWindows(unittest.TestCase):
 class TheLedgerFollowsTheAttempt(unittest.TestCase):
     """An attempt holds its reservation from its submission, not from the later time at which its receipt was verified."""
 
-    def held(self, at):
-        return sorted(e.receipt for e in ledger_from_receipts(support.example_model(), ts(at)))
+    def held(self, at, **exclude):
+        return sorted(e.receipt for e in ledger_from_receipts(support.example_model(), ts(at), **exclude))
 
     def test_a_receipt_that_carries_its_verification_still_holds_its_reservation_between_submission_and_verification(self):
         # RCP-HOLD-0417 v1 was submitted at 10:03:00 and verified at 10:04:00.
         self.assertEqual(self.held("2026-11-23T10:03:30Z"), ["RCP-HOLD-0417"])
         self.assertEqual(self.held("2026-11-23T10:04:00Z"), ["RCP-HOLD-0417"])
 
-    def test_an_attempt_is_not_charged_against_itself_and_nothing_counts_before_it(self):
-        self.assertEqual(self.held("2026-11-23T10:03:00Z"), [])
-        self.assertEqual(self.held("2026-11-23T10:02:59Z"), [])
+    def test_a_reservation_made_at_exactly_the_attempt_time_counts_unless_it_is_the_attempts_own(self):
+        """Equality is availability: what was reserved at the very moment of the attempt was known then. Only the attempt's own receipt is left out, and it is named."""
+        self.assertEqual(self.held("2026-11-23T10:03:00Z"), ["RCP-HOLD-0417"])
+        self.assertEqual(self.held("2026-11-23T10:03:00Z", exclude_receipt_id="RCP-HOLD-0417"), [])
+        self.assertEqual(self.held("2026-11-23T10:03:00Z", exclude_receipt_ids=["RCP-HOLD-0417"]), [])
+        self.assertEqual(self.held("2026-11-23T10:02:59Z"), [], "nothing counts before it was submitted")
+
+    def test_naming_another_receipt_does_not_free_the_reservation_made_at_the_same_moment(self):
+        model = support.example_model()
+        release, approval = model.get("C05", *RELEASE_B), model.get("C06", *APPROVAL_B)
+        at = ts("2026-11-23T16:00:05Z")
+        other = evaluate_commit(model, release, approval, at, ledger_from_receipts(model, at, exclude_receipt_id="OTHER-ATTEMPT"))
+        self.assertEqual((other.allow, other.codes), (False, ["CUMULATIVE_LIMIT"]))
+        own = evaluate_commit(model, release, approval, at, ledger_from_receipts(model, at, exclude_receipt_ids=attempt_receipt_ids(model, release, approval, at)))
+        self.assertEqual((own.allow, own.codes), (True, []))
+
+    def test_the_attempts_own_receipt_is_the_one_that_cites_its_proposal_and_grant_and_was_submitted_at_its_time(self):
+        model = support.example_model()
+        release, approval = model.get("C05", *RELEASE_B), model.get("C06", *APPROVAL_B)
+        self.assertEqual(attempt_receipt_ids(model, release, approval, ts("2026-11-23T16:00:05Z")), ["RCP-REL-0417-B"])
+        self.assertEqual(attempt_receipt_ids(model, release, approval, ts("2026-11-23T16:00:06Z")), [], "another moment")
+        self.assertEqual(attempt_receipt_ids(model, model.get("C05", *HOLD), model.get("C06", *HOLD_GRANT), ts("2026-11-23T16:00:05Z")), [], "another proposal and grant")
 
     def test_a_later_version_is_known_from_its_verification_so_the_earlier_one_holds_in_between(self):
         model = support.example_model()
@@ -308,6 +335,47 @@ class TheLedgerFollowsTheAttempt(unittest.TestCase):
         self.assertEqual(decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", one, ledger=True).codes, [], "the attempt itself is not charged against itself")
         without = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:30Z", one, ledger=False)
         self.assertNotIn("CUMULATIVE_LIMIT", without.codes, "without the ledger nothing is counted, which is the difference this change makes")
+
+
+class ACancelledAttemptHoldsItsCapacityUntilTheVerification(unittest.TestCase):
+    """Capacity comes back only through a verification that is already available: not through a label, and not through a later time stored in the same receipt."""
+
+    RECEIPT = "C07 RCP-REL-0417-B v1"
+
+    def model_with_cancellation(self, basis):
+        """Receipt B v1 as a cancelled attempt whose no effect was verified at 16:20, with its later version removed."""
+        mutations = [replace(self.RECEIPT, "/outcome/state", "not_executed_verified"), add(self.RECEIPT, "/outcome/no_effect_basis", basis),
+                     replace(self.RECEIPT, "/verification_recovery/verification", {"state": "authoritatively_verified", "time": "2026-11-23T16:20:00Z"})]
+        model, _ = mutate_model(support.example_model(), mutations)
+        return dataclasses.replace(model, instances={key: inst for key, inst in model.instances.items() if key != ("C07", "RCP-REL-0417-B", "v2")})
+
+    def states(self, model, at):
+        return [(e.receipt, e.state) for e in ledger_from_receipts(model, ts(at)) if e.receipt == "RCP-REL-0417-B"]
+
+    def test_a_cancellation_holds_its_reservation_until_the_verification_that_shows_no_effect(self):
+        model = self.model_with_cancellation("cancellation")
+        self.assertEqual(self.states(model, "2026-11-23T16:10:00Z"), [("RCP-REL-0417-B", "reserved")])
+        self.assertEqual(self.states(model, "2026-11-23T16:19:59Z"), [("RCP-REL-0417-B", "reserved")])
+        self.assertEqual(self.states(model, "2026-11-23T16:20:00Z"), [], "a verification made at exactly the time is available")
+
+    def test_so_does_a_failure_before_any_effect(self):
+        self.assertEqual(self.states(self.model_with_cancellation("failed_before_effect"), "2026-11-23T16:10:00Z"), [("RCP-REL-0417-B", "reserved")])
+
+    def test_a_rejection_by_the_gateway_never_reserved_anything(self):
+        self.assertEqual(self.states(self.model_with_cancellation("rejection"), "2026-11-23T16:10:00Z"), [])
+
+    def test_a_second_attempt_cannot_use_the_capacity_before_the_verification_but_can_after_it(self):
+        model = self.model_with_cancellation("cancellation")
+        release, approval = model.get("C05", *RELEASE_B), model.get("C06", *APPROVAL_B)
+        for at, expected in (("2026-11-23T16:10:00Z", ["CUMULATIVE_LIMIT"]), ("2026-11-23T16:20:00Z", [])):
+            decision = evaluate_commit(model, release, approval, ts(at), ledger_from_receipts(model, ts(at)))
+            self.assertEqual([c for c in decision.codes if c == "CUMULATIVE_LIMIT"], expected, at)
+
+    def test_a_verification_that_cannot_be_read_does_not_free_it(self):
+        model = self.model_with_cancellation("cancellation")
+        record = model.get("C07", "RCP-REL-0417-B", "v1")
+        record.data["verification_recovery"]["verification"]["time"] = "unreadable"
+        self.assertEqual(self.states(model, "2026-11-23T23:00:00Z"), [("RCP-REL-0417-B", "reserved")])
 
 
 class TheAttemptTime(unittest.TestCase):
@@ -362,7 +430,7 @@ class AGrantOrAProposalMissingAPart(unittest.TestCase):
 
     def test_a_grant_without_its_scope_covers_nothing(self):
         codes = self.blocked(remove(self.GRANT, "/scope_binding"))
-        self.assertEqual(codes, ["GRANT_NOT_BOUND", "ACTION_NOT_PERMITTED", "TARGET_NOT_PERMITTED", "PARAMETER_NOT_PERMITTED"])
+        self.assertEqual(codes, ["GRANT_NOT_BOUND", "ACTION_NOT_PERMITTED", "TARGET_NOT_PERMITTED", "PARAMETER_NOT_PERMITTED", "EVIDENCE_UNRESOLVED"])
 
     def test_a_grant_without_a_list_of_limits_cannot_show_the_limits_hold(self):
         self.assertEqual(self.blocked(remove(self.GRANT, "/limits_lifecycle/per_action_limits")), ["PER_ACTION_LIMIT"])
@@ -429,6 +497,113 @@ class AFreshnessLimitThatCannotBeRead(unittest.TestCase):
 
     def test_a_readable_limit_still_decides_by_age(self):
         self.assertEqual(self.decide_on(self.with_limit(10 ** 6)).codes, [])
+
+
+class AMissingListIsNotAnEmptyOne(unittest.TestCase):
+    """Absence is never a pass. A proposal or a grant that leaves out a list the check reads blocks, and an empty list is allowed only where the contract allows it."""
+
+    PROPOSAL = "C05 ACT-HOLD-0417 v1"
+    GRANT = "C06 GRT-CLASS-HOLD v1"
+    JUSTIFICATION = {"reason": "The domain owner approved a hold with nothing to check.", "approved_by": "role:ap-controller", "approved_at": "2026-11-23T07:45:00Z",
+                     "approval_reference": {"record_id": "empty-preconditions-approval", "version": "v1"}}
+
+    def test_a_proposal_without_its_preconditions_is_blocked_not_allowed(self):
+        """At 10:10 the invoice is already held, so the hold's own precondition fails. Deleting the list must not turn that into an ALLOW."""
+        self.assertEqual(decide(HOLD, HOLD_GRANT, "2026-11-23T10:10:00Z").codes, ["PRECONDITION_FAILED"])
+        decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:10:00Z", remove(self.PROPOSAL, "/action/preconditions"))
+        self.assertEqual((decision.allow, decision.codes), (False, ["PRECONDITION_UNDEFINED"]))
+        self.assertIn("missing or is not a list", decision.reasons[0].message)
+
+    def test_a_precondition_list_that_is_not_a_list_is_blocked_too(self):
+        for value in (None, {}, "none", 0):
+            with self.subTest(repr(value)):
+                self.assertEqual(decide(HOLD, HOLD_GRANT, "2026-11-23T10:10:00Z", replace(self.PROPOSAL, "/action/preconditions", value)).codes, ["PRECONDITION_UNDEFINED"])
+
+    def test_an_empty_list_needs_the_approved_justification_that_the_contract_requires(self):
+        empty = replace(self.PROPOSAL, "/action/preconditions", [])
+        unjustified = decide(HOLD, HOLD_GRANT, "2026-11-23T10:10:00Z", empty)
+        self.assertEqual((unjustified.allow, unjustified.codes), (False, ["PRECONDITION_UNDEFINED"]))
+        self.assertIn("approved justification", unjustified.reasons[0].message)
+        for label, value in (("no reason", dict(self.JUSTIFICATION, reason="")), ("no approver", {k: v for k, v in self.JUSTIFICATION.items() if k != "approved_by"}), ("not an object", "approved")):
+            with self.subTest(label):
+                self.assertEqual(decide(HOLD, HOLD_GRANT, "2026-11-23T10:10:00Z", empty, add(self.PROPOSAL, "/action/approved_empty_preconditions_justification", value)).codes, ["PRECONDITION_UNDEFINED"])
+        justified = decide(HOLD, HOLD_GRANT, "2026-11-23T10:10:00Z", empty, add(self.PROPOSAL, "/action/approved_empty_preconditions_justification", self.JUSTIFICATION))
+        self.assertEqual((justified.allow, justified.codes), (True, []))
+
+    def test_a_proposal_that_cites_no_evidence_cannot_rest_on_any(self):
+        for label, mutation in (("missing", remove(self.PROPOSAL, "/action/evidence_references")), ("empty", replace(self.PROPOSAL, "/action/evidence_references", [])), ("not a list", replace(self.PROPOSAL, "/action/evidence_references", None))):
+            with self.subTest(label):
+                decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", mutation)
+                self.assertFalse(decision.allow)
+                self.assertIn("EVIDENCE_UNRESOLVED", decision.codes)
+                self.assertIn("cites no evidence", decision.reasons[0].message)
+
+    def test_a_grant_that_states_no_list_of_evidence_constraints_is_blocked_but_an_empty_list_is_a_choice(self):
+        decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", remove(self.GRANT, "/scope_binding/evidence_constraints"))
+        self.assertEqual((decision.allow, decision.codes), (False, ["EVIDENCE_UNRESOLVED"]))
+        self.assertEqual(decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", replace(self.GRANT, "/scope_binding/evidence_constraints", [])).codes, [])
+
+    def test_a_proposal_that_states_no_list_of_parameters_is_blocked(self):
+        decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", remove(self.PROPOSAL, "/action/typed_parameters"))
+        self.assertEqual((decision.allow, decision.codes), (False, ["PARAMETER_NOT_PERMITTED"]))
+        self.assertEqual(decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", replace(self.PROPOSAL, "/action/typed_parameters", [])).codes, [])
+
+
+class AnEventThatHasNotHappenedGivesNoFreshness(unittest.TestCase):
+    """A negative age would read as fresher than fresh. A record whose event is dated after the attempt cannot show that it is fresh."""
+
+    SCREENING = "C02 SCR-S1042 v2"
+
+    def test_an_event_dated_after_the_attempt_blocks_and_says_so(self):
+        decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", replace(self.SCREENING, "/times/event/value", "2027-01-01T00:00:00Z"))
+        self.assertFalse(decision.allow)
+        self.assertIn("EVIDENCE_TIME_UNKNOWN", decision.codes)
+        message = next(r.message for r in decision.reasons if r.code == "EVIDENCE_TIME_UNKNOWN")
+        self.assertIn("after the attempt", message)
+        self.assertIn("SCR-S1042 v2", message)
+
+    def test_a_precondition_that_needs_fresh_evidence_is_not_met_by_such_a_record(self):
+        decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", replace(self.SCREENING, "/times/event/value", "2027-01-01T00:00:00Z"))
+        self.assertIn("PRECONDITION_FAILED", decision.codes)
+
+    def test_an_event_at_exactly_the_attempt_time_has_happened(self):
+        decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", replace(self.SCREENING, "/times/event/value", "2026-11-23T16:00:05Z"))
+        self.assertEqual((decision.allow, decision.codes), (True, []))
+
+    def test_the_age_of_an_event_that_has_not_happened_is_not_a_number(self):
+        from eahs.gateway import age_hours
+        record = support.example_model().get("C02", "SCR-S1042", "v2").data
+        self.assertIsNone(age_hours(record, ts("2026-11-22T00:00:00Z")))
+        self.assertIsNotNone(age_hours(record, ts("2026-11-23T16:00:05Z")))
+
+
+class ALedgerEntryThatCannotBeReadIsNeverGuessed(unittest.TestCase):
+    """The check is given entries by its caller. An applicable entry with a start or a quantity that cannot be read blocks instead of ending in an error or being counted as small."""
+
+    SCOPE = "tenant:calder-works/GRT-CLASS-HOLD"
+
+    def decide_with(self, *entries):
+        model = support.example_model()
+        return evaluate_commit(model, model.get("C05", *HOLD), model.get("C06", *HOLD_GRANT), ts("2026-11-23T10:03:00Z"), list(entries))
+
+    def entry(self, quantity=1.0, start=None, grant="GRT-CLASS-HOLD"):
+        return LedgerEntry(grant, self.SCOPE, "holds", quantity, "reserved", start, "RCP-OTHER")
+
+    def test_an_unreadable_start_or_quantity_blocks_with_a_reason(self):
+        naive = ts("2026-11-23T09:00:00Z").replace(tzinfo=None)
+        for label, entry in (("a start that is text", self.entry(start="yesterday")), ("a start without a zone", self.entry(start=naive)), ("a quantity that is text", self.entry(quantity="3")),
+                             ("a negative quantity", self.entry(quantity=-5)), ("not a number", self.entry(quantity=float("nan"))), ("true", self.entry(quantity=True)), ("not an entry", {"grant_id": "GRT-CLASS-HOLD"})):
+            with self.subTest(label):
+                decision = self.decide_with(entry)
+                self.assertEqual((decision.allow, decision.codes), (False, ["CUMULATIVE_LIMIT"]))
+                self.assertIn("cannot be read", decision.reasons[0].message)
+
+    def test_an_entry_for_another_grant_is_not_read_at_all(self):
+        self.assertEqual(self.decide_with(self.entry(start="yesterday", grant="GRT-OTHER")).codes, [])
+
+    def test_a_readable_entry_with_no_start_still_counts_in_every_window_and_a_small_one_leaves_room(self):
+        self.assertEqual(self.decide_with(self.entry(quantity=1)).codes, [], "1 held + 1 asked is within the 20 allowed")
+        self.assertEqual(self.decide_with(self.entry(quantity=20)).codes, ["CUMULATIVE_LIMIT"])
 
 
 class TheCheckNeverRaisesOnAMalformedGrantOrProposal(unittest.TestCase):

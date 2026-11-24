@@ -91,6 +91,64 @@ class AVerificationIsForOneAttempt(unittest.TestCase):
         self.assertEqual(codes, [])
 
 
+class AReceiptIsForItsProposalsTarget(unittest.TestCase):
+    """A verification can show only what happened to the receipt's own target, so the receipt's target must be the one its proposal names."""
+
+    ELSEWHERE = {"entity_type": "invoice", "entity_id": "INV-2026-9999"}
+
+    def test_a_receipt_whose_every_target_field_agrees_on_another_invoice_is_still_refused(self):
+        """The receipt, its verification, the reference it cites and the record that reference points to all name INV-2026-9999. Only the proposal says otherwise."""
+        mutations = [{"target": REJECTED, "ops": [rep("/identity_binding/target", self.ELSEWHERE), rep(CHECK + "/target", self.ELSEWHERE),
+                                                  rep(CHECK + "/authoritative_outcome_references/0/target", self.ELSEWHERE)]},
+                     {"target": "C02 ERP-PAYMENTS-QUERY-0417-A v1", "ops": [rep("/scope/entity_references", [self.ELSEWHERE])]}]
+        codes, findings = run_case(support.example_model(), support.schema(), {"mutations": mutations})
+        self.assertEqual(codes, ["AUTH009"])
+        self.assertEqual(len(findings), 1)
+        self.assertIn("INV-2026-9999", findings[0].message)
+        self.assertIn("INV-2026-0417", findings[0].message)
+        self.assertEqual(findings[0].location, "/identity_binding/target")
+
+    def test_the_other_receipts_name_their_proposals_target_and_any_other_is_found(self):
+        self.assertEqual(after_all(), [])
+        self.assertIn("AUTH009", after("C07 RCP-HOLD-0417 v1", rep("/identity_binding/target", self.ELSEWHERE)))
+        self.assertIn("AUTH009", after("C07 RCP-REL-0417-B v1", rep("/identity_binding/target", self.ELSEWHERE)))
+
+    def test_a_target_of_another_kind_is_another_target(self):
+        supplier = {"entity_type": "supplier", "entity_id": "S-1042"}
+        self.assertIn("AUTH009", after(REJECTED, rep("/identity_binding/target", supplier)))
+
+    def test_a_later_version_cannot_move_to_another_target_either(self):
+        """The first version is held to its proposal, and each later version to the first, so the chain cannot drift."""
+        self.assertIn("ACC004", after(RECONCILED, rep("/identity_binding/target", self.ELSEWHERE)))
+
+
+class ARejectionIsARejectionOnlyIfTheGatewayRejected(unittest.TestCase):
+    """A rejection reserves nothing. A receipt that calls an attempt the gateway allows a rejection would free the capacity that attempt holds."""
+
+    def findings(self, basis):
+        from eahs import semantics
+        from eahs.cases import mutate_model
+        mutations = [{"target": "C07 RCP-HOLD-0417 v1", "ops": [rep("/outcome/state", "not_executed_verified"),
+                                                                 {"op": "add", "path": "/outcome/no_effect_basis", "value": basis}, {"op": "add", "path": "/outcome/reason", "value": "Not executed."}]}]
+        model, _ = mutate_model(support.example_model(), mutations)
+        return [f for f in semantics.check_authority(model) if f.code == "AUTH007"]
+
+    def test_a_rejection_that_the_gateway_would_not_have_made_is_found(self):
+        found = self.findings("rejection")
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0].location, "/outcome/no_effect_basis")
+        self.assertIn("passes it", found[0].message)
+
+    def test_a_cancellation_or_a_failure_before_any_effect_does_not_claim_a_rejection(self):
+        for basis in ("cancellation", "failed_before_effect"):
+            with self.subTest(basis):
+                self.assertEqual(self.findings(basis), [])
+
+    def test_the_stored_rejection_is_one_the_gateway_would_have_made(self):
+        from eahs import semantics
+        self.assertEqual([f for f in semantics.check_authority(support.example_model()) if f.code in ("AUTH004", "AUTH005", "AUTH007")], [])
+
+
 class TheRecordsAVerificationCites(unittest.TestCase):
     """The labels of a verification are not enough: the record it cites must be about the target and must come from after the attempt."""
 

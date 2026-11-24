@@ -85,7 +85,8 @@ def binding_problems(decision: Optional[Decision], viewer: Viewer) -> List[str]:
 
     The principal, the tenant and the permitted purpose must all be named, by the decision and by the viewer's context, and each
     must be the same. A decision that names no tenant or no purpose is not a decision for every tenant or every purpose: it
-    cannot be tied to the viewer, so it permits nothing.
+    cannot be tied to the viewer, so it permits nothing. Nor does a decision that contradicts itself: reading an input implies
+    knowing that it exists, so a decision that allows the first and not the second fails closed and permits neither.
     """
     if decision is None:
         return ["there is no permission decision for this input"]
@@ -97,6 +98,8 @@ def binding_problems(decision: Optional[Decision], viewer: Viewer) -> List[str]:
             problems.append("the decision names no %s, so it cannot be bound to the requesting %s" % (label, label if label != "purpose" else "context's permitted purpose"))
         elif held != wanted:
             problems.append("the decision is for %s %s, not for the requesting %s %s" % (label, held if label != "purpose" else repr(held), label, wanted if label != "purpose" else repr(wanted)))
+    if decision.read_allowed and not decision.disclose_existence_allowed:
+        problems.append("the decision allows reading the input but not knowing that it exists, which cannot both hold: a contradictory decision permits nothing")
     return problems
 
 
@@ -232,5 +235,10 @@ def disclose(item: ExpectedInput, viewer: Viewer) -> Optional[Entry]:
 
 
 def project(items: Sequence[ExpectedInput], viewer: Viewer, coverage_statement: str) -> List[Entry]:
-    """The viewer's view of a task: an entry for each input they may know about, then the coverage statement every output carries."""
+    """The viewer's view of a task: an entry for each input they may know about, then the coverage statement every output carries.
+
+    `coverage_statement` is the one piece of free text the projection accepts, and it is the system's own: it is written for the
+    task, not taken from an input or from the viewer, it is the same whatever the restricted inputs are, and it is returned
+    verbatim. This function does not and cannot check it, so a caller that passes text it has not reviewed passes it to the viewer.
+    """
     return [entry for entry in (disclose(item, viewer) for item in items) if entry is not None] + [Entry("coverage", coverage_statement, canonical({"coverage": coverage_statement}))]

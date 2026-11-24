@@ -10,6 +10,7 @@ Three things are kept apart: snapshot validation (checking a stored output again
 enforcement (not implemented here) and viewer projection (the reference in eahs.disclosure).
 """
 import copy
+import dataclasses
 import itertools
 import json
 import sys
@@ -112,6 +113,33 @@ class Binding(unittest.TestCase):
         for raw in (None, [], "yes", {"principal": ANALYST}, {"principal": ANALYST, "disclose_existence_allowed": "true"}, {"principal": 7, "read_allowed": True}):
             with self.subTest(repr(raw)):
                 self.assertFalse(may_know(Decision.from_registry(raw), VIEWER))
+
+    def test_a_decision_that_allows_reading_but_not_knowing_that_the_input_exists_contradicts_itself_and_permits_nothing(self):
+        """Reading implies knowing. A decision that says otherwise fails closed: it reveals neither the input nor the fact that it exists."""
+        contradictory = Decision(ANALYST, TENANT, PURPOSE, True, False, PERMITTED, EXISTENCE_ONLY.permitted_view)
+        problems = binding_problems(contradictory, VIEWER)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("contradict", problems[0])
+        self.assertFalse(may_know(contradictory, VIEWER))
+        self.assertFalse(may_read(contradictory, VIEWER))
+        for item in every_state(contradictory):
+            self.assertEqual(classify(item, VIEWER), NO_ENTRY, item)
+            self.assertIsNone(disclose(item, VIEWER))
+        self.assertEqual([entry.label for entry in project([ExpectedInput("x", contradictory)], VIEWER, "Coverage is limited.")], ["coverage"])
+
+    def test_the_two_consistent_permissions_and_their_combination_still_bind(self):
+        for read, existence in ((False, True), (True, True)):
+            self.assertEqual(binding_problems(Decision(ANALYST, TENANT, PURPOSE, read, existence, PERMITTED, EXISTENCE_ONLY.permitted_view), VIEWER), [], (read, existence))
+        self.assertTrue(may_know(Decision(ANALYST, TENANT, PURPOSE, False, True, PERMITTED, {}), VIEWER))
+        self.assertFalse(may_know(Decision(ANALYST, TENANT, PURPOSE, False, False, PERMITTED, {}), VIEWER))
+
+    def test_the_stored_decision_changed_to_a_contradiction_allows_no_entry_in_the_snapshot_validation(self):
+        model = support.example_model()
+        registry = copy.deepcopy(model.registry)
+        registry.permission_decisions["AUTHZ-READ-LIMIT-0417@v1"].update(disclose_existence_allowed=False, read_allowed=True)
+        found = [f for f in semantics.check_disclosure(dataclasses.replace(model, registry=registry)) if f.code == "DISC004"]
+        self.assertTrue(found)
+        self.assertIn("contradict", found[0].message)
 
     def test_the_example_registry_binds_every_decision_to_the_requesting_principal_of_the_context(self):
         model = support.example_model()

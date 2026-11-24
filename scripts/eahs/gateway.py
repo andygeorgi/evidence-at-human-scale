@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from .model import Instance, Model, claims_of, payload_of, resolve_pointer
 
@@ -213,11 +213,19 @@ def freshness_max_age(model: Model, record: dict) -> Optional[float]:
     return limit
 
 
-def age_hours(record: dict, at: datetime) -> Optional[float]:
-    """Hours between the record's business event time and `at`, or None if the event time is not known."""
+def event_time(record: dict) -> Optional[datetime]:
+    """The business event time a record states, or None when it is not known, or not a time that can be compared exactly."""
     event = _object(_object(record.get("times")).get("event"))
-    occurred = parse_time(event.get("value")) if event.get("state") == "known" else None
-    if occurred is None:
+    return parse_time(event.get("value")) if event.get("state") == "known" else None
+
+
+def age_hours(record: dict, at: datetime) -> Optional[float]:
+    """Hours between the record's business event time and `at`, or None if the event time is not known or lies after `at`.
+
+    An event that has not happened by `at` gives no age: a negative age would read as fresher than fresh.
+    """
+    occurred = event_time(record)
+    if occurred is None or occurred > at:
         return None
     return (at - occurred).total_seconds() / 3600.0
 
@@ -312,12 +320,19 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
     if not (isinstance(target.get("entity_type"), str) and isinstance(target.get("entity_id"), str)) or not _target_permitted(target, _list(scope.get("permitted_targets"))):
         reasons.append(Reason("TARGET_NOT_PERMITTED", "target %s is outside the grant" % (target.get("entity_id"),)))
     allowed_params = {x["name"]: x.get("data_type") for x in _list(scope.get("permitted_parameters")) if isinstance(x, dict) and isinstance(x.get("name"), str)}
+    if not isinstance(action.get("typed_parameters"), list):
+        reasons.append(Reason("PARAMETER_NOT_PERMITTED", "the proposal states no list of typed parameters (the field is missing or is not a list), so it cannot be shown that every parameter is permitted"))
     for param in map(_object, _list(action.get("typed_parameters"))):
         name, data_type = param.get("name"), param.get("data_type")
         if not isinstance(name, str) or not isinstance(data_type, str) or allowed_params.get(name) != data_type:
             reasons.append(Reason("PARAMETER_NOT_PERMITTED", "parameter %s (%s) is not permitted by the grant" % (name, data_type)))
 
     # 3. The evidence had been admitted by the attempt, was still current, and was fresh.
+    # A proposal cites at least one record (C05), and a missing list is not an empty one: no evidence at all cannot support an action.
+    if not _list(action.get("evidence_references")):
+        reasons.append(Reason("EVIDENCE_UNRESOLVED", "the proposal cites no evidence (its list of evidence references is missing or empty), so nothing shows that it rests on a record"))
+    if not isinstance(scope.get("evidence_constraints"), list):
+        reasons.append(Reason("EVIDENCE_UNRESOLVED", "the grant states no list of evidence constraints (the field is missing or is not a list), so it cannot be shown which records it was given for"))
     for ref in evidence_refs(p, g):
         rec = _record(model, ref)
         if rec is None:
@@ -336,15 +351,26 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
             reasons.append(Reason("EVIDENCE_STALE", "%s %s cannot be shown to be fresh: %s" % (rec.id, rec.version, exc)))
             continue
         if limit is not None:
-            age = age_hours(rec.data, at)
-            if age is None:
+            occurred, age = event_time(rec.data), age_hours(rec.data, at)
+            if occurred is None:
                 reasons.append(Reason("EVIDENCE_TIME_UNKNOWN", "the event time of %s %s is unknown, so its age under its freshness policy cannot be established" % (rec.id, rec.version)))
+            elif age is None:
+                reasons.append(Reason("EVIDENCE_TIME_UNKNOWN", "%s %s describes an event dated %s, which is after the attempt, so its age under its freshness policy cannot be established" % (
+                    rec.id, rec.version, _object(_object(rec.data.get("times")).get("event")).get("value"))))
             elif age > limit:
                 reasons.append(Reason("EVIDENCE_STALE", "%s %s is %.1f h old; policy allows %.0f h" % (rec.id, rec.version, age, limit)))
 
     # 4. Preconditions hold, judged only on evidence that was usable at the attempt. A rule that cannot be read is not satisfied.
+    # A missing list is not an empty one. An empty list is allowed only with the approved justification that C05 requires for it.
     refs = evidence_refs(p, g)
-    for pre in map(_object, _list(action.get("preconditions"))):
+    preconditions = action.get("preconditions")
+    if not isinstance(preconditions, list):
+        reasons.append(Reason("PRECONDITION_UNDEFINED", "the proposal states no list of preconditions (the field is missing or is not a list), so it cannot be shown that nothing needed checking"))
+    elif not preconditions:
+        why = _object(action.get("approved_empty_preconditions_justification"))
+        if not all(isinstance(why.get(key), str) and why.get(key).strip() for key in ("reason", "approved_by")):
+            reasons.append(Reason("PRECONDITION_UNDEFINED", "the proposal lists no preconditions and states no approved justification for that (a reason and who approved it), so it cannot be shown that nothing needed checking"))
+    for pre in map(_object, _list(preconditions)):
         condition_id = pre.get("condition_id")
         rule = _object(model.registry.preconditions.get(condition_id)) if isinstance(condition_id, str) else {}
         if not rule:
@@ -401,11 +427,12 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
             reasons.append(Reason("CUMULATIVE_LIMIT", "the cumulative limit in %s cannot be checked: the proposal states no readable amount in that unit, or the limit states no readable unit, quantity or scope" % units))
             continue
         # Only what the ledger held by the attempt counts: an entry that starts after it is information from the future.
-        used = sum(
-            e.quantity for e in ledger
-            if e.grant_id == grant.id and e.accounting_scope == scope_name and e.units == units
-            and (e.start is None or (window_start <= e.start < window_end and e.start <= at))
-        )
+        # An entry whose start or quantity cannot be read cannot be shown to be small or early, so it blocks instead of being guessed.
+        applicable = [e for e in ledger if not isinstance(e, LedgerEntry) or (e.grant_id == grant.id and e.accounting_scope == scope_name and e.units == units)]
+        if not all(_entry_readable(e) for e in applicable):
+            reasons.append(Reason("CUMULATIVE_LIMIT", "a ledger entry for the %s limit has a start or a quantity that cannot be read, so the capacity already used in the window cannot be established" % units))
+            continue
+        used = sum(e.quantity for e in applicable if e.start is None or (window_start <= e.start < window_end and e.start <= at))
         if used + qty > cap:
             reasons.append(Reason("CUMULATIVE_LIMIT", "%s already counted plus %s would exceed %s %s in the window" % (_fmt(used), _fmt(qty), _fmt(cap), units)))
         else:
@@ -417,6 +444,14 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
 def _is_quantity(value) -> bool:
     """A quantity a limit can state: a number that is not true or false and not NaN."""
     return isinstance(value, (int, float)) and not isinstance(value, bool) and value == value
+
+
+def _entry_readable(entry) -> bool:
+    """A ledger entry can be counted only if its start is a time with a zone (or is None: unknown, counted in every window) and its quantity is a number that is not negative."""
+    if not isinstance(entry, LedgerEntry):
+        return False
+    start_ok = entry.start is None or (isinstance(entry.start, datetime) and entry.start.tzinfo is not None)
+    return start_ok and _is_quantity(entry.quantity) and entry.quantity >= 0
 
 
 def _fmt(x) -> str:
@@ -441,22 +476,61 @@ def receipt_known_at(receipt: dict, first_version: bool = False) -> Optional[dat
     return parse_time(_object(_object(receipt.get("outcome")).get("timestamps")).get("submitted"))
 
 
-def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str = "") -> List[LedgerEntry]:
+def attempt_receipt_ids(model: Model, proposal: Instance, grant: Instance, at: datetime) -> List[str]:
+    """The receipts that record this very attempt: they cite this proposal and this grant, and the attempt was submitted at `at`.
+
+    Replaying an attempt must not charge it against itself, so a replay leaves these out of the ledger and nothing else.
+    """
+    found: List[str] = []
+    for rec in model.of("C07"):
+        binding = _object(rec.data.get("identity_binding"))
+        p_ref, g_ref = _object(binding.get("proposal_reference")), _object(binding.get("grant_reference"))
+        submitted = parse_time(_object(_object(rec.data.get("outcome")).get("timestamps")).get("submitted"))
+        if (p_ref.get("id"), p_ref.get("version")) == (proposal.id, proposal.version) and (g_ref.get("id"), g_ref.get("version")) == (grant.id, grant.version) \
+                and submitted is not None and submitted == at and rec.id not in found:
+            found.append(rec.id)
+    return found
+
+
+def _capacity_held(receipt: dict, first_version: bool, before: datetime) -> Optional[str]:
+    """How this version of a receipt holds capacity at `before`: "consumed", "reserved", or None when it holds none.
+
+    Capacity comes back only through an authoritative verification that is already available at `before`. A rejection by the
+    gateway never reserved any. A cancellation, or a failure before any effect, keeps its reservation until the verification that
+    shows no effect, so a version that already carries a later verification still holds it until then. An outcome that is
+    not yet known to be complete or to have had no effect holds capacity as reserved.
+    """
+    outcome = _object(receipt.get("outcome"))
+    state = outcome.get("state")
+    verification = _object(_object(receipt.get("verification_recovery")).get("verification"))
+    verified_at = parse_time(verification.get("time")) if verification.get("state") == "authoritatively_verified" else None
+    pending = first_version and (verified_at is None or verified_at > before)
+    if state == "not_executed_verified":
+        if outcome.get("no_effect_basis") == "rejection":
+            return None
+        return "reserved" if pending else None
+    if state == "completed_verified":
+        return "reserved" if pending else "consumed"
+    return "reserved"
+
+
+def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str = "", exclude_receipt_ids: Iterable[str] = ()) -> List[LedgerEntry]:
     """Capacity already used or held at `before`: for each attempt, the latest receipt version already known then.
 
-    A receipt known at exactly `before` is not counted: replaying an attempt (a stored evaluation, or its own receipt)
-    must not charge the attempt against itself, and a commit serializes its reservation with the one it follows.
-    An attempt is known from its submission, so a receipt that already carries its verification still holds its reservation
-    between the two. A receipt whose time is unknown cannot be shown to come after `before`, so it is counted: capacity is
-    never freed by a time that cannot be read.
+    A receipt known at exactly `before` counts, like any time equal to the attempt: it was available. The only receipt that
+    does not count is the attempt's own, which a replay names (`exclude_receipt_id`, or `attempt_receipt_ids` for several): an
+    attempt must not be charged against itself. An attempt is known from its submission, so a receipt that already carries its
+    verification still holds its reservation until that verification is available (see `_capacity_held`). A receipt whose time
+    is unknown cannot be shown to come after `before`, so it is counted: capacity is never freed by a time that cannot be read.
     """
+    excluded = set(exclude_receipt_ids) | ({exclude_receipt_id} if exclude_receipt_id else set())
     first: Dict[str, int] = {}
     for rec in model.of("C07"):
         first[rec.id] = min(first.get(rec.id, _vn(rec.version)), _vn(rec.version))
     latest: Dict[str, Instance] = {}
     for rec in model.of("C07"):
         known = receipt_known_at(rec.data, first_version=_vn(rec.version) == first[rec.id])
-        if rec.id == exclude_receipt_id or (known is not None and known >= before):
+        if rec.id in excluded or (known is not None and known > before):
             continue
         cur = latest.get(rec.id)
         if cur is None or _vn(rec.version) > _vn(cur.version):
@@ -471,8 +545,8 @@ def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str
         proposal = model.get("C05", proposal_ref.get("id"), proposal_ref.get("version")) if isinstance(proposal_ref.get("id"), str) and isinstance(proposal_ref.get("version"), str) else None
         if grant is None or proposal is None:
             continue
-        state = _object(d.get("outcome")).get("state")
-        if state == "not_executed_verified":
+        held = _capacity_held(d, first_version=_vn(rec.version) == first[rec.id], before=before)
+        if held is None:
             continue
         for limit in map(_object, _list(_object(grant.data.get("limits_lifecycle")).get("cumulative_limits"))):
             scope = limit.get("accounting_scope")
@@ -480,7 +554,6 @@ def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str
                 continue
             # An attempt whose amount cannot be read cannot be shown to have used less than everything: it is counted without limit.
             qty = action_quantity(proposal.data, limit["units"])
-            held = "consumed" if state == "completed_verified" else "reserved"
             entries.append(LedgerEntry(grant.id, scope, limit["units"], float("inf") if qty is None else qty, held, submitted, rec.id))
     return entries
 
