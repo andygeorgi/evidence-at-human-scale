@@ -60,7 +60,18 @@ Every stage ends in one of five states. A stage passes only if it evaluated at l
 
 The exit code is 0 for `PASS`, 1 for `FAIL`, 2 for `INPUT ERROR` (and when the command itself cannot run, for example because `jsonschema` is missing) and 3 for `NOT ASSESSED`. When stages disagree, `INPUT ERROR` outranks `FAIL`, and `FAIL` outranks `NOT ASSESSED`. A run in which nothing passed and nothing failed, such as one that skips every stage, is `NOT ASSESSED`. A run that skips some stages and passes the rest ends with `PASS for the stages that ran`, counts the skipped stages and says that the result says nothing about them; its `--json` result has `"passed": false` and `"complete": false` (`passed` is true only when every stage ran and passed, and `status` is the state of the stages that ran) and lists the `skipped_stages`.
 
-The instance stage comes first: the other four stages read the model it checks. A stage you select pulls it in (the output says so), and the stages that depend on it are `NOT ASSESSED` when it fails, never `PASS`. A normal invalid-input condition produces a diagnostic, not a traceback; `--debug` shows the traceback if you want it. The [codes](#check-codes) are listed below.
+The instance stage comes first: the other four stages read the model it checks. A stage you select pulls it in (the output says so), and the stages that depend on it are `NOT ASSESSED` when it fails, never `PASS`. A normal invalid-input condition produces a diagnostic, not a traceback; `--debug` shows the traceback if you want it. Each diagnostic names the file, the stage, the problem and what to do about it. The [codes](#check-codes) are listed below.
+
+**How input is judged.** Every input is evaluated or explicitly rejected; none disappears.
+
+| Input | Result |
+|---|---|
+| A top-level `contract_id` that is not a string, or that names no contract (`C99`, or `c02` in the wrong case) | `INPUT ERROR` (`ID003`, `ID004`). A `contract_id` claims the file is a contract instance, so it must be valid. |
+| A file named like a contract instance (`c02-….json`) that has no `contract_id`, is not a JSON object, or names another contract than its file name | `INPUT ERROR` (`ID005`) |
+| A stage file without the list its stage evaluates: `evaluations` (gateway scenarios), `cases` (evaluation cases) or `statements` (a response) | `INPUT ERROR` (`INP002`): a missing list is never read as an empty one |
+| A gateway-scenario or case file whose list is explicitly empty | It evaluates nothing. The stage is `NOT ASSESSED` if nothing else was evaluated, and otherwise passes and names the empty file in its detail. |
+| A raw source export: a JSON file with no `contract_id`, or any file under a folder named `raw` | Read as non-contract input and not validated as an instance. The instance stage says how many there were. |
+| `--only schema` | The schema bundle is checked and the folder is never indexed, so a malformed file in it cannot disturb the run. |
 
 ### build_example_data.py
 
@@ -119,7 +130,7 @@ python scripts/check_urls.py --strict    # also fail on refused or unreachable
 | Module | Role |
 |---|---|
 | `schema.py` | Loads the bundle, validates an instance against its contract, checks the embedded examples, and checks RFC 3339 timestamps strictly. |
-| `model.py` | Loads the examples into a model keyed by contract, id and version, with the registry. |
+| `model.py` | Loads the examples into a model keyed by contract, id and version, with the registry. It checks a `contract_id` before it is used as a key, and reports a file it cannot index instead of skipping it. |
 | `semantics.py` | The checks a schema cannot make: references, lineage, lifecycle, missingness, the packet, authority and accounting, disclosure, accountability. |
 | `gateway.py` | The reference commit check: given a proposal, a grant, an attempt time and the receipts known so far, it allows or blocks and says why. It uses only what was available and valid at the attempt, and blocks when a time it needs is missing or unknown. |
 | `scenarios.py` | Replays the stored gateway evaluations, including counterfactual overrides of the proposal, the grant or one evidence record, and compares them with the recorded decisions. |
@@ -135,8 +146,8 @@ Each finding has a code. The page named in a finding explains the rule. The [eva
 
 | Code | Meaning |
 |---|---|
-| `ID000`–`ID002` | Input that cannot be indexed: a file that is not valid JSON, an identity that is duplicated, an instance without a readable identity. These make the instance stage an `INPUT ERROR`. |
-| `INP001`–`INP003` | Input that cannot support a stage: a folder or the schema bundle that cannot be read, a document the checks cannot evaluate, or a `registry.json` that the stage needs and the folder does not have. These make the stage an `INPUT ERROR`. |
+| `ID000`–`ID005` | Input that cannot be indexed: a file that is not valid JSON, an identity that is duplicated, an instance without a readable identity, a `contract_id` that is not a string or names no contract, a file named like a contract instance that is not one. These make the instance stage an `INPUT ERROR`. |
+| `INP001`–`INP003` | Input that cannot support a stage: a folder or the schema bundle that cannot be read, a document the checks cannot evaluate (including a stage file that lacks the list the stage evaluates), or a `registry.json` that the stage needs and the folder does not have. These make the stage an `INPUT ERROR`. |
 | `SCH000`–`SCH003` | The schema bundle is invalid; `contract_id` is missing or not C01–C07; an instance does not match its contract; an embedded example does not behave as labeled. |
 | `REF001`–`REF007` | A reference does not name an existing exact version, names the wrong kind, points at a missing payload, is neither a record nor a registered external record, names a retrieval that did not complete, or names an undefined policy. |
 | `LIN001`–`LIN004` | Derivation ancestry has a cycle; a relationship type is not in the vocabulary; a supersession is not mirrored by the superseded version; a record is its own parent. |

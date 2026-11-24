@@ -18,15 +18,22 @@ Every stage ends in one of five states. A stage passes only if it evaluated at l
 The exit code is 0 for PASS, 1 for FAIL, 2 for INPUT ERROR (also when the command itself cannot run) and 3 for NOT ASSESSED.
 A run in which nothing passed and nothing failed, for example an empty folder, is NOT ASSESSED, never PASS.
 
+Every input is evaluated or explicitly rejected. A top-level contract_id must be a string that names C01-C07, a file named
+like a contract instance must be one, and a stage file must hold the list its stage evaluates (a missing list is an input
+error, an explicitly empty one evaluates nothing). Raw source exports are read as non-contract input. A schema-only run
+(--only schema) does not index the folder.
+
 A pass shows that the synthetic examples are structurally valid and internally coherent, and that the deterministic
 checks behave as documented. It does not show that any real system, model or process is accountable, safe or correct.
 """
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import sys
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Set
 
@@ -43,8 +50,8 @@ from jsonschema.exceptions import SchemaError  # noqa: E402
 from eahs import REPO_ROOT, __version__  # noqa: E402
 from eahs import semantics  # noqa: E402
 from eahs.cases import check_cases  # noqa: E402
-from eahs.findings import Finding, rel  # noqa: E402
-from eahs.model import Model, load_model  # noqa: E402
+from eahs.findings import Finding, InputProblem, describe_error, rel  # noqa: E402
+from eahs.model import Model, Registry, load_model  # noqa: E402
 from eahs.response import check_response, is_canonical  # noqa: E402
 from eahs.scenarios import check_scenario_file  # noqa: E402
 from eahs.schema import check_embedded_examples, check_schema_itself, load_schema, validate_instance  # noqa: E402
@@ -60,10 +67,20 @@ PREREQUISITES = {"semantics": "instances", "gateway": "instances", "responses": 
 REGISTRY_STAGES = {"semantics", "gateway", "cases"}
 #: What a malformed document typically raises inside a check. These become an INPUT ERROR with a diagnostic, not a traceback.
 DOCUMENT_ERRORS = (KeyError, IndexError, TypeError, ValueError, AttributeError)
+#: Stage files that are neither contract instances nor raw exports: each is read by the stage named here, not by the instances stage.
+STAGE_FILES = {"gateway-scenarios.json": "gateway", "cases.json": "cases", "response-*.json": "responses"}
+
+
+def _kind(value) -> str:
+    return {list: "a list", dict: "an object", str: "a string", int: "a number", float: "a number", bool: "true or false", type(None): "null"}.get(type(value), type(value).__name__)
+
+
+def is_stage_file(name: str) -> bool:
+    return any(fnmatch.fnmatch(name.lower(), pattern) for pattern in STAGE_FILES)
 
 
 class Run:
-    """One validation run over a folder: loads the schema and the model once, then evaluates the stages."""
+    """One validation run over a folder: loads the schema once, indexes the folder only when a stage needs it, then evaluates the stages."""
 
     def __init__(self, root: Path, debug: bool = False):
         self.root = root
@@ -76,14 +93,41 @@ class Run:
         except (OSError, ValueError) as exc:
             self.schema_problem = input_finding("INP001", "cannot read the schema bundle: %s" % exc, "schemas/contracts-v1.schema.json",
                                                 "restore schemas/contracts-v1.schema.json from the repository")
-        self.model: Optional[Model] = None
-        self.load_findings: List[Finding] = []
-        if self.schema is not None:
-            self.model, self.load_findings = load_model(root)
+        self._indexed = False
+        self._model: Optional[Model] = None
+        self._load_findings: List[Finding] = []
+
+    # ------------------------------------------------------------------ the model, indexed on first use
+    def _index(self) -> None:
+        """Index the folder once. A schema-only run never gets here, so a file the model cannot index cannot disturb it."""
+        if self._indexed:
+            return
+        self._indexed = True
+        if self.schema is None:
+            return
+        try:
+            self._model, self._load_findings = load_model(self.root)
+        except DOCUMENT_ERRORS as exc:
+            if self.debug:
+                raise
+            self._model = Model({}, Registry(), self.root)
+            self._load_findings = [input_finding("INP002", "the folder cannot be indexed: %s" % describe_error(exc), rel(self.root),
+                                                 "look for a JSON file whose top-level structure is not an object; run with --debug for the traceback")]
+
+    @property
+    def model(self) -> Optional[Model]:
+        self._index()
+        return self._model
+
+    @property
+    def load_findings(self) -> List[Finding]:
+        self._index()
+        return self._load_findings
 
     # ------------------------------------------------------------------ helpers
     def result(self, stage: str, status: str, evaluated: int = 0, findings: Optional[List[Finding]] = None, detail: str = "") -> StageResult:
-        return StageResult(stage, TITLES[stage], status, evaluated, findings or [], detail)
+        """A stage's result. Every finding in it names the stage, so a diagnostic always says where it was found."""
+        return StageResult(stage, TITLES[stage], status, evaluated, [replace(f, stage=f.stage or stage) for f in findings or []], detail)
 
     def blocked(self, stage: str) -> Optional[StageResult]:
         """A stage that reads the model cannot run unless the instances stage passed."""
@@ -103,6 +147,10 @@ class Run:
         state = base.status if base is not None else "not run"
         return self.result(stage, NOT_ASSESSED, detail="blocked: the %s stage ended %s, and this stage needs structurally valid instances" % (needed, state))
 
+    def files(self, pattern: str) -> List[Path]:
+        """Every file below the folder whose name matches `pattern`, ignoring case, so that the answer does not depend on the platform."""
+        return sorted(p for p in self.root.rglob("*.json") if fnmatch.fnmatch(p.name.lower(), pattern.lower()))
+
     def read_json(self, path: Path):
         try:
             return json.loads(path.read_text(encoding="utf-8")), None
@@ -110,36 +158,63 @@ class Run:
             return None, input_finding("ID000", "cannot read JSON: %s" % exc, rel(path), "repair or remove the file")
 
     def bad_document(self, stage: str, path: Path, exc: Exception) -> Finding:
-        return input_finding("INP002", "the %s stage cannot evaluate this document: %s: %s" % (stage, type(exc).__name__, exc), rel(path),
-                             "the document lacks a structure the checks read; compare it with the example it is modelled on")
+        hint = exc.hint if isinstance(exc, InputProblem) and exc.hint else "the document lacks a structure the checks read; compare it with the example it is modelled on"
+        return input_finding("INP002", "the %s stage cannot evaluate this document: %s" % (stage, describe_error(exc)), rel(path), hint)
 
-    def collect(self, stage: str, pattern: str, evaluate) -> StageResult:
-        """Run `evaluate(path, data) -> (findings, count)` over every file that matches, and settle the state."""
-        paths = sorted(self.root.rglob(pattern))
+    def collection_problem(self, stage: str, path: Path, data, collection: str, what: str) -> Optional[Finding]:
+        """A stage file must be an object that holds the list the stage evaluates. A missing list is an input error; an empty one is not."""
+        if not isinstance(data, dict):
+            return input_finding("INP002", "the %s stage cannot evaluate this document: %s must be a JSON object with a %r list, and this file holds %s" % (stage, what, collection, _kind(data)), rel(path),
+                                 "write the document as an object with a %r list" % collection)
+        if collection not in data:
+            return input_finding("INP002", "the %s stage cannot evaluate this document: %s has no %r list, so there is nothing to evaluate in it" % (stage, what, collection), rel(path),
+                                 "add a %r list; write [] only if the file is meant to hold none" % collection)
+        if not isinstance(data[collection], list):
+            return input_finding("INP002", "the %s stage cannot evaluate this document: %r must be a list, and this file holds %s" % (stage, collection, _kind(data[collection])), rel(path),
+                                 "make %r a list of objects" % collection)
+        return None
+
+    def collect(self, stage: str, pattern: str, evaluate, summary, collection: Optional[str] = None, what: str = "the document", empty_is_evaluated: bool = False) -> StageResult:
+        """Run `evaluate(path, data) -> (findings, count)` over every file that matches, and settle the state.
+
+        With `collection`, each file must hold that list: a file without it is an input error (it would otherwise be
+        read as empty), and a file whose list is explicitly empty evaluates nothing and says so. A document that is
+        itself the item evaluated (a response) is evaluated even when its list is empty, and its checks decide.
+        """
+        paths = self.files(pattern)
         if not paths:
             return self.result(stage, NOT_ASSESSED, detail="no %s found under %s: nothing was evaluated" % (pattern, rel(self.root)))
         findings: List[Finding] = []
         problems: List[Finding] = []
+        empty: List[str] = []
         count = 0
         for path in paths:
             data, problem = self.read_json(path)
+            if problem is None and collection is not None:
+                problem = self.collection_problem(stage, path, data, collection, what)
             if problem is not None:
                 problems.append(problem)
                 continue
+            if collection is not None and not data[collection] and not empty_is_evaluated:
+                empty.append(rel(path))
             try:
                 found, n = evaluate(path, data)
-            except DOCUMENT_ERRORS as exc:
-                if self.debug:
+            except (InputProblem,) + DOCUMENT_ERRORS as exc:
+                if self.debug and not isinstance(exc, InputProblem):
                     raise
                 problems.append(self.bad_document(stage, path, exc))
                 continue
             findings += found
             count += n
+        note = "; %d file(s) hold an explicitly empty %r list and evaluated nothing: %s" % (len(empty), collection, ", ".join(empty)) if empty else ""
         if problems:
-            return self.result(stage, INPUT_ERROR, count, problems + findings, "%d file(s) could not be evaluated" % len(problems))
+            return self.result(stage, INPUT_ERROR, count, problems + findings, "%d file(s) could not be evaluated%s" % (len(problems), note))
         if count == 0:
-            return self.result(stage, NOT_ASSESSED, 0, findings, "%d %s file(s) found, but they hold nothing to evaluate" % (len(paths), pattern))
-        return self.result(stage, FAIL if findings else PASS, count, findings)
+            return self.result(stage, NOT_ASSESSED, 0, findings, "%d %s file(s) found, but they hold nothing to evaluate%s" % (len(paths), pattern, note))
+        result = self.result(stage, FAIL if findings else PASS, count, findings)
+        if result.status == PASS:
+            result.detail = summary(result) + note
+        return result
 
     # ------------------------------------------------------------------ stages
     def stage_schema(self) -> StageResult:
@@ -172,20 +247,34 @@ class Run:
         for inst in model.instances.values():
             by[inst.contract] = by.get(inst.contract, 0) + 1
         count = len(model.instances)
+        raw = [p for p in model.ignored if not is_stage_file(Path(p).name)]
         if self.load_findings:
             return self.result("instances", INPUT_ERROR, count, self.load_findings + findings, "%d file(s) could not be read or indexed" % len(self.load_findings))
         if count == 0:
             seen = "; %d JSON file(s) were read, but none has a contract_id C01-C07" % len(model.ignored) if model.ignored else ""
             return self.result("instances", NOT_ASSESSED, 0, [], "no contract instance found under %s%s: nothing was evaluated" % (rel(self.root), seen))
         detail = "%d contract instances validated (%s)" % (count, ", ".join("%s x%d" % kv for kv in sorted(by.items())))
+        if raw:
+            detail += "; %d other JSON file(s) declare no contract_id and were read as non-contract input, not validated as instances" % len(raw)
         return self.result("instances", FAIL if findings else PASS, count, findings, detail)
 
     def stage_semantics(self) -> StageResult:
         blocked = self.blocked("semantics")
         if blocked:
             return blocked
-        findings = semantics.run_all(self.model)
+        findings: List[Finding] = []
+        problems: List[Finding] = []
+        for check in semantics.ALL_CHECKS:
+            try:
+                findings += check(self.model)
+            except DOCUMENT_ERRORS as exc:
+                if self.debug:
+                    raise
+                problems.append(input_finding("INP002", "the semantics stage could not run its %r check: %s" % (check.__name__.replace("check_", ""), describe_error(exc)), "",
+                                              "a document that check reads (registry.json or an instance) is not shaped as the check expects; run with --debug for the traceback"))
         count = len(self.model.instances)
+        if problems:
+            return self.result("semantics", INPUT_ERROR, count, problems + findings, "%d check(s) could not run" % len(problems))
         return self.result("semantics", FAIL if findings else PASS, count, findings, "%d check families ran over %d instances" % (len(semantics.ALL_CHECKS), count))
 
     def stage_gateway(self) -> StageResult:
@@ -194,13 +283,9 @@ class Run:
             return blocked
 
         def evaluate(path, data):
-            if not isinstance(data, dict) or not isinstance(data.get("evaluations", []), list):
-                raise TypeError("a gateway scenario file is an object with an 'evaluations' list")
-            return check_scenario_file(self.model, data, path), len(data.get("evaluations", []))
-        result = self.collect("gateway", "gateway-scenarios.json", evaluate)
-        if result.status == PASS:
-            result.detail = "%d stored what-if evaluations reproduce their recorded decisions" % result.evaluated
-        return result
+            return check_scenario_file(self.model, data, path), len(data["evaluations"])
+        return self.collect("gateway", "gateway-scenarios.json", evaluate, lambda r: "%d stored what-if evaluations reproduce their recorded decisions" % r.evaluated,
+                            collection="evaluations", what="a gateway scenario file")
 
     def stage_responses(self) -> StageResult:
         blocked = self.blocked("responses")
@@ -209,15 +294,12 @@ class Run:
         kinds = {"canonical": 0, "free-form": 0}
 
         def evaluate(path, data):
-            if not isinstance(data, dict):
-                raise TypeError("a response is a JSON object")
             kinds["canonical" if is_canonical(data) else "free-form"] += 1
             return check_response(self.model, data, path), 1
-        result = self.collect("responses", "response-*.json", evaluate)
-        if result.status == PASS:
-            result.detail = ("%d responses conform to the packets they cite (or are withdrawn): %d canonical, compared with the renderer's output; "
-                             "%d free-form, held to the structural constraints only") % (result.evaluated, kinds["canonical"], kinds["free-form"])
-        return result
+        return self.collect("responses", "response-*.json", evaluate,
+                            lambda r: ("%d responses conform to the packets they cite (or are withdrawn): %d canonical, compared with the renderer's output; "
+                                       "%d free-form, held to the structural constraints only") % (r.evaluated, kinds["canonical"], kinds["free-form"]),
+                            collection="statements", what="a response", empty_is_evaluated=True)
 
     def stage_cases(self) -> StageResult:
         blocked = self.blocked("cases")
@@ -225,23 +307,19 @@ class Run:
             return blocked
 
         def evaluate(path, data):
-            if not isinstance(data, dict) or not isinstance(data.get("cases", []), list):
-                raise TypeError("an evaluation-case file is an object with a 'cases' list")
             return check_cases(self.model, self.schema, data, path)
-        result = self.collect("cases", "cases.json", evaluate)
-        if result.status == PASS:
-            result.detail = "%d mutated cases each produced exactly the codes they declare" % result.evaluated
-        return result
+        return self.collect("cases", "cases.json", evaluate, lambda r: "%d mutated cases each produced exactly the codes they declare" % r.evaluated,
+                            collection="cases", what="an evaluation-case file")
 
     # ------------------------------------------------------------------ the run
     def evaluate(self, stage: str, needed_by: str = "") -> StageResult:
         started = time.time()
         try:
             result = getattr(self, "stage_" + stage)()
-        except (SchemaError,) + DOCUMENT_ERRORS as exc:
-            if self.debug:
+        except (SchemaError, InputProblem) + DOCUMENT_ERRORS as exc:
+            if self.debug and not isinstance(exc, InputProblem):
                 raise
-            result = self.result(stage, INPUT_ERROR, findings=[input_finding("INP002", "the %s stage could not evaluate the input: %s: %s" % (stage, type(exc).__name__, exc), "",
+            result = self.result(stage, INPUT_ERROR, findings=[input_finding("INP002", "the %s stage could not evaluate the input: %s" % (stage, describe_error(exc)), "",
                                                                              "check the documents the stage reads; run with --debug for the traceback")],
                                  detail="the input cannot support this stage")
         result.seconds = round(time.time() - started, 2)
@@ -278,7 +356,7 @@ def run(root: Path, only: Optional[Set[str]] = None, skip: Optional[Set[str]] = 
 
 # ---------------------------------------------------------------------- output
 def finding_json(f: Finding) -> dict:
-    return {"code": f.code, "message": f.message, "file": f.file, "location": f.location, "doc": f.doc, "hint": f.hint}
+    return {"code": f.code, "message": f.message, "file": f.file, "location": f.location, "stage": f.stage, "doc": f.doc, "hint": f.hint}
 
 
 def render_json(results: List[StageResult], state: str, run_findings: Optional[List[Finding]] = None) -> str:

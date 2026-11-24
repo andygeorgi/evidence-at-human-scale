@@ -125,7 +125,7 @@ def _shown_error(error):
 def validate_instance(schema: dict, instance, file: str = "", contract_id: Optional[str] = None) -> List[Finding]:
     """Validate one contract instance; return one Finding per distinct problem (empty list means structurally valid)."""
     cid = contract_id or (instance.get("contract_id") if isinstance(instance, dict) else None)
-    if cid not in CONTRACT_DEFS:
+    if not isinstance(cid, str) or cid not in CONTRACT_DEFS:
         return [Finding("SCH001", "contract_id is missing or not one of C01-C07 (got %r)" % (cid,), file, doc="contracts/README.md")]
     findings: List[Finding] = []
     seen = set()

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
-from .findings import Finding, rel
+from .findings import Finding, InputProblem, describe_error, rel
 from .model import Instance, Model
 from .patch import apply_ops
 from .schema import validate_instance
@@ -48,10 +48,26 @@ def run_case(model: Model, schema: dict, case: dict) -> Tuple[List[str], List[Fi
     return sorted({f.code for f in findings}), findings
 
 
+def _case_problem(index: int, case) -> str:
+    """Why a case cannot be run, or an empty string if its shape is usable."""
+    if not isinstance(case, dict):
+        return "case %d is not an object" % (index + 1)
+    name = case.get("case_id", "case %d" % (index + 1))
+    if not isinstance(case.get("expect"), list):
+        return "%s has no 'expect' list of the codes it must produce" % name
+    if not isinstance(case.get("mutations"), list):
+        return "%s has no 'mutations' list" % name
+    return ""
+
+
 def check_cases(model: Model, schema: dict, data: dict, path) -> Tuple[List[Finding], int]:
     problems: List[Finding] = []
     file = rel(path)
     cases = data.get("cases", [])
+    for index, case in enumerate(cases):
+        reason = _case_problem(index, case)
+        if reason:
+            raise InputProblem(reason, "give every case a case_id, an 'expect' list of codes and a 'mutations' list; [] in 'expect' means the case must produce no finding")
     seen = set()
     for case in cases:
         case_id = case.get("case_id", "?")
@@ -61,7 +77,7 @@ def check_cases(model: Model, schema: dict, data: dict, path) -> Tuple[List[Find
         try:
             codes, _ = run_case(model, schema, case)
         except (KeyError, IndexError, ValueError, TypeError) as exc:
-            problems.append(Finding("CASE003", "%s: the mutation could not be applied (%s)" % (case_id, exc), file, doc=DOC))
+            problems.append(Finding("CASE003", "%s: the mutation could not be applied (%s)" % (case_id, describe_error(exc)), file, doc=DOC))
             continue
         if codes != sorted(case["expect"]):
             problems.append(Finding("CASE001", "%s: expected %s but the checks produced %s" % (case_id, sorted(case["expect"]), codes), file, doc=DOC))

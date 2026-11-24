@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import List
 
-from .findings import Finding, rel
+from .findings import Finding, describe_error, rel
 from .gateway import Decision, evaluate_commit, ledger_from_receipts, ts
 from .model import Instance, Model
 from .patch import apply_ops
@@ -69,16 +69,21 @@ def expectation(decision: Decision) -> dict:
 def check_scenario_file(model: Model, data: dict, path) -> List[Finding]:
     findings: List[Finding] = []
     file = rel(path)
-    for entry in data.get("evaluations", []):
-        label = entry.get("label", "?")
+    for index, entry in enumerate(data.get("evaluations", [])):
+        if not isinstance(entry, dict):
+            findings.append(Finding("GW002", "evaluation %d is not an object, so it cannot be evaluated" % (index + 1), file, "/evaluations/%d" % index, doc=DOC,
+                                    hint="write each evaluation as an object with a proposal, a grant, a time and the expected decision"))
+            continue
+        label = entry.get("label", "evaluation %d" % (index + 1))
         try:
             actual = expectation(evaluate_entry(model, entry))
-        except (KeyError, ValueError, IndexError, TypeError) as exc:
-            findings.append(Finding("GW002", "%s: cannot evaluate (%s)" % (label, exc), file, doc=DOC))
+        except (KeyError, ValueError, IndexError, TypeError, AttributeError) as exc:
+            findings.append(Finding("GW002", "%s: cannot evaluate (%s)" % (label, describe_error(exc)), file, "/evaluations/%d" % index, doc=DOC,
+                                    hint="check that the proposal, the grant, the time and any overrides of this evaluation exist and are well formed"))
             continue
         expected = entry.get("expect", {})
         if actual["decision"] != expected.get("decision") or actual["codes"] != expected.get("codes"):
             findings.append(Finding(
                 "GW001", "%s: expected %s %s but the check now gives %s %s" % (label, expected.get("decision"), expected.get("codes"), actual["decision"], actual["codes"]),
-                file, doc=DOC))
+                file, "/evaluations/%d" % index, doc=DOC))
     return findings

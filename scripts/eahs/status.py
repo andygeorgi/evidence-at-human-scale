@@ -66,6 +66,6 @@ def overall(results: Iterable[StageResult]) -> str:
     return PASS if PASS in states else NOT_ASSESSED
 
 
-def input_finding(code: str, message: str, file: str = "", hint: str = "") -> Finding:
-    """A diagnostic for input that cannot be evaluated. The hint says how to fix it."""
-    return Finding(code, message, file, hint=hint)
+def input_finding(code: str, message: str, file: str = "", hint: str = "", stage: str = "") -> Finding:
+    """A diagnostic for input that cannot be evaluated. It names the file and the stage, and the hint says how to fix it."""
+    return Finding(code, message, file, hint=hint, stage=stage)

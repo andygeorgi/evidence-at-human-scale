@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Iterable, Iterator, List, Optional, Tuple
@@ -98,9 +99,18 @@ def _vnum(version: str) -> int:
     return int(digits) if digits else 0
 
 
+def is_contract_id(value) -> bool:
+    """True only for a string that names one of the seven contracts. A list, a number or 'C99' is not a contract id."""
+    return isinstance(value, str) and value in CONTRACT_DEFS
+
+
+#: The file-name convention for contract instances (c02-GR-5521-v1.json): a file named like this is meant to be one.
+CONTRACT_FILE = re.compile(r"c0[1-7]-.+\.json", re.IGNORECASE)
+
+
 def identity_of(data: dict) -> Optional[Tuple[str, str, str]]:
     contract = data.get("contract_id")
-    if contract not in IDENTITY:
+    if not is_contract_id(contract) or contract not in IDENTITY:
         return None
     group, id_key = IDENTITY[contract]
     block = data.get(group)
@@ -136,11 +146,53 @@ def load_registry(path: Path) -> Registry:
     return registry_from_dict(raw)
 
 
+def _type_name(value) -> str:
+    return {list: "a list", dict: "an object", int: "a number", float: "a number", bool: "true or false", type(None): "null"}.get(type(value), type(value).__name__)
+
+
+def _contract_claim_problem(path: Path, root: Path, data) -> Optional[Finding]:
+    """Why a JSON file cannot be read as a contract instance although it claims to be one (or is named like one); None if there is no problem.
+
+    A top-level ``contract_id`` is a claim to be a contract instance, so it must be valid. A file under a folder named
+    ``raw`` is a source export, and its own fields are its own business, unless its name or its contract_id says otherwise.
+    """
+    file = rel(path)
+    declared = isinstance(data, dict) and "contract_id" in data
+    named_like_a_contract = bool(CONTRACT_FILE.fullmatch(path.name))
+    in_raw_folder = "raw" in [part.lower() for part in path.relative_to(root).parts[:-1]]
+    if declared and is_contract_id(data["contract_id"]):
+        if named_like_a_contract and path.name[:3].upper() != data["contract_id"]:
+            return Finding("ID005", "the file name says %s, but its contract_id is %s" % (path.name[:3].upper(), data["contract_id"]), file, doc=doc_for_contract(data["contract_id"]),
+                           hint="rename the file to match its contract_id, or correct the contract_id")
+        return None
+    if named_like_a_contract:
+        if declared:
+            return _bad_contract_id(file, data["contract_id"])
+        return Finding("ID005", "the file name says this is a contract instance (%s), but it %s" % (path.name[:3].upper(), "has no contract_id" if isinstance(data, dict) else "is not a JSON object"), file,
+                       doc="contracts/README.md", hint="give the object a contract_id and the contract's groups, or rename the file if it is not a contract instance")
+    if declared and not in_raw_folder:
+        return _bad_contract_id(file, data["contract_id"])
+    return None
+
+
+def _bad_contract_id(file: str, value) -> Finding:
+    if not isinstance(value, str):
+        return Finding("ID003", "contract_id must be a string such as \"C02\"; this file has %s" % _type_name(value), file, doc="contracts/README.md",
+                       hint="write the contract_id as a string, C01 to C07; if the file is not a contract instance, remove the field or move the file into a folder named raw")
+    hint = "use one of C01-C07"
+    if value.upper() in CONTRACT_DEFS:
+        hint = "contract_id is case-sensitive: write %s" % value.upper()
+    return Finding("ID004", "contract_id %r is not a contract this repository defines (C01-C07)" % value, file, doc="contracts/README.md",
+                   hint=hint + "; if the file is not a contract instance, remove the field or move the file into a folder named raw")
+
+
 def load_model(root: Path) -> Tuple[Model, List[Finding]]:
     """Index every contract instance below `root` (any .json whose top-level object has contract_id C01-C07).
 
-    A file that cannot be read as JSON, an instance without a readable identity and a duplicate identity are reported as
-    findings: they stop the model from being a faithful picture of the folder, so the stages that need it cannot run.
+    A file that cannot be read as JSON, one that declares an invalid contract_id, one named like a contract instance that is
+    not one, an instance without a readable identity and a duplicate identity are reported as findings: they stop the model
+    from being a faithful picture of the folder, so the stages that need it cannot run. Other JSON files (raw exports,
+    scenario, case and response files) have no contract_id and are listed in `ignored`.
     """
     findings: List[Finding] = []
     instances: Dict[Key, Instance] = {}
@@ -153,7 +205,11 @@ def load_model(root: Path) -> Tuple[Model, List[Finding]]:
         except (OSError, ValueError) as exc:  # includes JSONDecodeError and UnicodeDecodeError
             findings.append(Finding("ID000", "cannot read JSON: %s" % exc, rel(path), hint="repair or remove the file; every .json file below the folder must be valid UTF-8 JSON"))
             continue
-        if not isinstance(data, dict) or data.get("contract_id") not in CONTRACT_DEFS:
+        problem = _contract_claim_problem(path, root, data)
+        if problem is not None:
+            findings.append(problem)
+            continue
+        if not isinstance(data, dict) or not is_contract_id(data.get("contract_id")):
             ignored.append(rel(path))
             continue
         ident = identity_of(data)
@@ -200,7 +256,7 @@ def iter_refs(node, parts: Tuple = ()) -> Iterator[Ref]:
         if node.get("reference_type") in SUPPORT_TAGS and "record_id" in node:
             yield Ref("support", _ptr(parts), node["record_id"], node.get("version", ""), body=node)
             return
-        if node.get("contract_id") in CONTRACT_DEFS and "id" in node and "version" in node and parts:
+        if is_contract_id(node.get("contract_id")) and "id" in node and "version" in node and parts:
             yield Ref("contract", _ptr(parts), node["id"], node["version"], contract=node["contract_id"], body=node)
             return
         for key, value in node.items():
