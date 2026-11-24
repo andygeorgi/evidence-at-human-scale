@@ -2,7 +2,7 @@
 
 [← Evaluation guide](README.md) · [Evaluation oracles](oracles.md) · [Catalogue](catalogue/README.md)
 
-**Status: NOT RUN.** There is no human-outcome result in this repository, no pilot, and no recommended threshold.
+**Status: NOT ASSESSED.** There is no human-outcome result in this repository, no pilot, no participants and no recommended threshold.
 
 The architecture's central claim is about people: that someone with limited attention can still be accountable for a decision, because the evidence, its gaps and its limits stay in front of them. That is a claim about human behavior, and the checks in this repository cannot test it. This page is a **template of what a study has to define** before it can say anything. It is a list of questions to answer, not a protocol and not a prediction.
 

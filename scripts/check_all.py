@@ -30,10 +30,11 @@ CHECKS: Tuple[Tuple[str, str, Tuple[str, ...]], ...] = (
     ("examples", "the synthetic examples validate: schema, instances, semantics, gateway, responses and cases", ("scripts/validate_examples.py",)),
     ("tests", "the unit tests pass", ("-m", "unittest", "discover", "-s", "tests")),
     ("example-data", "the committed example JSON is exactly what its builder writes", ("scripts/build_example_data.py", "--check")),
+    ("catalogue", "the evaluation catalogue's copies are what its JSON writes, and its tables agree", ("scripts/build_catalogue.py", "--check")),
     ("schema-hash", "the schema's validation surface is unchanged since it was recorded", ("scripts/schema_surface_hash.py", "--check")),
     ("links", "relative links, anchors, images and alt text resolve, and every page is linked from another", ("scripts/check_links.py", "--orphans")),
     ("structure", "every page has one H1, no skipped heading levels, no empty table headers and no generic link text", ("scripts/check_structure.py",)),
-    ("figures", "every figure is complete, accessible, readable at a phone's width and in sync with the documents", ("scripts/check_figures.py",)),
+    ("figures", "every figure has its metadata, alt text and description, each drawing stays within set limits, and the documents are in sync", ("scripts/check_figures.py",)),
     ("svg", "the SVGs are what their generator draws", ("figures/src/svg_figures.py", "--check")),
     ("hygiene", "no private link, local path, credential, e-mail address, internal term or unfinished marker", ("scripts/check_hygiene.py",)),
 )
