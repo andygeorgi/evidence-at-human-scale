@@ -113,13 +113,20 @@ def may_read(decision: Optional[Decision], viewer: Viewer) -> bool:
 
 
 # ---------------------------------------------------------------------------------------------------- the generic entries
+def _view(decision: Decision, name: str) -> Mapping[str, Any]:
+    """The part of a decision's permitted view that is an object. Anything else reads as an empty part: it configures nothing."""
+    part = decision.permitted_view.get(name)
+    return part if isinstance(part, dict) else {}
+
+
 def gap_entry(decision: Decision, viewer: Viewer, decision_reference: Mapping[str, Any]) -> dict:
     """The C03/C04 missingness entry for an input the viewer may know about but may not read: nothing in it comes from the input.
 
     The entities are the ones the viewer's own request named. Every other value is the decision's.
     """
-    view = decision.permitted_view.get("gap", {})
-    scope = view.get("scope", {})
+    view = _view(decision, "gap")
+    scope = view.get("scope")
+    scope = scope if isinstance(scope, dict) else {}
     return {
         "state": "inaccessible",
         "scope": {"entity_references": [dict(e) for e in viewer.entities], "task": scope.get("task"), "jurisdiction": scope.get("jurisdiction"),
@@ -135,7 +142,7 @@ def gap_entry(decision: Decision, viewer: Viewer, decision_reference: Mapping[st
 
 def retrieval_entry(decision: Decision, decision_reference: Mapping[str, Any]) -> dict:
     """The C03 retrieval unit for a part of the scope the viewer may not read: its wording and its fields come from the decision."""
-    view = decision.permitted_view.get("retrieval", {})
+    view = _view(decision, "retrieval")
     return {
         "retrieval_unit_id": view.get("retrieval_unit_id"),
         "authorized_scope": view.get("authorized_scope"),

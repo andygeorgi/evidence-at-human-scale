@@ -10,15 +10,18 @@ status word or changes a figure is reported as a change of meaning (RESP102). Th
 against a defined template. It does not verify the packet.
 
 STRUCTURAL FREE-TEXT VALIDATION. A response written by a model or a person is checked against named constraints:
-every statement cites packet items of the right kind and says something; its figures and currencies, its status words (pass,
-fail, stale, revoked, ...), whether it negates them ("did not fail"), and the record identifiers it names all appear in the
-items it cites, for a claim, an inference, a conflict, a gap, a recommendation, a proposal and an obligation alike, and the
-label of a statement is held to the same status words and certainty as its text; an inference is labeled and keeps a
-limitation; a conflict stays open and a gap keeps its missingness label; a recommendation says it is for review; a proposal
-is not worded as done; certainty is not added; every conflict, gap, recommendation, proposal and obligation of the packet is
-mentioned; and at least MIN_CLAIM_COVERAGE of its supported claims are stated, so that they cannot all disappear. A claim is
-counted once, however many of its parts a response cites, and only when a statement that cites it keeps one of its figures
-and one of its words (or, when it has no figure, two of its words): a bare number does not state a claim. A statement about an
+it names its packet as a decision packet (``contract_id`` C04); every statement cites packet items of the right kind and
+says something (a statement that rests on an item with no text in it is held to the same constraints, against no text);
+its figures (with their sign) and currencies (any ISO 4217 code or currency sign), its status words (pass, fail, stale,
+revoked, ...), whether it negates them ("did not fail"), and the record identifiers it names (each whole: GR-552 is not
+GR-5521) all appear in the items it cites, for a claim, an inference, a conflict, a gap, a recommendation, a proposal and
+an obligation alike, and the label of a statement is held to the same status words and certainty as its text; an inference
+is labeled and keeps a limitation; a conflict stays open and a gap keeps its missingness label; a recommendation says it
+is for review; a proposal is not worded as done; certainty is not added; every conflict, gap, recommendation, proposal and
+obligation of the packet is mentioned; and at least MIN_CLAIM_COVERAGE of its supported claims are stated, so that they
+cannot all disappear. A claim is counted once, however many of its parts a response cites, and only when a statement that
+cites it keeps one of its figures and one of its words (or, when it has no figure, two of its words; a claim with no word
+of its own is stated only by a statement that contains it): a bare number does not state a claim. A statement about an
 input the reader may not read is exactly the wording the permission decision allows, its label says only where the gap is
 ("gap 3"), and it cites the gap itself and not a part of it. These constraints catch specific, named
 failures. They do NOT show that the prose is
@@ -71,12 +74,24 @@ ADVICE_KINDS = ("recommendation", "proposal", "obligation")
 RESPONSE_STATUSES = ("current", "withdrawn")
 DECISION_WORDING = re.compile(r"\b(has|have|had|was|were|been|is|are)\s+(now\s+)?(approved|executed|released|paid|sent|submitted)\b", re.I)
 FIGURE = re.compile(r"(?<![\w.,/:-])-?\d[\d,.:/-]*\d|(?<![\w.,/:-])-?\d|\d[\d,.:/-]*\d|\d")
-CURRENCY = re.compile(r"\b(EUR|USD|GBP|ISK|NOK|SEK|DKK|CHF|JPY)\b")
+#: The alphabetic codes of ISO 4217 (the currencies in circulation) and the common currency signs. A statement may name a currency only
+#: if the items it cites do, so that EUR 18,400.00 cannot become CAD 18,400.00 or $18,400.00. Matching is by the uppercase code, whole.
+ISO_4217 = frozenset("""
+AED AFN ALL AMD ANG AOA ARS AUD AWG AZN BAM BBD BDT BGN BHD BIF BMD BND BOB BRL BSD BTN BWP BYN BZD CAD CDF CHF CLP CNY COP CRC CUP CVE CZK
+DJF DKK DOP DZD EGP ERN ETB EUR FJD FKP GBP GEL GHS GIP GMD GNF GTQ GYD HKD HNL HTG HUF IDR ILS INR IQD IRR ISK JMD JOD JPY KES KGS KHR KMF
+KPW KRW KWD KYD KZT LAK LBP LKR LRD LSL LYD MAD MDL MGA MKD MMK MNT MOP MRU MUR MVR MWK MXN MYR MZN NAD NGN NIO NOK NPR NZD OMR PAB PEN PGK
+PHP PKR PLN PYG QAR RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLE SLL SOS SRD SSP STN SVC SYP SZL THB TJS TMT TND TOP TRY TTD TWD TZS UAH
+UGX USD UYU UZS VES VND VUV WST XAF XCD XOF XPF YER ZAR ZMW ZWL
+""".split())
+_ISO_ALTERNATIVES = "|".join(sorted(ISO_4217))
+CURRENCY = re.compile(r"\b(?:%s)\b|[\u20ac$\u00a3\u00a5]" % _ISO_ALTERNATIVES)
+#: A currency code with a sign right behind it ("EUR-18,400.00", "EUR\u221218,400.00") is a negative amount, not a hyphenated word.
+CODE_THEN_SIGN = re.compile(r"\b(%s)(?=[-\u2212]\d)" % _ISO_ALTERNATIVES)
 
 #: Statement kinds on which each structural constraint is applied. Status consistency covers every kind that states something about
 #: the packet: a claim, an inference, a conflict, a gap, a recommendation, a proposal and an obligation.
 STATUS_CHECKED = ("claim", "inference", "conflict", "gap", "recommendation", "proposal", "obligation")
-IDENTIFIER_CHECKED = ("claim", "inference", "conflict", "gap", "recommendation", "obligation")
+IDENTIFIER_CHECKED = ("claim", "inference", "conflict", "gap", "recommendation", "proposal", "obligation")
 #: The words that label a response's own lifecycle. In a withdrawn response they mark its advice as withdrawn, so on advice they
 #: are not compared with the packet's items.
 LIFECYCLE_LABELS = ("withdrawn", "current")
@@ -146,8 +161,13 @@ CLAIM_ITEM = re.compile(r"/supported_claims_references/(\d+)(?:/|$)")
 
 
 def figures(text: str) -> set:
-    """The figures in a text, with their sign: -18,400.00 is not 18,400.00. A minus counts only when it is a sign (not the hyphen of S-1042 or of a date)."""
-    return {m.rstrip(".,:-/") for m in FIGURE.findall(text.replace("\u2212", "-"))}
+    """The figures in a text, with their sign: -18,400.00 is not 18,400.00.
+
+    A hyphen counts as a minus only when it is a sign (not the hyphen of S-1042 or of a date). The minus sign (U+2212) is always a sign, and so is
+    a hyphen or a minus right behind a currency code: "EUR\u221218,400.00" and "EUR-18,400.00" are negative, however they are spaced.
+    """
+    text = CODE_THEN_SIGN.sub(r"\1 ", text).replace("\u2212", " -")
+    return {m.rstrip(".,:-/") for m in FIGURE.findall(text)}
 
 
 def quantities(text: str) -> set:
@@ -171,14 +191,17 @@ def states_claim(claim: str, statement: str) -> bool:
 
     A claim with a quantity is stated when the statement keeps one of its quantities and at least one of its words: a bare number
     is not the statement of a claim. A claim without a quantity is stated when the statement keeps two of its words (all of them
-    if it has fewer). This is the least that separates stating a claim from merely citing it. It does not show that the claim is
+    if it has fewer). A claim with no word of its own to keep (nothing but figures and short words) is stated only by a statement that
+    contains it, as written. This is the least that separates stating a claim from merely citing it. It does not show that the claim is
     stated correctly.
     """
     wanted = quantities(claim)
     words = content_words(claim)
+    if not words:
+        return bool(_normal(claim)) and _normal(claim) in _normal(statement)
     shared = len(words & content_words(statement))
     if wanted:
-        return bool(wanted & quantities(statement)) and shared >= min(1, len(words))
+        return bool(wanted & quantities(statement)) and shared >= 1
     return shared >= min(2, len(words))
 
 
@@ -225,6 +248,13 @@ def _strings(node) -> List[str]:
 
 def _tv(value: dict) -> str:
     return value.get("value") or value.get("reason") or ""
+
+
+def _proposal_strings(model: Model, item) -> List[str]:
+    """What a proposal item of a packet stands for: the action of the C05 proposal it references (its kind and its exact target), which is what a statement about the proposal says."""
+    ref = _object(_object(item).get("proposal_reference"))
+    proposal = model.get("C05", ref.get("id"), ref.get("version"))
+    return _strings(_object(proposal.data.get("action"))) if proposal is not None else []
 
 
 def gap_text(g: dict) -> str:
@@ -389,15 +419,22 @@ def _status_findings(shown: str, cited_text: str, kind: str, withdrawn: bool, fi
     return out
 
 
-def _free_text_findings(kind: str, text: str, label: str, cited_text: str, pointers: List[str], packet: dict, file: str, loc: str, withdrawn: bool = False) -> List[Finding]:
+def _names(text: str, ident: str) -> bool:
+    """True when a text holds `ident` as a whole identifier: GR-552 is not in GR-5521, and not in GR-552-B."""
+    return re.search(r"(?<![\w-])%s(?![\w-]|\.\w)" % re.escape(ident), text) is not None
+
+
+def _free_text_findings(kind: str, text: str, label: str, cited_text: str, pointers: List[str], packet: dict, file: str, loc: str, withdrawn: bool = False, exact_wording: bool = False) -> List[Finding]:
     """The named constraints of structural free-text validation, for one statement.
 
     Each constraint is a specific, mechanical test. None of them proves that the statement means what its packet means.
     The label is shown to the reader beside the text, so the status words, the certainty and the claim of being current that
-    the text may not add are held against the label as well.
+    the text may not add are held against the label as well. A statement that rests on a packet item with no text in it (a number,
+    a flag) is held to the same constraints, against no text: it may add nothing. A statement that is exactly the wording a permission
+    decision allows for an input the reader may not read (`exact_wording`) is not asked to use the words of the missingness label.
     """
     out: List[Finding] = []
-    if not cited_text:
+    if not pointers:
         return out
     lowered = cited_text.lower()
     if kind in FIGURE_CHECKED:
@@ -423,8 +460,9 @@ def _free_text_findings(kind: str, text: str, label: str, cited_text: str, point
             out.append(Finding("RESP016", "this %s undoes the withdrawal (%r): the packet is withdrawn, and a response cannot reinstate it" % (kind, undone.group(0)), file, loc, DOC_RESPONSE))
     if kind in IDENTIFIER_CHECKED:
         # A label is shown to the reader beside the text, so a record named in it is held to the same rule: it may not name a record that the cited items do not rest on.
+        # An identifier is held whole: GR-552 is not GR-5521.
         for ident in sorted(set(IDENTIFIER.findall(text)) | set(IDENTIFIER.findall(label))):
-            if ident not in cited_text:
+            if not _names(cited_text, ident):
                 where = "label" if ident in IDENTIFIER.findall(label) and ident not in IDENTIFIER.findall(text) else "statement"
                 out.append(Finding("RESP013", "the %s names %s, which the cited packet items do not rest on: a statement may not attribute its content to another record" % (where, ident), file, loc, DOC_RESPONSE))
     if kind == "conflict":
@@ -441,7 +479,7 @@ def _free_text_findings(kind: str, text: str, label: str, cited_text: str, point
             except (KeyError, IndexError, ValueError, TypeError, AttributeError):
                 continue
             pattern = STATE_WORDS.get(state)
-            if pattern is not None and not pattern.search(text):
+            if pattern is not None and not exact_wording and not pattern.search(text):
                 out.append(Finding("RESP009", "the packet labels this gap %s, but the statement does not say so in words" % state, file, loc, DOC_RESPONSE))
     elif kind == "inference":
         if not KEEPS_INFERENCE_LIMITED.search(text):
@@ -558,9 +596,11 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
     findings: List[Finding] = []
     ref = response.get("packet_reference")
     ref = ref if isinstance(ref, dict) else {}
+    if ref.get("contract_id") != "C04":
+        findings.append(Finding("RESP007", "the packet reference must name a decision packet (\"contract_id\": \"C04\"): this one names %r" % (ref.get("contract_id"),), file, "/packet_reference/contract_id", DOC))
     packet = model.get("C04", ref.get("id"), ref.get("version"))
     if packet is None:
-        return [Finding("RESP007", "the response cites packet %s %s, which does not exist" % (ref.get("id"), ref.get("version")), file, "/packet_reference", DOC)]
+        return findings + [Finding("RESP007", "the response cites packet %s %s, which does not exist" % (ref.get("id"), ref.get("version")), file, "/packet_reference", DOC)]
     d = packet.data
     findings.extend(_lifecycle_findings(model, response, packet, file))
     withdrawn = trusted_lifecycle(model, packet)[0] == "withdrawn"
@@ -600,6 +640,8 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
             cited[kind].add(r)
             resolved.append(r)
             subtree += _strings(node)
+            if kind == "proposal":
+                subtree += _proposal_strings(model, node)
             if kind == "claim":
                 item = CLAIM_ITEM.match(r)
                 claim = d["supported_claims_references"][int(item.group(1))] if item else None
@@ -615,7 +657,8 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
             findings.append(Finding("RESP005", "a proposal must say it is not executed or approved", file, loc, "contracts/c05-action-proposal.md"))
         if kind not in ("claim", "conflict") and DECISION_WORDING.search(text):
             findings.append(Finding("RESP005", "wording presents an action as approved or done, which the packet does not support", file, loc, "contracts/c05-action-proposal.md"))
-        findings += _free_text_findings(kind, text, label, " . ".join(subtree), resolved, d, file, loc, withdrawn)
+        exact = _is_permitted_wording(model, packet, text, resolved) if kind == "gap" else False
+        findings += _free_text_findings(kind, text, label, " . ".join(subtree), resolved, d, file, loc, withdrawn, exact)
         if kind == "gap":
             findings += _unreadable_gap_findings(model, packet, text, label, resolved, file, loc)
     claims_total = len(d["supported_claims_references"])
@@ -657,35 +700,64 @@ GAP_ITEM = re.compile(r"(/coverage_omissions_gaps/missingness/\d+)(?:/|$)")
 NEUTRAL_GAP_LABEL = re.compile(r"gap\s+\d+(?:\s*\(\s*inaccessible\s*\))?|inaccessible", re.I)
 
 
+def _unreadable(model: Model, packet: Instance, pointers: List[str]) -> Tuple[List[Tuple[str, object]], bool]:
+    """The inaccessible gaps that `pointers` cite, whole or by a part: ([(the gap's pointer, the wording a decision bound to the viewer allows for it, or None)], whether a part of one is cited)."""
+    from .semantics import permitted_wording
+    found: List[Tuple[str, object]] = []
+    parts = False
+    for pointer in pointers:
+        match = GAP_ITEM.match(pointer)
+        if not match:
+            continue
+        parent = match.group(1)
+        try:
+            gap = resolve_pointer(packet.data, parent)
+        except (KeyError, IndexError, ValueError, TypeError):
+            continue
+        if not isinstance(gap, dict) or gap.get("state") != "inaccessible":
+            continue
+        if parent not in [p for p, _ in found]:
+            found.append((parent, permitted_wording(model, packet, _object(gap.get("permission_decision_reference")))))
+        parts = parts or match.group(0) != parent
+    return found, parts
+
+
+def _cited_gaps(pointers: List[str]) -> int:
+    """How many different gaps `pointers` cite, whatever part of each they point at."""
+    return len({match.group(1) for match in map(GAP_ITEM.match, pointers) if match})
+
+
+def _is_permitted_wording(model: Model, packet: Instance, text: str, pointers: List[str]) -> bool:
+    """True when a statement is exactly the wording a decision bound to the viewer allows for the one unreadable gap it cites, and cites nothing else."""
+    unreadable, parts = _unreadable(model, packet, pointers)
+    if len(unreadable) != 1 or _cited_gaps(pointers) != 1 or parts or unreadable[0][1] is None:
+        return False
+    wording = unreadable[0][1]
+    return _normal(text) in (_normal(wording), _normal("Inaccessible: " + wording))
+
+
 def _unreadable_gap_findings(model: Model, packet: Instance, text: str, label: str, pointers: List[str], file: str, loc: str) -> List[Finding]:
     """A statement about an input the viewer may not read is exactly the permitted wording, or it says nothing about it.
 
     Where no decision bound to the viewer lets them know the input exists, the statement may not cite it at all. Where one
     does, the statement is that decision's wording and nothing else (it may start with the missingness label, "Inaccessible:"),
-    and it does not share its citation with another gap. Its label is shown beside it, so the label carries only the place of
-    the gap ("gap 3", "gap 3 (inaccessible)"), the missingness label or that wording. A citation of a part of the gap (its
-    expected evidence, its scope) is a citation of the gap. Words added to the statement or to its label, or the words of a
-    neighbouring gap, could carry what the reader may not know, and a mechanical test cannot tell the two apart. These are
-    mechanical tests: they do not read prose that does not cite the input for what it hides.
+    it cites the gap itself and no part of it, and it does not share its citation with another gap. Its label is shown beside it,
+    so the label carries only the place of the gap ("gap 3", "gap 3 (inaccessible)"), the missingness label or that wording. A
+    statement that is exactly the permitted wording is not asked to use the words of the missingness label as well. Words added to the
+    statement or to its label, a part of the gap cited with it (its expected evidence, its scope), or the words of a neighbouring gap,
+    could carry what the reader may not know, and a mechanical test cannot tell the two apart. These are mechanical tests: they do
+    not read prose that does not cite the input for what it hides.
     """
-    from .semantics import permitted_wording
     out: List[Finding] = []
     allowed: List[str] = []
-    parents = list(dict.fromkeys(match.group(1) for match in map(GAP_ITEM.match, pointers) if match))
-    for pointer in parents:
-        try:
-            gap = resolve_pointer(packet.data, pointer)
-        except (KeyError, IndexError, ValueError, TypeError):
-            continue
-        if not isinstance(gap, dict) or gap.get("state") != "inaccessible":
-            continue
-        wording = permitted_wording(model, packet, _object(gap.get("permission_decision_reference")))
+    unreadable, parts = _unreadable(model, packet, pointers)
+    for _, wording in unreadable:
         if wording is None:
             out.append(Finding("RESP017", "this statement tells the reader about an input that no permission decision bound to them lets them know exists: it may not be mentioned", file, loc, DOC_RESPONSE))
         else:
             allowed += [_normal(wording), _normal("Inaccessible: " + wording)]
-    if allowed and (len(parents) != 1 or _normal(text) not in allowed):
-        out.append(Finding("RESP017", "a statement about an input the reader may not read must be exactly the wording the permission decision allows, alone, with nothing added and no other gap in the same statement: %r" % allowed[0], file, loc, DOC_RESPONSE))
+    if allowed and (_cited_gaps(pointers) != 1 or parts or _normal(text) not in allowed):
+        out.append(Finding("RESP017", "a statement about an input the reader may not read must be exactly the wording the permission decision allows, alone, citing the gap itself and no part of it, with nothing added and no other gap in the same statement: %r" % allowed[0], file, loc, DOC_RESPONSE))
     if allowed and _normal(label) not in allowed and not NEUTRAL_GAP_LABEL.fullmatch(_normal(label)):
         out.append(Finding("RESP017", "the label of a statement about an input the reader may not read names only where the gap is (\"gap 3\", \"gap 3 (inaccessible)\") or is the permitted wording: this label says more", file, loc, DOC_RESPONSE))
     return out

@@ -258,6 +258,21 @@ class TheGenericEntries(unittest.TestCase):
         self.assertEqual(differences(expected, copy.deepcopy(expected)), [])
         self.assertEqual(sorted(differences(expected, {"a": 1, "b": {"c": 3, "d": [1, 2]}, "z": 0})), [("/b/c", 2), ("/b/d", [1]), ("/e", "x"), ("/z", None)])
 
+    def test_a_view_that_is_not_made_of_objects_configures_nothing_and_never_raises(self):
+        reference = {"record_id": "AUTHZ-READ-LIMIT-0417", "version": "v1"}
+        for view in ({"gap": [], "retrieval": "none"}, {"gap": None, "retrieval": None}, {"gap": {"scope": []}}, {"gap": {"scope": "text"}, "retrieval": 7}):
+            with self.subTest(repr(view)):
+                decision = Decision(ANALYST, TENANT, PURPOSE, False, True, PERMITTED, view)
+                entry, unit = gap_entry(decision, VIEWER, reference), retrieval_entry(decision, reference)
+                self.assertEqual(entry["permission_safe_summary"], PERMITTED)
+                self.assertEqual(unit["summary"], PERMITTED)
+                for key in ("task", "jurisdiction", "units", "interpretation"):
+                    self.assertIsNone(entry["scope"][key])
+                for key in ("expected_evidence", "materiality", "reason", "assessment_basis"):
+                    self.assertIsNone(entry[key])
+                for key in ("retrieval_unit_id", "authorized_scope", "attempted_at", "completed_at", "reason"):
+                    self.assertIsNone(unit[key])
+
 
 class TheExampleData(unittest.TestCase):
     def setUp(self):
@@ -321,6 +336,17 @@ class SnapshotValidation(unittest.TestCase):
 
     def gap(self, path, value, packet="C04 PKT-0417 v1"):
         return {"target": packet, "ops": [{"op": "replace", "path": "/coverage_omissions_gaps/missingness/2" + path, "value": value}]}
+
+    def test_an_input_the_viewer_may_read_is_not_described_as_unreadable(self):
+        """With the decision's permitted view unchanged, every entry still equals what the projection builds from it: only the permission to read tells them apart."""
+        model, _ = mutate_model(self.model, [])
+        model.registry = copy.deepcopy(model.registry)
+        model.registry.permission_decisions["AUTHZ-READ-LIMIT-0417@v1"]["read_allowed"] = True
+        found = [f for f in semantics.check_disclosure(model) if f.code == "DISC003"]
+        self.assertEqual(len(found), 6)  # the gap and the retrieval unit of each selection, and the gap of each packet
+        self.assertTrue(all("lets this viewer read the input" in f.message for f in found), [f.message for f in found])
+        self.assertEqual({f.code for f in semantics.check_disclosure(model)}, {"DISC003"})
+        self.assertEqual([f.code for f in semantics.check_disclosure(self.model)], [], "the example decision does not allow reading")
 
     def test_the_example_set_has_no_disclosure_findings(self):
         self.assertEqual([f.code for f in semantics.check_disclosure(self.model)], [])

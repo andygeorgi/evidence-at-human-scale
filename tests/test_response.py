@@ -6,7 +6,7 @@ import support  # noqa: F401
 
 from eahs.cases import mutate_model
 from eahs.patch import apply_ops
-from eahs.response import check_canonical, check_response, check_structural, is_canonical, render_markdown, render_response, trusted_lifecycle
+from eahs.response import check_canonical, check_response, check_structural, figures, is_canonical, render_markdown, render_response, states_claim, trusted_lifecycle
 
 
 def codes(response, path="response.json"):
@@ -803,6 +803,109 @@ class ADamagedResponseIsAFindingNotAnError(unittest.TestCase):
             with self.subTest(repr(value)):
                 response["packet_reference"] = {"contract_id": "C04", "id": value, "version": "v2"}
                 self.assertEqual([f.code for f in check_response(model, response, "r.json")], ["RESP007"])
+
+
+class StatementsAreHeldToWhatTheyCite(unittest.TestCase):
+    """A statement does not escape a constraint by citing something odd: an item with no text, a record named by its prefix, a currency the list lacked, a sign beside a code."""
+
+    def setUp(self):
+        self.model = support.example_model()
+        self.v1 = render_response(self.model, self.model.get("C04", "PKT-0417", "v1"))
+        self.v2 = render_response(self.model, self.model.get("C04", "PKT-0417", "v2"))
+
+    def statement(self, response, kind, label_start=""):
+        return next(s for s in response["statements"] if s["kind"] == kind and s["label"].startswith(label_start))
+
+    def changed(self, response, kind, label_start="", **fields):
+        out = copy.deepcopy(response)
+        self.statement(out, kind, label_start).update(fields)
+        return out
+
+    def test_a_statement_that_rests_on_an_item_with_no_text_is_still_held_to_the_constraints(self):
+        count = "/coverage_omissions_gaps/missingness/1/relevant_record_count"   # a number: the item has no text for the statement to rest on
+        response = self.changed(self.v2, "gap", "gap 2", refs=[count], text="Open credit notes were not retrieved, and this is certainly the whole picture.")
+        self.assertIn("RESP011", codes(response))
+        response = self.changed(self.v2, "gap", "gap 2", refs=[count], text="Open credit notes were not retrieved, and the match did not fail.")
+        self.assertIn("RESP012", codes(response))
+        self.assertEqual(codes(self.v2), [])
+
+    def test_a_response_must_name_its_packet_as_a_decision_packet(self):
+        for how in ("another contract", "no contract", "a contract that is not text"):
+            response = copy.deepcopy(self.v2)
+            if how == "no contract":
+                del response["packet_reference"]["contract_id"]
+            else:
+                response["packet_reference"]["contract_id"] = "C05" if how == "another contract" else ["C04"]
+            with self.subTest(how):
+                found = check_structural(self.model, response, "r.json")
+                self.assertEqual([f.code for f in found], ["RESP007"])
+                self.assertEqual(found[0].location, "/packet_reference/contract_id")
+
+    def test_a_claim_with_no_word_of_its_own_is_stated_only_by_a_statement_that_contains_it(self):
+        self.assertFalse(states_claim("100 at 184", "Everything is in order, 100 units."))
+        self.assertFalse(states_claim("100 at 184", ""))
+        self.assertTrue(states_claim("100 at 184", "It says 100 at 184, as written."))
+        self.assertTrue(states_claim("100  AT 184", "it says 100 at 184"), "white space and case do not matter")
+        self.assertFalse(states_claim("", "anything"), "a claim with no text is never stated")
+        claim = "The goods receipt shows only 60 units received."
+        self.assertTrue(states_claim(claim, claim))
+        self.assertFalse(states_claim(claim, "Nothing of the kind."))
+
+    def test_a_record_is_named_whole_and_not_by_its_prefix(self):
+        for named in ("GR-552", "GR-55211", "GR-5521-B", "GR-5521.9"):
+            with self.subTest(named):
+                response = self.changed(self.v1, "claim", "PC-3", text="The goods receipt %s shows only 60 units received." % named)
+                self.assertIn("RESP013", codes(response))
+        self.assertEqual(codes(self.changed(self.v1, "claim", "PC-3", text="The goods receipt GR-5521-B shows only 60 units received.")), ["RESP013"], "the digits are in the packet: only the record is wrong")
+        self.assertEqual(codes(self.changed(self.v1, "claim", "PC-3", text="The goods receipt GR-5521 shows only 60 units received.")), [])
+
+    def test_a_proposal_may_not_name_a_record_its_item_does_not_stand_for(self):
+        for text in ("Proposed (not executed or approved): ACT-REL-9999 v2, release_payment on invoice INV-2026-0417.",
+                     "Proposed (not executed or approved): ACT-REL-0417 v2, release_payment on invoice INV-2026-0418."):
+            with self.subTest(text):
+                self.assertEqual(codes(self.changed(self.v2, "proposal", text=text)), ["RESP013"])
+        self.assertEqual(codes(self.changed(self.v2, "proposal", label="ACT-HOLD-0417 v1")), ["RESP013"], "nor in its label")
+        self.assertEqual(codes(self.v2), [], "the canonical statement names the proposal and the invoice it acts on")
+
+    def test_every_iso_currency_is_a_currency_a_statement_may_not_change(self):
+        for currency in ("CAD", "AUD", "ZAR", "INR", "CNY", "PLN", "\u20ac", "$", "\u00a3"):
+            with self.subTest(currency):
+                text = self.statement(self.v1, "claim", "PC-1")["text"].replace("EUR", currency)
+                self.assertEqual(codes(self.changed(self.v1, "claim", "PC-1", text=text)), ["RESP002"])
+
+    def test_a_sign_beside_a_currency_code_is_still_a_sign(self):
+        self.assertEqual(figures("EUR\u221218,400.00"), {"-18,400.00"})
+        self.assertEqual(figures("EUR-18,400.00"), {"-18,400.00"})
+        self.assertEqual(figures("EUR \u221218,400.00 and (-5)"), {"-18,400.00", "-5"})
+        self.assertEqual(figures("EUR 18,400.00"), {"18,400.00"})
+        self.assertEqual(figures("S-1042 on 2026-11-18"), {"1042", "2026-11-18"}, "a hyphen in an identifier or a date is not a sign")
+        for text in ("The invoice asks for EUR\u221218,400.00: 100 units at EUR 184.00.", "The invoice asks for EUR-18,400.00: 100 units at EUR 184.00."):
+            with self.subTest(text):
+                self.assertIn("RESP002", codes(self.changed(self.v1, "claim", "PC-1", text=text)))
+
+    def test_a_part_of_an_unreadable_gap_cannot_be_cited_beside_it(self):
+        gap = "/coverage_omissions_gaps/missingness/2"
+        for refs in ([gap, gap + "/expected_evidence"], [gap + "/expected_evidence", gap], [gap + "/materiality", gap + "/reason"]):
+            with self.subTest(refs):
+                found = check_structural(self.model, self.changed(self.v2, "gap", "gap 3", refs=refs), "r.json")
+                self.assertIn("RESP017", [f.code for f in found])
+        self.assertEqual(codes(self.v2), [])
+
+    def test_the_exact_permitted_wording_is_not_asked_to_use_the_missingness_keyword(self):
+        model, _ = mutate_model(self.model, [])
+        model.registry = copy.deepcopy(model.registry)
+        model.registry.permission_decisions["AUTHZ-READ-LIMIT-0417@v1"]["permitted_disclosure"] = "Part of the sources is not shown to you."
+        response = render_response(model, model.get("C04", "PKT-0417", "v2"))
+        self.assertEqual(self.statement(response, "gap", "gap 3")["text"], "Inaccessible: Part of the sources is not shown to you.")
+        self.assertEqual([f.code for f in check_structural(model, response, "r.json")], [])
+        bare = self.changed(response, "gap", "gap 3", text="Part of the sources is not shown to you.")
+        self.assertEqual([f.code for f in check_structural(model, bare, "r.json")], [])
+        other = self.changed(response, "gap", "gap 3", text="Part of the sources is hidden from you.")
+        self.assertEqual([f.code for f in check_structural(model, other, "r.json")], ["RESP009", "RESP017"])
+
+    def test_a_gap_that_is_not_unreadable_still_has_to_say_what_it_is_in_words(self):
+        response = self.changed(self.v2, "gap", "gap 1", text="Something about a pallet.")
+        self.assertIn("RESP009", codes(response))
 
 
 class ClaimBoundary(unittest.TestCase):

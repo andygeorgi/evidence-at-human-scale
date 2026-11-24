@@ -451,9 +451,9 @@ def _word_before(clause: str) -> Optional[str]:
 
 
 def _word_after(rest: str) -> Optional[str]:
-    """The word that names the figure which precedes `rest`: the first word that is not a unit ("60 units received" is about "received")."""
+    """The word that names the figure which precedes `rest`: the first word that is not a unit or a filler word ("60 units received" and "60 units were received" are about "received")."""
     for token in _TOKEN.findall(rest[:64]):
-        if token.lower() in _UNITS or token == "%":
+        if token.lower() in _UNITS or token.lower() in _BETWEEN or token == "%":
             continue
         return token if token[0].isalpha() else None
     return None
@@ -470,7 +470,7 @@ def _named_fields(word: Optional[str], by_word: Dict[str, List[Tuple[str, Decima
     return fields or []
 
 
-def _label_findings(text: str, payload, skip: Set[Decimal]) -> List[Tuple[Decimal, str, List[str]]]:
+def _label_findings(text: str, payloads: List[Tuple[object, str]], skip: Set[Decimal]) -> List[Tuple[Decimal, str, List[str]]]:
     """Figures in `text` that sit beside the name of a payload field and are not that field's value: (the figure, the word, the fields' values).
 
     "invoiced 60" is wrong when the payload's quantity_invoiced is 100, even though 60 is in the payload: the figure is tied to the
@@ -479,11 +479,16 @@ def _label_findings(text: str, payload, skip: Set[Decimal]) -> List[Tuple[Decima
     swapping "invoiced 100 units, received 60 units" into "60 units invoiced, 100 units received" is found. A field's name written
     out ("quantity_invoiced 60") names it by its own words. A figure that sits beside no field's name is not tied to anything and
     is not judged here, and a figure in `skip` has been reported already.
+
+    `payloads` are the payloads the claim cites, each with the name of the field its pointer ends at (for a pointer to one value, such
+    as /value/quantity_invoiced, that name is the field's). The fields of all of them are taken together: a figure beside a name is
+    right if any cited payload holds it for a field of that name, because the prose cannot say which of them it is about.
     """
     by_word: Dict[str, List[Tuple[str, Decimal]]] = {}
-    for name, value in _named_numbers(payload):
-        for word in _name_words(name):
-            by_word.setdefault(_stem(word), []).append((name, value))
+    for payload, field_name in payloads:
+        for name, value in _named_numbers(payload, field_name):
+            for word in _name_words(name):
+                by_word.setdefault(_stem(word), []).append((name, value))
     found: List[Tuple[Decimal, str, List[str]]] = []
     text = text.replace("\u2212", "-")
     for match in _NUMBER.finditer(text):
@@ -502,6 +507,14 @@ def _label_findings(text: str, payload, skip: Set[Decimal]) -> List[Tuple[Decima
     return found
 
 
+def _field_of(pointer) -> str:
+    """The name of the field a JSON pointer ends at ("/value/quantity_invoiced" is quantity_invoiced; "/value/lines/0" is lines), or "" when it ends at the payload itself."""
+    for step in reversed(str(pointer).split("/")):
+        if step and not step.isdigit():
+            return step.replace("~1", "/").replace("~0", "~")
+    return ""
+
+
 def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -> List[Finding]:
     """Hold a supported claim to every reference that supports it, not only to a lone claim_reference.
 
@@ -511,7 +524,9 @@ def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -
     payload it cites and at least one of its figures, states no status or figure that the payloads do not hold (once for each
     time it is stated, so a claim cannot reuse one figure to cover two), and puts no figure next to the name of a payload
     field that is not that field's value (swapping "invoiced 100, received 60" is found, and so is "60 units invoiced, 100 units
-    received"). Figures are compared exactly as written, not as floats. A minus sign is part of a figure.
+    received"). Figures are compared exactly as written, not as floats. A minus sign is part of a figure. The fields of every payload
+    the claim cites are taken together, and a pointer to one value (/value/quantity_invoiced) keeps that value's name, so a figure
+    beside a name is held to the value of that name in any of them.
     These are structured values, compared exactly. They are necessary conditions: a claim that passes them can still say
     something its sources do not support. Nothing here reads prose for meaning, and the schema's free-text claim cannot be made
     to say more without a structured assertion field, which v1.0.2 does not add.
@@ -521,7 +536,7 @@ def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -
     out: List[Finding] = []
     loc = "/supported_claims_references/%d" % index
     quoted: List[Tuple[str, str]] = []   # (what a referenced claim says, its name)
-    payloads: List[Tuple[object, str]] = []
+    payloads: List[Tuple[object, str, str]] = []   # (what the pointer leads to, its name for a message, the field it ends at)
     unresolved = False
     for ref in claim["supporting_references"]:
         rec = model.get("C02", ref["record_id"], ref["version"])
@@ -540,7 +555,7 @@ def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -
                 unresolved = True
                 continue
             try:
-                payloads.append((resolve_pointer(payload, ref.get("payload_location", "")), "%s %s payload %s" % (rec.id, rec.version, ref.get("payload_location"))))
+                payloads.append((resolve_pointer(payload, ref.get("payload_location", "")), "%s %s payload %s" % (rec.id, rec.version, ref.get("payload_location")), _field_of(ref.get("payload_location", ""))))
             except (KeyError, IndexError, ValueError, TypeError):
                 unresolved = True
     text = claim["text"]
@@ -560,26 +575,26 @@ def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -
     stated_statuses, stated_numbers = _statuses_in(remainder), _numbers_in(remainder)
     supported_numbers: Counter = Counter()
     supported_statuses: Set[str] = set()
-    for payload, _ in payloads:
+    for payload, _, _field in payloads:
         numbers, statuses = _content_values(payload)
         supported_numbers.update(numbers)
         supported_statuses |= statuses
     wrong_statuses = stated_statuses - supported_statuses
     unaccounted = stated_numbers - supported_numbers
-    cited = ", ".join(name for _, name in payloads)
+    cited = ", ".join(name for _, name, _field in payloads)
     for status in sorted(wrong_statuses):
         out.append(_f("PKT005", "the claim states %r, which what it cites does not hold (%s)" % (status, cited), pkt, loc + "/text", DOC_EVIDENCE))
     for number in sorted(unaccounted):
         out.append(_f("PKT005", "the claim states the figure %s%s, which what it cites does not account for (%s)" % (_show_number(number), " more than once" if unaccounted[number] > 1 else "", cited), pkt, loc + "/text", DOC_EVIDENCE))
-    for payload, name in payloads:
+    for payload, name, _field in payloads:
         numbers, statuses = _content_values(payload)
         if not wrong_statuses:
             for status in sorted(statuses - stated_statuses):
                 out.append(_f("PKT005", "the claim does not state %r, which %s holds: a claim that rests on a payload says what it holds" % (status, name), pkt, loc + "/text", DOC_EVIDENCE))
         if numbers and not set(numbers) & set(stated_numbers):
             out.append(_f("PKT005", "the claim states none of the figures that %s holds (%s)" % (name, ", ".join(_show_number(n) for n in sorted(numbers))), pkt, loc + "/text", DOC_EVIDENCE))
-        for figure, word, fields in _label_findings(remainder, payload, set(unaccounted)):
-            out.append(_f("PKT005", "the claim puts the figure %s next to %r, but %s holds %s for it" % (_show_number(figure), word, name, " and ".join(fields)), pkt, loc + "/text", DOC_EVIDENCE))
+    for figure, word, fields in _label_findings(remainder, [(payload, field_name) for payload, _, field_name in payloads], set(unaccounted)):
+        out.append(_f("PKT005", "the claim puts the figure %s next to %r, but what it cites (%s) holds %s for it" % (_show_number(figure), word, cited, " and ".join(fields)), pkt, loc + "/text", DOC_EVIDENCE))
     return out
 
 
@@ -867,8 +882,9 @@ def _check_existence_disclosure(model: Model) -> List[Finding]:
     """Permission comes before disclosure: an entry that says a source was not readable exists only if a decision bound to the viewer allows it.
 
     The order is the order of the projection: the decision exists, it binds to the exact requesting principal (and to the
-    tenant and purpose it claims), it lets the viewer know the input exists, and then the entry must be exactly the generic
-    disclosure the decision configures. A sibling field that says more than the decision does is a finding like a wrong summary.
+    tenant and purpose it claims), it lets the viewer know the input exists and does not let them read it (an input they may
+    read is not "inaccessible" to them), and then the entry must be exactly the generic disclosure the decision configures.
+    A sibling field that says more than the decision does is a finding like a wrong summary.
     """
     out: List[Finding] = []
     decisions = model.registry.permission_decisions
@@ -887,6 +903,9 @@ def _check_existence_disclosure(model: Model) -> List[Finding]:
             if problems:
                 for problem in problems:
                     out.append(_f("DISC004", "permission decision %s does not bind to this viewer, so it allows no entry: %s" % (ref["record_id"], problem), inst, loc, DOC_LINEAGE))
+                continue
+            if decision.read_allowed:
+                out.append(_f("DISC003", "permission decision %s lets this viewer read the input, yet this entry tells the reader that it is not readable: an entry may say so only where the decision does not allow reading it" % ref["record_id"], inst, loc, DOC_LINEAGE))
                 continue
             if not decision.disclose_existence_allowed and not decision.read_allowed:
                 out.append(_f("DISC002", "permission decision %s withholds the existence of what it protects: no output may carry an entry for it, only the coverage limitation every output carries" % ref["record_id"], inst, loc, DOC_LINEAGE))

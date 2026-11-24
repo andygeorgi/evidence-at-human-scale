@@ -258,14 +258,68 @@ class WhatAPayloadClaimMustSay(unittest.TestCase):
             with self.subTest(new_text):
                 self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, said(PAYLOAD_CLAIM).replace(old_text, new_text))), [])
 
+    def test_a_filler_word_between_a_figure_and_its_name_does_not_hide_a_swap(self):
+        """"60 units were invoiced" is about "invoiced", as "60 units invoiced" is."""
+        for new_text in ("60 units were invoiced, 100 units were received", "60 units are invoiced and 100 units are received", "60 units was invoiced, 100 units was received"):
+            with self.subTest(new_text):
+                text = said(PAYLOAD_CLAIM).replace("invoiced 100 units, received 60 units", new_text)
+                found = claim_findings(with_claim(PAYLOAD_CLAIM, text))
+                self.assertEqual([f.code for f in found], ["PKT005", "PKT005"], [f.message for f in found])
+        for new_text in ("100 units were invoiced, 60 units were received", "100 units are invoiced and 60 units are received"):
+            with self.subTest(new_text):
+                text = said(PAYLOAD_CLAIM).replace("invoiced 100 units, received 60 units", new_text)
+                self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, text)), [])
+
     def test_a_name_written_out_names_the_fields_that_carry_all_of_its_words(self):
         from eahs.semantics import _label_findings
         payload = {"quantity_invoiced": 100, "quantity_received": 60, "variance_pct": 40.0, "tolerance_pct": 2}
-        found = _label_findings("quantity_invoiced 7", payload, set())
+        held = [(payload, "")]
+        found = _label_findings("quantity_invoiced 7", held, set())
         self.assertEqual([(str(figure), word, fields) for figure, word, fields in found], [("7", "quantity_invoiced", ["quantity_invoiced is 100"])])
-        self.assertEqual([word for _, word, _ in _label_findings("tolerance_pct 7", payload, set())], ["tolerance_pct"], "not every field that ends in pct")
-        self.assertEqual(_label_findings("quantity_invoiced 100 and tolerance_pct 2 and variance_pct 40", payload, set()), [])
-        self.assertEqual(_label_findings("quantity_variance 7", payload, set()), [], "a name that no field has is tied to nothing")
+        self.assertEqual([word for _, word, _ in _label_findings("tolerance_pct 7", held, set())], ["tolerance_pct"], "not every field that ends in pct")
+        self.assertEqual(_label_findings("quantity_invoiced 100 and tolerance_pct 2 and variance_pct 40", held, set()), [])
+        self.assertEqual(_label_findings("quantity_variance 7", held, set()), [], "a name that no field has is tied to nothing")
+
+    def test_a_pointer_to_one_value_keeps_the_name_of_that_value(self):
+        """A claim that cites /value/quantity_invoiced and /value/quantity_received held two bare numbers, and the names beside its figures tied to nothing."""
+        refs = []
+        for field in ("quantity_invoiced", "quantity_received"):
+            ref = reference(PAYLOAD_CLAIM)
+            ref["payload_location"] = "/value/" + field
+            refs.append(ref)
+        right = "The invoice shows invoiced 100 units and the goods receipt shows received 60 units."
+        self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, right, copy.deepcopy(refs))), [])
+        for swapped in ("The invoice shows invoiced 60 units and the goods receipt shows received 100 units.",
+                        "The invoice shows 60 units invoiced and the goods receipt shows 100 units received.",
+                        "The invoice shows quantity_invoiced 60 and the goods receipt shows quantity_received 100."):
+            with self.subTest(swapped):
+                found = claim_findings(with_claim(PAYLOAD_CLAIM, swapped, copy.deepcopy(refs)))
+                self.assertEqual([f.code for f in found], ["PKT005", "PKT005"], [f.message for f in found])
+
+    def test_a_pointer_to_a_list_position_is_named_by_the_field_that_holds_the_list(self):
+        from eahs.semantics import _field_of
+        self.assertEqual(_field_of("/value/quantity_invoiced"), "quantity_invoiced")
+        self.assertEqual(_field_of("/value/lines/0"), "lines")
+        self.assertEqual(_field_of("/value"), "value")
+        self.assertEqual(_field_of(""), "")
+        self.assertEqual(_field_of("/a~1b"), "a/b")
+
+    def test_a_claim_that_cites_two_payloads_may_state_either_ones_figure_beside_a_name(self):
+        """The match said 60 units received, and its correction said 100: a claim about both is right to state both."""
+        later = reference(PAYLOAD_CLAIM)
+        later["version"] = "v2"
+        both = ("Three-way match M3W 2.0 on INV-2026-0417: FAIL (invoiced 100 units, received 60 units, variance 40.0%, tolerance 2%), "
+                "then PASS (invoiced 100 units, received 100 units, variance 0.0%, tolerance 2%).")
+        refs = [reference(PAYLOAD_CLAIM), later]
+        self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, both, copy.deepcopy(refs))), [])
+        wrong = both.replace("received 60 units", "received 80 units")
+        found = claim_findings(with_claim(PAYLOAD_CLAIM, wrong, copy.deepcopy(refs)))
+        self.assertEqual([f.code for f in found], ["PKT005"], [f.message for f in found])
+        self.assertIn("80", found[0].message)
+        swapped = both.replace("invoiced 100 units, received 60 units", "invoiced 60 units, received 100 units")
+        found = claim_findings(with_claim(PAYLOAD_CLAIM, swapped, copy.deepcopy(refs)))
+        self.assertEqual([f.code for f in found], ["PKT005"], [f.message for f in found])
+        self.assertIn("'invoiced'", found[0].message)
 
     def test_a_figure_that_differs_only_beyond_the_precision_of_a_float_is_a_different_figure(self):
         for new in ("40.000000000000001", "40.00000000000000001", "39.999999999999999"):

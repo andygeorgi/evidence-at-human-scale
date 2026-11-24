@@ -87,7 +87,7 @@ The entries are produced by the viewer projection in [`scripts/eahs/disclosure.p
 | `MISS005` | The packet keeps every gap and conflict of its selection | `CASE-MISS-04` |
 | `DISC001` | A derived output does not name what the requestor may not see (a backstop word scan; the entry itself is checked by the rules below) | `CASE-DISC-01` |
 | `DISC002` | An entry about an unreadable source needs a decision that lets the requestor know it exists | `CASE-DISC-02` |
-| `DISC003` | The entry is exactly the generic disclosure the decision configures: its words, and every sibling field, and nothing added | `CASE-DISC-03` |
+| `DISC003` | The entry is exactly the generic disclosure the decision configures: its words, and every sibling field, and nothing added. An input the decision lets the reader read is not called inaccessible | `CASE-DISC-03` |
 | `DISC004` | The decision binds to the requesting principal of the context (and to the tenant and purpose it claims) | `tests/test_disclosure.py` |
 | `DISC005` | A record the output names belongs to the context's tenant and purpose | `tests/test_disclosure.py` |
 
