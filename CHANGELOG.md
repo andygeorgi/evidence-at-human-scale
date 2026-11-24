@@ -1,10 +1,10 @@
 # Changelog
 
-Release candidates are labeled `v1.0.0-rc.N`. The label `v1.0.0` is reserved for an edition the author has accepted as final; nothing here is that yet.
+Releases are labeled `vMAJOR.MINOR.PATCH` and tagged in Git. Each entry lists what the release contains and its known limitations.
 
-## 1.0.0-rc.1: release candidate 1, 23 November 2026
+## 1.0.0, 24 November 2026
 
-The first version of this repository. It is offered for review and is not a final release.
+The first public release of this repository, under the [MIT License](LICENSE).
 
 ### What it contains
 
@@ -15,13 +15,13 @@ The first version of this repository. It is offered for review and is not a fina
 - **Evaluation guidance**: the [evaluation guide](evaluation/README.md), the oracles, human-outcome guidance and a catalogue of 12 tests, 12 matched baseline records, 70 fixtures and 47 domain parameters. Every status is NOT RUN or UNSET.
 - **A figure set**: 11 figures and a banner, each with a caption, alt text and a text description. All are drawn SVGs, in light and dark, 360 px wide so that a phone shows them at their natural size; F02 and the banner also have a wide drawing for a large screen. F07 is drawn from a table, which is also given as text.
 - **Tooling**: [`scripts/check_all.py`](scripts/check_all.py) and the checks behind it (examples, unit tests, link and anchor check, page-structure check, figure and hygiene checks), a hygiene scan that can also read the whole Git history and that lets the authority's name appear only on the exact lines that quote a public record's own title or address, an optional external-URL check, and a GitHub Actions workflow that runs them on Ubuntu and Windows.
+- **A license**: the [MIT License](LICENSE) covers the whole repository: the paper and other text, figures, schemas, contracts, examples, scripts and tests.
 
-### Known limitations of this release candidate
+### Known limitations
 
-- **No license has been chosen.** The repository carries no `LICENSE` file, and no permission beyond GitHub's Terms of Service is granted. The author decides.
 - **No evaluation has been run.** EV01–EV12, the 70 fixtures and the 12 matched baseline records are NOT RUN; the 47 domain parameters are UNSET. The repository's own checks are deterministic checks on invented data and say nothing about a real system.
-- **The paper is Markdown only.** No PDF or Word edition is included in this release candidate.
-- **Accessibility has not been audited.** Every figure has alt text and a text description, and colors are always paired with a text label, but no screen-reader test, WCAG audit or PDF/UA check has been performed: NOT ASSESSED.
+- **The paper is Markdown only.** No PDF or Word edition is included in this release.
+- **Accessibility has not been formally assessed.** Practical structural and visual checks were performed: every figure has alt text and a text description, every page has one H1 and no skipped heading level, and colors are always paired with a text label. No screen-reader test, WCAG audit or PDF/UA check has been performed and no conformance is claimed: NOT ASSESSED.
 - **The figures were checked in one browser.** Each figure is drawn 360 px wide with no text below 13 px, and its text fits in Segoe UI, Arial and Verdana. That was measured in a desktop browser, in a phone-sized window and in a laptop-sized one, on the pages as GitHub renders them and with GitHub's own script for light and dark themes. It has not been tried on a physical phone or in a signed-in GitHub browser session. The switch to the wide drawing of F02 and the banner depends on the `media` attribute of a `<source>` element; where a page does not apply it, the narrow drawing is shown, and says the same. A reader whose GitHub theme differs from the color scheme of their system may see the wide drawing in the other scheme; it stays legible.
 - **Reviews were AI-assisted.** No independent human review of the text is recorded here.
 - **Product statements are dated.** Statements about Azure options carry their verification date, 17 November 2026, and may be out of date. Links to public records can move.

@@ -1,7 +1,7 @@
 # The paper
 
 **Evidence at Human Scale: Reference Architecture for Accountable Decisions in Agentic Systems**
-Andy Georgi · public repository candidate 1.0.0-rc.1 · 23 November 2026
+Andy Georgi · version 1.0.0 · 24 November 2026
 
 > **Systems produce evidence. AI makes it consumable. People remain accountable.**
 

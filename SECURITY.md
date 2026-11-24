@@ -21,7 +21,7 @@ Please send a synthetic reproducer and the smallest amount of information that l
 
 ## What to expect
 
-This is a single-author release candidate. Reports are read and answered as soon as possible, but no response time is promised, no bounty is offered and no security audit of the architecture or the scripts has taken place. Fixes go into the latest release candidate or release; older ones are not patched.
+This is a single-author repository. Reports are read and answered as soon as possible, but no response time is promised, no bounty is offered and no security audit of the architecture or the scripts has taken place. Fixes go into the latest release; older ones are not patched.
 
 ## What the scripts do
 

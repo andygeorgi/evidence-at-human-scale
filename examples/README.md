@@ -16,7 +16,7 @@ python scripts/validate_examples.py
 Expected output:
 
 ```text
-Evidence at Human Scale 1.0.0-rc.1: example validation
+Evidence at Human Scale 1.0.0: example validation
 Synthetic data only. A pass is not evidence about any real system.
 
 [1/6] Schema bundle ...      PASS

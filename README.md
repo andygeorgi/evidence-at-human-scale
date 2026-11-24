@@ -15,7 +15,7 @@
 
 > **Systems produce evidence. AI makes it consumable. People remain accountable.**
 
-*Release candidate 1 (`v1.0.0-rc.1`), 23 November 2026. Offered for review; not a final release. No license has been chosen yet: see [License](#license).*
+*Version `v1.0.0`, 24 November 2026. Licensed under the [MIT License](LICENSE).*
 
 Agentic systems can produce information faster than people can attend to it. More agents can create more interpretations, and more summaries can merely move the bottleneck. This repository proposes a different unit of design: a **governed decision context**, not an agent hierarchy. Authorized, attributable outputs are selected for a defined task, synthesized within limits and released as a versioned **decision packet** that the accountable person can inspect and challenge. Mandatory obligations and consequential execution keep their own independent paths.
 
@@ -61,7 +61,7 @@ python scripts/check_all.py                 # every repository check, as CI runs
 You need Python 3.9 or later. It is tested on Windows and Linux (nothing in it is platform-specific, so macOS should work too), uses no network, and starts no service or model. The first command should print:
 
 ```text
-Evidence at Human Scale 1.0.0-rc.1: example validation
+Evidence at Human Scale 1.0.0: example validation
 Synthetic data only. A pass is not evidence about any real system.
 
 [1/6] Schema bundle ...      PASS
@@ -87,7 +87,7 @@ It does **not** mean that any real system, model or process is accountable, safe
 - **No evaluation has been run.** EV01–EV12 (the twelve evaluation tests), their 70 fixtures and the 12 matched baseline records (a comparison framework of four measures against three simpler baselines) are NOT RUN, which means execution was not attempted. The 47 domain parameters are UNSET, which means no approved value exists. Nothing here reports a result of evaluating the architecture, and the proposed benefit is more inspectable context, not a measured gain in speed, accuracy, cost or decision quality.
 - **All example data is invented.** The buyer, the supplier, the amounts and the systems describe no real organization, person or system.
 - **Case-based, not a client commission.** The design comes from an architecture engagement on a written case about a public-sector fisheries-control authority in Iceland. The authority took no part, and nothing here is a statement by, about or on behalf of it. The observations that came out of the engagement are single dated cases and one internal, AI-assisted test; none measures this architecture's benefit ([claims and limits](docs/claims-and-limits.md) gives their limits).
-- **AI-assisted and not independently reviewed by people.** See [AI assistance](#ai-assistance).
+- **AI-assisted, with no independent human review recorded here.** See [AI assistance](#ai-assistance).
 - **Affiliation.** The author is employed by Microsoft, and the optional Azure mapping is one example, not a requirement. See [Disclosure](#disclosure).
 
 The full statement is in [Claims and limits](docs/claims-and-limits.md).
@@ -109,14 +109,14 @@ The full statement is in [Claims and limits](docs/claims-and-limits.md).
 
 ## Citing, contributing, security
 
-- **Cite.** [`CITATION.cff`](CITATION.cff) lets GitHub offer *Cite this repository*. Cite the release candidate by its version, and say that it is a candidate.
+- **Cite.** [`CITATION.cff`](CITATION.cff) lets GitHub offer *Cite this repository*. Cite the release by its version.
 - **Contribute.** [`CONTRIBUTING.md`](CONTRIBUTING.md) says what is welcome and how to run the checks before you open a pull request.
 - **Report a security concern.** [`SECURITY.md`](SECURITY.md) explains what counts and how to report it privately.
-- **Changes.** [`CHANGELOG.md`](CHANGELOG.md) lists what this release candidate contains and its known limitations.
+- **Changes.** [`CHANGELOG.md`](CHANGELOG.md) lists what each release contains and its known limitations.
 
 ## License
 
-**No license has been chosen yet.** Until the author adds a `LICENSE` file, no permission to copy, modify or redistribute this material is granted beyond what GitHub's Terms of Service allow for viewing and forking a public repository. The decision is open; see the [changelog](CHANGELOG.md#known-limitations-of-this-release-candidate).
+This repository is licensed under the [MIT License](LICENSE).
 
 ## Disclosure
 
@@ -124,6 +124,6 @@ The author is employed by Microsoft. The Azure mapping is one implementation exa
 
 ## AI assistance
 
-AI assistance supported drafting, cross-checking and publication production. Andy Georgi is the author and is accountable for this repository. Anyone who reviews it contributes comments, not coauthorship. This repository was assembled with the help of an AI coding assistant (GitHub Copilot) under the author's direction: Markdown conversion, figures, examples and validation scripts. The reviews that took place were AI-assisted and are not independent human reviews.
+AI assistance supported drafting, cross-checking and publication production. Andy Georgi is the author and is accountable for this repository. Anyone who reviews it contributes comments, not coauthorship. This repository was assembled with the help of an AI coding assistant (GitHub Copilot) under the author's direction: Markdown conversion, figures, examples and validation scripts. The reviews recorded here were AI-assisted; no independent human review is recorded.
 
 Author: **Andy Georgi**.

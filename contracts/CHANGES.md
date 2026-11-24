@@ -8,7 +8,7 @@ The schema file is [`schemas/contracts-v1.schema.json`](../schemas/contracts-v1.
 
 For each change give: the previous form, the new form, the reason, the compatibility impact (does any previously valid instance become invalid, or the reverse?) and the migration. Then update the validation-surface hash below. `python scripts/schema_surface_hash.py --check` fails if the hash and the schema disagree.
 
-## v1.0.0-rc.1 (release candidate)
+## v1.0.0
 
 First public form of the contract definitions. There is nothing to migrate, and the validation surface below is the baseline against which every later change is measured.
 
@@ -29,4 +29,4 @@ The validation surface is every validating keyword of the root and of each `$def
 - A change to `$id` is made only for an incompatible change: `…:contracts:2`.
 - Annotation-only changes get a row here and keep the validation-surface hash.
 
-This policy is proposed for the first release; it has not been exercised yet.
+This policy was proposed with the first release (v1.0.0); it has not been exercised yet.

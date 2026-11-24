@@ -30,7 +30,7 @@ The [claims and limits](../docs/claims-and-limits.md) page states the consequenc
 
 AI assistance supported drafting, cross-checking, and publication production. Andy Georgi is the author and is accountable for this paper; anyone who reviews it contributes comments, not coauthorship. Its central proposition: systems supply evidence, AI makes it consumable, and people retain accountability for consequential decisions.
 
-This repository was assembled with the help of an AI coding assistant (GitHub Copilot) under the author's direction: Markdown conversion, figures, examples and validation scripts. The author is accountable for its content. Reviews that took place were AI-assisted and are not independent human reviews.
+This repository was assembled with the help of an AI coding assistant (GitHub Copilot) under the author's direction: Markdown conversion, figures, examples and validation scripts. The author is accountable for its content. The reviews recorded here were AI-assisted; no independent human review is recorded.
 
 ## Dates and retrieval
 

@@ -34,7 +34,7 @@ This repository states what it claims and, as carefully, what it does not. Every
 - The zero-specialist recommendation rests on one internal, AI-assisted test within a single case-based engagement, plus the architecture's own reasoning ([chapter 2](paper/02-engagement.md)). That test is not statistical evidence.
 - No delivery engagement outside the originating case is cited; the paper does not claim repeated observation across customers.
 - Human-outcome measures are not yet defined (open question OQ06); the [human-outcome evaluation guide](../evaluation/human-outcome-evaluation.md) says what a study must define and defines no result.
-- No independent human architect review of the text is recorded in this repository. Reviews that did take place were AI-assisted and are described in the [references](../references/README.md#how-this-edition-was-produced).
+- No independent human architect review of the text is recorded in this repository. The reviews recorded here were AI-assisted and are described in the [references](../references/README.md#how-this-edition-was-produced).
 
 ## Statuses used
 

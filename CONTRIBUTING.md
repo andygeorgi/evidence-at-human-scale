@@ -1,10 +1,10 @@
 # Contributing
 
-Thank you for reading this closely. This repository is a release candidate of a reference architecture, and careful criticism is the most useful contribution. Be courteous: argue with the text, not the person.
+Thank you for reading this closely. This repository is a reference architecture, and careful criticism is the most useful contribution. Be courteous: argue with the text, not the person.
 
-## No license yet
+## License
 
-No license has been chosen, so the author cannot yet accept substantive contributions: there is no license under which to include them. Until one is added, please **open an issue** rather than a pull request. A fix to a typo, a broken link or a wrong count is fine as a pull request, because it adds no creative content.
+This repository is licensed under the [MIT License](LICENSE). Under GitHub's Terms of Service, a contribution to a repository that carries a license is made under that license. For anything beyond a small fix, please **open an issue** first, so that the change can be agreed before you write it. A fix to a typo, a broken link or a wrong count is fine as a pull request.
 
 ## What is welcome
 

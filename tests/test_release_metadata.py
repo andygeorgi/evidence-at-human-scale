@@ -1,5 +1,7 @@
-"""Release metadata must agree with itself: one version everywhere, a citation file without a license or an address,
-no license file while the decision is open, and a workflow that is read-only and uses only pinned official actions."""
+"""Release metadata must agree with itself: one version everywhere and no pre-release label, a citation file that names the
+license and carries no address or affiliation, the MIT License as the one and only license, and a workflow that is read-only
+and uses only pinned official actions."""
+import hashlib
 import re
 import unittest
 
@@ -8,30 +10,47 @@ import support  # noqa: F401  (puts scripts/ on the path)
 from eahs import __version__
 
 REPO = support.REPO
+MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+# The SHA-256 of LICENSE: the standard MIT text for the author. A change to the license is a decision of the author's, so it is a change here too.
+LICENSE_SHA256 = "132671204afb198d8c953059b8ef8a9997e696105f8e1b995ebd4f2b13e294a1"
+OTHER_LICENSES = re.compile(r"(?i)\b(?:Apache[- ]2\.0|CC[- ]BY(?:[- ]\d\.\d)?|Creative Commons|A?L?GPL|MPL|dual[- ]licen[sc]ed?)\b")
+UNDECIDED = re.compile(r"(?i)no license|license (?:has|had) (?:not )?been chosen|license decision|decision is open")
+PRE_RELEASE = re.compile(r"(?i)release[- ]candidate|\brc[-. ]?\d\b|public repository candidate|not a final release|offered for review")
 
 
 def text(relative):
     return (REPO / relative).read_text(encoding="utf-8")
 
 
+def release_date():
+    """The date in CITATION.cff, written as the documents write it."""
+    year, month, day = re.search(r'date-released: "(\d{4})-(\d{2})-(\d{2})"', text("CITATION.cff")).groups()
+    return "%d %s %s" % (int(day), MONTHS[int(month) - 1], year)
+
+
 class Version(unittest.TestCase):
     def test_the_same_version_is_stated_everywhere(self):
-        self.assertEqual(__version__, "1.0.0-rc.1")
-        self.assertIn('version: "%s"' % __version__, text("CITATION.cff"))
-        self.assertIn("(%s)" % __version__, text("CITATION.cff"))
-        self.assertIn("## %s:" % __version__, text("CHANGELOG.md"))
+        self.assertEqual(__version__, "1.0.0")
+        cff = text("CITATION.cff")
+        self.assertEqual(len(re.findall(r'(?m)^\s*version: "%s"$' % re.escape(__version__), cff)), 2, "the version of the repository and that of its preferred citation")
+        self.assertIn("## %s, %s\n" % (__version__, release_date()), text("CHANGELOG.md"))
         self.assertIn("`v%s`" % __version__, text("README.md"))
+        self.assertIn("`v%s`" % __version__, text("schemas/README.md"))
+        self.assertIn("## v%s\n" % __version__, text("contracts/CHANGES.md"))
 
-    def test_the_release_date_is_the_same_in_the_changelog_and_the_citation(self):
-        cff_date = re.search(r'date-released: "(\d{4})-(\d{2})-(\d{2})"', text("CITATION.cff")).groups()
-        months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-        long_date = "%d %s %s" % (int(cff_date[2]), months[int(cff_date[1]) - 1], cff_date[0])
-        self.assertIn(long_date, text("CHANGELOG.md"))
-        self.assertIn(long_date, text("README.md"))
+    def test_the_release_date_is_the_same_in_the_citation_and_the_documents(self):
+        for relative in ("CHANGELOG.md", "README.md", "docs/paper/README.md"):
+            self.assertIn(release_date(), text(relative), relative)
 
-    def test_it_is_called_a_release_candidate_not_a_release(self):
-        self.assertIn("not a final release", text("README.md"))
-        self.assertIn("not a final release", text("CHANGELOG.md"))
+    def test_it_is_a_release_and_no_page_or_script_still_calls_it_a_candidate(self):
+        self.assertRegex(__version__, r"^\d+\.\d+\.\d+$", "a release, with no pre-release label")
+        found = []
+        for path in sorted(REPO.rglob("*")):
+            relative = path.relative_to(REPO)
+            if not path.is_file() or ".git" in relative.parts or relative.parts[0] == "tests" or path.suffix not in (".md", ".cff", ".yml", ".py"):
+                continue
+            found += [(relative.as_posix(), hit.group(0)) for hit in PRE_RELEASE.finditer(path.read_text(encoding="utf-8"))]
+        self.assertEqual(found, [])
 
 
 class Citation(unittest.TestCase):
@@ -45,24 +64,38 @@ class Citation(unittest.TestCase):
         subtitle = re.search(r"^\*\*(.+)\*\*$", readme, re.M).group(1)
         self.assertEqual(title.lower(), ("%s: %s" % (heading, subtitle)).lower())
 
-    def test_no_license_field_no_address_no_identifier_claiming_publication(self):
+    def test_it_names_the_license_and_has_no_address_identifier_or_affiliation(self):
         cff = text("CITATION.cff")
-        self.assertNotRegex(cff, r"(?m)^\s*license")
+        self.assertRegex(cff, r"(?m)^license: MIT$")
         self.assertNotIn("@", cff)
         self.assertNotRegex(cff, r"(?i)\bdoi\b")
+        self.assertNotRegex(cff, r"(?im)^\s*affiliation\s*:")
+        self.assertNotIn("Microsoft", cff)
 
 
-class NoLicenseYet(unittest.TestCase):
-    def test_there_is_no_license_file_and_the_documents_say_so(self):
-        names = {p.name.lower() for p in REPO.iterdir()}
-        self.assertFalse(names & {"license", "license.md", "license.txt", "copying", "copying.md", "unlicense"})
-        self.assertIn("No license has been chosen yet", text("README.md"))
-        self.assertIn("No license yet", text("CONTRIBUTING.md"))
-        self.assertIn("No license has been chosen", text("CHANGELOG.md"))
+class MitLicense(unittest.TestCase):
+    def test_the_license_file_is_the_standard_mit_text_for_the_author_and_is_unaltered(self):
+        raw = (REPO / "LICENSE").read_bytes()
+        body = raw.decode("utf-8")
+        self.assertTrue(body.startswith("MIT License\n\nCopyright (c) 2026 Andy Georgi\n\nPermission is hereby granted, free of charge, to any person"))
+        self.assertNotIn("\r", body)
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), LICENSE_SHA256)
 
-    def test_nothing_in_the_repository_grants_a_license(self):
-        for relative in ("README.md", "CONTRIBUTING.md", "CHANGELOG.md", "CITATION.cff", "SECURITY.md"):
-            self.assertNotRegex(text(relative), r"(?i)\b(MIT|Apache[- ]2\.0|CC[- ]BY|GPL)\b", relative)
+    def test_it_is_the_only_license_file_so_there_is_no_second_license(self):
+        found = sorted(path.relative_to(REPO).as_posix() for path in REPO.rglob("*")
+                       if path.is_file() and ".git" not in path.relative_to(REPO).parts and re.match(r"(?i)(licen[sc]e|copying|notice|unlicense|patents)", path.name))
+        self.assertEqual(found, ["LICENSE"])
+
+    def test_the_readme_license_section_says_that_the_repository_is_mit_licensed(self):
+        section = text("README.md").split("\n## License\n", 1)[1].split("\n## ", 1)[0]
+        self.assertEqual(section.strip(), "This repository is licensed under the [MIT License](LICENSE).")
+
+    def test_the_documents_agree_that_it_is_mit_and_none_calls_the_license_undecided_or_names_another(self):
+        for relative in ("README.md", "CONTRIBUTING.md", "CHANGELOG.md"):
+            self.assertIn("[MIT License](LICENSE)", text(relative), relative)
+        for relative in ("README.md", "CONTRIBUTING.md", "CHANGELOG.md", "CITATION.cff", "SECURITY.md", "docs/claims-and-limits.md"):
+            self.assertNotRegex(text(relative), OTHER_LICENSES, relative)
+            self.assertNotRegex(text(relative), UNDECIDED, relative)
 
 
 class Workflow(unittest.TestCase):
@@ -92,6 +125,11 @@ class Workflow(unittest.TestCase):
         entries = re.findall(r'(?m)^\s*- \{os: ([\w.-]+), python: "([\d.]+)"\}', self.yml)
         self.assertEqual(sorted((os_name.split("-")[0], python) for os_name, python in entries),
                          [("ubuntu", "3.14"), ("ubuntu", "3.9"), ("windows", "3.14"), ("windows", "3.9")])
+
+    def test_python_3_9_runs_on_an_image_that_still_has_a_build_of_it(self):
+        """ubuntu-latest is Ubuntu 26.04, which has no Python 3.9: the job that needs 3.9 on Linux names an image that does."""
+        entries = dict((python, os_name) for os_name, python in re.findall(r'(?m)^\s*- \{os: ([\w.-]+), python: "([\d.]+)"\}', self.yml) if os_name.startswith("ubuntu"))
+        self.assertEqual(entries["3.9"], "ubuntu-24.04")
 
     def test_the_url_check_is_advisory_and_not_run_on_pull_requests(self):
         job = self.yml.split("external-urls:", 1)[1]
