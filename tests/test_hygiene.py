@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import support  # noqa: F401  (puts scripts/ on the path)
 
@@ -42,6 +43,34 @@ class TheRepository(unittest.TestCase):
         findings, _notices, count = hyg.scan(support.REPO)
         self.assertGreater(count, 100)
         self.assertEqual([f.format() for f in findings], [])
+
+    def test_the_scan_needs_no_private_list_to_hold_the_authority_boundary(self):
+        """Continuous integration has no private list; the authority's name is still found there, because the scanner knows it as a digest."""
+        findings, _notices, _count = hyg.scan(support.REPO, private_terms=[])
+        self.assertEqual([f.format() for f in findings], [])
+        self.assertTrue(hyg.NAME_STEMS and all(len(digest) == 64 for _length, digest in hyg.NAME_STEMS))
+
+    def test_the_pinned_lines_are_exactly_the_lines_that_name_the_authority(self):
+        """With no pin, the scan must flag the pinned lines and nothing else; so no pin is stale, and no other line names the authority."""
+        pins = hyg.PUBLIC_SOURCE_LINES
+        self.assertTrue(pins)
+        with mock.patch.object(hyg, "PUBLIC_SOURCE_LINES", ()):
+            findings, _notices, _count = hyg.scan(support.REPO, private_terms=[])
+        self.assertEqual({(f.code, f.path) for f in findings}, {("HYG105", pin.path) for pin in pins})
+        flagged = []
+        for finding in findings:
+            text = (support.REPO / finding.path).read_text(encoding="utf-8").split("\n")
+            flagged.append(hyg.line_digest(text[finding.line - 1]))
+        self.assertEqual(sorted(flagged), sorted(pin.digest for pin in pins))
+
+    def test_every_pin_is_one_line_of_one_file_and_says_what_it_is(self):
+        for pin in hyg.PUBLIC_SOURCE_LINES:
+            self.assertRegex(pin.digest, r"^[0-9a-f]{64}$")
+            self.assertTrue(pin.what.strip(), pin.path)
+            lines = (support.REPO / pin.path).read_text(encoding="utf-8").split("\n")
+            matching = [line for line in lines if hyg.line_digest(line) == pin.digest]
+            self.assertEqual(len(matching), 1, "%s: a pinned line must occur exactly once" % pin.path)
+            self.assertRegex(matching[0], r"^- \*\*(Source|URL):\*\* ", "a pin is a public record's own title (the Source line) or address (the URL line)")
 
     def test_git_ignores_the_private_term_list(self):
         if not (support.REPO / ".git").exists():
@@ -147,6 +176,157 @@ class PrivateTerms(unittest.TestCase):
         self.assertIn("number 1", next(f.message for f in findings if f.code == "HYG206"))
 
 
+RECORDS = "references/public-records.md"
+TITLE = "- **Source:** A National Audit Office, *Zebracorp: follow-up audit*, report to Parliament, May 2023."
+ADDRESS = "- **URL:** <https://www.stjornarradid.is/gogn/urskurdir/Akvordun-Zebracorp/>"
+INVENTED_NAME = (r"(?i)zebracorp\w*",)
+
+
+def pins(*lines, path=RECORDS):
+    return tuple(hyg.PublicSourceLine(path, hyg.line_digest(line), "a line of a test") for line in lines)
+
+
+class PublicSourceBoundary(unittest.TestCase):
+    """The authority's name may appear only on a line that quotes a public record's own title or address, pinned exactly.
+
+    The tests use an invented name, because the scanner meets the real one only as a digest and no test file may repeat it.
+    """
+
+    def where(self, files, pinned=(), terms=INVENTED_NAME):
+        """The (code, path, line) of every HYG105 finding in a throwaway folder, with these lines pinned."""
+        with mock.patch.object(hyg, "PUBLIC_SOURCE_LINES", pinned), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name, content in files.items():
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding="utf-8")
+            findings, _notices, _count = hyg.scan(root, private_terms=list(terms))
+        return sorted((f.code, f.path, f.line) for f in findings if f.code == "HYG105")
+
+    def test_the_name_is_accepted_in_a_pinned_public_record_title(self):
+        self.assertEqual(self.where({RECORDS: TITLE + "\n"}, pins(TITLE)), [])
+        self.assertEqual(self.where({RECORDS: TITLE + "\n"}), [("HYG105", RECORDS, 1)], "without the pin the same line is a finding")
+
+    def test_the_name_is_accepted_in_a_pinned_public_url(self):
+        self.assertEqual(self.where({RECORDS: ADDRESS + "\n"}, pins(ADDRESS)), [])
+        self.assertEqual(self.where({RECORDS: ADDRESS + "\n"}), [("HYG105", RECORDS, 1)])
+
+    def test_the_same_name_is_rejected_in_normal_prose(self):
+        prose = "The authority, Zebracorp, registers catches and landings."
+        text = "\n".join([TITLE, prose, ADDRESS]) + "\n"
+        self.assertEqual(self.where({RECORDS: text}, pins(TITLE, ADDRESS)), [("HYG105", RECORDS, 2)], "the prose line beside two pinned lines is a finding")
+        for name in ("docs/page.md", "README.md", "references/README.md", "docs/paper/02-engagement.md"):
+            self.assertEqual(self.where({name: prose + "\n"}, pins(TITLE, ADDRESS)), [("HYG105", name, 1)], name)
+
+    def test_the_same_name_is_rejected_in_a_heading(self):
+        text = "# Public records\n\n" + TITLE + "\n\n## Zebracorp findings\n"
+        self.assertEqual(self.where({RECORDS: text}, pins(TITLE)), [("HYG105", RECORDS, 5)])
+        self.assertEqual(self.where({"docs/page.md": "# Zebracorp\n"}, pins(TITLE)), [("HYG105", "docs/page.md", 1)])
+
+    def test_the_same_name_is_rejected_in_example_data(self):
+        data = '{"customer": "Zebracorp", "note": "synthetic"}\n'
+        path = "examples/01-source-records/c02-sample.json"
+        self.assertEqual(self.where({path: data}, pins(TITLE, ADDRESS)), [("HYG105", path, 1)])
+        page = "examples/01-source-records/README.md"
+        self.assertEqual(self.where({page: TITLE + "\n"}, pins(TITLE)), [("HYG105", page, 1)], "a pinned line in an example page is not in the pinned file")
+
+    def test_the_same_name_is_rejected_in_a_file_or_directory_name(self):
+        for name in ("docs/Zebracorp_notes.md", "examples/zebracorp/README.md", "figures/ZEBRACORP-chart.svg"):
+            self.assertEqual(self.where({name: "plain text\n"}, pins(TITLE)), [("HYG105", name, 0)], name)
+        pinned_file = "references/Zebracorp-records.md"
+        self.assertEqual(self.where({pinned_file: TITLE + "\n"}, pins(TITLE)), [("HYG105", pinned_file, 0), ("HYG105", pinned_file, 1)],
+                         "a pin excuses a line of its own file, never a file name")
+
+    def test_the_same_name_is_rejected_in_generated_figure_metadata(self):
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title id="t">Zebracorp overview</title><desc id="d">A drawing.</desc></svg>\n'
+        meta = '{"figures": [{"id": "F01", "alt": "A drawing for Zebracorp.", "description": "Three cards."}]}\n'
+        self.assertEqual(self.where({"figures/F01-light.svg": svg}, pins(TITLE)), [("HYG105", "figures/F01-light.svg", 1)])
+        self.assertEqual(self.where({"figures/figures.json": meta}, pins(TITLE)), [("HYG105", "figures/figures.json", 1)])
+
+    def test_the_same_name_is_rejected_in_a_commit_message_but_not_in_a_pinned_file(self):
+        try:
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+        root = History.repository(self, [
+            ("note from the meeting with Zebracorp\n\nA second paragraph.", {RECORDS: TITLE + "\n" + ADDRESS + "\n"}, NOREPLY),
+            ("add a clean page", {"docs/page.md": "A clean page\n"}, NOREPLY)])
+        with mock.patch.object(hyg, "PUBLIC_SOURCE_LINES", pins(TITLE, ADDRESS)):
+            findings, _notices, counts = hyg.scan_history(root, private_terms=list(INVENTED_NAME))
+        self.assertEqual(counts["commits"], 2)
+        self.assertEqual([(f.code, f.path.split(" ", 2)[-1], f.line) for f in findings], [("HYG105", "message", 1)])
+        with mock.patch.object(hyg, "PUBLIC_SOURCE_LINES", ()):
+            unpinned, _notices, _counts = hyg.scan_history(root, private_terms=list(INVENTED_NAME))
+        self.assertEqual(sorted(f.path.split(" ", 1)[0] for f in unpinned), ["commit", RECORDS, RECORDS], "without the pins, the two quoted lines are findings in the commit that added them")
+
+    def test_a_pin_is_exact(self):
+        pinned = pins(TITLE)
+        for altered in (TITLE + " ", "  " + TITLE, TITLE.replace("May 2023", "June 2023"), TITLE.upper(), TITLE + " Zebracorp is mentioned again."):
+            self.assertEqual(self.where({RECORDS: altered + "\n"}, pinned), [("HYG105", RECORDS, 1)], repr(altered))
+        for other in ("references/README.md", "docs/public-records.md", "references/public-records-copy.md", "x/references/public-records.md"):
+            self.assertEqual(self.where({other: TITLE + "\n"}, pinned), [("HYG105", other, 1)], other)
+        self.assertEqual(self.where({RECORDS: TITLE + "\r\n"}, pinned), [], "a line ending is not part of the line")
+
+    def test_a_pin_does_not_excuse_label_wording_or_other_rules(self):
+        line = "- **Source:** Zebracorp report, Internal Use Only, see someone@contoso.com"
+        with mock.patch.object(hyg, "PUBLIC_SOURCE_LINES", pins(line)), tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "references").mkdir()
+            (Path(tmp) / RECORDS).write_text(line + "\n", encoding="utf-8")
+            codes = sorted({f.code for f in hyg.scan(Path(tmp), private_terms=list(INVENTED_NAME))[0]})
+        self.assertEqual(codes, ["HYG104", "HYG105"], "the e-mail address and the confidentiality label are findings even on a pinned line")
+
+    def test_a_pinned_line_passes_in_every_commit_and_prose_is_found_in_the_commit_that_added_it(self):
+        try:
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+        root = History.repository(self, [
+            ("add the sources", {RECORDS: "# Public records\n\n" + TITLE + "\n"}, NOREPLY),
+            ("add the address", {RECORDS: "# Public records\n\n" + TITLE + "\n" + ADDRESS + "\n"}, NOREPLY),
+            ("write about it", {"docs/page.md": "Zebracorp is the authority.\n"}, NOREPLY),
+            ("remove the prose", {"docs/page.md": "A clean page\n"}, NOREPLY)])
+        with mock.patch.object(hyg, "PUBLIC_SOURCE_LINES", pins(TITLE, ADDRESS)):
+            head, _notices, _count = hyg.scan(root, private_terms=list(INVENTED_NAME))
+            history, _notices, counts = hyg.scan_history(root, private_terms=list(INVENTED_NAME))
+        self.assertEqual(head, [], "the tree is clean")
+        self.assertEqual(counts["commits"], 4)
+        self.assertEqual([f.path.split(" @ ")[0] for f in history], ["docs/page.md"], "the prose is still in the history")
+
+
+class NameKnownAsDigest(unittest.TestCase):
+    """The real name is in the scanner only as a digest of its first letters. An invented name shows how that works."""
+
+    STEMS = ((9, hyg.name_stem_digest("zebracorp")),)
+
+    def codes(self, files, pinned=()):
+        with mock.patch.object(hyg, "NAME_STEMS", self.STEMS), mock.patch.object(hyg, "PUBLIC_SOURCE_LINES", pinned):
+            return codes_for(files)
+
+    def test_any_case_inflection_and_compound_is_found_without_a_private_list(self):
+        for text in ("Zebracorp", "ZEBRACORP", "zebracorps", "Zebracorpian rules", "see zebra-Zebracorp-x", "Z\u00e9bracorp", "https://x.example/2023-Zebracorp-report.pdf", "Zebracorp2023"):
+            self.assertEqual(self.codes({"docs/page.md": text + "\n"}), ["HYG105"], text)
+
+    def test_other_words_are_not_found(self):
+        for text in ("A zebra crossing", "corporation", "zebracor", "Zebra corp", "The Zebra Corporation"):
+            self.assertEqual(self.codes({"docs/page.md": text + "\n"}), [], text)
+
+    def test_it_is_found_in_a_file_name_and_a_pin_excuses_only_its_exact_line(self):
+        self.assertEqual(self.codes({"docs/zebracorp.md": "plain\n"}), ["HYG105"])
+        self.assertEqual(self.codes({RECORDS: TITLE + "\n"}, pins(TITLE)), [])
+        self.assertEqual(self.codes({RECORDS: TITLE + " ...\n"}, pins(TITLE)), ["HYG105"])
+
+    def test_with_no_stem_nothing_is_known(self):
+        with mock.patch.object(hyg, "NAME_STEMS", ()):
+            self.assertEqual(hyg.name_words("Zebracorp"), [])
+            self.assertEqual(codes_for({"docs/page.md": "Zebracorp\n"}), [])
+
+    def test_the_digest_ignores_case_and_accents_and_the_pin_digest_ignores_the_line_ending(self):
+        self.assertEqual(hyg.name_stem_digest("Zebracorp"), hyg.name_stem_digest("ZÉBRACORP"))
+        self.assertNotEqual(hyg.name_stem_digest("zebracorp"), hyg.name_stem_digest("zebracorq"))
+        self.assertEqual(hyg.line_digest("a line\r\n"), hyg.line_digest("a line"))
+        self.assertNotEqual(hyg.line_digest("a line "), hyg.line_digest("a line"))
+
+
 class Files(unittest.TestCase):
     def test_blocked_types_and_editor_files(self):
         self.assertEqual(codes_for({"docs/report.docx": b"PK\x03\x04\x00\x00", "docs/paper.pdf": b"%PDF-1.7\n\x00"}), ["HYG201"])
@@ -203,6 +383,22 @@ class CommandLine(unittest.TestCase):
         for code in ("HYG101", "HYG108", "HYG205", "HYG206", "HYG207"):
             self.assertIn(code, done.stdout)
         self.assertIn("--history", done.stdout)
+        self.assertIn("exactly these %d lines" % len(hyg.PUBLIC_SOURCE_LINES), done.stdout)
+        for pin in hyg.PUBLIC_SOURCE_LINES:
+            self.assertIn(pin.digest[:12], done.stdout)
+        self.assertNotIn("waived", done.stdout, "there is no waiver by prefix or by pattern any more, only pinned lines")
+
+    def test_pin_prints_the_entry_for_one_line_and_refuses_what_is_not_a_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "references").mkdir()
+            (root / RECORDS).write_text("one\n" + ADDRESS + "\n", encoding="utf-8")
+            done = self.run_cli(root, "--pin", RECORDS + ":2")
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            self.assertIn(hyg.line_digest(ADDRESS), done.stdout)
+            self.assertIn('PublicSourceLine("%s"' % RECORDS, done.stdout)
+            for bad in (RECORDS + ":9", RECORDS, "nowhere.md:1", "../outside.md:1", RECORDS + ":0"):
+                self.assertEqual(self.run_cli(root, "--pin", bad).returncode, 2, bad)
 
     def test_output_is_utf8_even_when_the_console_uses_a_legacy_code_page(self):
         """The rules text holds a typographic dash that a legacy Windows code page cannot print."""
