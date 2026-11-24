@@ -76,8 +76,8 @@ All twenty-one codes of the reference commit check, and where each is shown. The
 | `EVIDENCE_STALE` | a cited record is older than its freshness policy | here |
 | `PRECONDITION_UNDEFINED` | a precondition has no defined rule | [07](../07-authority-and-delegation/README.md) |
 | `PRECONDITION_FAILED` | a named precondition does not hold at commit | here, [07](../07-authority-and-delegation/README.md), [09](../09-unknown-outcome/README.md) |
-| `PER_ACTION_LIMIT` | the action exceeds the per-action limit | [12](../12-controlled-change/README.md) |
-| `CUMULATIVE_LIMIT` | what is already consumed or reserved, plus this action, exceeds the cumulative limit | [09](../09-unknown-outcome/README.md) |
+| `PER_ACTION_LIMIT` | the action exceeds the per-action limit, or its amount or the limit cannot be read (the amount is missing, negative, not a number or stated twice) | [12](../12-controlled-change/README.md) |
+| `CUMULATIVE_LIMIT` | what is already consumed or reserved, plus this action, exceeds the cumulative limit, or the amount, the limit or a ledger entry cannot be read | [09](../09-unknown-outcome/README.md) |
 
 The check returns every reason it finds, not the first. It is a small reference function; a real gateway needs state, concurrency control and a connection to the target, none of which are modelled.
 

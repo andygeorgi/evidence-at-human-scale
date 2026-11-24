@@ -467,6 +467,37 @@ class AGrantOrAProposalMissingAPart(unittest.TestCase):
                 self.assertIn("PER_ACTION_LIMIT", codes)
                 self.assertIn("CUMULATIVE_LIMIT", codes)
 
+    def blocked_at_the_release(self, *mutations):
+        """The second release, which passes the commit check at 16:00:05 as stored, so that only the mutation can block it."""
+        decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", *mutations)
+        self.assertFalse(decision.allow)
+        self.assertTrue(set(decision.codes) <= set(GATE_CODES))
+        return unique(decision.codes)
+
+    def test_an_amount_that_cannot_be_a_quantity_blocks_and_never_gives_capacity_back(self):
+        """A negative amount used to pass both limits and reserve a negative quantity, which frees capacity for the next action. Nothing but a finite number that is not negative is an amount."""
+        for value in (-18400, -1, -0.01, float("nan"), float("inf"), float("-inf"), True, "18400", None, [18400], {"eur": 18400}):
+            with self.subTest(repr(value)):
+                self.assertEqual(self.blocked_at_the_release(replace("C05 ACT-REL-0417 v2", "/action/typed_parameters/0/value", value)), ["PER_ACTION_LIMIT", "CUMULATIVE_LIMIT"])
+
+    def test_an_amount_stated_twice_leaves_it_unclear_which_counts_and_blocks(self):
+        for value in (18400, 1, 99999):
+            with self.subTest(value):
+                codes = self.blocked_at_the_release(add("C05 ACT-REL-0417 v2", "/action/typed_parameters/-", {"name": "amount_eur", "data_type": "number", "value": value}))
+                self.assertEqual(codes, ["PER_ACTION_LIMIT", "CUMULATIVE_LIMIT"])
+
+    def test_an_amount_of_zero_and_the_stored_amount_are_readable(self):
+        for value in (0, 0.0, 18400, 18400.0):
+            with self.subTest(value):
+                decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", replace("C05 ACT-REL-0417 v2", "/action/typed_parameters/0/value", value))
+                self.assertEqual((decision.allow, decision.codes), (True, []))
+                self.assertEqual(decision.reserve["quantity"], float(value))
+
+    def test_a_ledger_that_cannot_read_a_receipts_amount_counts_it_without_limit_also_when_it_is_negative(self):
+        model, _ = mutate_model(support.example_model(), [replace("C05 ACT-REL-0417 v2", "/action/typed_parameters/0/value", -18400)])
+        entries = [e for e in ledger_from_receipts(model, ts("2026-11-23T16:10:00Z")) if e.receipt == "RCP-REL-0417-B"]
+        self.assertEqual([(e.units, e.quantity) for e in entries], [("EUR", float("inf"))])
+
     def test_a_ledger_built_from_receipts_never_raises_for_a_receipt_whose_amount_cannot_be_read(self):
         """The attempt's amount cannot be shown to be smaller than everything, so it is counted without limit."""
         model, _ = mutate_model(support.example_model(), [remove("C05 ACT-REL-0417 v2", "/action/typed_parameters")])

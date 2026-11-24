@@ -573,9 +573,9 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
         if not isinstance(st, dict):
             findings.append(Finding("RESP001", "a statement must be an object with a kind, a text and the packet items it cites", file, loc, DOC))
             continue
-        kind, refs, text = st.get("kind"), st.get("refs", []), st.get("text", "")
-        if not isinstance(refs, list) or not all(isinstance(r, str) for r in refs) or not isinstance(text, str):
-            findings.append(Finding("RESP001", "a statement's text must be a string and its refs a list of packet pointers", file, loc, DOC))
+        kind, refs, text, label = st.get("kind"), st.get("refs", []), st.get("text", ""), st.get("label", "")
+        if not isinstance(refs, list) or not all(isinstance(r, str) for r in refs) or not isinstance(text, str) or not isinstance(label, str):
+            findings.append(Finding("RESP001", "a statement's text and label must be strings and its refs a list of packet pointers", file, loc, DOC))
             continue
         if not isinstance(kind, str) or kind not in KIND_PREFIX:
             findings.append(Finding("RESP001", "unknown statement kind %r" % kind, file, loc, DOC))
@@ -615,9 +615,9 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
             findings.append(Finding("RESP005", "a proposal must say it is not executed or approved", file, loc, "contracts/c05-action-proposal.md"))
         if kind not in ("claim", "conflict") and DECISION_WORDING.search(text):
             findings.append(Finding("RESP005", "wording presents an action as approved or done, which the packet does not support", file, loc, "contracts/c05-action-proposal.md"))
-        findings += _free_text_findings(kind, text, str(st.get("label", "")), " . ".join(subtree), resolved, d, file, loc, withdrawn)
+        findings += _free_text_findings(kind, text, label, " . ".join(subtree), resolved, d, file, loc, withdrawn)
         if kind == "gap":
-            findings += _unreadable_gap_findings(model, packet, text, str(st.get("label", "")), resolved, file, loc)
+            findings += _unreadable_gap_findings(model, packet, text, label, resolved, file, loc)
     claims_total = len(d["supported_claims_references"])
     if claims_total:
         needed = max(1, math.ceil(claims_total * MIN_CLAIM_COVERAGE))

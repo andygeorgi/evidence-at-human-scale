@@ -10,6 +10,7 @@ Equality counts as available: a time equal to `attempted_at` was reached when th
 """
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -109,19 +110,19 @@ class LedgerEntry:
 def action_quantity(proposal: dict, units: str) -> Optional[float]:
     """Quantity a proposal would consume in `units` (EUR from the amount parameter; one per action for counted units).
 
-    None when the proposal states no readable amount in EUR: a limit in EUR cannot then be checked, and the check blocks.
+    None when the proposal states no readable amount in EUR: a limit in EUR cannot then be checked, and the check blocks. An amount
+    is readable when it is one number that is finite and not negative. A negative amount would give capacity back to the limit
+    instead of using it, a parameter that is stated twice leaves it unclear which amount counts, and neither is guessed.
     """
     if units == "EUR":
-        for p in _list(_object(proposal.get("action")).get("typed_parameters")):
-            if isinstance(p, dict) and p.get("name") == "amount_eur":
-                value = p.get("value")
-                if isinstance(value, bool) or not isinstance(value, (int, float)):
-                    return None
-                try:
-                    return float(value)
-                except OverflowError:
-                    return None
-        return None
+        amounts = [p.get("value") for p in _list(_object(proposal.get("action")).get("typed_parameters")) if isinstance(p, dict) and p.get("name") == "amount_eur"]
+        if len(amounts) != 1 or isinstance(amounts[0], bool) or not isinstance(amounts[0], (int, float)):
+            return None
+        try:
+            amount = float(amounts[0])
+        except OverflowError:
+            return None
+        return amount if math.isfinite(amount) and amount >= 0 else None
     return 1.0
 
 
@@ -408,7 +409,7 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         units, cap = limit.get("units"), limit.get("quantity")
         qty = action_quantity(p, units) if isinstance(units, str) else None
         if qty is None or not _is_quantity(cap):
-            reasons.append(Reason("PER_ACTION_LIMIT", "the per-action limit in %s cannot be checked: the proposal states no readable amount in that unit, or the limit states no readable unit or quantity" % units))
+            reasons.append(Reason("PER_ACTION_LIMIT", "the per-action limit in %s cannot be checked: the proposal states no readable amount in that unit (one number that is finite and not negative), or the limit states no readable unit or quantity" % units))
         elif qty > cap:
             reasons.append(Reason("PER_ACTION_LIMIT", "%s %s exceeds the per-action limit of %s %s" % (_fmt(qty), units, _fmt(cap), units)))
     reserve = None
@@ -424,7 +425,7 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
             reasons.append(Reason("GRANT_TIME_UNKNOWN", "the accounting window of the %s limit has a start or an end that is missing, unknown or out of order, so the capacity already used in it cannot be established" % units))
             continue
         if qty is None or not _is_quantity(cap) or not isinstance(scope_name, str):
-            reasons.append(Reason("CUMULATIVE_LIMIT", "the cumulative limit in %s cannot be checked: the proposal states no readable amount in that unit, or the limit states no readable unit, quantity or scope" % units))
+            reasons.append(Reason("CUMULATIVE_LIMIT", "the cumulative limit in %s cannot be checked: the proposal states no readable amount in that unit (one number that is finite and not negative), or the limit states no readable unit, quantity or scope" % units))
             continue
         # Only what the ledger held by the attempt counts: an entry that starts after it is information from the future.
         # An entry whose start or quantity cannot be read cannot be shown to be small or early, so it blocks instead of being guessed.

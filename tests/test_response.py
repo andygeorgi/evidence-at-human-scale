@@ -441,6 +441,22 @@ class TheLifecycleComesFromThePacket(unittest.TestCase):
                 self.assertEqual([f.code for f in check_response(self.model, value, "r.json")], ["RESP001"])
                 self.assertEqual([f.code for f in check_structural(self.model, value, "r.json")], ["RESP001"])
 
+    def test_a_label_that_is_not_text_is_a_finding_and_is_not_read_as_the_text_it_prints_as(self):
+        """str(None) is "None" and str(123) is "123": a label of another kind used to be turned into text and judged as such, so it passed."""
+        for value in (None, 123, 1.5, True, ["gap 1"], {"a": "b"}):
+            with self.subTest(repr(value)):
+                response = copy.deepcopy(self.v1)
+                next(s for s in response["statements"] if s["kind"] == "claim")["label"] = value
+                found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP001"]
+                self.assertEqual(len(found), 1, [f.message for f in found])
+                self.assertIn("label", found[0].message)
+
+    def test_a_statement_without_a_label_is_still_a_statement(self):
+        response = copy.deepcopy(self.v1)
+        for statement in response["statements"]:
+            statement.pop("label", None)
+        self.assertEqual([f for f in check_structural(self.model, response, "r.json") if f.code == "RESP001"], [])
+
     def test_saying_that_the_advice_is_not_current_is_not_calling_it_current(self):
         for phrase in ("This is not current advice.", "It is no longer valid.", "It is not yet active and never was in force.", "Not current."):
             with self.subTest(phrase):
