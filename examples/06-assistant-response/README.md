@@ -62,7 +62,7 @@ Every response is held to these. They are named, mechanical tests. None of them 
 | `RESP001` | a statement cites nothing, cites something that does not resolve, or cites an item of the wrong kind (an inference cited as a claim) |
 | `RESP002` | a claim, conflict, recommendation or inference contains a figure or a currency that is not in the packet items it cites |
 | `RESP003` | an inference is not labeled as one |
-| `RESP004` | it drops an inference, conflict, gap, recommendation, proposal or obligation of the packet, or omits the packet's coverage limitation |
+| `RESP004` | it drops an inference, conflict, gap, recommendation, proposal or obligation of the packet, omits the packet's coverage limitation, or states fewer than half of the packet's supported claims (rounded up, at least one) |
 | `RESP005` | a proposal does not say it is not executed or approved, or other wording presents an action as approved or done |
 | `RESP006` | its status is not the one its packet's state requires (`withdrawn` for an invalidated or superseded packet, `current` for an active one), or its as-of time is missing or differs from the packet's |
 | `RESP007` | it cites a packet that does not exist |
@@ -70,14 +70,14 @@ Every response is held to these. They are named, mechanical tests. None of them 
 | `RESP009` | a gap statement does not say, in words, the missingness label the packet gives that gap |
 | `RESP010` | uncertainty is dropped: an inference with no limits or hedge, a conflict not called unresolved, a recommendation not called "for review" |
 | `RESP011` | it adds certainty ("certainly", "confirmed", "verified", "proves") that the cited items do not state |
-| `RESP012` | a claim, conflict or gap uses a status word (pass, fail, stale, current, superseded, revoked, ...) that the cited items do not use |
+| `RESP012` | a claim, inference, conflict, gap, recommendation, proposal or obligation uses a status word (pass, fail, stale, current, superseded, revoked, ...) that the cited items do not use. In a withdrawn response, the words `withdrawn` and `current` on advice are its own lifecycle labels and are not compared |
 | `RESP013` | a statement names a record that the cited items do not rest on |
 | `RESP014` | its status is missing, or is anything other than `current` or `withdrawn` |
 | `RESP015` | the withdrawal reason is missing, or contradicts the packet's own history: it does not name the packet or say what happened to it, it undoes the withdrawal, or it names another record or time; or a response about an active packet carries a withdrawal reason |
 | `RESP016` | a withdrawn response phrases a recommendation, proposal or obligation as current advice instead of saying it is withdrawn |
 | `RESP017` | a statement about a part of the scope the reader may not read does not use the wording the permission decision allows, or mentions a part whose existence no decision bound to the reader lets them know |
 
-A response may be shorter than its packet and may paraphrase. It may not drop a conflict or a gap, and it may not add a figure. The model-style file paraphrases the claims and groups the gaps, and still conforms.
+A response may be shorter than its packet and may paraphrase. It may not drop a conflict or a gap, and it may not add a figure. It may also state fewer of the packet's supported claims, but it has to state at least half of the packet's supported claims (rounded up, and never fewer than one), so that the claims cannot all disappear. That minimum is a documented limit of this reference check, `MIN_CLAIM_COVERAGE` in [`scripts/eahs/response.py`](../../scripts/eahs/response.py); it is not a finding about any model, and it does not say that the claims a response keeps are the important ones. The model-style file paraphrases the claims and groups the gaps, and still conforms.
 
 ## What each validation does not catch
 

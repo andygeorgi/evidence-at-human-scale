@@ -298,7 +298,7 @@
             {
               "op": "replace",
               "path": "/supported_claims_references/1/text",
-              "value": "The goods receipt is probably incomplete: the 40 missing units were probably delivered on a later date and not yet scanned."
+              "value": "The goods receipt is probably incomplete: further units were probably delivered on a later date and not yet scanned."
             },
             {
               "op": "replace",
@@ -777,7 +777,7 @@
                     "value": "2026-11-23T10:03:20Z"
                   }
                 },
-                "reason": "Blocked at commit: PRECONDITION_FAILED.",
+                "reason": "Rejected before submission: PRECONDITION_FAILED.",
                 "no_effect_basis": "rejection",
                 "no_business_effect": true
               }

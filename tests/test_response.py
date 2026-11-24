@@ -211,7 +211,7 @@ class Adversarial(unittest.TestCase):
         self.assertEqual(canonical_codes(changed), ["RESP101"])
 
     def test_omitted_uncertainty(self):
-        changed = self.reword(self.v1, "inference", "M01", "Inference: the goods receipt is incomplete; 40 units were delivered on a later date.")
+        changed = self.reword(self.v1, "inference", "M01", "Inference: the goods receipt is incomplete; further units were delivered on a later date.")
         self.assertEqual(codes(changed), ["RESP010"])
         self.assertTrue({"RESP101", "RESP102"} & set(canonical_codes(changed)))
 
@@ -380,6 +380,79 @@ class TheLifecycleComesFromThePacket(unittest.TestCase):
 
 
 MISSING = object()
+
+
+class CoverageAndStatusConsistency(unittest.TestCase):
+    """Free text stays tied to its packet: its supported claims cannot all disappear, and a status cannot change in any kind of statement."""
+
+    def setUp(self):
+        self.model = support.example_model()
+        self.v1 = render_response(self.model, self.model.get("C04", "PKT-0417", "v1"))
+        self.v2 = render_response(self.model, self.model.get("C04", "PKT-0417", "v2"))
+
+    def only_claims(self, response, keep):
+        out = copy.deepcopy(response)
+        claims = [s for s in out["statements"] if s["kind"] == "claim"]
+        out["statements"] = [s for s in out["statements"] if s["kind"] != "claim"] + claims[:keep]
+        return out
+
+    def test_the_minimum_is_documented_and_is_half_of_the_claims_rounded_up(self):
+        from eahs.response import MIN_CLAIM_COVERAGE
+        self.assertEqual(MIN_CLAIM_COVERAGE, 0.5)
+        import eahs.response as module
+        self.assertIn("MIN_CLAIM_COVERAGE", module.__doc__)
+        readme = (support.EXAMPLES / "06-assistant-response" / "README.md").read_text(encoding="utf-8")
+        self.assertIn("half of the packet's supported claims", readme)
+
+    def test_a_response_that_states_none_of_its_packets_claims_is_refused(self):
+        for response in (self.v1, self.v2):
+            found = [f for f in check_structural(self.model, self.only_claims(response, 0), "r.json") if f.code == "RESP004"]
+            self.assertEqual(len(found), 1)
+            self.assertIn("states 0 of the packet's 7 supported claims", found[0].message)
+
+    def test_the_least_it_may_state_is_four_of_seven(self):
+        self.assertEqual([f.code for f in check_structural(self.model, self.only_claims(self.v1, 3), "r.json")], ["RESP004"])
+        self.assertEqual(codes(self.only_claims(self.v1, 4)), [])
+        self.assertEqual(codes(self.only_claims(self.v2, 4)), [])
+
+    def test_a_packet_with_no_claims_asks_for_none(self):
+        model, _ = mutate_model(self.model, [{"target": "C04 PKT-0417 v2", "ops": [{"op": "replace", "path": "/supported_claims_references", "value": []}]}])
+        packet = model.get("C04", "PKT-0417", "v2")
+        response = render_response(model, packet)
+        self.assertEqual([s for s in response["statements"] if s["kind"] == "claim"], [])
+        self.assertEqual([f.code for f in check_structural(model, response, "r.json") if f.code == "RESP004"], [])
+
+    def test_the_free_form_illustration_states_enough_of_the_claims(self):
+        style = support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")
+        self.assertGreaterEqual(len([s for s in style["statements"] if s["kind"] == "claim"]), 4)
+        self.assertEqual(codes(style), [])
+
+    def test_a_status_cannot_change_in_any_kind_of_statement(self):
+        for kind in ("claim", "inference", "conflict", "gap", "recommendation", "proposal", "obligation"):
+            with self.subTest(kind):
+                response = copy.deepcopy(self.v1)
+                statement = next(s for s in response["statements"] if s["kind"] == kind)
+                statement["text"] += " It has been revoked."
+                found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP012"]
+                self.assertEqual(len(found), 1, kind)
+                self.assertIn("'revoked'", found[0].message)
+
+    def test_a_status_the_cited_item_states_is_not_a_change(self):
+        response = copy.deepcopy(self.v2)
+        statement = next(s for s in response["statements"] if s["kind"] == "recommendation")
+        self.assertIn("passes", statement["text"])
+        self.assertEqual([f.code for f in check_structural(self.model, response, "r.json") if f.code == "RESP012"], [])
+
+    def test_a_failed_match_restated_as_passed_in_a_recommendation_is_found(self):
+        response = copy.deepcopy(self.v1)
+        statement = next(s for s in response["statements"] if s["label"] == "REC-0417-1B")
+        statement["text"] = statement["text"].replace("only if the match passes", "because the match failed and so it is safe")
+        self.assertIn("RESP012", codes(response))
+
+    def test_the_lifecycle_labels_of_a_withdrawn_response_are_not_a_change_of_status(self):
+        self.assertEqual([f.code for f in check_structural(self.model, self.v1, "r.json") if f.code == "RESP012"], [])
+        advice = [s for s in self.v1["statements"] if s["kind"] in ("recommendation", "proposal", "obligation")]
+        self.assertTrue(all("withdrawn" in s["text"].lower() for s in advice))
 
 
 class ClaimBoundary(unittest.TestCase):

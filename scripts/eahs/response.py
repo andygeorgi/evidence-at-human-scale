@@ -11,10 +11,12 @@ against a defined template. It does not verify the packet.
 
 STRUCTURAL FREE-TEXT VALIDATION. A response written by a model or a person is checked against named constraints:
 every statement cites packet items of the right kind; its figures and currencies, its status words (pass, fail, stale,
-revoked, ...) and the record identifiers it names all appear in the items it cites; an inference is labeled and keeps
-a limitation; a conflict stays open and a gap keeps its missingness label; a recommendation says it is for review; a
-proposal is not worded as done; certainty is not added; and every conflict, gap, recommendation, proposal and obligation
-of the packet is mentioned. These constraints catch specific, named failures. They do NOT show that the prose is
+revoked, ...) and the record identifiers it names all appear in the items it cites, for a claim, an inference, a conflict, a
+gap, a recommendation, a proposal and an obligation alike; an inference is labeled and keeps a limitation; a conflict stays
+open and a gap keeps its missingness label; a recommendation says it is for review; a proposal is not worded as done;
+certainty is not added; every conflict, gap, recommendation, proposal and obligation of the packet is mentioned; and at least
+MIN_CLAIM_COVERAGE of its supported claims are stated, so that they cannot all disappear. These constraints catch specific,
+named failures. They do NOT show that the prose is
 semantically correct: a sentence can satisfy every constraint and still mislead. Where the response is not canonical,
 only a person, or a comparison with a canonical rendering, can judge what it means.
 
@@ -29,6 +31,7 @@ Neither validation shows that the packet is right, and neither says anything abo
 """
 from __future__ import annotations
 
+import math
 import re
 from typing import Dict, List, Tuple
 
@@ -50,6 +53,9 @@ KIND_PREFIX = {
     "limitation": "/coverage_omissions_gaps/visible_scoped_limitation_summary",
 }
 REQUIRED_COVERAGE = ("inference", "conflict", "gap", "recommendation", "proposal", "obligation")
+#: Supported claims need not all be repeated, but a response may not let them disappear: it states at least this share of them
+#: (rounded up, and never fewer than one). The figure is a documented minimum for this reference check, not a finding about any model.
+MIN_CLAIM_COVERAGE = 0.5
 FIGURE_CHECKED = ("claim", "inference", "conflict", "recommendation")
 #: The statements that tell the reader what to do. In a withdrawn response none of them may read as current advice.
 ADVICE_KINDS = ("recommendation", "proposal", "obligation")
@@ -59,9 +65,13 @@ DECISION_WORDING = re.compile(r"\b(has|have|had|was|were|been|is|are)\s+(now\s+)
 FIGURE = re.compile(r"\d[\d,.:/-]*\d|\d")
 CURRENCY = re.compile(r"\b(EUR|USD|GBP|ISK|NOK|SEK|DKK|CHF|JPY)\b")
 
-#: Statement kinds on which each structural constraint is applied.
-STATUS_CHECKED = ("claim", "conflict", "gap")
+#: Statement kinds on which each structural constraint is applied. Status consistency covers every kind that states something about
+#: the packet: a claim, an inference, a conflict, a gap, a recommendation, a proposal and an obligation.
+STATUS_CHECKED = ("claim", "inference", "conflict", "gap", "recommendation", "proposal", "obligation")
 IDENTIFIER_CHECKED = ("claim", "inference", "conflict", "gap", "recommendation", "obligation")
+#: The words that label a response's own lifecycle. In a withdrawn response they mark its advice as withdrawn, so on advice they
+#: are not compared with the packet's items.
+LIFECYCLE_LABELS = ("withdrawn", "current")
 
 #: Status words a statement may use only if the items it cites use them too: a failed match may not become a passed one.
 STATUS_WORDS = {
@@ -252,7 +262,7 @@ def render_markdown(response: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _free_text_findings(kind: str, text: str, label: str, cited_text: str, pointers: List[str], packet: dict, file: str, loc: str) -> List[Finding]:
+def _free_text_findings(kind: str, text: str, label: str, cited_text: str, pointers: List[str], packet: dict, file: str, loc: str, withdrawn: bool = False) -> List[Finding]:
     """The named constraints of structural free-text validation, for one statement.
 
     Each constraint is a specific, mechanical test. None of them proves that the statement means what its packet means.
@@ -266,6 +276,8 @@ def _free_text_findings(kind: str, text: str, label: str, cited_text: str, point
             out.append(Finding("RESP002", "the currency %s does not appear in the cited packet items" % code, file, loc, DOC_EVIDENCE))
     if kind in STATUS_CHECKED:
         for name, pattern in STATUS_WORDS.items():
+            if withdrawn and kind in ADVICE_KINDS and name in LIFECYCLE_LABELS:
+                continue
             if pattern.search(text) and not pattern.search(cited_text):
                 out.append(Finding("RESP012", "the status word %r is not in the items this statement cites: rewording may not change a status" % name, file, loc, DOC_RESPONSE))
     for match in CERTAINTY.finditer(text):
@@ -380,6 +392,7 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
         return [Finding("RESP007", "the response cites packet %s %s, which does not exist" % (ref.get("id"), ref.get("version")), file, "/packet_reference", DOC)]
     d = packet.data
     findings.extend(_lifecycle_findings(model, response, packet, file))
+    withdrawn = trusted_lifecycle(model, packet)[0] == "withdrawn"
     cited: Dict[str, set] = {k: set() for k in KIND_PREFIX}
     for i, st in enumerate(response.get("statements", [])):
         loc = "/statements/%d" % i
@@ -420,9 +433,15 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
             findings.append(Finding("RESP005", "a proposal must say it is not executed or approved", file, loc, "contracts/c05-action-proposal.md"))
         if kind not in ("claim", "conflict") and DECISION_WORDING.search(text):
             findings.append(Finding("RESP005", "wording presents an action as approved or done, which the packet does not support", file, loc, "contracts/c05-action-proposal.md"))
-        findings += _free_text_findings(kind, text, str(st.get("label", "")), " ".join(subtree), resolved, d, file, loc)
+        findings += _free_text_findings(kind, text, str(st.get("label", "")), " ".join(subtree), resolved, d, file, loc, withdrawn)
         if kind == "gap":
             findings += _unreadable_gap_findings(model, packet, text, resolved, file, loc)
+    claims_total = len(d["supported_claims_references"])
+    if claims_total:
+        needed = max(1, math.ceil(claims_total * MIN_CLAIM_COVERAGE))
+        if len(cited["claim"]) < needed:
+            findings.append(Finding("RESP004", "the response states %d of the packet's %d supported claims: it may be shorter than its packet, but it must state at least %d (%d%%, rounded up) and may not let its claims disappear" % (
+                len(cited["claim"]), claims_total, needed, int(MIN_CLAIM_COVERAGE * 100)), file, "/statements", DOC))
     sections = {
         "inference": len(d["labeled_inferences"]), "conflict": len(d["conflicts_uncertainty"]["conflicts"]), "gap": len(d["coverage_omissions_gaps"]["missingness"]),
         "recommendation": len(d["recommendations"]), "proposal": len(d["action_proposals"]), "obligation": len(d["priority_mandatory_obligations"]["obligation_references"]),

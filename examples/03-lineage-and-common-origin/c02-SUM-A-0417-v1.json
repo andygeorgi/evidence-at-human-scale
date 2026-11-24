@@ -21,7 +21,7 @@
     "claims": [
       {
         "claim_id": "c1",
-        "text": "The goods receipt is probably incomplete: the 40 missing units were probably delivered on a later date and not yet scanned.",
+        "text": "The goods receipt is probably incomplete: further units were probably delivered on a later date and not yet scanned.",
         "supporting_references": [
           {
             "record_id": "GR-5521",
@@ -163,7 +163,8 @@
       "basis": "Interpretation produced by a model; not verified against any source."
     },
     "limitations": [
-      "Rests on goods receipt GR-5521 v1 alone."
+      "Rests on goods receipt GR-5521 v1 alone.",
+      "Makes no comparison with the invoice or the purchase order: they are not among its sources."
     ]
   },
   "validation": [],

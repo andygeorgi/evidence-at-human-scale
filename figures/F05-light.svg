@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 981" width="360" height="981" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 1017" width="360" height="1017" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">From proposal to commit</title>
-<desc id="d">A packet lists a proposal. An approver, a role distinct from the requestor, approves the exact proposal version, or a bounded grant covers it. A divider reads Approval is not commit. At commit, the executor rechecks six conditions. If all pass, it reserves allowance and submits; if one fails, nothing is submitted and the receipt is not_executed_verified. An authoritative verification confirms the outcome.</desc>
+<desc id="d">A packet lists a proposal. An approver, a role distinct from the requestor, approves the exact proposal version, or a bounded grant covers it. A divider reads Approval is not commit. At commit, the executor rechecks six conditions. If all pass, it reserves allowance and submits. If one fails, the action is rejected before submission; that alone is not proof of no effect. A check of the target confirms the outcome.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
-<rect width="360" height="981" fill="#ffffff"/>
+<rect width="360" height="1017" fill="#ffffff"/>
 <rect x="10.0" y="10.0" width="340.0" height="59.9" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
 <text x="20.0" y="34.0" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">The packet lists the proposal</text>
 <text x="20.0" y="55.1" font-size="13" text-anchor="start" fill="#24133F">proposed, not executed</text>
@@ -60,20 +60,24 @@
 <text x="20.0" y="692.6" font-size="13" text-anchor="start" fill="#0F2E1B">outcome, or a timeout.</text>
 <rect x="210.0" y="596.1" width="140.0" height="111.4" rx="8" fill="#FBE4E4" stroke="#B3261E" stroke-width="1.6"/>
 <text x="220.0" y="620.0" font-size="15" text-anchor="start" font-weight="700" fill="#3D0A07">A check fails</text>
-<text x="220.0" y="641.2" font-size="13" text-anchor="start" fill="#3D0A07">Nothing is</text>
-<text x="220.0" y="658.3" font-size="13" text-anchor="start" fill="#3D0A07">submitted.</text>
+<text x="220.0" y="641.2" font-size="13" text-anchor="start" fill="#3D0A07">Rejected before</text>
+<text x="220.0" y="658.3" font-size="13" text-anchor="start" fill="#3D0A07">submission.</text>
+<text x="220.0" y="675.5" font-size="13" text-anchor="start" fill="#3D0A07">Nothing is</text>
+<text x="220.0" y="692.6" font-size="13" text-anchor="start" fill="#3D0A07">submitted.</text>
 <path d="M105.0 707.4 L105.0 729.4" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <path d="M280.0 707.4 L280.0 729.4" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<rect x="10.0" y="731.4" width="340.0" height="138.2" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
+<rect x="10.0" y="731.4" width="340.0" height="156.6" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
 <text x="20.0" y="755.4" font-size="15" text-anchor="start" font-weight="700" fill="#0F2E1B">Receipt (C07)</text>
 <text x="20.0" y="777.5" font-size="14" text-anchor="start" fill="#0F2E1B">After a pass: the outcome, as</text>
 <text x="20.0" y="796.0" font-size="14" text-anchor="start" fill="#0F2E1B">completed_verified, unknown,</text>
 <text x="20.0" y="814.5" font-size="14" text-anchor="start" fill="#0F2E1B">partial or not_executed_verified.</text>
-<text x="20.0" y="835.9" font-size="14" text-anchor="start" fill="#0F2E1B">After a failed check:</text>
-<text x="20.0" y="854.4" font-size="14" text-anchor="start" fill="#0F2E1B">not_executed_verified, with the reasons.</text>
-<path d="M180.0 869.6 L180.0 892.6" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<rect x="10.0" y="893.6" width="340.0" height="77.1" rx="8" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.6"/>
-<text x="20.0" y="917.5" font-size="15" text-anchor="start" font-weight="700" fill="#0B2540">Authoritative verification</text>
-<text x="20.0" y="938.7" font-size="13" text-anchor="start" fill="#0B2540">against the target, confirms</text>
-<text x="20.0" y="955.9" font-size="13" text-anchor="start" fill="#0B2540">or reconciles the outcome</text>
+<text x="20.0" y="835.9" font-size="14" text-anchor="start" fill="#0F2E1B">After a failed check: the rejection</text>
+<text x="20.0" y="854.4" font-size="14" text-anchor="start" fill="#0F2E1B">and its reasons. A rejection alone</text>
+<text x="20.0" y="872.9" font-size="14" text-anchor="start" fill="#0F2E1B">is not a verified no-effect.</text>
+<path d="M180.0 888.1 L180.0 911.1" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="10.0" y="912.1" width="340.0" height="94.2" rx="8" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.6"/>
+<text x="20.0" y="936.0" font-size="15" text-anchor="start" font-weight="700" fill="#0B2540">Authoritative verification</text>
+<text x="20.0" y="957.2" font-size="13" text-anchor="start" fill="#0B2540">against the target, for this attempt, target</text>
+<text x="20.0" y="974.3" font-size="13" text-anchor="start" fill="#0B2540">and scope: confirms or reconciles the</text>
+<text x="20.0" y="991.5" font-size="13" text-anchor="start" fill="#0B2540">outcome, or confirms that there was no effect</text>
 </svg>

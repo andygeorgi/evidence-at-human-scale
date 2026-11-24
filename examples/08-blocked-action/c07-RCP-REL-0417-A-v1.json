@@ -32,7 +32,7 @@
         "value": "2026-11-23T16:00:20Z"
       }
     },
-    "reason": "Blocked at commit by the action gateway: GRANT_REVOKED, EVIDENCE_NOT_CURRENT, EVIDENCE_STALE, PRECONDITION_FAILED. No payment instruction was sent.",
+    "reason": "Rejected before submission by the action gateway: GRANT_REVOKED, EVIDENCE_NOT_CURRENT, EVIDENCE_STALE, PRECONDITION_FAILED. Verified afterwards for this attempt, target and scope only: an ERP payments query found no payment instruction for the invoice.",
     "no_effect_basis": "rejection",
     "no_business_effect": true
   },

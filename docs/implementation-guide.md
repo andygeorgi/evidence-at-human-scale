@@ -70,7 +70,7 @@ The gateway is separate from the assistant. At commit it rechecks each of the fo
 - [ ] the target is in the state the proposal assumed;
 - [ ] the per-action limit and the cumulative limit hold, **including consumed and reserved capacity**.
 
-After the attempt, verify the outcome against the authoritative target, not against the executor's own status. Keep the five receipt states apart: `submitted`, `unknown`, `partial`, `completed_verified`, `not_executed_verified`. An unknown outcome keeps its reservation and is reconciled before any retry. A timeout is never evidence that nothing happened.
+After the attempt, verify the outcome against the authoritative target, not against the executor's own status. Keep the five receipt states apart: `submitted`, `unknown`, `partial`, `completed_verified`, `not_executed_verified`. An unknown outcome keeps its reservation and is reconciled before any retry. A timeout is never evidence that nothing happened. A gateway rejection is not either: it records what the gateway did before submission, and a receipt says `not_executed_verified` only after a check of the target, made after the attempt, finds no effect for that attempt, target and scope.
 
 ## Step 5 · Compare simpler baselines on the same fixed cases
 

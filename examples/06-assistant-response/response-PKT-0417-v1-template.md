@@ -18,8 +18,8 @@ This is a review aid. It is not a decision, an approval or an instruction.
 
 ## Inferences (model-generated, not verified)
 
-- Inference (model-generated, not verified): Model A infers: The goods receipt is probably incomplete: the 40 missing units were probably delivered on a later date and not yet scanned. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source. `[M01]`
-- Inference (model-generated, not verified): Model B infers: The quantity difference is probably a receiving delay; the invoice quantity is consistent with the purchase order. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source. `[M02]`
+- Inference (model-generated, not verified): Model A infers: The goods receipt is probably incomplete: further units were probably delivered on a later date and not yet scanned. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source. `[M01]`
+- Inference (model-generated, not verified): Model B infers: Probably a receiving delay: the delivery was probably only partly scanned when the receipt was posted. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source. `[M02]`
 
 ## Conflicts nobody has resolved
 

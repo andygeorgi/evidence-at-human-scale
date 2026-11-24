@@ -21,7 +21,7 @@
     "claims": [
       {
         "claim_id": "c1",
-        "text": "ERP payments query at 2026-11-23T16:00:20Z: no payment instruction exists for invoice INV-2026-0417.",
+        "text": "ERP payments query at 2026-11-23T16:00:20Z: the ERP holds no payment instruction for invoice INV-2026-0417.",
         "supporting_references": []
       }
     ]
@@ -119,7 +119,9 @@
       "state": "unquantified",
       "basis": "Source assertion; accuracy is not independently established."
     },
-    "limitations": []
+    "limitations": [
+      "Shows the payments held in the ERP for invoice INV-2026-0417 at the time of the query only: it says nothing about other invoices, other systems or later times."
+    ]
   },
   "validation": [],
   "disclosure_permissions": {

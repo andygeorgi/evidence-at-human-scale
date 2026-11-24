@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from .disclosure import Decision, Viewer, binding_problems, differences, gap_entry, may_know, retrieval_entry
 from .findings import Finding, doc_for_contract
-from .gateway import GATE_CODES, age_hours, evaluate_commit, freshness_max_age, is_current_at, ledger_from_receipts, ts
+from .gateway import GATE_CODES, age_hours, evaluate_commit, freshness_max_age, is_current_at, ledger_from_receipts, parse_time, ts
 from .model import Instance, Model, claims_of, iter_refs, payload_object_of, resolve_pointer
 
 DOC_EVIDENCE = "architecture/evidence-semantics.md"
@@ -478,6 +478,41 @@ def check_authority(model: Model) -> List[Finding]:
         for rec in versions:
             if rec.data["outcome"]["state"] in ("completed_verified", "not_executed_verified") and rec.data["verification_recovery"]["accounting"]["state"] != "reconciled":
                 out.append(_f("ACC003", "a verified outcome settles its accounting: the state must be reconciled", rec, "/verification_recovery/accounting/state", DOC_ACTION))
+            out.extend(_check_verification_binding(rec))
+    return out
+
+
+def _check_verification_binding(rec: Instance) -> List[Finding]:
+    """A verified outcome, and a verified no-effect above all, is verified for this attempt, its target and its action.
+
+    Three things stay apart. A rejection before submission is what the gateway did. A verified no-effect is what an
+    authoritative check found for one attempt, one target and one action. An unknown outcome is what nobody has found out yet.
+    A gateway rejection alone shows nothing about every external effect: the receipt may say `not_executed_verified` only
+    from a verification made after the attempt, of the receipt's own target, for its own action. A check of another target,
+    another action or an earlier moment shows nothing about this attempt.
+    """
+    d = rec.data
+    out: List[Finding] = []
+    if d["outcome"]["state"] not in ("completed_verified", "not_executed_verified"):
+        return out
+    binding = d["identity_binding"]
+    verification = d["verification_recovery"]["verification"]
+    where = "/verification_recovery/verification"
+    named = [(where, verification)] + [("%s/authoritative_outcome_references/%d" % (where, i), ref) for i, ref in enumerate(verification.get("authoritative_outcome_references", []))]
+    for loc, item in named:
+        target, action = item.get("target"), item.get("action_reference")
+        if target is not None and target != binding["target"]:
+            out.append(_f("AUTH008", "a verified outcome is verified for the receipt's own target (%s %s), but this verification names %s %s" % (
+                binding["target"]["entity_type"], binding["target"]["entity_id"], target.get("entity_type"), target.get("entity_id")), rec, loc + "/target", DOC_ACTION))
+        if action is not None and action != binding["proposal_reference"]:
+            out.append(_f("AUTH008", "a verified outcome is verified for the receipt's own action (%s %s), but this verification names %s %s" % (
+                binding["proposal_reference"]["id"], binding["proposal_reference"]["version"], action.get("id"), action.get("version")), rec, loc + "/action_reference", DOC_ACTION))
+    verified_at, attempted_at = parse_time(verification.get("time")), parse_time(d["outcome"]["timestamps"].get("submitted"))
+    if verified_at is None or attempted_at is None:
+        out.append(_f("AUTH008", "a verified outcome needs a verification time and an attempt time, to show that the check came after the attempt", rec, where + "/time", DOC_ACTION))
+    elif verified_at < attempted_at:
+        out.append(_f("AUTH008", "the verification was made at %s, before the attempt at %s: a check made before an attempt cannot show what that attempt did" % (
+            verification["time"], d["outcome"]["timestamps"]["submitted"]), rec, where + "/time", DOC_ACTION))
     return out
 
 

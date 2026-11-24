@@ -1,5 +1,6 @@
 import copy
 import unittest
+from collections import Counter
 
 import support  # noqa: F401
 
@@ -8,6 +9,38 @@ from eahs.cases import check_cases
 from eahs.gateway import evaluate_commit, ledger_from_receipts, ts
 from eahs.patch import apply_ops
 from eahs.scenarios import evaluate_entry, expectation
+
+
+class ProvenanceTeaching(unittest.TestCase):
+    """Example 03 teaches ancestry, so nothing a summary says may reach beyond the records it declares it rests on."""
+
+    def summaries(self):
+        model = support.example_model()
+        found = [r for r in model.of("C02") if r.data["identity_schema"]["kind"] == "model_inference"]
+        self.assertEqual(sorted(r.id for r in found), ["SUM-A-0417", "SUM-B-0417"])
+        return model, found
+
+    def test_no_summary_states_a_figure_its_ancestry_does_not_hold(self):
+        model, found = self.summaries()
+        for rec in found:
+            held = Counter()
+            for ancestor in semantics.ancestors(model, rec).values():
+                held.update(semantics._content_values(ancestor.data["content"])[0])
+            for claim in rec.data["content"]["claims"]:
+                self.assertEqual(sorted(semantics._numbers_in(claim["text"]) - held), [], "%s states a figure that %s does not hold" % (rec.id, sorted(a.id for a in semantics.ancestors(model, rec).values())))
+
+    def test_no_summary_compares_with_a_record_it_does_not_rest_on(self):
+        model, found = self.summaries()
+        for rec in found:
+            self.assertEqual({a.id for a in semantics.ancestors(model, rec).values()}, {"GR-5521"})
+            said = " ".join(c["text"] for c in rec.data["content"]["claims"]).lower()
+            for outside in ("invoice", "purchase order", "three-way"):
+                self.assertNotIn(outside, said, "%s names %s, which is not among its sources" % (rec.id, outside))
+            self.assertIn("Makes no comparison with the invoice or the purchase order: they are not among its sources.", rec.data["coverage_uncertainty"]["limitations"])
+
+    def test_the_shared_root_is_kept(self):
+        model, found = self.summaries()
+        self.assertEqual([semantics.roots(model, rec) for rec in found], [{("GR-5521", "v1")}] * 2)
 
 
 class Baseline(unittest.TestCase):

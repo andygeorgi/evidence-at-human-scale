@@ -410,21 +410,21 @@ def build_evidence(S: Scenario):
         coverage="One invoice; rule M3W 2.0 with a 2% quantity tolerance."))
     sum_a = S.add(F3, evidence(
         "SUM-A-0417", "v1", "model_inference", "producer:agent-a",
-        claims(("c1", "The goods receipt is probably incomplete: the 40 missing units were probably delivered on a later date and not yet scanned.", [support(gr1, "c1")])),
+        claims(("c1", "The goods receipt is probably incomplete: further units were probably delivered on a later date and not yet scanned.", [support(gr1, "c1")])),
         event="2026-11-23T09:41:00Z", ingestion="2026-11-23T09:42:00Z", source=src("src:agent-a", "agent:summary/A/INV-2026-0417", "run-1"),
         scope_=scope(TASK, interp="Interpretation produced by a model; not a source assertion."),
         method_=method("src:agent-a", "producer:agent-a", model="model-x-2026-09", prompt="prompt-summary-3"),
         parents=[("GR-5521", "v1")], uncertainty=("model-generated", "Interpretation produced by a model; not verified against any source."),
-        limits=["Rests on goods receipt GR-5521 v1 alone."],
+        limits=["Rests on goods receipt GR-5521 v1 alone.", "Makes no comparison with the invoice or the purchase order: they are not among its sources."],
         lifecycle={"state": "withdrawn", "effective_time": T_INVALIDATE, "reason": "Its basis GR-5521 v1 was superseded."}))
     sum_b = S.add(F3, evidence(
         "SUM-B-0417", "v1", "model_inference", "producer:agent-b",
-        claims(("c1", "The quantity difference is probably a receiving delay; the invoice quantity is consistent with the purchase order.", [support(gr1, "c1")])),
+        claims(("c1", "Probably a receiving delay: the delivery was probably only partly scanned when the receipt was posted.", [support(gr1, "c1")])),
         event="2026-11-23T09:43:00Z", ingestion="2026-11-23T09:44:00Z", source=src("src:agent-b", "agent:summary/B/INV-2026-0417", "run-1"),
         scope_=scope(TASK, interp="Interpretation produced by a model; not a source assertion."),
         method_=method("src:agent-b", "producer:agent-b", model="model-y-2026-08", prompt="prompt-summary-3"),
         parents=[("GR-5521", "v1")], uncertainty=("model-generated", "Interpretation produced by a model; not verified against any source."),
-        limits=["Rests on goods receipt GR-5521 v1 alone."],
+        limits=["Rests on goods receipt GR-5521 v1 alone.", "Makes no comparison with the invoice or the purchase order: they are not among its sources."],
         lifecycle={"state": "withdrawn", "effective_time": T_INVALIDATE, "reason": "Its basis GR-5521 v1 was superseded."}))
     # --- supporting observations for the selection
     scr1 = S.add(F4, evidence(
@@ -500,9 +500,10 @@ def build_evidence(S: Scenario):
         scope_=scope("Authoritative state of the invoice after the hold"), method_=method("src:erp-payments", "producer:erp-payments", tool="erp-query-4.2")))
     S.add(F8, evidence(
         "ERP-PAYMENTS-QUERY-0417-A", "v1", "source_record_assertion", "producer:erp-payments",
-        claims(("c1", "ERP payments query at 2026-11-23T16:00:20Z: no payment instruction exists for invoice INV-2026-0417.", [])),
+        claims(("c1", "ERP payments query at 2026-11-23T16:00:20Z: the ERP holds no payment instruction for invoice INV-2026-0417.", [])),
         event="2026-11-23T16:00:20Z", ingestion="2026-11-23T16:00:21Z", source=src("src:erp-payments", "erp:payments/INV-2026-0417", "q-2"),
-        scope_=scope("Authoritative state of payments for the invoice"), method_=method("src:erp-payments", "producer:erp-payments", tool="erp-query-4.2")))
+        scope_=scope("Authoritative state of payments for the invoice"), method_=method("src:erp-payments", "producer:erp-payments", tool="erp-query-4.2"),
+        limits=["Shows the payments held in the ERP for invoice INV-2026-0417 at the time of the query only: it says nothing about other invoices, other systems or later times."]))
     bank_content = claims(("c1", "Bank statement line 42 of 2026-11-23: payment PAY-88421 of EUR 18,400.00 to supplier S-1042 booked at 2026-11-23T16:07:00Z.", []))
     S.add(F9, evidence(
         "BANK-STMT-0042", "v1", "source_record_assertion", "producer:bank-api", bank_content,
@@ -581,7 +582,7 @@ def build_selection(S, version, as_of):
         unit("RETR-CREDIT-0417", "AUTHZ-READ-CTX-0417", "completed", at("2026-11-23T09:52:00Z"), at("2026-11-23T09:52:00Z"), "Credit-note ledger query for supplier S-1042, last 90 days.", "The credit-note ledger query completed and returned no relevant records.", "Credit-note ledger for supplier S-1042"),
         unit("RETR-TREASURY-0417", "AUTHZ-READ-CTX-0417", "failed", at("2026-11-23T09:58:00Z"), {"state": "unknown", "reason": "The service returned HTTP 503; the retrieval did not complete."}, "Dependency unavailable.", "Cash-position service unavailable; nothing was read.", "Treasury cash-position service"),
         unreadable_unit(),
-        unit("RETR-DERIVED-0417", "AUTHZ-READ-CTX-0417", "completed", at("2026-11-23T09:44:00Z" if not v2 else "2026-11-23T13:55:00Z"), at("2026-11-23T09:44:00Z" if not v2 else "2026-11-23T13:55:00Z"), "Derived records for the invoice.", "Three-way match result %s %s%s retrieved." % ("M3W-0417", m3w["identity_schema"]["version"], "" if v2 else "; model summaries SUM-A-0417 and SUM-B-0417 retrieved"), "Derived records for INV-2026-0417"),
+        unit("RETR-DERIVED-0417", "AUTHZ-READ-CTX-0417", "completed", at("2026-11-23T09:44:00Z" if not v2 else "2026-11-23T13:55:00Z"), at("2026-11-23T09:44:00Z" if not v2 else "2026-11-23T13:55:00Z"), "Derived records for the invoice.", "Three-way match result %s %s retrieved%s" % ("M3W-0417", m3w["identity_schema"]["version"], "." if v2 else "; model summaries SUM-A-0417 and SUM-B-0417 retrieved."), "Derived records for INV-2026-0417"),
     ]
     for u in units:
         if u["authorization_reference"]["record_id"] == "AUTHZ-READ-CTX-0417":
@@ -1038,7 +1039,7 @@ def build_receipts(S, proposals, grants, block_codes):
         "RCP-REL-0417-A", "v1", rel1, grants["appr_a"], "ATT-REL-0417-A-1",
         {"state": "not_executed_verified", "observed_effects": [], "unresolved_conditions": [],
          "timestamps": {"submitted": T_RUN_A, "observed": known("2026-11-23T16:00:20Z")},
-         "reason": "Blocked at commit by the action gateway: %s. No payment instruction was sent." % ", ".join(block_codes),
+         "reason": "Rejected before submission by the action gateway: %s. Verified afterwards for this attempt, target and scope only: an ERP payments query found no payment instruction for the invoice." % ", ".join(block_codes),
          "no_effect_basis": "rejection", "no_business_effect": True},
         {"verification": verified(S, "ERP-PAYMENTS-QUERY-0417-A", "v1", action_ref(rel1), "ERP payments query", "workload:verifier", "2026-11-23T16:00:25Z", "Declared target and action only"),
          "reconciliation": dict(recon_done), "recovery_state": "none_required", "retry_disposition": "new_proposal_and_approval_required",
@@ -1274,6 +1275,7 @@ def response_files(model):
         "produced_by": "illustration-written-by-the-maintainers (not model output)", "status": "withdrawn", "status_reason": withdrawn,
         "statements": [
             {"kind": "claim", "label": "PC-1", "text": "The invoice asks for EUR 18,400.00: 100 units at EUR 184.00.", "refs": ["/supported_claims_references/0"]},
+            {"kind": "claim", "label": "PC-2", "text": "The purchase order authorizes up to 100 units at EUR 184.00 per unit, EUR 18,400.00 in all.", "refs": ["/supported_claims_references/1"]},
             {"kind": "claim", "label": "PC-3", "text": "The goods receipt shows only 60 units received.", "refs": ["/supported_claims_references/2"]},
             {"kind": "claim", "label": "PC-4", "text": "The automated three-way match fails: the variance between invoiced and received quantity is 40.0%, against a tolerance of 2%.", "refs": ["/supported_claims_references/3"]},
             {"kind": "conflict", "label": "CONF-QTY", "text": "The invoice and the goods receipt disagree on quantity (100 against 60) and nobody has resolved it yet.", "refs": ["/conflicts_uncertainty/conflicts/0"]},
@@ -1320,7 +1322,7 @@ def case_file(S):
     rejected_hold = {
         "state": "not_executed_verified", "observed_effects": [], "unresolved_conditions": [],
         "timestamps": {"submitted": T_HOLD_SUBMIT, "observed": known(T_HOLD_OBS)},
-        "reason": "Blocked at commit: PRECONDITION_FAILED.", "no_effect_basis": "rejection", "no_business_effect": True,
+        "reason": "Rejected before submission: PRECONDITION_FAILED.", "no_effect_basis": "rejection", "no_business_effect": True,
     }
     cases = [
         case("CASE-SCH-01", "schema", "A required group is removed", "Every contract group is required; a record without a lifecycle is not an evidence record.", ["SCH002"],

@@ -346,11 +346,11 @@ def f05(c):
     left_w = 190
     fork(c, left_w)
     row(c, [dict(kind="pkt", head="Every check passes", body=sub("Reserve allowance. Submit the exact action to the target. Record the outcome, or a timeout."), weight=left_w),
-            dict(kind="stop", head="A check fails", body=sub("Nothing is submitted."), weight=c.inner - left_w - 10)])
+            dict(kind="stop", head="A check fails", body=sub("Rejected before submission. Nothing is submitted."), weight=c.inner - left_w - 10)])
     fork(c, left_w)
-    c.card("pkt", "Receipt (C07)", ["After a pass: the outcome, as completed_verified, unknown, partial or not_executed_verified.", "After a failed check: not_executed_verified, with the reasons."], gap=0)
+    c.card("pkt", "Receipt (C07)", ["After a pass: the outcome, as completed_verified, unknown, partial or not_executed_verified.", "After a failed check: the rejection and its reasons. A rejection alone is not a verified no-effect."], gap=0)
     c.down(24)
-    c.card("src", "Authoritative verification", sub("against the target, confirms or reconciles the outcome"))
+    c.card("src", "Authoritative verification", sub("against the target, for this attempt, target and scope: confirms or reconciles the outcome, or confirms that there was no effect"))
 
 
 # ------------------------------------------------------------------------------------------------------------------ F06
@@ -378,7 +378,7 @@ def f06(c):
     unresolved("unknown", "timeout or no response", "Only authoritative reconciliation\nmoves it on:", ["completed_verified", "not_executed_verified"])
     unresolved("partial", "some effects verified, others not; known effects stay charged", "Reconciliation or compensation,\nunder policy, moves it on:", ["completed_verified"])
     final("completed_verified", "an authoritative outcome confirms the effect")
-    final("not_executed_verified", "authoritatively verified: no business effect")
+    final("not_executed_verified", "authoritatively verified: no effect for this attempt, target and scope")
     c.path([(submitted.x, submitted.cy), (bus, submitted.cy), (bus, arrows[-1])], head=False)
     for y in arrows:
         c.path([(bus, y), (cx - 1, y)])
@@ -484,7 +484,7 @@ EVENTS = [
     (None, "own", "Delegation (C06)", "The pending approval is revoked."),
     ("AT COMMIT", None, None, None),
     (None, "warn", "Executor (action gateway)", "The queued action reaches commit and is rechecked: the grant is revoked and the evidence is no longer current."),
-    (None, "pkt", "Receipt (C07)", "Refused: the state is not_executed_verified, with the reasons."),
+    (None, "pkt", "Receipt (C07)", "Refused before submission, with the reasons. It is a verified no-effect only once the target has been checked."),
     (None, "note", "Next", "A new proposal on the revised packet needs a new approval."),
 ]
 

@@ -6,7 +6,7 @@
 **Reference:** [action and degradation](../architecture/action-and-degradation.md)
 **Figures:** F05, F06, F07 · **Evaluation tests:** EV11, EV12 (NOT ASSESSED)
 
-A C07 Execution receipt records the verified outcome. Unknown is unresolved; partial effects count. A verified completion requires authoritative evidence of the outcome, and `not_executed_verified` (a verified no-effect) means authoritative confirmation that the action caused no business effect, not merely that a response was absent.
+A C07 Execution receipt records the verified outcome. Unknown is unresolved; partial effects count. A verified completion requires authoritative evidence of the outcome, and `not_executed_verified` (a verified no-effect) means authoritative confirmation, for this attempt, target and scope, that the action caused no business effect, not merely that a response was absent or that the gateway rejected the action.
 
 | Group / exact type-cardinality | Emitted group and fields | Required semantics |
 | --- | --- | --- |
@@ -20,11 +20,11 @@ The five outcome states and their required treatment are in [action and degradat
 
 ## What a valid C07 does not establish
 
-A receipt that says `completed_verified` is only as good as the authoritative outcome reference behind it; the schema checks that the reference is present, not that the target system is correct. The executor's own status is never outcome evidence.
+A receipt that says `completed_verified` is only as good as the authoritative outcome reference behind it; the schema checks that the reference is present, not that the target system is correct. The executor's own status is never outcome evidence. A gateway rejection is not a verified no-effect either: it says what the gateway did, not what happened at the target. The reference validator checks that a verified outcome is verified for the receipt's own target and action, and from a check made at or after the attempt (check `AUTH008`); it does not check that the verifying system is right, or that nothing happened beyond the scope the verification declares.
 
 ## Examples
 
-- [08 Blocked action](../examples/08-blocked-action/README.md): `not_executed_verified` after the gateway rejects an approval that is no longer current.
+- [08 Blocked action](../examples/08-blocked-action/README.md): the gateway rejects an approval that is no longer current before submission, and a check of the target then supports `not_executed_verified` for that attempt.
 - [09 Unknown outcome](../examples/09-unknown-outcome/README.md): `unknown` with the reservation retained, then `completed_verified` after authoritative reconciliation.
 
 [← C06 Delegation](c06-delegation.md) · [Contracts](README.md)

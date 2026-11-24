@@ -58,7 +58,7 @@ All times are UTC on 2026-11-23 unless stated.
 | 07:30 | Invoice `INV-2026-0417` arrives: 100 units at EUR 184.00, total EUR 18,400.00 | [01](01-source-records/README.md) |
 | 07:45 | The controller issues two bounded grants for the day's payment work: place payment holds, and release low-value payments | [07](07-authority-and-delegation/README.md) · [12](12-controlled-change/README.md) |
 | 09:35 | The three-way match `M3W-0417` v1 fails: 100 units invoiced against 60 received, a variance of 40% against a tolerance of 2% | [03](03-lineage-and-common-origin/README.md) |
-| 09:41–09:44 | Two model summaries both say "probably a receiving delay". Both rest on `GR-5521` v1 alone | [03](03-lineage-and-common-origin/README.md) |
+| 09:41–09:44 | Two model summaries both suggest a receiving delay. Both rest on `GR-5521` v1 alone and say nothing about the invoice | [03](03-lineage-and-common-origin/README.md) |
 | 09:45–09:59 | Retrieval for the review. The treasury service returns HTTP 503. Part of the requested scope is outside the requestor's read permissions | [04](04-selection-and-missingness/README.md) |
 | 10:00 | Context `CTX-0417` v1, selection `SEL-0417` v1 and decision packet `PKT-0417` v1 are produced for the requestor. A first response is written from the packet | [02](02-context-and-normalization/README.md) · [05](05-decision-packet/README.md) · [06](06-assistant-response/README.md) |
 | 10:03 | A payment hold is placed on the invoice under a bounded grant. The receipt says `completed_verified` | [07](07-authority-and-delegation/README.md) |
@@ -71,7 +71,7 @@ All times are UTC on 2026-11-23 unless stated.
 | 14:30 | The controller lowers the per-payment limit of a low-value release class from EUR 5,000 to EUR 2,500 | [12](12-controlled-change/README.md) |
 | 15:10 | The controller reviews packet v2 | [11](11-late-correction/README.md) |
 | 15:20 | A second exact approval, bound to proposal v2 | [11](11-late-correction/README.md) |
-| 16:00:00 | The queued release under the first approval is blocked at commit. Receipt `not_executed_verified` | [08](08-blocked-action/README.md) |
+| 16:00:00 | The queued release under the first approval is rejected at commit and nothing is submitted. A check of the ERP then verifies no effect for that attempt: receipt `not_executed_verified` | [08](08-blocked-action/README.md) |
 | 16:00:05 | The release under the second approval passes the commit check. The bank interface times out. Receipt `unknown`, allowance reserved | [09](09-unknown-outcome/README.md) |
 | 16:07 · 16:20 | The bank books the payment. Reconciliation against the bank statement upgrades the receipt to `completed_verified` | [09](09-unknown-outcome/README.md) |
 
@@ -90,7 +90,7 @@ The set holds 37 contract instances: 19 evidence records (C02), 2 contexts (C01)
 | [05 Decision packet](05-decision-packet/README.md) | The packet the Decision Owner reviews, and two proposals that are not executed | C04 · C05 | F04 |
 | [06 Assistant response](06-assistant-response/README.md) | A response written from the packet, a response checker, a model-free fallback | (C04) | F04 |
 | [07 Authority and delegation](07-authority-and-delegation/README.md) | A bounded grant, an exact approval, the receipt of a hold | C05 · C06 · C07 | F05 |
-| [08 Blocked action](08-blocked-action/README.md) | A queued release refused at commit; the receipt that proves nothing happened | C07 | F05 · F06 |
+| [08 Blocked action](08-blocked-action/README.md) | A queued release refused at commit, and a receipt that keeps the refusal apart from the verified no-effect for that attempt | C07 | F05 · F06 |
 | [09 Unknown outcome](09-unknown-outcome/README.md) | A timeout, a reserved allowance, no blind retry, reconciliation | C07 | F06 |
 | [10 Degraded modes](10-degraded-modes/README.md) | The commit check fails closed when it cannot be sure | C06 · C07 | F07 |
 | [11 Late correction](11-late-correction/README.md) | A superseding record, invalidated derivatives, a revised packet and a new approval | C02–C06 | F10 |

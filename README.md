@@ -22,7 +22,7 @@ A supplier invoice is ready to pay, and the goods receipt disagrees with it. The
 | | In the example |
 |---|---|
 | **Records that disagree** | Invoice `INV-2026-0417` says 100 units, EUR 18,400. Goods receipt `GR-5521` version 1 says 60 units received. |
-| **What remains unknown** | Why they differ. Two AI summaries say "probably a receiving delay", but both read the same receipt, so they are one opinion. The treasury service did not answer, and part of the requested scope is outside the requestor's read permissions. |
+| **What remains unknown** | Why they differ. Two AI summaries suggest a receiving delay, but both read the same receipt, so they are one opinion. The treasury service did not answer, and part of the requested scope is outside the requestor's read permissions. |
 | **Decision requested** | Hold the payment or release it. The controller owns the decision. |
 | **What authority permits** | A bounded grant lets the system place holds. Releasing this payment needs the controller's approval of one exact proposal. |
 | **After the correction** | The warehouse finds a second pallet and corrects the receipt to 100 units. The summaries, the packet and the approval built on version 1 stop being current, and the controller reviews a new packet before approving again. |
@@ -75,7 +75,7 @@ A stage passes only if it evaluated something. An empty folder is `NOT ASSESSED`
 1. **Read the scenario** above, or [the story](examples/README.md#the-story) for the times.
 2. **Run the Quickstart.**
 3. **Inspect the decision packet** the controller reviews: [05 Decision packet](examples/05-decision-packet/README.md).
-4. **Inspect the blocked action and its receipt**: [08 Blocked action](examples/08-blocked-action/README.md). A queued release is refused at commit, and the receipt shows that nothing happened.
+4. **Inspect the blocked action and its receipt**: [08 Blocked action](examples/08-blocked-action/README.md). A queued release is refused at commit. The receipt keeps the refusal apart from the check that verified no effect for that one attempt.
 5. **Continue into the architecture** if you want the reasons: [the paper](docs/paper/README.md), then the [architecture reference](architecture/README.md).
 
 ## Where to go next

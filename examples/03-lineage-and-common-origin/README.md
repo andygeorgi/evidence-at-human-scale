@@ -37,8 +37,8 @@ In the paper's notation `S01/v1` is the goods receipt `GR-5521` v1, `S02/v1` is 
 | File | Kind | What it is |
 |---|---|---|
 | [`c02-M3W-0417-v1.json`](c02-M3W-0417-v1.json) | `deterministic_finding` | The three-way match, rule `M3W-2.0`, tolerance 2%: invoiced 100, received 60, variance 40.0%, **FAIL**. Its parents are the invoice, the purchase order and the goods receipt v1. It carries a scoped validation. |
-| [`c02-SUM-A-0417-v1.json`](c02-SUM-A-0417-v1.json) | `model_inference` | "The goods receipt is probably incomplete…". Produced by agent A. Parent: `GR-5521` v1. |
-| [`c02-SUM-B-0417-v1.json`](c02-SUM-B-0417-v1.json) | `model_inference` | "The quantity difference is probably a receiving delay…". Produced by agent B, a different model. Parent: `GR-5521` v1. |
+| [`c02-SUM-A-0417-v1.json`](c02-SUM-A-0417-v1.json) | `model_inference` | "The goods receipt is probably incomplete…". Produced by agent A. Parent: `GR-5521` v1. It says nothing about the invoice or the purchase order. |
+| [`c02-SUM-B-0417-v1.json`](c02-SUM-B-0417-v1.json) | `model_inference` | "Probably a receiving delay…". Produced by agent B, a different model. Parent: `GR-5521` v1. It says nothing about the invoice or the purchase order. |
 | [`c02-ANL-S1042-OTD-v1.json`](c02-ANL-S1042-OTD-v1.json) | `analytical_result` | Supplier delivery reliability: 23 of 25 deliveries on time, with a small-sample uncertainty. The selection excludes it as not a release criterion. |
 
 ## Look at
@@ -48,8 +48,9 @@ In the paper's notation `S01/v1` is the goods receipt `GR-5521` v1, `S02/v1` is 
 3. **Method.** The match result declares `rule_version` `M3W-2.0`; the summaries declare `model_version` and `prompt_version`. The fields that do not apply say `not_applicable`.
 4. **Uncertainty.** The match result says it is exactly as reliable as its inputs ("rule_output"); the summaries say "model_generated: not verified against any source".
 5. **Common origin.** Agents A and B agree, and a reader might count two sources. Follow each summary's ancestry to its leaves: both end at `GR-5521` v1. They are one source seen twice. The [packet](../05-decision-packet/README.md) lists them as two inferences, and each says so in its limitations.
-6. **Scoped validation.** `V-M3W-0417-01` says the requestor, an AP analyst, recomputed the arithmetic. Its scope: the arithmetic of the variance only, not the correctness of the input records.
-7. **Lifecycle (snapshot).** The match result v1 shows `superseded` and both summaries show `withdrawn`. The summaries stopped being current at 13:45, when their shared origin was corrected, and the match result at 13:51, when its recomputed replacement was admitted ([11](../11-late-correction/README.md)).
+6. **Nothing beyond the ancestry.** A summary may say only what its parents can support. These two rest on the goods receipt alone, so neither states a figure that the receipt does not hold (the 40-unit difference needs the invoice) or compares the receipt with the invoice or the purchase order, and each records that limit: "Makes no comparison with the invoice or the purchase order: they are not among its sources." A summary that did compare would be a statement outside its ancestry, and it would not be fit to be promoted to a supported claim.
+7. **Scoped validation.** `V-M3W-0417-01` says the requestor, an AP analyst, recomputed the arithmetic. Its scope: the arithmetic of the variance only, not the correctness of the input records.
+8. **Lifecycle (snapshot).** The match result v1 shows `superseded` and both summaries show `withdrawn`. The summaries stopped being current at 13:45, when their shared origin was corrected, and the match result at 13:51, when its recomputed replacement was admitted ([11](../11-late-correction/README.md)).
 
 ## Checks that run here
 

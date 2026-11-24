@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 715" width="360" height="715" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 733" width="360" height="733" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">Receipt states and recovery</title>
 <desc id="d">A submitted action leads to four states. Unknown and partial are open, drawn in amber: allowance stays reserved or charged. Only authoritative reconciliation moves unknown to completed_verified or not_executed_verified. Reconciliation or compensation, under policy, moves partial to completed_verified. The states completed_verified and not_executed_verified are final, drawn in green.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
-<rect width="360" height="715" fill="#ffffff"/>
+<rect width="360" height="733" fill="#ffffff"/>
 <rect x="34.0" y="10.0" width="316.0" height="59.9" rx="8" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.6"/>
 <text x="44.0" y="34.0" font-size="15" text-anchor="start" font-weight="700" fill="#0B2540">submitted</text>
 <text x="44.0" y="55.1" font-size="13" text-anchor="start" fill="#0B2540">every check passed, allowance reserved</text>
@@ -32,21 +32,22 @@
 <text x="315.7" y="453.9" font-size="13" text-anchor="middle" font-weight="700" fill="#0F2E1B">final</text>
 <text x="44.0" y="454.9" font-size="16" text-anchor="start" font-weight="700" fill="#0F2E1B">completed_verified</text>
 <text x="44.0" y="476.4" font-size="13" text-anchor="start" fill="#0F2E1B">an authoritative outcome confirms the effect</text>
-<rect x="34.0" y="503.2" width="316.0" height="61.2" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
+<rect x="34.0" y="503.2" width="316.0" height="78.3" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
 <rect x="291.3" y="511.2" width="48.7" height="23.0" rx="11.5" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.4"/>
 <text x="315.7" y="527.1" font-size="13" text-anchor="middle" font-weight="700" fill="#0F2E1B">final</text>
 <text x="44.0" y="528.1" font-size="16" text-anchor="start" font-weight="700" fill="#0F2E1B">not_executed_verified</text>
-<text x="44.0" y="549.5" font-size="13" text-anchor="start" fill="#0F2E1B">authoritatively verified: no business effect</text>
+<text x="44.0" y="549.5" font-size="13" text-anchor="start" fill="#0F2E1B">authoritatively verified: no effect</text>
+<text x="44.0" y="566.7" font-size="13" text-anchor="start" fill="#0F2E1B">for this attempt, target and scope</text>
 <path d="M34.0 40.0 L16.0 40.0 L16.0 524.2" fill="none" stroke="#57606a" stroke-width="1.8"/>
 <path d="M16.0 118.9 L33.0 118.9" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <path d="M16.0 291.4 L33.0 291.4" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <path d="M16.0 451.0 L33.0 451.0" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <path d="M16.0 524.2 L33.0 524.2" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<rect x="10.0" y="576.3" width="340.0" height="128.6" rx="8" fill="#F4F4F4" stroke="#6F6F6F" stroke-width="1.6"/>
-<text x="20.0" y="600.3" font-size="15" text-anchor="start" font-weight="700" fill="#222222">Open states keep the reservation</text>
-<text x="20.0" y="621.4" font-size="13" text-anchor="start" fill="#222222">While a state is open, allowance</text>
-<text x="20.0" y="638.6" font-size="13" text-anchor="start" fill="#222222">stays reserved or charged and there</text>
-<text x="20.0" y="655.8" font-size="13" text-anchor="start" fill="#222222">is no blind retry. A timeout or lease</text>
-<text x="20.0" y="672.9" font-size="13" text-anchor="start" fill="#222222">expiry never restores allowance; only</text>
-<text x="20.0" y="690.1" font-size="13" text-anchor="start" fill="#222222">authoritative reconciliation does.</text>
+<rect x="10.0" y="593.5" width="340.0" height="128.6" rx="8" fill="#F4F4F4" stroke="#6F6F6F" stroke-width="1.6"/>
+<text x="20.0" y="617.5" font-size="15" text-anchor="start" font-weight="700" fill="#222222">Open states keep the reservation</text>
+<text x="20.0" y="638.6" font-size="13" text-anchor="start" fill="#222222">While a state is open, allowance</text>
+<text x="20.0" y="655.8" font-size="13" text-anchor="start" fill="#222222">stays reserved or charged and there</text>
+<text x="20.0" y="672.9" font-size="13" text-anchor="start" fill="#222222">is no blind retry. A timeout or lease</text>
+<text x="20.0" y="690.1" font-size="13" text-anchor="start" fill="#222222">expiry never restores allowance; only</text>
+<text x="20.0" y="707.2" font-size="13" text-anchor="start" fill="#222222">authoritative reconciliation does.</text>
 </svg>

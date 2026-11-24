@@ -21,6 +21,14 @@
     },
     {
       "kind": "claim",
+      "label": "PC-2",
+      "text": "The purchase order authorizes up to 100 units at EUR 184.00 per unit, EUR 18,400.00 in all.",
+      "refs": [
+        "/supported_claims_references/1"
+      ]
+    },
+    {
+      "kind": "claim",
       "label": "PC-3",
       "text": "The goods receipt shows only 60 units received.",
       "refs": [
