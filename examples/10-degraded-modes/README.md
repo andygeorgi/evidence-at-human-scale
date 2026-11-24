@@ -54,7 +54,7 @@ There is no data of its own: the rest of the degraded behavior is in the other f
 | What fails | What the architecture does | Where it is shown |
 |---|---|---|
 | A source cannot be read (an outage) | The gap is labeled `unavailable`, tied to a record of the failure. The packet is still produced and says so. Nothing is assumed. | [04](../04-selection-and-missingness/README.md), [05](../05-decision-packet/README.md) |
-| A source is outside the reader's permissions | The gap is labeled `inaccessible` and is permission-safe: no identity or content is disclosed. | [04](../04-selection-and-missingness/README.md) |
+| A source is outside the reader's permissions | If the reader may know that it exists, the gap is labeled `inaccessible`, in the wording the permission decision allows and with no identity or content. If not, nothing is shown for it. | [04](../04-selection-and-missingness/README.md) |
 | Evidence is older than policy allows | The gap is labeled `stale`; at commit the check refuses to rely on it. | [04](../04-selection-and-missingness/README.md), [08](../08-blocked-action/README.md) |
 | The assistant model is unavailable | A deterministic template writes the response from the packet. It is less fluent, and it is faithful. | [06](../06-assistant-response/README.md) |
 | A correction arrives late | Everything derived from the corrected record stops being current, and so does every approval that rested on it. | [11](../11-late-correction/README.md) |

@@ -338,9 +338,12 @@ def check_canonical(model: Model, response: dict, packet: Instance, file: str) -
     out: List[Finding] = []
     expected = render_response(model, packet, produced_by=str(response.get("produced_by", "template-fallback-1")),
                                status=str(response.get("status", "current")), withdrawn_reason=str(response.get("status_reason", "")))
-    for key in ("response_id", "synthetic", "packet_reference", "as_of", "produced_by", "status", "status_reason"):
+    compared = ("response_id", "synthetic", "packet_reference", "as_of", "produced_by", "status", "status_reason")
+    for key in compared:
         if response.get(key) != expected.get(key):
             out.append(Finding("RESP101", "%s differs from the canonical rendering: expected %r, found %r" % (key, expected.get(key), response.get(key)), file, "/" + key, DOC_RESPONSE))
+    for key in sorted(set(response) - set(expected) - set(compared)):
+        out.append(Finding("RESP101", "the response has a field %r that the canonical rendering does not have" % key, file, "/" + str(key), DOC_RESPONSE))
     by_key = {(s["kind"], s["label"]): s for s in expected["statements"]}
     seen = set()
     for i, st in enumerate(response.get("statements", [])):
@@ -351,6 +354,8 @@ def check_canonical(model: Model, response: dict, packet: Instance, file: str) -
             out.append(Finding("RESP101", "the %s statement %r is not in the canonical rendering of this packet" % key, file, loc, DOC_RESPONSE))
             continue
         seen.add(key)
+        for extra in sorted(set(st) - set(canonical)):
+            out.append(Finding("RESP101", "the %s statement %r has a field %r that the canonical rendering does not have" % (key[0], key[1], extra), file, "%s/%s" % (loc, extra), DOC_RESPONSE))
         if st.get("text") != canonical["text"]:
             changes = meaning_changes(canonical["text"], str(st.get("text", "")))
             code = "RESP102" if changes else "RESP101"

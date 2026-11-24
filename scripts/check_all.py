@@ -9,7 +9,8 @@
 
 Each check is also a script you can run alone. The external URL check is not included: it needs the network and a
 publisher can fail it for reasons that say nothing about this repository (run ``python scripts/check_urls.py``).
-Exit code 0 means every check passed.
+Exit code 0 means every check that ran passed, 1 that a check failed, and 3 that nothing ran. A run that leaves checks
+out says how many and that its result says nothing about them.
 """
 from __future__ import annotations
 
@@ -71,6 +72,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
     chosen = select(args.only, args.skip)
     print("Evidence at Human Scale %s: repository checks\n" % __version__)
+    if not chosen:
+        print("Result: NOT ASSESSED. Every check was skipped, so nothing was checked.")
+        return 3
     failures = []
     for index, (name, what, command) in enumerate(chosen, 1):
         ok, seconds, output = run(name, command)
@@ -79,9 +83,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print("\n".join("        " + line for line in output.splitlines()) + "\n")
         if not ok:
             failures.append(name)
+    left_out = len(CHECKS) - len(chosen)
     if failures:
         print("\n%d of %d checks failed: %s" % (len(failures), len(chosen), ", ".join(failures)))
         return 1
+    if left_out:
+        print("\nPASS for the checks that ran: %d of %d passed. %d check(s) were skipped and not run, so this result says nothing about them." % (len(chosen), len(CHECKS), left_out))
+        return 0
     print("\nAll %d checks passed. A pass says the repository is consistent; it says nothing about any real system." % len(chosen))
     return 0
 

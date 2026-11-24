@@ -74,7 +74,7 @@ def fit(s, maxw, size, bold=True, least=14):
 def f01(c):
     c.card("src", "Information production keeps growing", "records · events · deterministic findings\nanalytical results · model interpretations", align="middle")
     c.down(48, label="authorize · select · label")
-    c.card("sel", "Governed decision context", "keeps what could change a decision and shows its source, scope, gaps and owner", x=36, w=288, align="middle")
+    c.card("sel", "Decision context", "keeps what could change a decision and shows its source, scope, gaps and owner", x=36, w=288, align="middle")
     c.down(48, label="one decision packet")
     c.card("own", "Decision Owner", "finite attention · accountable", x=72, w=216, align="middle")
 

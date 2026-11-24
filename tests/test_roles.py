@@ -117,6 +117,21 @@ class TheChecksFireOnPurpose(unittest.TestCase):
         model.registry.accountability["may_hold_together"] = [["requestor", "approver"]]
         self.assertNotIn("ROLE002", codes(model))
 
+    def test_a_registry_without_roles_does_not_make_the_role_check_pass_silently(self):
+        model, _ = mutate_model(self.model, [])
+        model.registry = copy.deepcopy(model.registry)
+        model.registry.accountability = {}
+        found = semantics.check_accountability(model)
+        self.assertEqual([f.code for f in found], ["ROLE005"])
+        self.assertIn("cannot be checked", found[0].message)
+
+    def test_a_folder_with_nothing_to_check_has_nothing_to_report(self):
+        model, _ = mutate_model(self.model, [])
+        model.registry = copy.deepcopy(model.registry)
+        model.registry.accountability = {}
+        model.instances = {k: v for k, v in model.instances.items() if k[0] not in ("C04", "C06")}
+        self.assertEqual(semantics.check_accountability(model), [])
+
     def test_the_declared_cases_produce_exactly_their_codes(self):
         data = support.read_json("13-evaluation-cases/cases.json")
         data = dict(data, cases=[c for c in data["cases"] if c["family"] == "roles"])

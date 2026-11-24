@@ -19,6 +19,7 @@ Annotation-only. No previously valid instance becomes invalid, and none that was
 | `x-documentation.source.source_type` | "Author's architecture specification, not published" | "Architecture documentation of this repository" | Wording about how the source was prepared was removed. |
 | `x-documentation.architecture_evaluation_status`, `x-contract-crosswalk[].architectural_status` (41 entries) and one note in `x-documentation.external_checks` | `NOT RUN` | `NOT ASSESSED` | The architecture has not been evaluated, and what an evaluation needs does not exist. |
 | Root `description` | A three-sentence slogan followed by the statement about one interaction contract | The statement about one interaction contract, in plain words | The slogan was removed from the schema as it was from the documents. |
+| `permission_safe_summary` in the five embedded `inaccessible` examples | "Coverage limitation; no protected source identity or existence disclosed." | "Coverage limitation; no protected source identity or content is disclosed." | An `inaccessible` entry exists only where the requestor may know that the input exists, so it cannot claim that existence is undisclosed. |
 | `x-contract-crosswalk` entries for C02 `validation` and C07 `verification_recovery`: `required_semantics` and `external_check` | Lists joined by slashes, such as "verification method/actor/time/scope" | The same items written as a sentence | Plain wording. What each entry requires and what it checks did not change. |
 
 ### Validation surface
@@ -26,7 +27,7 @@ Annotation-only. No previously valid instance becomes invalid, and none that was
 | Property | Value |
 |---|---|
 | File | `schemas/contracts-v1.schema.json` |
-| SHA-256 of the file | `145b315c335d795214a331e30b118e80464c61a72b9efd5f64b9eb3d544461c1` (741,661 bytes) |
+| SHA-256 of the file | `c23e10748393e8f3eab498d18b0a117fc23e14449bdb1218526ce4481035c2c3` (741,666 bytes) |
 | Validation surface SHA-256 | `48dc0402cc4957d1f3e8583ee408159dcb787cbafdb655708b5c7f5ec69860a3` (unchanged) |
 | Embedded examples | 38 valid instances accepted; 64 invalid instances rejected |
 

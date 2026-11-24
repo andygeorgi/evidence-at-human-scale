@@ -13,7 +13,7 @@ C01 Context identifies the requesting principal, permitted task and purpose, rel
 | C01-G01 Identity/principal · Object, 1 | `identity_principal`: `context_id`, `version`, `tenant`, `requesting_principal`, `workload_identity` | Context ID/version, contract/schema versions, tenant and requesting principal; workload identity remains separate. |
 | C01-G02 Task/purpose/entity · Object, 1 | `task_purpose_entity`: `task`, `permitted_purpose`, `entity_references` | Task and permitted purpose; entity references 1..n; no unspecified blanket purpose. |
 | C01-G03 Time/risk/policy · Object, 1 | `time_risk_policy`: `time_interval`, `as_of`, `risk_class`, `policy_references` | Time interval/as-of, risk class, applicable policy references 1..n and exact versions. |
-| C01-G04 Authorization · Object, 1 | `authorization`: `#/$defs/evidence/$defs/authorization_check` | Read-scope decision reference, actor/time/version and restrictions; not execution permission. |
+| C01-G04 Authorization · Object, 1 | `authorization`: `#/$defs/evidence/$defs/authorization_check` | Read-scope decision reference, with its actor, time, version and restrictions. It is not execution permission. |
 
 ## What a valid C01 does not establish
 

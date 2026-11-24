@@ -5322,7 +5322,7 @@
                   "record_id": "opaque-access-decision",
                   "version": "v1"
                 },
-                "permission_safe_summary": "Coverage limitation; no protected source identity or existence disclosed."
+                "permission_safe_summary": "Coverage limitation; no protected source identity or content is disclosed."
               }
             ]
           },
@@ -6776,7 +6776,7 @@
                   "record_id": "opaque-access-decision",
                   "version": "v1"
                 },
-                "permission_safe_summary": "Coverage limitation; no protected source identity or existence disclosed."
+                "permission_safe_summary": "Coverage limitation; no protected source identity or content is disclosed."
               }
             ]
           },
@@ -11154,7 +11154,7 @@
               "record_id": "opaque-access-decision",
               "version": "v1"
             },
-            "permission_safe_summary": "Coverage limitation; no protected source identity or existence disclosed."
+            "permission_safe_summary": "Coverage limitation; no protected source identity or content is disclosed."
           }
         ]
       },
@@ -12454,7 +12454,7 @@
               "record_id": "opaque-access-decision",
               "version": "v1"
             },
-            "permission_safe_summary": "Coverage limitation; no protected source identity or existence disclosed."
+            "permission_safe_summary": "Coverage limitation; no protected source identity or content is disclosed."
           }
         ]
       },
@@ -17198,7 +17198,7 @@
                 "value": "Current principal may know the input exists but may not read it; shown only in the wording the permission decision allows."
               },
               "assessment_basis": "Canonical missingness fixture.",
-              "permission_safe_summary": "Coverage limitation; no protected source identity or existence disclosed."
+              "permission_safe_summary": "Coverage limitation; no protected source identity or content is disclosed."
             }
           ]
         },

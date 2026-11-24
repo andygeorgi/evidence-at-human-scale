@@ -11,7 +11,7 @@
 <path d="M180.0 108.5 L180.0 155.5" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <text x="190.0" y="137.1" font-size="13" text-anchor="start" fill="#57606a">authorize · select · label</text>
 <rect x="36.0" y="156.5" width="288.0" height="98.2" rx="8" fill="#E4F4F6" stroke="#1E7F8C" stroke-width="1.6"/>
-<text x="180.0" y="180.4" font-size="15" text-anchor="middle" font-weight="700" fill="#06323A">Governed decision context</text>
+<text x="180.0" y="180.4" font-size="15" text-anchor="middle" font-weight="700" fill="#06323A">Decision context</text>
 <text x="180.0" y="202.5" font-size="14" text-anchor="middle" fill="#06323A">keeps what could change a</text>
 <text x="180.0" y="221.0" font-size="14" text-anchor="middle" fill="#06323A">decision and shows its source,</text>
 <text x="180.0" y="239.5" font-size="14" text-anchor="middle" fill="#06323A">scope, gaps and owner</text>

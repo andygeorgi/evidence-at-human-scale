@@ -10,12 +10,12 @@ C03 Selection binds authorized retrieval coverage to selected evidence, exclusio
 
 | Group / exact type-cardinality | Emitted group and fields | Required semantics |
 | --- | --- | --- |
-| C03-G01 Identity/scope · Object, 1 | `identity_scope`: `selection_id`, `version`, `context_reference`, `permitted_source_scope`, `time_scope`, `as_of`, `policy_references` | Selection ID/version, exact C01 reference, permitted source/time scope, as-of and policy versions. Relevance/priority/grouping/coverage produces the manifest from authorized candidates and retrieval coverage, not before selection. |
+| C03-G01 Identity/scope · Object, 1 | `identity_scope`: `selection_id`, `version`, `context_reference`, `permitted_source_scope`, `time_scope`, `as_of`, `policy_references` | Selection ID and version, exact C01 reference, permitted source and time scope, as-of and policy versions. Relevance, priority, grouping and coverage produce the manifest from authorized candidates and retrieval coverage, not before selection. |
 | C03-G02 Retrieval · Array, 1..n | `retrieval`: `retrieval_unit_id`, `authorized_scope`, `authorization_reference`, `status`, `attempted_at`, `completed_at`, `reason`, `summary_visibility`, `summary` | Authorized retrieval units, status, attempted/completed times and reasons; permission-safe summaries when details cannot be disclosed. |
-| C03-G03 Disposition · Array, 0..n | `disposition`: `record_reference`, `state`, `reason` | Eligible/included/excluded exact record references with explicit reasons. Empty does not imply whole-corpus absence. |
-| C03-G04 Obligations · Array, 0..n | `obligations`: typed array/object | Obligation ID, policy basis, priority/deadline, owner, delivery/acknowledgement/escalation state. Acknowledgement is not resolution. |
+| C03-G03 Disposition · Array, 0..n | `disposition`: `record_reference`, `state`, `reason` | Exact record references that are eligible, included or excluded, each with an explicit reason. An empty list does not imply whole-corpus absence. |
+| C03-G04 Obligations · Array, 0..n | `obligations`: typed array/object | Obligation ID, policy basis, priority and deadline, owner, and the delivery, acknowledgement and escalation state. An acknowledgement is not a resolution. |
 | C03-G05 Conflicts/gaps · Object, 1 | `conflicts_gaps`: `conflicts`, `missingness` | Conflict entries and missingness entries, each 0..n: scope, referenced claims or expected evidence, materiality, reason and assessment basis. All seven canonical missingness definitions in [lineage, selection and disclosure](../architecture/lineage-selection-disclosure.md#versioned-ancestry-and-missingness) apply without conflation. |
-| C03-G06 Coverage · Object, 1 | `coverage`: `#/$defs/evidence/$defs/coverage` | Declared scope, complete / partial / not-assessed status and limitations. Complete applies only to declared assessed scope. |
+| C03-G06 Coverage · Object, 1 | `coverage`: `#/$defs/evidence/$defs/coverage` | Declared scope, a status of complete, partial or not-assessed, and limitations. Complete applies only to declared assessed scope. |
 
 ## The seven missingness entries
 

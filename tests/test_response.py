@@ -145,6 +145,14 @@ class CanonicalValidation(unittest.TestCase):
         changed["response_id"] = "RESP-0417-v2-model"
         self.assertEqual(sorted(f.location for f in self.findings(changed)), ["/as_of", "/response_id"])
 
+    def test_a_field_the_renderer_does_not_write_fails_at_the_top_and_in_a_statement(self):
+        extra = copy.deepcopy(self.response)
+        extra["decision"] = "release the payment"
+        self.assertEqual([(f.code, f.location) for f in self.findings(extra)], [("RESP101", "/decision")])
+        extra = copy.deepcopy(self.response)
+        extra["statements"][0]["verdict"] = "approved"
+        self.assertEqual([(f.code, f.location) for f in self.findings(extra)], [("RESP101", "/statements/0/verdict")])
+
 
 class Adversarial(unittest.TestCase):
     """Responses whose figures and citations are right and whose meaning is not.

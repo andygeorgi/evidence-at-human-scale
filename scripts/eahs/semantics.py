@@ -487,6 +487,11 @@ def check_accountability(model: Model) -> List[Finding]:
     acc = model.registry.accountability
     roles = acc.get("roles", {})
     if not roles:
+        exact = [g for g in model.of("C06") if g.data["scope_binding"]["binding"]["binding_type"] == "exact_proposal"]
+        reviewed = [p for p in model.of("C04") if p.data["review_version_history"]["state"] == "reviewed"]
+        if exact or reviewed:
+            out.append(_f("ROLE005", "the registry names no roles, so the requestor, the Decision Owner and the approver of %d exact approval(s) and %d reviewed packet(s) cannot be checked" % (len(exact), len(reviewed)),
+                          (exact or reviewed)[0], "/", DOC_ROLES))
         return out
     approvers, owners = _holders(roles, "approver"), _holders(roles, "decision_owner")
     together = [set(pair) for pair in acc.get("may_hold_together", [])]

@@ -9,7 +9,7 @@ python scripts/check_all.py
 
 ## Run everything
 
-[`check_all.py`](check_all.py) runs the checks below in order, the way continuous integration does, and prints one line for each. It shows a check's own output only when that check fails, or with `--verbose`.
+[`check_all.py`](check_all.py) runs the checks below in order, the way continuous integration does, and prints one line for each. It shows a check's own output only when that check fails, or with `--verbose`. Exit code 0 means every check that ran passed. A run that leaves checks out with `--only` or `--skip` ends with `PASS for the checks that ran` and says how many it skipped and that its result says nothing about them. A run that skips every check checked nothing: it reports `NOT ASSESSED` and exits with 3.
 
 ```bash
 python scripts/check_all.py                  # all checks
@@ -58,7 +58,7 @@ Every stage ends in one of five states. A stage passes only if it evaluated at l
 | `NOT ASSESSED` | The input the stage needs does not exist, so nothing was evaluated: an empty folder, or a stage without its input files. |
 | `INPUT ERROR` | The input is malformed or incomplete and cannot support the stage: JSON that does not parse, a document the checks cannot read, a folder that does not exist. The diagnostic names the file and says how to fix it. |
 
-The exit code is 0 for `PASS`, 1 for `FAIL`, 2 for `INPUT ERROR` (and when the command itself cannot run, for example because `jsonschema` is missing) and 3 for `NOT ASSESSED`. When stages disagree, `INPUT ERROR` outranks `FAIL`, and `FAIL` outranks `NOT ASSESSED`. A run in which nothing passed and nothing failed, such as one that skips every stage, is `NOT ASSESSED`. A run that skips some stages and passes the rest ends with `PASS for the stages that ran`, counts the skipped stages and says that the result says nothing about them; its `--json` result has `"complete": false`.
+The exit code is 0 for `PASS`, 1 for `FAIL`, 2 for `INPUT ERROR` (and when the command itself cannot run, for example because `jsonschema` is missing) and 3 for `NOT ASSESSED`. When stages disagree, `INPUT ERROR` outranks `FAIL`, and `FAIL` outranks `NOT ASSESSED`. A run in which nothing passed and nothing failed, such as one that skips every stage, is `NOT ASSESSED`. A run that skips some stages and passes the rest ends with `PASS for the stages that ran`, counts the skipped stages and says that the result says nothing about them; its `--json` result has `"complete": false` and lists the `skipped_stages`.
 
 The instance stage comes first: the other four stages read the model it checks. A stage you select pulls it in (the output says so), and the stages that depend on it are `NOT ASSESSED` when it fails, never `PASS`. A normal invalid-input condition produces a diagnostic, not a traceback; `--debug` shows the traceback if you want it. The [codes](#check-codes) are listed below.
 
@@ -136,7 +136,7 @@ Each finding has a code. The page named in a finding explains the rule. The [eva
 | Code | Meaning |
 |---|---|
 | `ID000`–`ID002` | Input that cannot be indexed: a file that is not valid JSON, an identity that is duplicated, an instance without a readable identity. These make the instance stage an `INPUT ERROR`. |
-| `INP001`, `INP002` | Input that cannot support a stage: a folder or the schema bundle that cannot be read, or a document the checks cannot evaluate. These make the stage an `INPUT ERROR`. |
+| `INP001`–`INP003` | Input that cannot support a stage: a folder or the schema bundle that cannot be read, a document the checks cannot evaluate, or a `registry.json` that the stage needs and the folder does not have. These make the stage an `INPUT ERROR`. |
 | `SCH000`–`SCH003` | The schema bundle is invalid; `contract_id` is missing or not C01–C07; an instance does not match its contract; an embedded example does not behave as labeled. |
 | `REF001`–`REF007` | A reference does not name an existing exact version, names the wrong kind, points at a missing payload, is neither a record nor a registered external record, names a retrieval that did not complete, or names an undefined policy. |
 | `LIN001`–`LIN004` | Derivation ancestry has a cycle; a relationship type is not in the vocabulary; a supersession is not mirrored by the superseded version; a record is its own parent. |
@@ -148,7 +148,7 @@ Each finding has a code. The page named in a finding explains the rule. The [eva
 | `AUTH004`, `AUTH005`, `AUTH007` | A receipt disagrees with the reference commit check: it executed what would be blocked, omits the blocking reasons, or cites a block that would not occur. |
 | `ACC001`–`ACC004` | Accounting is wrong: an unresolved outcome released its reservation, allowance was restored without authoritative reconciliation, a verified outcome is not reconciled, or a later receipt describes another attempt. |
 | `DISC001`–`DISC003` | A derived output discloses detail the reader may not see; an entry about an unreadable source exists although its permission decision withholds its existence (or has none); the wording of a coverage limitation goes beyond what the decision permits. |
-| `ROLE001`–`ROLE004` | The roles are not kept apart: an exact approval from someone who is not an approver, or from the requestor of the packet; a packet reviewed by someone who is not a Decision Owner; an approval with no earlier review of its packet by a Decision Owner. |
+| `ROLE001`–`ROLE005` | The roles are not kept apart, or cannot be checked: an exact approval from someone who is not an approver, or from the requestor of the packet; a packet reviewed by someone who is not a Decision Owner; an approval with no earlier review of its packet by a Decision Owner; a registry that names no roles although the folder holds approvals or reviewed packets. |
 | `RESP001`–`RESP013` | A stored response breaks a structural constraint: an unknown statement kind, an uncited or mis-cited statement, a figure or currency the packet lacks, an unlabeled inference, a dropped conflict, gap, recommendation or obligation, an action worded as done, a response not withdrawn with its packet, a missing packet, a conflict or gap closed in words, a missingness label not said, dropped uncertainty, added certainty, a changed status word, or a statement that names a record it does not rest on. |
 | `RESP101`, `RESP102` | A response that says a renderer wrote it differs from the renderer's output (`RESP101`), and the difference adds or removes a negation, changes a status word or a figure, or opens or closes a conflict (`RESP102`). |
 | `GW001`, `GW002` | A stored gateway evaluation no longer gives its recorded decision, or cannot be evaluated. |

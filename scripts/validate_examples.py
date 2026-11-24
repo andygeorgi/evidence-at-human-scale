@@ -56,6 +56,8 @@ TITLES = {"schema": "Schema bundle", "instances": "Example instances", "semantic
           "gateway": "Gateway scenarios", "responses": "Assistant responses", "cases": "Evaluation cases"}
 #: The stages that read the model need structurally valid instances; a stage that was selected pulls its prerequisite in.
 PREREQUISITES = {"semantics": "instances", "gateway": "instances", "responses": "instances", "cases": "instances"}
+#: The stages that read rules from registry.json; without it they have nothing to check against.
+REGISTRY_STAGES = {"semantics", "gateway", "cases"}
 #: What a malformed document typically raises inside a check. These become an INPUT ERROR with a diagnostic, not a traceback.
 DOCUMENT_ERRORS = (KeyError, IndexError, TypeError, ValueError, AttributeError)
 
@@ -92,6 +94,11 @@ class Run:
             return self.result(stage, INPUT_ERROR, findings=[self.schema_problem], detail="the schema bundle cannot be read")
         base = self.results.get(needed)
         if base is not None and base.status == PASS:
+            registry = self.root / "registry.json"
+            if stage in REGISTRY_STAGES and not registry.is_file():
+                return self.result(stage, INPUT_ERROR, findings=[input_finding("INP003", "the registry is missing: %s does not exist" % rel(registry), rel(registry),
+                                                                               "add registry.json (its layout is in examples/registry.json), or run only the stages that do not read it")],
+                                   detail="the registry this stage reads does not exist")
             return None
         state = base.status if base is not None else "not run"
         return self.result(stage, NOT_ASSESSED, detail="blocked: the %s stage ended %s, and this stage needs structurally valid instances" % (needed, state))
@@ -277,7 +284,7 @@ def finding_json(f: Finding) -> dict:
 def render_json(results: List[StageResult], state: str, run_findings: Optional[List[Finding]] = None) -> str:
     return json.dumps({
         "version": __version__, "status": state, "passed": state == PASS, "complete": bool(results) and all(r.status != SKIPPED for r in results),
-        "exit_code": EXIT_CODES[state],
+        "skipped_stages": [r.stage for r in results if r.status == SKIPPED], "exit_code": EXIT_CODES[state],
         "findings": [finding_json(f) for f in (run_findings or [])],
         "stages": [{"stage": r.stage, "title": r.title, "status": r.status, "passed": r.passed, "evaluated": r.evaluated, "detail": r.detail,
                     "required_by": r.needed_by, "findings": [finding_json(f) for f in r.findings]} for r in results],

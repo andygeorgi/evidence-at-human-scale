@@ -14,6 +14,7 @@ from pathlib import Path
 
 import support  # noqa: F401  (puts scripts/ on the path)
 
+import check_all
 import validate_examples as ve
 from eahs.schema import validate_instance
 from eahs.status import EXIT_CODES, FAIL, INPUT_ERROR, NOT_ASSESSED, PASS, SKIPPED, StageResult, overall
@@ -168,6 +169,27 @@ class NoEvaluableRecords(Scratch):
         self.assertEqual((cases.status, cases.evaluated), (NOT_ASSESSED, 0))
 
 
+class CheckAll(unittest.TestCase):
+    """The command that runs every check follows the same rule: nothing that was left out is counted as passed."""
+
+    def run_all(self, *args):
+        return subprocess.run([sys.executable, str(support.SCRIPTS / "check_all.py")] + list(args), capture_output=True, text=True, encoding="utf-8")
+
+    def test_skipping_every_check_checks_nothing(self):
+        names = ",".join(name for name, _, _ in check_all.CHECKS)
+        done = self.run_all("--skip", names)
+        self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
+        self.assertIn("NOT ASSESSED", done.stdout)
+        self.assertNotIn("checks passed", done.stdout)
+
+    def test_a_run_that_leaves_checks_out_says_so(self):
+        done = self.run_all("--only", "structure")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("PASS for the checks that ran: 1 of 10 passed", done.stdout)
+        self.assertIn("9 check(s) were skipped and not run", done.stdout)
+        self.assertNotIn("All 1 checks passed", done.stdout)
+
+
 class StageSelection(Scratch):
     def test_a_selected_stage_pulls_in_the_stage_it_needs(self):
         results = ve.run(support.EXAMPLES, only={"semantics"})
@@ -198,7 +220,8 @@ class StageSelection(Scratch):
     def test_a_complete_run_says_so_and_a_partial_run_does_not(self):
         partial, whole = json.loads(cli("--only", "schema", "--json").stdout), json.loads(cli("--json").stdout)
         self.assertEqual((partial["status"], partial["complete"]), (PASS, False))
-        self.assertEqual((whole["status"], whole["complete"]), (PASS, True))
+        self.assertEqual(partial["skipped_stages"], ["instances", "semantics", "gateway", "responses", "cases"])
+        self.assertEqual((whole["status"], whole["complete"], whole["skipped_stages"]), (PASS, True, []))
         self.assertNotIn("stages that ran", cli().stdout)
 
     def test_skipping_every_stage_is_not_assessed(self):
@@ -259,6 +282,19 @@ class MalformedInput(Scratch):
         self.write("registry.json", "[]")
         instances = next(r for r in ve.run(self.root) if r.stage == "instances")
         self.assertEqual(instances.status, INPUT_ERROR)
+
+    def test_a_folder_without_its_registry_is_one_diagnostic_for_each_stage_that_reads_it(self):
+        self.copy()
+        (self.root / "registry.json").unlink()
+        results = ve.run(self.root)
+        for stage in ("semantics", "gateway", "cases"):
+            result = next(r for r in results if r.stage == stage)
+            self.assertEqual(result.status, INPUT_ERROR, stage)
+            self.assertEqual([f.code for f in result.findings], ["INP003"], stage)
+        done = cli("--examples", str(self.root))
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertIn("registry.json", done.stdout)
+        self.assertNotIn("Traceback", done.stderr)
 
     def test_an_unexpected_shape_inside_a_stage_is_reported_not_raised(self):
         self.copy()

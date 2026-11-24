@@ -45,7 +45,7 @@ These questions are open. Each has an owner role and a stage by which it must be
 
 | Selected boundary | Rejected alternative | Reason and cost |
 | --- | --- | --- |
-| Governed decision context | Generalized customer solution | Reuses the evidence, selection and action boundaries; domain parameters still require approval. |
+| Decision context | Generalized customer solution | Reuses the evidence, selection and action boundaries; domain parameters still require approval. |
 | Source-first admission | Agent-first architecture | Attribution precedes interpretation; adds envelope and lifecycle work. |
 | Zero specialists initially | Default multi-agent debate | Avoids unjustified work and correlated agreement; specialists need a documented admission case. |
 | One interaction contract | Agent-specific user experiences | Unifies inspection without collapsing runtimes; routing stays orchestration's duty. |

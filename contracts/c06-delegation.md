@@ -10,9 +10,9 @@ A C06 Delegation records what has been authorized: either an **exact approval** 
 
 | Group / exact type-cardinality | Emitted group and fields | Required semantics |
 | --- | --- | --- |
-| C06-G01 Identity/principals · Object, 1 | `identity_principals`: `grant_id`, `version`, `issuer`, `grantee`, `tenant`, `issuance_time`, `authority_basis` | Grant ID/version/schema, issuer, grantee, tenant, issuance time and authority basis. |
-| C06-G02 Scope/binding · Object, 1 | `scope_binding`: `permitted_actions`, `permitted_targets`, `permitted_parameters`, `purpose`, `binding`, `evidence_constraints`, `policy_constraints` | Permitted actions/targets/parameters and purpose; exact proposal or bounded class; evidence and policy constraints. |
-| C06-G03 Limits/lifecycle · Object, 1 | `limits_lifecycle`: `expiry`, `revocation`, `per_action_limits`, `cumulative_limits`, `atomic_reservation_accounting`, `notifications`, `recovery` | Expiry and revocation state/check basis; typed per-action/cumulative limits with units. Shared atomic reservation/accounting across concurrent execution; conservative unknown-outcome accounting until authoritative reconciliation; partial-effect accounting; notifications/recovery. |
+| C06-G01 Identity/principals · Object, 1 | `identity_principals`: `grant_id`, `version`, `issuer`, `grantee`, `tenant`, `issuance_time`, `authority_basis` | Grant ID, version and schema, issuer, grantee, tenant, issuance time and authority basis. |
+| C06-G02 Scope/binding · Object, 1 | `scope_binding`: `permitted_actions`, `permitted_targets`, `permitted_parameters`, `purpose`, `binding`, `evidence_constraints`, `policy_constraints` | Permitted actions, targets and parameters, and the purpose; an exact proposal or a bounded class; evidence and policy constraints. |
+| C06-G03 Limits/lifecycle · Object, 1 | `limits_lifecycle`: `expiry`, `revocation`, `per_action_limits`, `cumulative_limits`, `atomic_reservation_accounting`, `notifications`, `recovery` | Expiry, and the revocation state and the basis for checking it; typed per-action and cumulative limits with units. Shared atomic reservation and accounting across concurrent execution; conservative accounting for an unknown outcome until authoritative reconciliation; accounting for partial effects; notifications and recovery. |
 
 ## Two bindings
 
