@@ -81,18 +81,22 @@ class Decision:
 
 
 def binding_problems(decision: Optional[Decision], viewer: Viewer) -> List[str]:
-    """Why a decision does not bind to this viewer (empty if it does). Binding comes first: an unbound decision permits nothing."""
+    """Why a decision does not bind to this viewer (empty if it does). Binding comes first: an unbound decision permits nothing.
+
+    The principal, the tenant and the permitted purpose must all be named, by the decision and by the viewer's context, and each
+    must be the same. A decision that names no tenant or no purpose is not a decision for every tenant or every purpose: it
+    cannot be tied to the viewer, so it permits nothing.
+    """
     if decision is None:
         return ["there is no permission decision for this input"]
     problems: List[str] = []
-    if not decision.principal:
-        problems.append("the decision names no principal, so it cannot be bound to the requesting principal")
-    elif decision.principal != viewer.principal:
-        problems.append("the decision is for principal %s, not for the requesting principal %s" % (decision.principal, viewer.principal))
-    if decision.tenant and decision.tenant != viewer.tenant:
-        problems.append("the decision is for tenant %s, not for tenant %s" % (decision.tenant, viewer.tenant or "(none)"))
-    if decision.purpose and decision.purpose != viewer.purpose:
-        problems.append("the decision is for the purpose %r, not for %r" % (decision.purpose, viewer.purpose))
+    for label, wanted, held in (("principal", viewer.principal, decision.principal), ("tenant", viewer.tenant, decision.tenant), ("purpose", viewer.purpose, decision.purpose)):
+        if not wanted:
+            problems.append("the requesting context names no %s, so no decision can be bound to it" % label)
+        elif not held:
+            problems.append("the decision names no %s, so it cannot be bound to the requesting %s" % (label, label if label != "purpose" else "context's permitted purpose"))
+        elif held != wanted:
+            problems.append("the decision is for %s %s, not for the requesting %s %s" % (label, held if label != "purpose" else repr(held), label, wanted if label != "purpose" else repr(wanted)))
     return problems
 
 

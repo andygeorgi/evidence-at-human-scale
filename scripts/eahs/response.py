@@ -10,22 +10,25 @@ status word or changes a figure is reported as a change of meaning (RESP102). Th
 against a defined template. It does not verify the packet.
 
 STRUCTURAL FREE-TEXT VALIDATION. A response written by a model or a person is checked against named constraints:
-every statement cites packet items of the right kind; its figures and currencies, its status words (pass, fail, stale,
-revoked, ...) and the record identifiers it names all appear in the items it cites, for a claim, an inference, a conflict, a
-gap, a recommendation, a proposal and an obligation alike; an inference is labeled and keeps a limitation; a conflict stays
-open and a gap keeps its missingness label; a recommendation says it is for review; a proposal is not worded as done;
-certainty is not added; every conflict, gap, recommendation, proposal and obligation of the packet is mentioned; and at least
-MIN_CLAIM_COVERAGE of its supported claims are stated, so that they cannot all disappear. These constraints catch specific,
-named failures. They do NOT show that the prose is
+every statement cites packet items of the right kind and says something; its figures and currencies, its status words (pass,
+fail, stale, revoked, ...) and the record identifiers it names all appear in the items it cites, for a claim, an inference, a
+conflict, a gap, a recommendation, a proposal and an obligation alike; an inference is labeled and keeps a limitation; a
+conflict stays open and a gap keeps its missingness label; a recommendation says it is for review; a proposal is not worded
+as done; certainty is not added; every conflict, gap, recommendation, proposal and obligation of the packet is mentioned; and
+at least MIN_CLAIM_COVERAGE of its supported claims are stated, so that they cannot all disappear. A claim is counted once,
+however many of its parts a response cites, and only when a statement that cites it keeps one of its figures (or, when it has
+none, two of its content words). A statement about an input the reader may not read is exactly the wording the permission
+decision allows. These constraints catch specific, named failures. They do NOT show that the prose is
 semantically correct: a sentence can satisfy every constraint and still mislead. Where the response is not canonical,
 only a person, or a comparison with a canonical rendering, can judge what it means.
 
 LIFECYCLE. A response never defines its own lifecycle. Whether it is ``current`` or ``withdrawn`` comes from the trusted
 packet it cites (``trusted_lifecycle``): an active packet gives a current response, an invalidated or superseded one a
 withdrawn response. Both validations compare the response with that, so a response cannot call itself current, active,
-historical or anything else, and cannot carry a withdrawal reason that the packet's own history does not support. A
-withdrawn response also marks its advice (recommendations, proposals, obligations) as withdrawn. These too are mechanical
-constraints; they do not judge what a free-form sentence means.
+historical or anything else, and a withdrawn response carries the packet's own reason word for word: it may add words around
+it, and it may not replace it or give another cause, time or direction of supersession. A withdrawn response also marks its
+advice (recommendations, proposals, obligations) as withdrawn, and no statement in it calls anything current or valid unless
+the packet items it cites do. These too are mechanical constraints; they do not judge what a free-form sentence means.
 
 Neither validation shows that the packet is right, and neither says anything about how a real model would behave.
 """
@@ -117,10 +120,61 @@ UNDOES_WITHDRAWAL = re.compile(
     r"|\bwithdrawal\s+(?:is|was|has been)\s+(?:lifted|cancell?ed|reversed|withdrawn)\b",
     re.I)
 ISO_TIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})")
+#: Words that call something valid today. In a withdrawn response a statement may not use them, unnegated, more often than the
+#: packet items it cites do, so "not current advice" is fine and "This is current advice" is not.
+CURRENCY_WORDS = re.compile(r"\b(?:current(?:ly)?|active|valid|in force|up[- ]to[- ]date)\b", re.I)
+NEGATED_BEFORE = re.compile(r"\b(?:not|no longer|never|isn't|aren't|wasn't|weren't)\s+(?:\w+\s+){0,2}$", re.I)
+_ID = r"[A-Z][A-Z0-9]*(?:-[A-Z0-9][A-Za-z0-9.]*)+"
+#: "GR-5521 v1 was superseded by GR-5521 v2": the direction of a supersession that a withdrawal reason states.
+SUPERSEDED_BY = re.compile(r"(?<![\w-])(?P<old>%s)\s+(?:version\s+)?(?P<old_version>v\d+)\s+(?:was|were|is|has been|had been)\s+(?:superseded|replaced)\s+by\s+(?P<new>%s)\s+(?:version\s+)?(?P<new_version>v\d+)(?!\w|\.\d)" % (_ID, _ID), re.I)
+#: What a statement must share with a claim for the claim to count as stated: one of its quantities, or two of its words.
+QUANTITY = re.compile(r"(?<![\w.,/-])-?\d[\d,]*(?:\.\d+)?(?![\w/-]|\.\d)")
+STAMP = re.compile(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?|(?<![\w.,/-])\d{1,2}:\d{2}(?::\d{2})?(?![\w/-])")
+WORD = re.compile(r"[a-z]{4,}")
+COMMON_WORDS = frozenset("that this with from have been were which their there than into only also such will would could should these those about above after before while when where what than then them they".split())
+CLAIM_ITEM = re.compile(r"/supported_claims_references/(\d+)(?:/|$)")
 
 
 def figures(text: str) -> set:
     return {m.rstrip(".,:-/") for m in FIGURE.findall(text)}
+
+
+def quantities(text: str) -> set:
+    """The quantities in a text: numbers that are not part of an identifier, a date or a time (so 100, 184.00 and 18,400.00, not S-1042 or 2026-11-18)."""
+    found = set()
+    for match in QUANTITY.finditer(STAMP.sub(" ", text)):
+        token = match.group(0).replace(",", "")
+        try:
+            found.add(float(token))
+        except ValueError:
+            continue
+    return found
+
+
+def content_words(text: str) -> set:
+    return {w for w in WORD.findall(text.lower()) if w not in COMMON_WORDS}
+
+
+def states_claim(claim: str, statement: str) -> bool:
+    """True when a statement that cites a claim keeps something concrete of it: one of its quantities, or two of its words when it has none.
+
+    This is the least that separates stating a claim from merely citing it. It does not show that the claim is stated correctly.
+    """
+    wanted = quantities(claim)
+    if wanted:
+        return bool(wanted & quantities(statement))
+    words = content_words(claim)
+    return len(words & content_words(statement)) >= min(2, len(words))
+
+
+def currency_assertions(text: str) -> int:
+    """How many times a text calls something current or valid without negating it ("not current advice" is not such a call)."""
+    count = 0
+    for match in CURRENCY_WORDS.finditer(text):
+        clause = re.split(r"[.!?;:(]", text[:match.start()])[-1]
+        if not NEGATED_BEFORE.search(clause):
+            count += 1
+    return count
 
 
 def _strings(node) -> List[str]:
@@ -162,6 +216,11 @@ def _object(value) -> dict:
     return value if isinstance(value, dict) else {}
 
 
+def _replaced(model: Model, link) -> List[Instance]:
+    """The C02 records that the trusted data says `link` superseded."""
+    return [r for r in model.of("C02") if _object(r.data.get("lifecycle")).get("state") == "superseded" and r.data["lifecycle"].get("replacement_reference") == link]
+
+
 def trusted_lifecycle(model: Model, packet: Instance) -> Tuple[str, str]:
     """The lifecycle a response about `packet` must carry, taken from the packet's own state and the records it names.
 
@@ -176,7 +235,7 @@ def trusted_lifecycle(model: Model, packet: Instance) -> Tuple[str, str]:
     text = "Packet %s %s was %s%s" % (packet.id, packet.version, history.get("state"), " at %s" % when if when else "")
     causes: List[str] = []
     for link in history.get("challenge_links", []):
-        replaced = [r for r in model.of("C02") if _object(r.data.get("lifecycle")).get("state") == "superseded" and r.data["lifecycle"].get("replacement_reference") == link]
+        replaced = _replaced(model, link)
         if replaced:
             causes += ["%s %s was superseded by %s %s" % (r.id, r.version, link["record_id"], link["version"]) for r in replaced]
         else:
@@ -283,6 +342,8 @@ def _free_text_findings(kind: str, text: str, label: str, cited_text: str, point
     for match in CERTAINTY.finditer(text):
         if match.group(0).lower() not in lowered:
             out.append(Finding("RESP011", "adds certainty (%r) that the cited items do not state" % match.group(0), file, loc, DOC_RESPONSE))
+    if withdrawn and currency_assertions(text) > currency_assertions(cited_text):
+        out.append(Finding("RESP016", "this %s calls something current or valid, but the packet is withdrawn and the items it cites do not say so: mark it withdrawn or no longer current" % kind, file, loc, DOC_RESPONSE))
     if kind in IDENTIFIER_CHECKED:
         for ident in sorted(set(IDENTIFIER.findall(text))):
             if ident not in cited_text and ident not in label:
@@ -322,7 +383,7 @@ def _lifecycle_findings(model: Model, response: dict, packet: Instance, file: st
     response can only agree with it. Every test here is mechanical. None of them judges what a free-form sentence means.
     """
     out: List[Finding] = []
-    expected, _ = trusted_lifecycle(model, packet)
+    expected, trusted_reason = trusted_lifecycle(model, packet)
     state = _object(packet.data.get("review_version_history")).get("state")
     status = response.get("status")
     if not isinstance(status, str) or not status.strip():
@@ -339,7 +400,7 @@ def _lifecycle_findings(model: Model, response: dict, packet: Instance, file: st
         out.append(Finding("RESP006", "the response states no as-of time: it must say which snapshot of the packet it speaks about", file, "/as_of", DOC_RESPONSE))
     elif as_of != packet.data["decision_context_as_of"]["as_of"]:
         out.append(Finding("RESP006", "the response's as-of time differs from the packet's", file, "/as_of", DOC_RESPONSE))
-    out.extend(_reason_findings(model, response, packet, expected, file))
+    out.extend(_reason_findings(model, response, packet, expected, trusted_reason, file))
     if expected == "withdrawn":
         for i, st in enumerate(response.get("statements", [])):
             if isinstance(st, dict) and st.get("kind") in ADVICE_KINDS and not WITHDRAWN_MARKER.search(str(st.get("text", ""))):
@@ -347,8 +408,8 @@ def _lifecycle_findings(model: Model, response: dict, packet: Instance, file: st
     return out
 
 
-def _reason_findings(model: Model, response: dict, packet: Instance, expected: str, file: str) -> List[Finding]:
-    """The withdrawal reason must be the packet's own: it names the packet, says what happened to it, and adds no other cause or time."""
+def _reason_findings(model: Model, response: dict, packet: Instance, expected: str, trusted_reason: str, file: str) -> List[Finding]:
+    """The withdrawal reason is the packet's own: it contains the trusted reason word for word and adds no other cause, time or direction."""
     reason = response.get("status_reason")
     present = isinstance(reason, str) and reason.strip() != ""
     if expected == "current":
@@ -378,6 +439,14 @@ def _reason_findings(model: Model, response: dict, packet: Instance, expected: s
     times = {_object(history.get("time")).get("value"), packet.data["decision_context_as_of"]["as_of"]}
     for stamp in sorted(set(ISO_TIME.findall(reason)) - times):
         out.append(Finding("RESP015", "the withdrawal reason gives the time %s, which is neither when the packet was withdrawn nor its as-of time" % stamp, file, "/status_reason", DOC_RESPONSE))
+    trusted_pairs = {(r.id.upper(), r.version.lower(), link["record_id"].upper(), link["version"].lower()) for link in history.get("challenge_links", []) for r in _replaced(model, link)}
+    for found in SUPERSEDED_BY.finditer(reason):
+        pair = (found.group("old").upper(), found.group("old_version").lower(), found.group("new").upper(), found.group("new_version").lower())
+        if pair not in trusted_pairs:
+            out.append(Finding("RESP015", "the withdrawal reason says %s %s was superseded by %s %s, which the packet's own history does not say: it may not reverse or invent a supersession" % (
+                found.group("old"), found.group("old_version"), found.group("new"), found.group("new_version")), file, "/status_reason", DOC_RESPONSE))
+    if _normal(trusted_reason) not in _normal(reason):
+        out.append(Finding("RESP015", "the withdrawal reason must contain the packet's own reason word for word: %r. It may add words around it, not replace it" % trusted_reason, file, "/status_reason", DOC_RESPONSE))
     return out
 
 
@@ -394,6 +463,7 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
     findings.extend(_lifecycle_findings(model, response, packet, file))
     withdrawn = trusted_lifecycle(model, packet)[0] == "withdrawn"
     cited: Dict[str, set] = {k: set() for k in KIND_PREFIX}
+    stated_claims: set = set()
     for i, st in enumerate(response.get("statements", [])):
         loc = "/statements/%d" % i
         if not isinstance(st, dict):
@@ -405,6 +475,9 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
             continue
         if kind not in KIND_PREFIX:
             findings.append(Finding("RESP001", "unknown statement kind %r" % kind, file, loc, DOC))
+            continue
+        if not text.strip():
+            findings.append(Finding("RESP001", "a %s statement must say something: this one has no text" % kind, file, loc, DOC))
             continue
         if not refs:
             findings.append(Finding("RESP001", "a statement must cite the packet items it rests on: this one cites nothing (%s)" % text[:60], file, loc, DOC_EVIDENCE))
@@ -423,6 +496,11 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
             cited[kind].add(r)
             resolved.append(r)
             subtree += _strings(node)
+            if kind == "claim":
+                item = CLAIM_ITEM.match(r)
+                claim = d["supported_claims_references"][int(item.group(1))] if item else None
+                if item and states_claim(str(_object(claim).get("text", "")), text):
+                    stated_claims.add(int(item.group(1)))
         if kind in FIGURE_CHECKED and subtree:
             extra = figures(text) - figures(" ".join(subtree))
             if extra:
@@ -439,9 +517,10 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
     claims_total = len(d["supported_claims_references"])
     if claims_total:
         needed = max(1, math.ceil(claims_total * MIN_CLAIM_COVERAGE))
-        if len(cited["claim"]) < needed:
-            findings.append(Finding("RESP004", "the response states %d of the packet's %d supported claims: it may be shorter than its packet, but it must state at least %d (%d%%, rounded up) and may not let its claims disappear" % (
-                len(cited["claim"]), claims_total, needed, int(MIN_CLAIM_COVERAGE * 100)), file, "/statements", DOC))
+        if len(stated_claims) < needed:
+            findings.append(Finding("RESP004", "the response states %d of the packet's %d supported claims: it may be shorter than its packet, but it must state at least %d (%d%%, rounded up) and may not let its claims disappear. "
+                                    "A claim counts once however many of its parts are cited, and only when a statement that cites it keeps one of its figures, or two of its words if it has none" % (
+                                        len(stated_claims), claims_total, needed, int(MIN_CLAIM_COVERAGE * 100)), file, "/statements", DOC))
     sections = {
         "inference": len(d["labeled_inferences"]), "conflict": len(d["conflicts_uncertainty"]["conflicts"]), "gap": len(d["coverage_omissions_gaps"]["missingness"]),
         "recommendation": len(d["recommendations"]), "proposal": len(d["action_proposals"]), "obligation": len(d["priority_mandatory_obligations"]["obligation_references"]),
@@ -469,14 +548,17 @@ def _normal(text: str) -> str:
 
 
 def _unreadable_gap_findings(model: Model, packet: Instance, text: str, pointers: List[str], file: str, loc: str) -> List[Finding]:
-    """A statement about an input the viewer may not read uses the permitted wording, or says nothing about it.
+    """A statement about an input the viewer may not read is exactly the permitted wording, or it says nothing about it.
 
     Where no decision bound to the viewer lets them know the input exists, the statement may not cite it at all. Where one
-    does, the statement must carry the decision's words verbatim. Whatever else it says about the other gaps it groups
-    with is held to the usual constraints. These are mechanical tests: they do not read the prose for hidden detail.
+    does, the statement is that decision's wording and nothing else (it may start with the missingness label, "Inaccessible:"),
+    and it does not share its citation with another gap. Words added to it, or the words of a neighbouring gap, could carry
+    what the reader may not know, and a mechanical test cannot tell the two apart. These are mechanical tests: they do not read
+    prose that does not cite the input for what it hides.
     """
     from .semantics import permitted_wording
     out: List[Finding] = []
+    allowed: List[str] = []
     for pointer in pointers:
         try:
             gap = resolve_pointer(packet.data, pointer)
@@ -487,8 +569,10 @@ def _unreadable_gap_findings(model: Model, packet: Instance, text: str, pointers
         wording = permitted_wording(model, packet, _object(gap.get("permission_decision_reference")))
         if wording is None:
             out.append(Finding("RESP017", "this statement tells the reader about an input that no permission decision bound to them lets them know exists: it may not be mentioned", file, loc, DOC_RESPONSE))
-        elif _normal(wording) not in _normal(text):
-            out.append(Finding("RESP017", "a statement about an input the reader may not read must use the wording the permission decision allows: %r" % wording, file, loc, DOC_RESPONSE))
+        else:
+            allowed += [_normal(wording), _normal("Inaccessible: " + wording)]
+    if allowed and (len(pointers) != 1 or _normal(text) not in allowed):
+        out.append(Finding("RESP017", "a statement about an input the reader may not read must be exactly the wording the permission decision allows, alone, with nothing added and no other gap in the same statement: %r" % allowed[0], file, loc, DOC_RESPONSE))
     return out
 
 

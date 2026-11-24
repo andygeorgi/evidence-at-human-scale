@@ -40,10 +40,10 @@ Check: every row has an owner and a freshness requirement, or an explicit "unres
 
 Draft it on paper or in a document first. Decide what the reader may know before you decide what is missing. For each input the packet could mention, in this order:
 
-1. Does a permission decision name this exact reader (and their tenant and purpose)? If not, treat the input as unknown to them.
+1. Does a permission decision name this exact reader, their tenant and their purpose? If it names another one, or leaves one out, treat the input as unknown to them.
 2. May the reader's principal know that the input exists? If not, the packet shows nothing about it: no entry, no state, no count, and no change when the input changes.
 3. If the reader may know it exists but may not read it, show the generic disclosure the permission decision configures, every field of it, and nothing from the input. Do not filter the record afterwards or keep a list of forbidden words as the main protection.
-4. Only for what the reader may know about, classify it: available, missing, stale, conflicting, not assessed or unavailable.
+4. Only for what the reader may read, classify it: available, missing, stale, conflicting, not assessed or unavailable.
 5. Show what the reader is authorized to see.
 
 Test this by changing a restricted record (its count, its freshness, its materiality) and checking that the reader's view does not change. Checking a stored packet against stored decisions is not the same as enforcing access when the request arrives: do both.

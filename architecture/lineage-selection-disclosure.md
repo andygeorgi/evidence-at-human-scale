@@ -30,7 +30,7 @@ The schema requires different supporting evidence for each label. For example, `
 
 An expected input that is not in front of the requestor is handled in this order. The order is part of the design (Figure F09):
 
-1. **Bind the permission decision to the requestor.** A decision counts only if it names the exact requesting principal of the C01 context, and the tenant and the permitted purpose wherever it claims them. A decision for any other principal, tenant or purpose is no decision at all, and the input has no entry.
+1. **Bind the permission decision to the requestor.** A decision counts only if it names the exact requesting principal of the C01 context and that context's tenant and permitted purpose. A decision for any other principal, tenant or purpose, or one that names no tenant or no purpose, is no decision at all, and the input has no entry.
 2. **Decide whether the requestor may know that the record or category exists.** If not, nothing about it appears: no entry, no state, no age, no count. The coverage statement that every output carries reads the same whether or not anything is withheld.
 3. **Apply the safe-disclosure policy.** If the requestor may know that something exists but may not read it, the entry is `inaccessible`, and the entry is the generic disclosure that the decision configures: its wording, its scope, its materiality, its reason and its basis all come from the decision, and none comes from the record. There is no name, type, count, state or age, and no field left to free text.
 4. **Classify only what the requestor may read** as stale, not assessed, unavailable, missing, negative or not retrieved.

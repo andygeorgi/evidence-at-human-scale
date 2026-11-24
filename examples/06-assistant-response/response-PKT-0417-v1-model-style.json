@@ -62,16 +62,23 @@
     },
     {
       "kind": "gap",
-      "label": "gaps 1-7",
-      "text": "Several things could not be checked: no record of a second delivery; credit notes (the query returned nothing, which does not prove there are none); the treasury cash position (service unavailable); early-payment discount (not assessed); and supplier screening is stale. A duplicate check found nothing in its declared window. Coverage is limited by access permissions; no protected source identity or content is disclosed.",
+      "label": "gaps 1-2 and 4-7",
+      "text": "Several things could not be checked: no record of a second delivery; credit notes (the query returned nothing, which does not prove there are none); the treasury cash position (service unavailable); early-payment discount (not assessed); and supplier screening is stale. A duplicate check found nothing in its declared window.",
       "refs": [
         "/coverage_omissions_gaps/missingness/0",
         "/coverage_omissions_gaps/missingness/1",
-        "/coverage_omissions_gaps/missingness/2",
         "/coverage_omissions_gaps/missingness/3",
         "/coverage_omissions_gaps/missingness/4",
         "/coverage_omissions_gaps/missingness/5",
         "/coverage_omissions_gaps/missingness/6"
+      ]
+    },
+    {
+      "kind": "gap",
+      "label": "gap 3 (inaccessible)",
+      "text": "Coverage is limited by access permissions; no protected source identity or content is disclosed.",
+      "refs": [
+        "/coverage_omissions_gaps/missingness/2"
       ]
     },
     {

@@ -1,7 +1,7 @@
 """Permission comes before disclosure, and the viewer's output is built from what they are permitted to see.
 
 What a viewer is told about an input that is not in front of them depends on questions asked in a fixed order: does a
-permission decision bind to this exact requesting principal (and to the tenant and purpose it claims), may they know the
+permission decision bind to this exact requesting principal, tenant and permitted purpose, may they know the
 input exists, may they read it. Only then is anything about the input built into their view, and only from what the decision
 permits. These tests pin that order in the reference projection, in Figure F09 and in the example data, and show that nothing
 about a restricted input can change what an unauthorized viewer sees.
@@ -67,14 +67,42 @@ class Binding(unittest.TestCase):
                 self.assertFalse(may_know(decision, VIEWER))
                 self.assertEqual(classify(ExpectedInput("x", decision), VIEWER), NO_ENTRY)
 
-    def test_the_tenant_and_the_purpose_bind_where_the_decision_claims_them(self):
+    def test_the_tenant_and_the_purpose_must_be_named_and_must_match(self):
         elsewhere = Decision(ANALYST, "tenant:other", PURPOSE, False, True, PERMITTED, EXISTENCE_ONLY.permitted_view)
         other_purpose = Decision(ANALYST, TENANT, "Marketing analytics", False, True, PERMITTED, EXISTENCE_ONLY.permitted_view)
         for decision in (elsewhere, other_purpose):
             self.assertFalse(may_know(decision, VIEWER))
             self.assertIsNone(disclose(ExpectedInput("x", decision), VIEWER))
-        unclaimed = Decision(ANALYST, "", "", False, True, PERMITTED, EXISTENCE_ONLY.permitted_view)
-        self.assertTrue(may_know(unclaimed, VIEWER))
+
+    def test_a_decision_that_names_no_tenant_or_no_purpose_binds_to_nobody(self):
+        for label, tenant, purpose in (("no tenant", "", PURPOSE), ("no purpose", TENANT, ""), ("neither", "", "")):
+            decision = Decision(ANALYST, tenant, purpose, False, True, PERMITTED, EXISTENCE_ONLY.permitted_view)
+            with self.subTest(label):
+                self.assertTrue(binding_problems(decision, VIEWER))
+                self.assertFalse(may_know(decision, VIEWER))
+                self.assertEqual(classify(ExpectedInput("x", decision), VIEWER), NO_ENTRY)
+                self.assertIsNone(disclose(ExpectedInput("x", decision), VIEWER))
+
+    def test_a_decision_with_no_tenant_cannot_show_another_tenants_wording(self):
+        decision = Decision(ANALYST, "", PURPOSE, False, True, PERMITTED, EXISTENCE_ONLY.permitted_view)
+        for tenant in ("tenant:calder-works", "tenant:other", ""):
+            self.assertFalse(may_know(decision, Viewer(ANALYST, tenant, PURPOSE, ENTITIES)), tenant)
+
+    def test_a_context_that_names_no_principal_tenant_or_purpose_has_nothing_to_bind(self):
+        for label, viewer in (("no principal", Viewer("", TENANT, PURPOSE)), ("no tenant", Viewer(ANALYST, "", PURPOSE)), ("no purpose", Viewer(ANALYST, TENANT, ""))):
+            with self.subTest(label):
+                self.assertTrue(binding_problems(EXISTENCE_ONLY, viewer))
+                self.assertFalse(may_know(EXISTENCE_ONLY, viewer))
+                unbound = Decision("", "", "", False, True, PERMITTED, EXISTENCE_ONLY.permitted_view)
+                self.assertFalse(may_know(unbound, viewer))
+
+    def test_each_problem_names_what_is_missing_or_different(self):
+        problems = binding_problems(Decision("", "", "", False, True, PERMITTED, {}), VIEWER)
+        self.assertEqual(len(problems), 3)
+        for word in ("principal", "tenant", "purpose"):
+            self.assertTrue(any("names no %s" % word in p for p in problems), problems)
+        other = binding_problems(Decision("person:x", "tenant:other", "Marketing analytics", False, True, PERMITTED, {}), VIEWER)
+        self.assertEqual(len(other), 3)
 
     def test_no_decision_is_no_entry(self):
         self.assertIsNone(disclose(ExpectedInput("x", None), VIEWER))
@@ -338,6 +366,24 @@ class SnapshotValidation(unittest.TestCase):
                 model.registry.permission_decisions["AUTHZ-READ-LIMIT-0417@v1"][key] = value
                 self.assertEqual({f.code for f in semantics.check_disclosure(model)}, {"DISC004"})
 
+    def test_a_decision_without_a_tenant_or_a_purpose_does_not_allow_the_entry_and_no_wording_is_shown(self):
+        for key in ("tenant", "purpose"):
+            for how in ("absent", "empty", "not text"):
+                with self.subTest("%s %s" % (key, how)):
+                    model, _ = mutate_model(self.model, [])
+                    model.registry = copy.deepcopy(model.registry)
+                    decision = model.registry.permission_decisions["AUTHZ-READ-LIMIT-0417@v1"]
+                    if how == "absent":
+                        del decision[key]
+                    else:
+                        decision[key] = "" if how == "empty" else 7
+                    found = [f for f in semantics.check_disclosure(model) if f.code == "DISC004"]
+                    self.assertEqual(len(found), 6)
+                    self.assertTrue(all("names no %s" % key in f.message for f in found), [f.message for f in found])
+                    packet = model.get("C04", "PKT-0417", "v1")
+                    self.assertIsNone(semantics.permitted_wording(model, packet, {"record_id": "AUTHZ-READ-LIMIT-0417", "version": "v1"}))
+                    self.assertEqual([s for s in render_response(model, packet)["statements"] if "(inaccessible)" in s["label"]], [])
+
     def test_a_decision_is_bound_to_the_context_the_output_names_not_to_a_default(self):
         _, model = self.codes({"target": "C01 CTX-0417 v1", "ops": [{"op": "replace", "path": "/identity_principal/requesting_principal", "value": "person:ap-analyst-09"}]})
         found = [f for f in semantics.check_disclosure(model) if f.code == "DISC004"]
@@ -393,10 +439,38 @@ class TheViewIsBuiltFromAuthorizedInputs(unittest.TestCase):
 
     def test_a_free_form_statement_about_the_unreadable_part_must_use_the_permitted_wording(self):
         response = json.loads(json.dumps(support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")))
-        gap = next(s for s in response["statements"] if s["kind"] == "gap")
+        gap = self.restricted_statement(response)
         self.assertEqual([f.code for f in check_structural(self.model, response, "r.json")], [])
-        gap["text"] = gap["text"].replace(PERMITTED, "Inaccessible: part of the scope is restricted, and an investigation file is open.")
+        self.assertEqual(gap["text"], PERMITTED)
+        gap["text"] = "Inaccessible: part of the scope is restricted, and an investigation file is open."
         self.assertEqual([f.code for f in check_structural(self.model, response, "r.json")], ["RESP017"])
+
+    @staticmethod
+    def restricted_statement(response):
+        return next(s for s in response["statements"] if s["kind"] == "gap" and s["refs"] == ["/coverage_omissions_gaps/missingness/2"])
+
+    def test_nothing_may_be_added_before_or_after_the_permitted_wording(self):
+        for label, text in (("a figure after", PERMITTED + " Three restricted records are stale."), ("a status after", PERMITTED + " An investigation is open."), ("a count in brackets", PERMITTED + " (2 sources)"),
+                            ("a note on a new line", PERMITTED + "\n\nNote: a legal hold applies."), ("a sentence before", "Several restricted sources exist. " + PERMITTED),
+                            ("the wording quoted inside a longer sentence", "The reader is told: %s This was last reviewed as material." % PERMITTED)):
+            with self.subTest(label):
+                response = json.loads(json.dumps(support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")))
+                self.restricted_statement(response)["text"] = text
+                self.assertIn("RESP017", [f.code for f in check_structural(self.model, response, "r.json")])
+
+    def test_the_permitted_wording_may_start_with_the_missingness_label(self):
+        for text in (PERMITTED, "Inaccessible: " + PERMITTED, "inaccessible:   " + PERMITTED.upper()):
+            with self.subTest(text[:30]):
+                response = json.loads(json.dumps(support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")))
+                self.restricted_statement(response)["text"] = text
+                self.assertEqual([f.code for f in check_structural(self.model, response, "r.json")], [])
+
+    def test_the_unreadable_part_does_not_share_a_statement_with_another_gap(self):
+        response = json.loads(json.dumps(support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")))
+        statement = self.restricted_statement(response)
+        statement["refs"] = ["/coverage_omissions_gaps/missingness/2", "/coverage_omissions_gaps/missingness/0"]
+        statement["text"] = "Missing: carrier proof of delivery for a second pallet of 40 units. " + PERMITTED
+        self.assertIn("RESP017", [f.code for f in check_structural(self.model, response, "r.json")])
 
     def test_the_canonical_comparison_catches_extra_detail_about_the_unreadable_part(self):
         response = render_response(self.model, self.packet)

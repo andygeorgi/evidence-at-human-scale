@@ -98,8 +98,11 @@ class Conformance(unittest.TestCase):
 
     def test_a_paraphrase_with_the_wrong_number_is_caught(self):
         style = copy.deepcopy(support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json"))
-        style["statements"][1]["text"] = "The goods receipt shows only 65 units received."
-        self.assertEqual(codes(style), ["RESP002"])
+        style["statements"][2]["text"] = "The goods receipt shows only 65 units received."
+        found = codes(style)
+        self.assertIn("RESP002", found)
+        # The wrong figure also means that the statement no longer states its claim, so the claim does not count.
+        self.assertEqual(found, ["RESP002", "RESP004"])
 
 
 class CanonicalValidation(unittest.TestCase):
@@ -343,10 +346,36 @@ class TheLifecycleComesFromThePacket(unittest.TestCase):
             with self.subTest(label):
                 self.assertIn("RESP015", codes(self.changed(self.v1, status_reason=reason)))
 
-    def test_a_paraphrased_reason_that_agrees_with_the_packet_is_accepted(self):
+    def test_a_reason_that_contains_the_packets_own_reason_may_add_words_around_it(self):
         reason = "This response was withdrawn: packet PKT-0417 v1 was invalidated at 2026-11-23T13:45:00Z because GR-5521 v1 was superseded by GR-5521 v2."
         self.assertEqual(codes(self.changed(self.v1, status_reason=reason, produced_by="an-assistant-model")), [])
-        self.assertEqual(codes(self.changed(self.v1, status_reason="Packet PKT-0417 v1 was invalidated because the goods receipt GR-5521 was superseded.", produced_by="an-assistant-model")), [])
+        spaced = "Packet PKT-0417   v1 was invalidated at 2026-11-23T13:45:00Z because\nGR-5521 v1 was superseded by GR-5521 v2. Read the new packet instead."
+        self.assertEqual(codes(self.changed(self.v1, status_reason=spaced, produced_by="an-assistant-model")), [])
+
+    def test_a_paraphrase_that_leaves_out_part_of_the_packets_reason_is_refused(self):
+        reason = "Packet PKT-0417 v1 was invalidated because the goods receipt GR-5521 was superseded."
+        found = [f for f in check_structural(self.model, self.changed(self.v1, status_reason=reason, produced_by="an-assistant-model"), "r.json") if f.code == "RESP015"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("word for word", found[0].message)
+
+    def test_a_supersession_in_the_wrong_direction_is_refused(self):
+        trusted = trusted_lifecycle(self.model, self.pkt1)[1]
+        reasons = {
+            "only the reversal": "Packet PKT-0417 v1 was invalidated at 2026-11-23T13:45:00Z because GR-5521 v2 was superseded by GR-5521 v1.",
+            "the reversal after the true reason": trusted + " GR-5521 v2 was superseded by GR-5521 v1.",
+            "the reversal before the true reason": "GR-5521 v2 was superseded by GR-5521 v1. " + trusted,
+            "the reversal with another verb": trusted + " GR-5521 v2 has been replaced by GR-5521 v1.",
+            "a supersession nobody recorded": trusted + " PO-77231 v1 was superseded by PO-77231 v2.",
+        }
+        for label, reason in reasons.items():
+            with self.subTest(label):
+                self.assertIn("RESP015", codes(self.changed(self.v1, status_reason=reason, produced_by="an-assistant-model")))
+        reversed_only = [f for f in check_structural(self.model, self.changed(self.v1, status_reason=reasons["only the reversal"]), "r.json") if f.code == "RESP015"]
+        self.assertTrue(any("reverse or invent a supersession" in f.message for f in reversed_only), [f.message for f in reversed_only])
+
+    def test_the_true_direction_in_other_words_the_packet_uses_is_not_refused(self):
+        trusted = trusted_lifecycle(self.model, self.pkt1)[1]
+        self.assertEqual(codes(self.changed(self.v1, status_reason=trusted + " Note that GR-5521 v1 was replaced by GR-5521 v2.", produced_by="an-assistant-model")), [])
 
     def test_advice_phrased_as_current_in_a_withdrawn_response_is_refused(self):
         for kind in ("recommendation", "proposal", "obligation"):
@@ -359,6 +388,39 @@ class TheLifecycleComesFromThePacket(unittest.TestCase):
                 found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP016"]
                 self.assertEqual(len(found), 1)
                 self.assertIn("withdrawn", found[0].message)
+
+    def test_advice_that_names_the_withdrawal_and_still_calls_itself_current_is_refused(self):
+        for phrase in ("This is current advice.", "This recommendation is still valid.", "It remains active.", "The advice is in force.", "It is up to date.", "Currently this applies."):
+            for kind, lead in (("recommendation", "Recommendation from the withdrawn packet (for review, not a decision): hold the invoice. "),
+                               ("proposal", "Proposal from the withdrawn packet (not executed or approved): a payment hold. "),
+                               ("obligation", "Obligation OBL-0417-REVIEW from the withdrawn packet: review before 15:30. ")):
+                with self.subTest("%s: %s" % (kind, phrase)):
+                    response = copy.deepcopy(self.v1)
+                    next(s for s in response["statements"] if s["kind"] == kind)["text"] = lead + phrase
+                    found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP016"]
+                    self.assertEqual(len(found), 1, [f.message for f in found])
+                    self.assertIn("calls something current or valid", found[0].message)
+
+    def test_saying_that_the_advice_is_not_current_is_not_calling_it_current(self):
+        for phrase in ("This is not current advice.", "It is no longer valid.", "It is not yet active and never was in force.", "Not current."):
+            with self.subTest(phrase):
+                response = copy.deepcopy(self.v1)
+                next(s for s in response["statements"] if s["kind"] == "recommendation")["text"] = "Recommendation from the withdrawn packet (for review, not a decision): hold the invoice. " + phrase
+                self.assertEqual([f for f in check_structural(self.model, response, "r.json") if f.code == "RESP016"], [])
+
+    def test_no_kind_of_statement_in_a_withdrawn_response_may_call_something_current_that_its_items_do_not(self):
+        for kind in ("claim", "inference", "conflict", "gap", "limitation"):
+            with self.subTest(kind):
+                response = copy.deepcopy(self.v1)
+                statement = next(s for s in response["statements"] if s["kind"] == kind)
+                statement["text"] += " This is current."
+                self.assertIn("RESP016", [f.code for f in check_structural(self.model, response, "r.json")])
+
+    def test_words_that_the_packet_items_themselves_use_are_not_added_currency(self):
+        response = support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")
+        text = next(s for s in response["statements"] if s["label"].startswith("REC-0417-1"))["text"]
+        self.assertIn("screening is current", text)
+        self.assertEqual([f for f in check_structural(self.model, response, "r.json") if f.code == "RESP016"], [])
 
     def test_the_same_advice_is_fine_in_a_current_response(self):
         self.assertEqual([f for f in check_structural(self.model, self.v2, "r.json") if f.code == "RESP016"], [])
@@ -426,6 +488,62 @@ class CoverageAndStatusConsistency(unittest.TestCase):
         style = support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")
         self.assertGreaterEqual(len([s for s in style["statements"] if s["kind"] == "claim"]), 4)
         self.assertEqual(codes(style), [])
+
+    def test_four_parts_of_one_claim_are_one_claim(self):
+        parts = ["/supported_claims_references/0/text", "/supported_claims_references/0/claim_id",
+                 "/supported_claims_references/0/supporting_references/0/record_id", "/supported_claims_references/0/supporting_references/0/version"]
+        claim_text = next(s for s in self.v1["statements"] if s["kind"] == "claim")["text"]
+        response = copy.deepcopy(self.only_claims(self.v1, 0))
+        response["statements"] += [{"kind": "claim", "label": "PC-1 part %d" % i, "text": claim_text, "refs": [pointer]} for i, pointer in enumerate(parts)]
+        found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP004"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("states 1 of the packet's 7 supported claims", found[0].message)
+
+    def test_one_claim_cited_twice_counts_once(self):
+        response = copy.deepcopy(self.only_claims(self.v1, 3))
+        first = next(s for s in response["statements"] if s["kind"] == "claim")
+        response["statements"].append(dict(first, label="PC-1 again"))
+        self.assertEqual([f.code for f in check_structural(self.model, response, "r.json")], ["RESP004"])
+
+    def test_a_statement_that_cites_a_claim_but_does_not_state_it_does_not_count(self):
+        response = copy.deepcopy(self.v1)
+        for statement in response["statements"]:
+            if statement["kind"] == "claim":
+                statement["text"] = "Noted."
+        found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP004"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("states 0 of the packet's 7", found[0].message)
+
+    def test_a_statement_with_no_text_is_refused_and_does_not_count(self):
+        for text in ("", "   ", "\n\t"):
+            with self.subTest(repr(text)):
+                response = copy.deepcopy(self.v1)
+                for statement in response["statements"]:
+                    if statement["kind"] == "claim":
+                        statement["text"] = text
+                found = {f.code for f in check_structural(self.model, response, "r.json")}
+                self.assertEqual(found, {"RESP001", "RESP004"})
+
+    def test_a_claim_without_a_figure_counts_when_two_of_its_words_are_kept(self):
+        from eahs.response import quantities, states_claim
+        claim = "Supplier S-1042 was screened against the sanctions and watch lists on 2026-11-21: no match."
+        self.assertEqual(quantities(claim), set())
+        self.assertTrue(states_claim(claim, "The supplier was screened against the sanctions lists and nothing matched."))
+        self.assertFalse(states_claim(claim, "Screened."))
+        self.assertFalse(states_claim(claim, "The goods receipt shows 60 units."))
+
+    def test_a_claim_with_figures_counts_when_one_of_them_is_kept(self):
+        from eahs.response import states_claim
+        claim = "Goods receipt GR-5521 records 60 units received on 2026-11-18."
+        self.assertTrue(states_claim(claim, "Only 60 units arrived."))
+        self.assertTrue(states_claim("The invoice states EUR 18,400.00 for 100 units.", "The invoice asks for 18400 euros."))
+        self.assertFalse(states_claim(claim, "Only 65 units arrived."))
+        self.assertFalse(states_claim(claim, "The goods receipt GR-5521 records the units."))
+
+    def test_identifiers_dates_and_times_are_not_quantities(self):
+        from eahs.response import quantities
+        self.assertEqual(quantities("INV-2026-0417 from S-1042, FC-88231, dated 2026-11-22T13:45:00Z, due by 15:30; 100 units at EUR 184.00, total EUR 18,400.00, 40.0% over 2%."),
+                         {100.0, 184.0, 18400.0, 40.0, 2.0})
 
     def test_a_status_cannot_change_in_any_kind_of_statement(self):
         for kind in ("claim", "inference", "conflict", "gap", "recommendation", "proposal", "obligation"):
