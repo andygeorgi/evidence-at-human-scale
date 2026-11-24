@@ -249,6 +249,12 @@ def _object(value) -> dict:
     return value if isinstance(value, dict) else {}
 
 
+def _statements(response: dict) -> list:
+    """The statements of a response, or none when the field is not a list (check_structural reports that)."""
+    value = response.get("statements", [])
+    return value if isinstance(value, list) else []
+
+
 def _replaced(model: Model, link) -> List[Instance]:
     """The C02 records that the trusted data says `link` superseded."""
     return [r for r in model.of("C02") if _object(r.data.get("lifecycle")).get("state") == "superseded" and r.data["lifecycle"].get("replacement_reference") == link]
@@ -463,7 +469,7 @@ def _lifecycle_findings(model: Model, response: dict, packet: Instance, file: st
         out.append(Finding("RESP006", "the response's as-of time differs from the packet's", file, "/as_of", DOC_RESPONSE))
     out.extend(_reason_findings(model, response, packet, expected, trusted_reason, file))
     if expected == "withdrawn":
-        for i, st in enumerate(response.get("statements", [])):
+        for i, st in enumerate(_statements(response)):
             if isinstance(st, dict) and st.get("kind") in ADVICE_KINDS and not WITHDRAWN_MARKER.search(str(st.get("text", ""))):
                 out.append(Finding("RESP016", "this %s is phrased as current advice, but packet %s %s is withdrawn: say that it is withdrawn or no longer current" % (st["kind"], packet.id, packet.version), file, "/statements/%d" % i, DOC_RESPONSE))
     return out
@@ -530,7 +536,9 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
     withdrawn = trusted_lifecycle(model, packet)[0] == "withdrawn"
     cited: Dict[str, set] = {k: set() for k in KIND_PREFIX}
     stated_claims: set = set()
-    for i, st in enumerate(response.get("statements", [])):
+    if not isinstance(response.get("statements", []), list):
+        findings.append(Finding("RESP001", "the statements of a response must be a list of statement objects", file, "/statements", DOC))
+    for i, st in enumerate(_statements(response)):
         loc = "/statements/%d" % i
         if not isinstance(st, dict):
             findings.append(Finding("RESP001", "a statement must be an object with a kind, a text and the packet items it cites", file, loc, DOC))
@@ -539,7 +547,7 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
         if not isinstance(refs, list) or not all(isinstance(r, str) for r in refs) or not isinstance(text, str):
             findings.append(Finding("RESP001", "a statement's text must be a string and its refs a list of packet pointers", file, loc, DOC))
             continue
-        if kind not in KIND_PREFIX:
+        if not isinstance(kind, str) or kind not in KIND_PREFIX:
             findings.append(Finding("RESP001", "unknown statement kind %r" % kind, file, loc, DOC))
             continue
         if not text.strip():
@@ -687,13 +695,14 @@ def check_canonical(model: Model, response: dict, packet: Instance, file: str) -
         out.append(Finding("RESP101", "the response has a field %r that the canonical rendering does not have" % key, file, "/" + str(key), DOC_RESPONSE))
     by_key = {(s["kind"], s["label"]): s for s in expected["statements"]}
     seen = set()
-    for i, st in enumerate(response.get("statements", [])):
+    for i, st in enumerate(_statements(response)):
         loc = "/statements/%d" % i
         if not isinstance(st, dict):
             out.append(Finding("RESP101", "a statement must be an object, as the canonical rendering writes it", file, loc, DOC_RESPONSE))
             continue
         key = (st.get("kind"), st.get("label"))
-        canonical = by_key.get(key)
+        named = isinstance(key[0], str) and isinstance(key[1], str)   # only text can name a statement of the rendering
+        canonical = by_key.get(key) if named else None
         if canonical is None or key in seen:
             out.append(Finding("RESP101", "the %s statement %r is not in the canonical rendering of this packet" % key, file, loc, DOC_RESPONSE))
             continue
@@ -710,7 +719,7 @@ def check_canonical(model: Model, response: dict, packet: Instance, file: str) -
     for key in by_key:
         if key not in seen:
             out.append(Finding("RESP101", "the canonical rendering has a %s statement %r that the response omits" % key, file, "/statements", DOC_RESPONSE))
-    order = [(s.get("kind"), s.get("label")) for s in response.get("statements", []) if isinstance(s, dict) and (s.get("kind"), s.get("label")) in by_key]
+    order = [(s.get("kind"), s.get("label")) for s in _statements(response) if isinstance(s, dict) and isinstance(s.get("kind"), str) and isinstance(s.get("label"), str) and (s["kind"], s["label"]) in by_key]
     if not out and order != [(s["kind"], s["label"]) for s in expected["statements"]]:
         out.append(Finding("RESP101", "the statements are in a different order from the canonical rendering", file, "/statements", DOC_RESPONSE))
     return out

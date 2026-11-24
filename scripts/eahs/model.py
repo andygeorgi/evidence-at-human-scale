@@ -86,6 +86,9 @@ class Model:
     ignored: List[str] = field(default_factory=list)
 
     def get(self, contract: str, id_: str, version: str) -> Optional[Instance]:
+        # An identity that is not text (a list or an object in a damaged reference) names nothing, and cannot be a key.
+        if not isinstance(contract, str) or not isinstance(id_, str) or not isinstance(version, str):
+            return None
         return self.instances.get((contract, id_, version))
 
     def of(self, contract: str) -> List[Instance]:

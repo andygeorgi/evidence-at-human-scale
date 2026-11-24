@@ -663,6 +663,60 @@ class CoverageAndStatusConsistency(unittest.TestCase):
         self.assertLess(time.perf_counter() - start, 10)
 
 
+class ADamagedResponseIsAFindingNotAnError(unittest.TestCase):
+    """Random damage to a stored response (a part removed, or replaced by another kind of value) gives findings. It never ends the check in an error."""
+
+    VALUES = (None, "x", "", [], {}, -1, 0, True, 1.5, {"a": 1}, [1, 2], "current", "withdrawn", "Inference: x", 10 ** 50, ["/supported_claims_references/0"], "/supported_claims_references/0")
+
+    @staticmethod
+    def paths(node, prefix=()):
+        yield prefix
+        for key, value in (node.items() if isinstance(node, dict) else enumerate(node) if isinstance(node, list) else ()):
+            yield from ADamagedResponseIsAFindingNotAnError.paths(value, prefix + (key,))
+
+    def damaged(self, data, rng):
+        data = copy.deepcopy(data)
+        path = rng.choice([p for p in self.paths(data) if p])
+        parent = data
+        for key in path[:-1]:
+            parent = parent[key]
+        if rng.random() < 0.34:
+            del parent[path[-1]]
+        else:
+            parent[path[-1]] = rng.choice(self.VALUES)
+        return data
+
+    def test_five_hundred_damaged_responses_each_give_findings(self):
+        import random
+        model = support.example_model()
+        bases = [render_response(model, model.get("C04", "PKT-0417", v)) for v in ("v1", "v2")] + [support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")]
+        for seed in range(500):
+            rng = random.Random(seed)
+            response = rng.choice(bases)
+            for _ in range(rng.randint(1, 3)):
+                response = self.damaged(response, rng)
+            try:
+                check_response(model, response, "r.json")
+            except Exception as exc:  # noqa: BLE001
+                self.fail("seed %d: %s: %s" % (seed, type(exc).__name__, exc))
+
+    def test_statements_that_are_not_a_list_are_one_finding(self):
+        model = support.example_model()
+        response = render_response(model, model.get("C04", "PKT-0417", "v2"))
+        for value in (None, 5, "text", {"kind": "claim"}):
+            with self.subTest(repr(value)):
+                response["statements"] = value
+                self.assertIn("RESP001", {f.code for f in check_response(model, response, "r.json")})
+
+    def test_a_packet_reference_that_is_not_text_names_no_packet(self):
+        model = support.example_model()
+        response = render_response(model, model.get("C04", "PKT-0417", "v2"))
+        for value in ([], {}, ["PKT-0417"], 7):
+            with self.subTest(repr(value)):
+                response["packet_reference"] = {"contract_id": "C04", "id": value, "version": "v2"}
+                self.assertEqual([f.code for f in check_response(model, response, "r.json")], ["RESP007"])
+
+
 class ClaimBoundary(unittest.TestCase):
     """What each validation promises. The documents must say the same, and the code must not promise more."""
 
