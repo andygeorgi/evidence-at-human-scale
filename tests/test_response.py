@@ -410,6 +410,37 @@ class TheLifecycleComesFromThePacket(unittest.TestCase):
                     self.assertEqual(len(found), 1, [f.message for f in found])
                     self.assertIn("calls something current or valid", found[0].message)
 
+    def test_the_word_withdrawn_is_not_a_marker_when_the_text_says_the_opposite(self):
+        """"This advice was never withdrawn" names the word and takes the withdrawal back: it is current advice in a withdrawn response."""
+        for kind, lead in (("recommendation", "(for review, not a decision): hold the invoice."), ("proposal", "(not executed or approved): a payment hold."), ("obligation", "OBL-0417-REVIEW: review before 15:30.")):
+            for phrase in ("This advice was never withdrawn", "This was not withdrawn", "Not superseded", "It has not been invalidated and is not historical", "Nothing here is withdrawn", "This is by no means no longer current"):
+                with self.subTest("%s: %s" % (kind, phrase)):
+                    response = copy.deepcopy(self.v1)
+                    next(s for s in response["statements"] if s["kind"] == kind)["text"] = "%s %s" % (phrase, lead)
+                    found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP016"]
+                    self.assertEqual(len(found), 1, [f.message for f in found])
+                    self.assertIn("phrased as current advice", found[0].message)
+
+    def test_advice_that_says_it_is_withdrawn_and_then_takes_that_back_is_refused(self):
+        for phrase in ("It was reinstated this morning.", "The withdrawal was lifted.", "It has not been invalidated after all."):
+            with self.subTest(phrase):
+                response = copy.deepcopy(self.v1)
+                next(s for s in response["statements"] if s["kind"] == "recommendation")["text"] = "Recommendation from the withdrawn packet (for review, not a decision): hold the invoice. " + phrase
+                found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP016"]
+                self.assertEqual(len(found), 1, [f.message for f in found])
+                self.assertIn("undoes the withdrawal", found[0].message)
+
+    def test_a_marker_that_stands_after_a_negation_in_another_sentence_still_counts(self):
+        response = copy.deepcopy(self.v1)
+        next(s for s in response["statements"] if s["kind"] == "recommendation")["text"] = "No change is needed. Recommendation from the withdrawn packet (for review, not a decision): hold the invoice."
+        self.assertEqual([f for f in check_structural(self.model, response, "r.json") if f.code == "RESP016"], [])
+
+    def test_a_response_that_is_not_an_object_is_one_finding_and_not_an_error(self):
+        for value in (None, [], "text", 7):
+            with self.subTest(repr(value)):
+                self.assertEqual([f.code for f in check_response(self.model, value, "r.json")], ["RESP001"])
+                self.assertEqual([f.code for f in check_structural(self.model, value, "r.json")], ["RESP001"])
+
     def test_saying_that_the_advice_is_not_current_is_not_calling_it_current(self):
         for phrase in ("This is not current advice.", "It is no longer valid.", "It is not yet active and never was in force.", "Not current."):
             with self.subTest(phrase):
@@ -621,6 +652,47 @@ class CoverageAndStatusConsistency(unittest.TestCase):
         next(s for s in response["statements"] if s["label"] == "PC-3")["label"] = "Current receipt"
         found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP016"]
         self.assertTrue(any("label" in f.message for f in found), [f.message for f in found])
+
+    def test_a_record_named_in_a_label_must_be_one_the_cited_items_rest_on(self):
+        """The label is shown beside the text. It used to be trusted as the source of identifiers, so naming a record there and in the text passed."""
+        for label in ("OUTSIDE-SOURCE", "PC-1 and OUTSIDE-SOURCE", "Source OUTSIDE-SOURCE"):
+            with self.subTest(label):
+                response = copy.deepcopy(self.v1)
+                statement = next(s for s in response["statements"] if s["label"] == "PC-1")
+                statement["label"] = label
+                found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP013"]
+                self.assertEqual(len(found), 1, [f.message for f in found])
+                self.assertIn("the label names OUTSIDE-SOURCE", found[0].message)
+        response = copy.deepcopy(self.v1)
+        statement = next(s for s in response["statements"] if s["label"] == "PC-1")
+        statement["label"], statement["text"] = "OUTSIDE-SOURCE", statement["text"] + " Source OUTSIDE-SOURCE."
+        self.assertEqual(len([f for f in check_structural(self.model, response, "r.json") if f.code == "RESP013"]), 1)
+
+    def test_the_labels_of_the_stored_responses_name_only_records_their_items_rest_on(self):
+        for name in ("response-PKT-0417-v1-model-style.json", "response-PKT-0417-v1-template.json", "response-PKT-0417-v2-template.json"):
+            self.assertEqual([f for f in check_structural(self.model, support.read_json("06-assistant-response/" + name), "r.json") if f.code == "RESP013"], [], name)
+
+    def test_a_sign_is_part_of_a_figure(self):
+        """-18,400.00 is not 18,400.00. The sign used to be dropped, so a changed sign passed."""
+        from eahs.response import figures
+        self.assertEqual(figures("owes EUR -18,400.00 and \u221260 units, not S-1042 on 2026-11-18, 5,000-2,500, (-3) or 12-3"), {"-18,400.00", "-60", "1042", "2026-11-18", "5,000-2,500", "-3", "12-3"})
+        for old, new in (("EUR 18,400.00", "EUR -18,400.00"), ("EUR 18,400.00", "EUR \u221218,400.00")):
+            with self.subTest(new):
+                response = copy.deepcopy(self.v1)
+                statement = next(s for s in response["statements"] if s["label"] == "PC-1")
+                statement["text"] = statement["text"].replace(old, new, 1)
+                found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP002"]
+                self.assertEqual(len(found), 1, [f.message for f in found])
+                self.assertIn("-18,400.00", found[0].message)
+        self.assertEqual([f for f in check_structural(self.model, self.v1, "r.json") if f.code == "RESP002"], [], "the stored text is unchanged by the rule")
+
+    def test_a_changed_sign_is_a_change_of_meaning_in_a_canonical_response(self):
+        response = copy.deepcopy(self.v2)
+        statement = next(s for s in response["statements"] if s["label"] == "PC-4")
+        statement["text"] = statement["text"].replace("variance 0.0%", "variance -0.5%")
+        found = [f for f in check_response(self.model, response, "r.json") if f.code == "RESP102"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("figures", found[0].message)
 
     def test_identifiers_dates_and_times_are_not_quantities(self):
         from eahs.response import quantities

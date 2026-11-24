@@ -528,6 +528,49 @@ class TheViewIsBuiltFromAuthorizedInputs(unittest.TestCase):
         from eahs.response import check_response
         self.assertTrue({"RESP101", "RESP102"} & {f.code for f in check_response(self.model, response, "r.json")})
 
+    def test_the_label_of_a_statement_about_the_unreadable_part_names_only_its_place(self):
+        """The label is shown beside the text. A label that says "Restricted: 27 named records" discloses what the text does not."""
+        for label in ("Restricted: 27 named records", "restricted", "gap 3 with 27 sources", "gap 3 (stale)", "gap 3 (inaccessible) - an investigation is open", "27"):
+            with self.subTest(label):
+                response = json.loads(json.dumps(support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")))
+                self.restricted_statement(response)["label"] = label
+                found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP017"]
+                self.assertEqual(len(found), 1, [f.message for f in found])
+                self.assertIn("label", found[0].message)
+
+    def test_the_labels_that_only_say_where_the_gap_is_or_are_the_permitted_wording_pass(self):
+        for label in ("gap 3", "gap 3 (inaccessible)", "Gap 12 ( Inaccessible )", "inaccessible", PERMITTED, "Inaccessible: " + PERMITTED):
+            with self.subTest(label):
+                response = json.loads(json.dumps(support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")))
+                self.restricted_statement(response)["label"] = label
+                self.assertEqual([f.code for f in check_structural(self.model, response, "r.json")], [])
+
+    def test_a_citation_of_a_part_of_the_unreadable_gap_is_a_citation_of_the_gap(self):
+        """A statement that cites the gap's expected evidence, not the gap, used to escape the rule: the pointer resolved to a string, not to a gap."""
+        gap = "/coverage_omissions_gaps/missingness/2"
+        for part in ("expected_evidence", "reason", "scope", "scope/task", "permission_decision_reference"):
+            with self.subTest(part):
+                response = json.loads(json.dumps(support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")))
+                response["statements"].append({"kind": "gap", "label": "restricted", "text": "There are 27 restricted records.", "refs": ["%s/%s" % (gap, part)]})
+                found = [f for f in check_structural(self.model, response, "r.json") if f.code == "RESP017"]
+                self.assertEqual(len(found), 2, [f.message for f in found])
+                self.assertTrue(any("exactly the wording" in f.message for f in found))
+                self.assertTrue(any("label" in f.message for f in found))
+
+    def test_a_citation_of_a_part_of_a_gap_that_may_not_be_known_is_refused_too(self):
+        model, _ = mutate_model(self.model, [{"target": "C04 PKT-0417 v1", "ops": [{"op": "replace", "path": "/coverage_omissions_gaps/missingness/2/permission_decision_reference/record_id", "value": "AUTHZ-READ-WITHHELD-0417"}]}])
+        response = json.loads(json.dumps(support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")))
+        response["statements"] = [s for s in response["statements"] if s["refs"] != ["/coverage_omissions_gaps/missingness/2"]]
+        response["statements"].append({"kind": "gap", "label": "gap 3", "text": "There are 27 restricted records.", "refs": ["/coverage_omissions_gaps/missingness/2/expected_evidence"]})
+        found = [f for f in check_structural(model, response, "r.json") if f.code == "RESP017"]
+        self.assertEqual(len(found), 1, [f.message for f in found])
+        self.assertIn("may not be mentioned", found[0].message)
+
+    def test_a_citation_of_a_part_of_a_readable_gap_is_unaffected(self):
+        response = json.loads(json.dumps(support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json")))
+        response["statements"].append({"kind": "gap", "label": "gap 1", "text": "Missing: carrier proof of delivery for a second pallet.", "refs": ["/coverage_omissions_gaps/missingness/0/expected_evidence"]})
+        self.assertEqual([f for f in check_structural(self.model, response, "r.json") if f.code == "RESP017"], [])
+
 
 class TheDocuments(unittest.TestCase):
     def text(self, relative):

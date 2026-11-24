@@ -19,7 +19,8 @@ is not worded as done; certainty is not added; every conflict, gap, recommendati
 mentioned; and at least MIN_CLAIM_COVERAGE of its supported claims are stated, so that they cannot all disappear. A claim is
 counted once, however many of its parts a response cites, and only when a statement that cites it keeps one of its figures
 and one of its words (or, when it has no figure, two of its words): a bare number does not state a claim. A statement about an
-input the reader may not read is exactly the wording the permission decision allows. These constraints catch specific, named
+input the reader may not read is exactly the wording the permission decision allows, its label says only where the gap is
+("gap 3"), and it cites the gap itself and not a part of it. These constraints catch specific, named
 failures. They do NOT show that the prose is
 semantically correct: a sentence can satisfy every constraint and still mislead. Where the response is not canonical,
 only a person, or a comparison with a canonical rendering, can judge what it means.
@@ -30,7 +31,8 @@ withdrawn response. Both validations compare the response with that, so a respon
 historical or anything else, and a withdrawn response carries the packet's own reason and nothing else: exactly that reason,
 with at most the introduction "This response was withdrawn:" (words added to a reason cannot be checked, so none are
 allowed). A withdrawn response also marks its advice (recommendations, proposals, obligations) as withdrawn, and no statement
-in it calls anything current or valid unless the packet items it cites do. These too are mechanical constraints; they do
+in it calls anything current or valid unless the packet items it cites do. Advice that says "withdrawn" and takes it back
+("never withdrawn", "reinstated") is not marking anything. These too are mechanical constraints; they do
 not judge what a free-form sentence means.
 
 Neither validation shows that the packet is right, and neither says anything about how a real model would behave.
@@ -68,7 +70,7 @@ ADVICE_KINDS = ("recommendation", "proposal", "obligation")
 #: The only two statuses a response can have. Which one it has is decided by its packet, never by the response.
 RESPONSE_STATUSES = ("current", "withdrawn")
 DECISION_WORDING = re.compile(r"\b(has|have|had|was|were|been|is|are)\s+(now\s+)?(approved|executed|released|paid|sent|submitted)\b", re.I)
-FIGURE = re.compile(r"\d[\d,.:/-]*\d|\d")
+FIGURE = re.compile(r"(?<![\w.,/:-])-?\d[\d,.:/-]*\d|(?<![\w.,/:-])-?\d|\d[\d,.:/-]*\d|\d")
 CURRENCY = re.compile(r"\b(EUR|USD|GBP|ISK|NOK|SEK|DKK|CHF|JPY)\b")
 
 #: Statement kinds on which each structural constraint is applied. Status consistency covers every kind that states something about
@@ -131,7 +133,7 @@ REASON_INTRODUCTIONS = ("", "This response was withdrawn: ")
 CURRENCY_WORDS = re.compile(r"\b(?:current(?:ly)?|active|valid|in force|up[- ]to[- ]date)\b", re.I)
 NEGATED_BEFORE = re.compile(r"\b(?:not|no longer|never|isn't|aren't|wasn't|weren't)\s+(?:\w+\s+){0,2}$", re.I)
 #: A negation just before a status word: "did not fail", "no longer current", "isn't stale", "no failures".
-NEGATED_STATUS = re.compile(r"(?:\b(?:not|no|never|none|cannot|without)\b|n't\b)\s+(?:\w+\s+){0,3}$", re.I)
+NEGATED_STATUS = re.compile(r"(?:\b(?:not|no|never|none|nothing|nobody|neither|nor|cannot|without|hardly|barely)\b|n't\b)\s+(?:\w+\s+){0,3}$", re.I)
 _ID = r"[A-Z][A-Z0-9]*(?:-[A-Z0-9][A-Za-z0-9.]*)+"
 #: "GR-5521 v1 was superseded by GR-5521 v2": the direction of a supersession that a withdrawal reason states.
 SUPERSEDED_BY = re.compile(r"(?<![\w-])(?P<old>%s)\s+(?:version\s+)?(?P<old_version>v\d+)\s+(?:was|were|is|has been|had been)\s+(?:superseded|replaced)\s+by\s+(?P<new>%s)\s+(?:version\s+)?(?P<new_version>v\d+)(?!\w|\.\d)" % (_ID, _ID), re.I)
@@ -144,13 +146,14 @@ CLAIM_ITEM = re.compile(r"/supported_claims_references/(\d+)(?:/|$)")
 
 
 def figures(text: str) -> set:
-    return {m.rstrip(".,:-/") for m in FIGURE.findall(text)}
+    """The figures in a text, with their sign: -18,400.00 is not 18,400.00. A minus counts only when it is a sign (not the hyphen of S-1042 or of a date)."""
+    return {m.rstrip(".,:-/") for m in FIGURE.findall(text.replace("\u2212", "-"))}
 
 
 def quantities(text: str) -> set:
     """The quantities in a text: numbers that are not part of an identifier, a date or a time (so 100, 184.00 and 18,400.00, not S-1042 or 2026-11-18)."""
     found = set()
-    for match in QUANTITY.finditer(STAMP.sub(" ", text)):
+    for match in QUANTITY.finditer(STAMP.sub(" ", text.replace("\u2212", "-"))):
         token = match.group(0).replace(",", "")
         try:
             found.add(float(token))
@@ -408,13 +411,22 @@ def _free_text_findings(kind: str, text: str, label: str, cited_text: str, point
             if match.group(0).lower() not in lowered:
                 out.append(Finding("RESP011", "the %s adds certainty (%r) that the cited items do not state" % (where, match.group(0)), file, loc, DOC_RESPONSE))
     if withdrawn:
+        called_current = False
         for shown, where in ((text, "statement"), (label, "label")):
             if currency_assertions(shown) > currency_assertions(cited_text):
+                called_current = True
                 out.append(Finding("RESP016", "this %s calls something current or valid in its %s, but the packet is withdrawn and the items it cites do not say so: mark it withdrawn or no longer current" % (kind, where), file, loc, DOC_RESPONSE))
+        # Advice that names the withdrawal and then takes it back ("this advice was reinstated") says the opposite of what the packet's state is.
+        # A text that does not say it is withdrawn at all has been refused already, so it is not refused twice.
+        undone = UNDOES_WITHDRAWAL.search(text) if kind in ADVICE_KINDS and not called_current and says_withdrawn(text) else None
+        if undone:
+            out.append(Finding("RESP016", "this %s undoes the withdrawal (%r): the packet is withdrawn, and a response cannot reinstate it" % (kind, undone.group(0)), file, loc, DOC_RESPONSE))
     if kind in IDENTIFIER_CHECKED:
-        for ident in sorted(set(IDENTIFIER.findall(text))):
-            if ident not in cited_text and ident not in label:
-                out.append(Finding("RESP013", "names %s, which the cited packet items do not rest on: a statement may not attribute its content to another record" % ident, file, loc, DOC_RESPONSE))
+        # A label is shown to the reader beside the text, so a record named in it is held to the same rule: it may not name a record that the cited items do not rest on.
+        for ident in sorted(set(IDENTIFIER.findall(text)) | set(IDENTIFIER.findall(label))):
+            if ident not in cited_text:
+                where = "label" if ident in IDENTIFIER.findall(label) and ident not in IDENTIFIER.findall(text) else "statement"
+                out.append(Finding("RESP013", "the %s names %s, which the cited packet items do not rest on: a statement may not attribute its content to another record" % (where, ident), file, loc, DOC_RESPONSE))
     if kind == "conflict":
         if CLOSES_CONFLICT.search(text):
             out.append(Finding("RESP008", "wording closes a conflict that the packet keeps open", file, loc, DOC_RESPONSE))
@@ -470,9 +482,25 @@ def _lifecycle_findings(model: Model, response: dict, packet: Instance, file: st
     out.extend(_reason_findings(model, response, packet, expected, trusted_reason, file))
     if expected == "withdrawn":
         for i, st in enumerate(_statements(response)):
-            if isinstance(st, dict) and st.get("kind") in ADVICE_KINDS and not WITHDRAWN_MARKER.search(str(st.get("text", ""))):
+            if not (isinstance(st, dict) and st.get("kind") in ADVICE_KINDS):
+                continue
+            text = str(st.get("text", ""))
+            if not says_withdrawn(text):
                 out.append(Finding("RESP016", "this %s is phrased as current advice, but packet %s %s is withdrawn: say that it is withdrawn or no longer current" % (st["kind"], packet.id, packet.version), file, "/statements/%d" % i, DOC_RESPONSE))
     return out
+
+
+def says_withdrawn(text: str) -> bool:
+    """True when a text says, affirmatively, that something is withdrawn, no longer current, historical, superseded or invalidated.
+
+    "This advice was never withdrawn" and "not superseded" name the word and say the opposite, so a marker with a negation just
+    before it does not count. Only the clause just before each marker is read (at most about three words back).
+    """
+    for match in WITHDRAWN_MARKER.finditer(text):
+        clause = re.split(r"[.!?;:(]", text[max(0, match.start() - 80):match.start()])[-1]
+        if not NEGATED_STATUS.search(clause):
+            return True
+    return False
 
 
 def _reason_findings(model: Model, response: dict, packet: Instance, expected: str, trusted_reason: str, file: str) -> List[Finding]:
@@ -525,6 +553,8 @@ def _reason_findings(model: Model, response: dict, packet: Instance, expected: s
 def check_structural(model: Model, response: dict, path) -> List[Finding]:
     """STRUCTURAL FREE-TEXT VALIDATION: named constraints on any response. It does not prove that the prose is correct."""
     file = rel(path)
+    if not isinstance(response, dict):
+        return [Finding("RESP001", "a response must be a JSON object with a status, an as-of time and a list of statements, and this is not an object", file, "/", DOC)]
     findings: List[Finding] = []
     ref = response.get("packet_reference")
     ref = ref if isinstance(ref, dict) else {}
@@ -587,7 +617,7 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
             findings.append(Finding("RESP005", "wording presents an action as approved or done, which the packet does not support", file, loc, "contracts/c05-action-proposal.md"))
         findings += _free_text_findings(kind, text, str(st.get("label", "")), " . ".join(subtree), resolved, d, file, loc, withdrawn)
         if kind == "gap":
-            findings += _unreadable_gap_findings(model, packet, text, resolved, file, loc)
+            findings += _unreadable_gap_findings(model, packet, text, str(st.get("label", "")), resolved, file, loc)
     claims_total = len(d["supported_claims_references"])
     if claims_total:
         needed = max(1, math.ceil(claims_total * MIN_CLAIM_COVERAGE))
@@ -621,19 +651,28 @@ def _normal(text: str) -> str:
     return " ".join(text.lower().split())
 
 
-def _unreadable_gap_findings(model: Model, packet: Instance, text: str, pointers: List[str], file: str, loc: str) -> List[Finding]:
+#: A pointer into one gap of the packet, whatever part of the gap it points at: a citation of a part of a gap is a citation of the gap.
+GAP_ITEM = re.compile(r"(/coverage_omissions_gaps/missingness/\d+)(?:/|$)")
+#: The labels a statement about an unreadable input may carry besides the permitted wording itself: where it is, and the missingness label.
+NEUTRAL_GAP_LABEL = re.compile(r"gap\s+\d+(?:\s*\(\s*inaccessible\s*\))?|inaccessible", re.I)
+
+
+def _unreadable_gap_findings(model: Model, packet: Instance, text: str, label: str, pointers: List[str], file: str, loc: str) -> List[Finding]:
     """A statement about an input the viewer may not read is exactly the permitted wording, or it says nothing about it.
 
     Where no decision bound to the viewer lets them know the input exists, the statement may not cite it at all. Where one
     does, the statement is that decision's wording and nothing else (it may start with the missingness label, "Inaccessible:"),
-    and it does not share its citation with another gap. Words added to it, or the words of a neighbouring gap, could carry
-    what the reader may not know, and a mechanical test cannot tell the two apart. These are mechanical tests: they do not read
-    prose that does not cite the input for what it hides.
+    and it does not share its citation with another gap. Its label is shown beside it, so the label carries only the place of
+    the gap ("gap 3", "gap 3 (inaccessible)"), the missingness label or that wording. A citation of a part of the gap (its
+    expected evidence, its scope) is a citation of the gap. Words added to the statement or to its label, or the words of a
+    neighbouring gap, could carry what the reader may not know, and a mechanical test cannot tell the two apart. These are
+    mechanical tests: they do not read prose that does not cite the input for what it hides.
     """
     from .semantics import permitted_wording
     out: List[Finding] = []
     allowed: List[str] = []
-    for pointer in pointers:
+    parents = list(dict.fromkeys(match.group(1) for match in map(GAP_ITEM.match, pointers) if match))
+    for pointer in parents:
         try:
             gap = resolve_pointer(packet.data, pointer)
         except (KeyError, IndexError, ValueError, TypeError):
@@ -645,8 +684,10 @@ def _unreadable_gap_findings(model: Model, packet: Instance, text: str, pointers
             out.append(Finding("RESP017", "this statement tells the reader about an input that no permission decision bound to them lets them know exists: it may not be mentioned", file, loc, DOC_RESPONSE))
         else:
             allowed += [_normal(wording), _normal("Inaccessible: " + wording)]
-    if allowed and (len(pointers) != 1 or _normal(text) not in allowed):
+    if allowed and (len(parents) != 1 or _normal(text) not in allowed):
         out.append(Finding("RESP017", "a statement about an input the reader may not read must be exactly the wording the permission decision allows, alone, with nothing added and no other gap in the same statement: %r" % allowed[0], file, loc, DOC_RESPONSE))
+    if allowed and _normal(label) not in allowed and not NEUTRAL_GAP_LABEL.fullmatch(_normal(label)):
+        out.append(Finding("RESP017", "the label of a statement about an input the reader may not read names only where the gap is (\"gap 3\", \"gap 3 (inaccessible)\") or is the permitted wording: this label says more", file, loc, DOC_RESPONSE))
     return out
 
 
@@ -728,7 +769,7 @@ def check_canonical(model: Model, response: dict, packet: Instance, file: str) -
 def check_response(model: Model, response: dict, path) -> List[Finding]:
     """Validate a response: structural constraints for every response, and the canonical comparison when it claims to be rendered."""
     findings = check_structural(model, response, path)
-    if is_canonical(response):
+    if isinstance(response, dict) and is_canonical(response):
         ref = response.get("packet_reference")
         ref = ref if isinstance(ref, dict) else {}
         packet = model.get("C04", ref.get("id"), ref.get("version"))
