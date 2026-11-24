@@ -32,7 +32,7 @@ python scripts/check_all.py --history        # also scan the whole Git history (
 | `svg` | `figures/src/svg_figures.py --check` | The SVGs are what their generator draws. |
 | `hygiene` | `check_hygiene.py` | No private link, local path, credential, e-mail address, internal term or unfinished marker, and no file that would not survive a clone. |
 
-A pass says the repository is consistent with itself. It says nothing about any real system ([README](../README.md#what-a-pass-means-and-what-it-does-not)).
+A pass says the repository is consistent with itself. It says nothing about any real system ([README](../README.md#what-this-shows-and-what-it-does-not)).
 
 ## The scripts
 

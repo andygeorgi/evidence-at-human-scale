@@ -6,7 +6,7 @@ A decision packet has to show where each claim comes from and what is missing, w
 
 ## Versioned ancestry and missingness
 
-In the lineage figure (Figure F03, [chapter 4](../docs/paper/04-evidence-and-lineage.md)), M01/v1 (Agent A) and M02/v1 (Agent B) both derive from source record S01/v1, and both feed P01/v1. Their agreement comes from one origin. It is not independent corroboration. S02/v1 is a conflicting source assertion. S01/v2 corrects S01/v1: it supersedes that version and invalidates the affected derivatives. V01/v1 is a scoped validation record. It applies only to the target and scope it actually assessed.
+In the lineage figure (Figure F03, [chapter 4](../docs/paper/04-evidence-and-lineage.md)), the two AI summaries, both model inferences, derive from one goods receipt, a source record, and both feed the decision packet. Their agreement comes from one origin. It is not independent corroboration. The invoice is a conflicting source assertion. The corrected receipt supersedes the first version of the receipt and invalidates the affected derivatives. A scoped validation record applies only to the target and scope it actually assessed.
 
 Derivation ancestry is directed and acyclic. The dashed relationships in the figure (contradiction, supersession, validation and invalidation) are not ancestry. Every relationship names the actor who asserted it.
 

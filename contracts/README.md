@@ -40,14 +40,14 @@ Some repetition between instances is accidental rather than intentional. A norma
 <p align="center">
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="../figures/F11-dark.svg">
-<img src="../figures/F11-light.svg" alt="C02 evidence is drawn at the top, with dashed arrows to C03, C04, C05, C06 and C07 for references by exact version. Below it, solid arrows run down a chain: C01 context, C03 selection, C04 decision packet, C05 action proposal, C06 delegation and C07 execution receipt. C07 references one proposal and one grant." width="400">
+<img src="../figures/F11-light.svg" alt="An evidence record (C02) is drawn at the top, with dashed arrows to the selection (C03), decision packet (C04), action proposal (C05), delegation (C06) and execution receipt (C07) for references by exact version. Below it, solid arrows run down a chain: context (C01), selection, decision packet, action proposal, delegation and execution receipt. The receipt references one proposal and one grant." width="400">
 </picture>
 </p>
 
 <details>
 <summary>Text description of Figure F11</summary>
 
-C02 evidence is the card at the top. It holds typed records with lineage. Dashed arrows run from it to C03, C04, C05, C06 and C07. Below it, solid arrows run down a chain: C01 context, C03 selection, C04 decision packet, C05 action proposal, C06 delegation and C07 execution receipt. C03 references the context. C04 references the context and the selection. C05 references the context and the packet. A C06 delegation is bound to an exact C05 proposal or to a bounded class. A C07 execution receipt references one proposal and one grant. A solid line runs from C05 to C07 beside C06. It shows the proposal that C07 references. C06 points to C07. Solid arrows point forward along the chain. Dashed arrows reference an exact evidence version.
+An evidence record (C02) is the card at the top. It holds typed records with lineage. Dashed arrows run from it to the selection manifest (C03), decision packet (C04), action proposal (C05), delegation (C06) and execution receipt (C07). Below it, solid arrows run down a chain: context (C01), selection manifest, decision packet, action proposal, delegation and execution receipt. The selection references the context. The decision packet references the context and the selection. The action proposal references the context and the packet. A delegation is bound to an exact action proposal or to a bounded class. An execution receipt references one proposal and one grant. A solid line runs from the proposal to the receipt beside the delegation. It shows the proposal that the receipt references. The delegation points to the receipt. Solid arrows point forward along the chain. Dashed arrows reference an exact evidence version.
 
 [All figures and their descriptions](../figures/README.md#f11-how-the-seven-contracts-refer-to-each-other)
 

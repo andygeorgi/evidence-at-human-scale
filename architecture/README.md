@@ -2,7 +2,7 @@
 
 This reference holds the technical detail behind the [paper](../docs/paper/README.md): what each kind of evidence establishes, how permission limits what a requestor sees, how approval and execution stay separate, what happens when a part fails, who owns what, and which choices a domain still has to make. Each contract detail appears once, in the [contract reference](../contracts/README.md). It is not an implementation report, and it gives no assurance about any deployment.
 
-This is a reference architecture, not a production deployment or benefit claim. The contracts and synthetic examples are tested; real-world effectiveness has not been evaluated. The evaluation tests are NOT ASSESSED. The repository's own checks on its documents and examples are a separate class of evidence (see [claims and limits](../docs/claims-and-limits.md#evidence-classes-kept-apart)). They show that the documents are consistent, and they say nothing about how the architecture performs.
+It describes a reference architecture, not a production deployment. [Claims and limits](../docs/claims-and-limits.md#evidence-classes-kept-apart) says what the repository's own checks show and what they do not.
 
 ## Contents
 

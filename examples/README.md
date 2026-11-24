@@ -109,16 +109,16 @@ The set holds 37 contract instances: 19 evidence records (C02), 2 contexts (C01)
 - **Registry.** [`registry.json`](registry.json) is the domain's side of the story: registered producers and the evidence kinds each may submit, the external records the contracts name but do not define (access decisions, authority bases, accounting references), the policies with their freshness limits, the commit-time precondition rules, the relationship vocabulary, the terms this requestor may not see, who holds which role and the log of reviews, who each permission decision is for (principal, tenant and purpose) and the complete generic view it lets an output show, and the state of the target system over time. It is domain configuration, not part of the contracts.
 - **Generated data.** The JSON is generated from one definition by [`scripts/build_example_data.py`](../scripts/build_example_data.py). `python scripts/build_example_data.py --check` fails if a committed file differs from a fresh build, so an edit by hand shows up. The READMEs are written by hand.
 
-## Reading the paper's abstract notation
+## Reading the abstract labels in the reference material
 
-The paper uses short labels in its figures and text. In this story:
+The schema's embedded examples and the evaluation fixtures describe their cases with short abstract labels. In this story:
 
-| Paper | Here |
+| In the story | Abstract label |
 |---|---|
-| `S01/v1`, a source record with a quantity | `GR-5521` v1, the goods receipt (60 units) |
-| `S02/v1`, a conflicting source record | `INV-2026-0417` v1, the invoice (100 units) |
-| `M01`, `M02`, two summaries that share one root | `SUM-A-0417` v1, `SUM-B-0417` v1, listed in the packet as inferences `M01` and `M02` |
-| `V01/v1`, a scoped validation | `V-M3W-0417-01` and `V-GR-5521-01`, inside the records they assess |
-| `S01/v2`, the correction | `GR-5521` v2 |
-| `P01` | `PKT-0417` v1, then v2 |
-| the Decision Owner | the controller, `person:ap-controller-01` (see *Conventions*) |
+| The goods receipt, `GR-5521` v1 (60 units) | `S01/v1`, a source record with a quantity |
+| The invoice, `INV-2026-0417` v1 (100 units) | `S02/v1`, a conflicting source record |
+| The two AI summaries, `SUM-A-0417` v1 and `SUM-B-0417` v1, listed in the packet as inferences `M01` and `M02` | `M01`, `M02`, two summaries that share one root |
+| The scoped validations `V-M3W-0417-01` and `V-GR-5521-01`, inside the records they assess | `V01/v1`, a scoped validation |
+| The corrected goods receipt, `GR-5521` v2 | `S01/v2`, the correction |
+| The decision packet, `PKT-0417` v1, then v2 | `P01` |
+| The controller, `person:ap-controller-01` (see *Conventions*) | the Decision Owner |

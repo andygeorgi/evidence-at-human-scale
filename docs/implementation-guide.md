@@ -10,7 +10,7 @@ A good candidate has all of these: the decision recurs, people already struggle 
 
 ## Step 1 · Write the decision card
 
-**Maps to:** [C01 Context](../contracts/c01-context.md), [C05](../contracts/c05-action-proposal.md), [C06](../contracts/c06-delegation.md). **Example:** [02 Context](../examples/02-context-and-normalization/README.md), [07 Authority](../examples/07-authority-and-delegation/README.md).
+**Maps to:** [Context (C01)](../contracts/c01-context.md), [Action proposal (C05)](../contracts/c05-action-proposal.md), [Delegation (C06)](../contracts/c06-delegation.md). **Example:** [02 Context](../examples/02-context-and-normalization/README.md), [07 Authority](../examples/07-authority-and-delegation/README.md).
 
 | Field | Your entry |
 | --- | --- |
@@ -26,7 +26,7 @@ Check: request, review, approval and execution are separate roles, and read, app
 
 ## Step 2 · Inventory the sources and mark the mandatory signals
 
-**Maps to:** [C02 Evidence](../contracts/c02-evidence.md), [C03 Selection](../contracts/c03-selection.md). **Example:** [01 Source records](../examples/01-source-records/README.md).
+**Maps to:** [Evidence record (C02)](../contracts/c02-evidence.md), [Selection manifest (C03)](../contracts/c03-selection.md). **Example:** [01 Source records](../examples/01-source-records/README.md).
 
 | Source | Producer | Evidence kind | Version and identity | Owner | Freshness requirement | Mandatory signal? | Deterministic notification route |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -36,7 +36,7 @@ Check: every row has an owner and a freshness requirement, or an explicit "unres
 
 ## Step 3 · Draft the first view of the decision packet
 
-**Maps to:** [C04 Decision packet](../contracts/c04-decision-packet.md). **Example:** [05 Decision packet](../examples/05-decision-packet/README.md), [06 Assistant response](../examples/06-assistant-response/README.md), [04 Missingness](../examples/04-selection-and-missingness/README.md).
+**Maps to:** [Decision packet (C04)](../contracts/c04-decision-packet.md). **Example:** [05 Decision packet](../examples/05-decision-packet/README.md), [06 Assistant response](../examples/06-assistant-response/README.md), [04 Missingness](../examples/04-selection-and-missingness/README.md).
 
 Draft it on paper or in a document first. Decide what the reader may know before you decide what is missing. For each input the packet could mention, in this order:
 
@@ -60,7 +60,7 @@ Then walk it through a recent case with the Decision Owner. Ask: what would have
 
 ## Step 4 · Put a gateway in front of every consequential action
 
-**Maps to:** [C05](../contracts/c05-action-proposal.md), [C06](../contracts/c06-delegation.md), [C07 Execution receipt](../contracts/c07-execution-receipt.md). **Example:** [08 Blocked action](../examples/08-blocked-action/README.md), [09 Unknown outcome](../examples/09-unknown-outcome/README.md).
+**Maps to:** [Action proposal (C05)](../contracts/c05-action-proposal.md), [Delegation (C06)](../contracts/c06-delegation.md), [Execution receipt (C07)](../contracts/c07-execution-receipt.md). **Example:** [08 Blocked action](../examples/08-blocked-action/README.md), [09 Unknown outcome](../examples/09-unknown-outcome/README.md).
 
 The gateway is separate from the assistant. At commit it rechecks each of the following and records the result:
 

@@ -1,6 +1,18 @@
 # Guided reading paths
 
-Choose a route by what you want to do, or look up a topic in the table.
+Choose a route by what you want to do. To look up a topic or a folder instead, use the tables after the paths.
+
+## Paths
+
+**Short path: the argument in a few pages.** [Overview](paper/00-overview.md) → [1. Human attention](paper/01-human-attention.md) → [3. The reference architecture](paper/03-governed-context.md) → [Where the architecture stops](paper/14-start-monday.md#where-the-architecture-stops).
+
+**Architect path: the whole paper.** Read the [paper](paper/README.md) in order. Open the [worked example](../examples/README.md) after chapter 6.
+
+**Implementer path: start building.** [Implementation guide](implementation-guide.md) → [contracts](../contracts/README.md) → [examples](../examples/README.md) (run `python scripts/validate_examples.py`) → [action and degradation](../architecture/action-and-degradation.md).
+
+**Claims-checking path: what is claimed and what is not.** [What the engagement showed](paper/02-engagement.md) → [claims and limits](claims-and-limits.md) → [sources](../references/README.md) → [question index](../architecture/question-index.md).
+
+**Evaluator path: how the architecture would be tested.** [Evaluation guide](../evaluation/README.md) → [oracles](../evaluation/oracles.md) → [human-outcome evaluation](../evaluation/human-outcome-evaluation.md) → [catalogue](../evaluation/catalogue/README.md).
 
 ## Topics and where to read about them
 
@@ -16,18 +28,6 @@ Choose a route by what you want to do, or look up a topic in the table.
 | 8. How to begin implementing it | [Chapter 14](paper/14-start-monday.md), [implementation guide](implementation-guide.md) |
 | 9. How to evaluate it | [Chapter 12](paper/12-evaluation.md), [evaluation guide](../evaluation/README.md) |
 | 10. What it does not claim | [Claims and limits](claims-and-limits.md), [chapter 14](paper/14-start-monday.md#where-the-architecture-stops) |
-
-## Paths
-
-**Short path: the argument in a few pages.** [Overview](paper/00-overview.md) → [1. Human attention](paper/01-human-attention.md) → [3. The reference architecture](paper/03-governed-context.md) → [Where the architecture stops](paper/14-start-monday.md#where-the-architecture-stops).
-
-**Architect path: the whole paper.** Read the [paper](paper/README.md) in order. Open the [worked example](../examples/README.md) after chapter 6.
-
-**Implementer path: start building.** [Implementation guide](implementation-guide.md) → [contracts](../contracts/README.md) → [examples](../examples/README.md) (run `python scripts/validate_examples.py`) → [action and degradation](../architecture/action-and-degradation.md).
-
-**Claims-checking path: what is claimed and what is not.** [What the engagement showed](paper/02-engagement.md) → [claims and limits](claims-and-limits.md) → [sources](../references/README.md) → [question index](../architecture/question-index.md).
-
-**Evaluator path: how the architecture would be tested.** [Evaluation guide](../evaluation/README.md) → [oracles](../evaluation/oracles.md) → [human-outcome evaluation](../evaluation/human-outcome-evaluation.md) → [catalogue](../evaluation/catalogue/README.md).
 
 ## Map of the repository
 

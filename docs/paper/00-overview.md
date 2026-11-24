@@ -12,25 +12,6 @@ The reusable unit of the architecture is the decision context, not the agent hie
 
 The design comes from a case-based architecture engagement on a public-sector fisheries-control authority in Iceland. Public audit findings and appeal rulings in that domain showed how decisions built on records and automated flags can go wrong. The engagement's own prototype tests on synthetic data showed similar risks for model output. [What the engagement showed](02-engagement.md) maps each observation to the design decision it informed, and [Starting with one decision](14-start-monday.md) gives the first practical steps.
 
-This is a reference architecture, not a production deployment or benefit claim. The contracts and synthetic examples are tested; real-world effectiveness has not been evaluated. The evaluation tests in [chapter 12](12-evaluation.md) are defined, and none has been run. The [architecture reference](../../architecture/README.md) and the [contract reference](../../contracts/README.md) hold the full controls; this paper gives the argument and says what the controls are for.
-
-## How the paper is organized
-
-| Question | Chapter |
-| --- | --- |
-| What is the problem, and why do more agents not solve it? | [1. The scarce resource is human attention](01-human-attention.md) |
-| Where does the design come from? | [2. What the engagement showed](02-engagement.md) |
-| What is the architecture? | [3. The reference architecture](03-governed-context.md) |
-| What does each piece of evidence carry with it? | [4. Evidence keeps its type and its ancestry](04-evidence-and-lineage.md) |
-| What reaches the person, and what is left out? | [5. Context and selection](05-context-and-attention.md) · [6. The decision packet](06-decision-packet.md) · [7. One interaction, several runtimes](07-one-interaction.md) |
-| How does the design show what is missing? | [8. Uncertainty is part of the result](08-uncertainty.md) |
-| Who may read, approve and execute? | [9. Authority remains a separate boundary](09-authority.md) |
-| What happens when something fails? | [10. Information can degrade without widening authority](10-degraded-operation.md) |
-| What does it cost, and what must a domain supply? | [11. Costs and adaptation](11-costs-and-adaptation.md) |
-| How would it be evaluated? | [12. Evaluate simpler baselines before multi-agent value](12-evaluation.md) |
-| Which products could implement it? | [13. Implementation options](13-implementation-options.md) |
-| What should I do on Monday? | [14. Starting with one decision](14-start-monday.md) |
-
-The [guided reading paths](../README.md) suggest shorter routes, and the [glossary](../glossary.md) defines the terms used throughout.
+This is a reference architecture, not a production deployment or benefit claim; real-world effectiveness has not been evaluated ([claims and limits](../claims-and-limits.md)). The [architecture reference](../../architecture/README.md) and the [contract reference](../../contracts/README.md) hold the full controls; this paper gives the argument and says what the controls are for. The [paper contents](README.md) list each chapter and its takeaway, the [guided reading paths](../README.md) suggest shorter routes, and the [glossary](../glossary.md) defines the terms used throughout.
 
 [Paper contents](README.md) · [Next: the scarce resource is human attention →](01-human-attention.md)

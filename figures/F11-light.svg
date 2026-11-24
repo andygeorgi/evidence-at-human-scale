@@ -1,41 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 712" width="360" height="712" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 729" width="360" height="729" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">How the seven contracts refer to each other</title>
-<desc id="d">C02 evidence is drawn at the top, with dashed arrows to C03, C04, C05, C06 and C07 for references by exact version. Below it, solid arrows run down a chain: C01 context, C03 selection, C04 decision packet, C05 action proposal, C06 delegation and C07 execution receipt. C07 references one proposal and one grant.</desc>
+<desc id="d">An evidence record (C02) is drawn at the top, with dashed arrows to the selection (C03), decision packet (C04), action proposal (C05), delegation (C06) and execution receipt (C07) for references by exact version. Below it, solid arrows run down a chain: context (C01), selection, decision packet, action proposal, delegation and execution receipt. The receipt references one proposal and one grant.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
-<rect width="360" height="712" fill="#ffffff"/>
+<rect width="360" height="729" fill="#ffffff"/>
 <rect x="10.0" y="10.0" width="340.0" height="77.1" rx="8" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.6"/>
-<text x="20.0" y="34.0" font-size="15" text-anchor="start" font-weight="700" fill="#0B2540">C02 Evidence</text>
-<text x="20.0" y="55.1" font-size="13" text-anchor="start" fill="#0B2540">typed records with lineage, referenced by exact</text>
-<text x="20.0" y="72.3" font-size="13" text-anchor="start" fill="#0B2540">version from C03, C04, C05, C06 and C07</text>
+<text x="20.0" y="34.0" font-size="15" text-anchor="start" font-weight="700" fill="#0B2540">Evidence record (C02)</text>
+<text x="20.0" y="55.1" font-size="13" text-anchor="start" fill="#0B2540">typed records with lineage, referenced by</text>
+<text x="20.0" y="72.3" font-size="13" text-anchor="start" fill="#0B2540">exact version from every later contract</text>
 <rect x="44.0" y="109.1" width="292.0" height="59.9" rx="8" fill="#E4F4F6" stroke="#1E7F8C" stroke-width="1.6"/>
-<text x="54.0" y="133.0" font-size="15" text-anchor="start" font-weight="700" fill="#06323A">C01 Context</text>
+<text x="54.0" y="133.0" font-size="15" text-anchor="start" font-weight="700" fill="#06323A">Context (C01)</text>
 <text x="54.0" y="154.2" font-size="13" text-anchor="start" fill="#06323A">who, what, why, as of when</text>
 <path d="M190.0 169.0 L190.0 198.0" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <text x="202.0" y="188.6" font-size="13" text-anchor="start" fill="#57606a">context</text>
 <rect x="44.0" y="199.0" width="292.0" height="59.9" rx="8" fill="#E4F4F6" stroke="#1E7F8C" stroke-width="1.6"/>
-<text x="54.0" y="222.9" font-size="15" text-anchor="start" font-weight="700" fill="#06323A">C03 Selection</text>
+<text x="54.0" y="222.9" font-size="15" text-anchor="start" font-weight="700" fill="#06323A">Selection manifest (C03)</text>
 <text x="54.0" y="244.1" font-size="13" text-anchor="start" fill="#06323A">manifest, gaps, obligations</text>
 <path d="M190.0 258.9 L190.0 287.9" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <text x="202.0" y="278.5" font-size="13" text-anchor="start" fill="#57606a">context + selection</text>
 <rect x="44.0" y="288.9" width="292.0" height="59.9" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
-<text x="54.0" y="312.8" font-size="15" text-anchor="start" font-weight="700" fill="#0F2E1B">C04 Decision packet</text>
+<text x="54.0" y="312.8" font-size="15" text-anchor="start" font-weight="700" fill="#0F2E1B">Decision packet (C04)</text>
 <text x="54.0" y="334.0" font-size="13" text-anchor="start" fill="#0F2E1B">claims, inferences, gaps</text>
 <path d="M190.0 348.8 L190.0 377.8" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <text x="202.0" y="368.4" font-size="13" text-anchor="start" fill="#57606a">context + packet</text>
 <rect x="44.0" y="378.8" width="292.0" height="59.9" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
-<text x="54.0" y="402.7" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">C05 Action proposal</text>
+<text x="54.0" y="402.7" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">Action proposal (C05)</text>
 <text x="54.0" y="423.9" font-size="13" text-anchor="start" fill="#24133F">proposed, not executed</text>
 <path d="M190.0 438.7 L190.0 467.7" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <text x="202.0" y="458.3" font-size="13" text-anchor="start" fill="#57606a">bound to</text>
 <rect x="44.0" y="468.7" width="292.0" height="59.9" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
-<text x="54.0" y="492.7" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">C06 Delegation</text>
+<text x="54.0" y="492.7" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">Delegation (C06)</text>
 <text x="54.0" y="513.8" font-size="13" text-anchor="start" fill="#24133F">exact approval or bounded class</text>
 <path d="M190.0 528.6 L190.0 557.6" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <text x="202.0" y="548.2" font-size="13" text-anchor="start" fill="#57606a">grant</text>
 <rect x="44.0" y="558.6" width="292.0" height="77.1" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
-<text x="54.0" y="582.6" font-size="15" text-anchor="start" font-weight="700" fill="#0F2E1B">C07 Execution receipt</text>
-<text x="54.0" y="603.7" font-size="13" text-anchor="start" fill="#0F2E1B">verified outcome; references one</text>
-<text x="54.0" y="620.9" font-size="13" text-anchor="start" fill="#0F2E1B">proposal (C05) and one grant (C06)</text>
+<text x="54.0" y="582.6" font-size="15" text-anchor="start" font-weight="700" fill="#0F2E1B">Execution receipt (C07)</text>
+<text x="54.0" y="603.7" font-size="13" text-anchor="start" fill="#0F2E1B">verified outcome; references</text>
+<text x="54.0" y="620.9" font-size="13" text-anchor="start" fill="#0F2E1B">one proposal and one grant</text>
 <path d="M20.0 87.1 L20.0 597.2" fill="none" stroke="#57606a" stroke-width="1.8" stroke-dasharray="5 4"/>
 <path d="M20.0 228.9 L43.0 228.9" fill="none" stroke="#57606a" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arr)"/>
 <path d="M20.0 318.8 L43.0 318.8" fill="none" stroke="#57606a" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arr)"/>
@@ -43,7 +43,8 @@
 <path d="M20.0 498.7 L43.0 498.7" fill="none" stroke="#57606a" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arr)"/>
 <path d="M20.0 597.2 L43.0 597.2" fill="none" stroke="#57606a" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arr)"/>
 <path d="M336.0 408.8 L345.0 408.8 L345.0 597.2 L337.0 597.2" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<text x="10.0" y="662.0" font-size="13" text-anchor="start" fill="#57606a">Solid arrows are carried forward; the line beside</text>
-<text x="10.0" y="679.2" font-size="13" text-anchor="start" fill="#57606a">C06 is the proposal that C07 references. Dashed</text>
-<text x="10.0" y="696.4" font-size="13" text-anchor="start" fill="#57606a">arrows reference an exact evidence version.</text>
+<text x="10.0" y="662.0" font-size="13" text-anchor="start" fill="#57606a">Solid arrows are carried forward; the line</text>
+<text x="10.0" y="679.2" font-size="13" text-anchor="start" fill="#57606a">beside the delegation is the proposal that</text>
+<text x="10.0" y="696.4" font-size="13" text-anchor="start" fill="#57606a">the receipt references. Dashed arrows</text>
+<text x="10.0" y="713.5" font-size="13" text-anchor="start" fill="#57606a">reference an exact evidence version.</text>
 </svg>
