@@ -387,7 +387,7 @@ def scan(root: Path = REPO, files: Optional[Sequence[str]] = None, private_terms
             findings += scan_file(root, rel)
     notices = []
     if not terms:
-        notices.append("The scan for private terms is off: no list was found. Put one regular expression per line in %s (Git ignores it) or set %s. Only confidentiality-label wording was looked for." % (PRIVATE_TERMS_FILE, PRIVATE_TERMS_ENV))
+        notices.append("The scan for private terms is off: no list was found. Put one regular expression per line in %s (Git ignores it) or set %s. Only confidentiality-label wording and the authority's name were looked for." % (PRIVATE_TERMS_FILE, PRIVATE_TERMS_ENV))
     if not any(n.lower() in LICENSE_NAMES for n in names if "/" not in n):
         notices.append("No LICENSE file: the license decision is still open. Nothing in this repository grants one.")
     findings.sort(key=lambda f: (f.path, f.line, f.code))
