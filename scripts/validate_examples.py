@@ -424,13 +424,16 @@ def split(value: str) -> Set[str]:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--examples", type=Path, default=REPO_ROOT / "examples", help="directory to validate (default: examples/)")
-    parser.add_argument("--only", default="", help="comma-separated stages to run: " + ", ".join(STAGES))
-    parser.add_argument("--skip", default="", help="comma-separated stages to leave out")
+    parser.add_argument("--only", default=None, help="comma-separated stages to run: " + ", ".join(STAGES))
+    parser.add_argument("--skip", default=None, help="comma-separated stages to leave out")
     parser.add_argument("--verbose", action="store_true", help="show the detail line of every stage")
     parser.add_argument("--json", action="store_true", help="print a machine-readable result instead of text")
     parser.add_argument("--debug", action="store_true", help="let an unexpected error raise, with its traceback")
     args = parser.parse_args(argv)
-    only, skip = split(args.only), split(args.skip)
+    only, skip = split(args.only or ""), split(args.skip or "")
+    for flag, given, names in (("--only", args.only, only), ("--skip", args.skip, skip)):
+        if given is not None and not names:
+            parser.error("%s names no stage: give at least one of %s, or leave the option out" % (flag, ", ".join(STAGES)))
     unknown = (only | skip) - set(STAGES)
     if unknown:
         parser.error("unknown stage(s): %s (stages: %s)" % (", ".join(sorted(unknown)), ", ".join(STAGES)))

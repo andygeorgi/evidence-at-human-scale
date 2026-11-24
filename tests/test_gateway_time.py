@@ -253,6 +253,15 @@ class AccountingWindows(unittest.TestCase):
         decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", {"target": self.WINDOW, "ops": [{"op": "remove", "path": self.START}]})
         self.assertEqual((decision.allow, decision.codes), (False, ["GRANT_TIME_UNKNOWN"]))
 
+    def test_a_window_that_ends_before_or_when_it_starts_cannot_count_anything_and_blocks(self):
+        begin = support.example_model().get("C06", "GRT-CLASS-HOLD", "v1").data["limits_lifecycle"]["cumulative_limits"][0]["accounting_window"]["start"]
+        end_path = self.START.replace("start", "end")
+        for label, value in (("ends before it starts", "2026-11-22T00:00:00Z"), ("ends when it starts", begin)):
+            with self.subTest(label):
+                decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", replace(self.WINDOW, end_path, value))
+                self.assertEqual((decision.allow, decision.codes), (False, ["GRANT_TIME_UNKNOWN"]))
+                self.assertIn("out of order", decision.reasons[0].message)
+
     def test_a_receipt_whose_time_cannot_be_read_still_counts_against_the_limit(self):
         """Capacity is never freed by a time that cannot be read: the reservation is counted in every window."""
         decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", replace("C07 RCP-REL-0417-B v1", "/outcome/timestamps/submitted", "unreadable"), ledger=True)

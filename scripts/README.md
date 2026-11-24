@@ -73,6 +73,8 @@ The instance stage comes first: the other four stages read the model it checks. 
 | A gateway-scenario or case file whose list is explicitly empty | It evaluates nothing. The stage is `NOT ASSESSED` if nothing else was evaluated, and otherwise passes and names the empty file in its detail. |
 | A raw source export: a JSON file with no `contract_id`, or any file under a folder named `raw` | Read as non-contract input and not validated as an instance. The instance stage says how many there were. |
 | `--only schema` | The schema bundle is checked and the folder is never indexed, so a malformed file in it cannot disturb the run. |
+| `--only` or `--skip` with no stage name (`--only ""`, `--only ,`) | Refused with exit code 2: an empty selection is not read as "every stage". |
+| JSON that Python reads and other readers do not: `NaN`, `Infinity`, a number too large for a float, an object that repeats a key, or a document nested too deeply | `INPUT ERROR` (`ID000`) that names the file. |
 
 ### build_example_data.py
 

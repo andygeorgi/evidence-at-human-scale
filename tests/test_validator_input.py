@@ -489,6 +489,16 @@ class ASchemaOnlyRun(Scratch):
 
 
 class PartialRunsOnABrokenFolder(Scratch):
+    def test_an_option_that_names_no_stage_is_refused_not_read_as_all_stages(self):
+        self.fresh()
+        for args in (("--only", ""), ("--only", ","), ("--only", " , "), ("--skip", ""), ("--skip", ",")):
+            with self.subTest(args):
+                done = cli("--examples", str(self.root), *args)
+                self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+                self.assertIn("names no stage", done.stderr)
+                self.assertNotIn("Traceback", done.stderr)
+                self.assertNotIn("Result: PASS", done.stdout)
+
     def test_no_selection_of_stages_raises(self):
         self.fresh()
         self.write("stray.json", json.dumps({"contract_id": []}))

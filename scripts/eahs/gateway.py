@@ -340,8 +340,8 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         qty = action_quantity(p, limit["units"])
         window = _object(limit.get("accounting_window"))
         window_start, window_end = parse_time(window.get("start")), parse_time(window.get("end"))
-        if window_start is None or window_end is None:
-            reasons.append(Reason("GRANT_TIME_UNKNOWN", "the accounting window of the %s limit has a start or an end that is missing or unknown, so the capacity already used in it cannot be established" % limit.get("units")))
+        if window_start is None or window_end is None or window_end <= window_start:
+            reasons.append(Reason("GRANT_TIME_UNKNOWN", "the accounting window of the %s limit has a start or an end that is missing, unknown or out of order, so the capacity already used in it cannot be established" % limit.get("units")))
             continue
         used = sum(
             e.quantity for e in ledger

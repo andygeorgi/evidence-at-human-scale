@@ -63,7 +63,7 @@ All twenty-one codes of the reference commit check, and where each is shown. The
 | `REVOCATION_UNVERIFIED` | the revocation state is neither `not_revoked` nor `revoked`: the check cannot show the grant is unrevoked | [10](../10-degraded-modes/README.md) |
 | `GRANT_EXPIRED` | the grant's expiry has passed | [10](../10-degraded-modes/README.md) |
 | `GRANT_NOT_YET_VALID` | the grant was issued after the attempt | [07](../07-authority-and-delegation/README.md) |
-| `GRANT_TIME_UNKNOWN` | the grant's issuance or expiry time, the start or end of an accounting window of one of its limits, or the issuance time of another version of it, is missing or unknown | [10](../10-degraded-modes/README.md) |
+| `GRANT_TIME_UNKNOWN` | the grant's issuance or expiry time, the start or end of an accounting window of one of its limits (or a window that ends at or before its start), or the issuance time of another version of it, is missing or unknown | [10](../10-degraded-modes/README.md) |
 | `GRANT_SUPERSEDED` | a newer version of the grant is in force | [12](../12-controlled-change/README.md) |
 | `GRANT_NOT_BOUND` | an exact approval is bound to a different proposal version | here |
 | `ACTION_NOT_PERMITTED` | the action kind is not among the grant's | [07](../07-authority-and-delegation/README.md) |
