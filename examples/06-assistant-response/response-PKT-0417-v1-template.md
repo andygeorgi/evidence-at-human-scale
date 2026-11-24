@@ -42,8 +42,8 @@ This is a review aid. It is not a decision, an approval or an instruction.
 
 ## Proposed actions (none is executed or approved)
 
-- Proposal from the withdrawn packet (not current advice; not executed or approved): ACT-HOLD-0417 v1, hold_payment on invoice INV-2026-0417. `[ACT-HOLD-0417 v1]`
-- Proposal from the withdrawn packet (not current advice; not executed or approved): ACT-REL-0417 v1, release_payment on invoice INV-2026-0417. `[ACT-REL-0417 v1]`
+- Proposal from the withdrawn packet (not current advice; not executed or approved): hold payment on invoice INV-2026-0417 (proposal ACT-HOLD-0417 v1). `[ACT-HOLD-0417 v1]`
+- Proposal from the withdrawn packet (not current advice; not executed or approved): release payment on invoice INV-2026-0417 (proposal ACT-REL-0417 v1). `[ACT-REL-0417 v1]`
 
 ## Obligations
 

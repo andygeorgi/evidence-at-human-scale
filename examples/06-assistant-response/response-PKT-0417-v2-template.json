@@ -69,7 +69,7 @@
     {
       "kind": "gap",
       "label": "gap 1 (missing)",
-      "text": "Missing: Carrier proof of delivery for a second pallet of 40 units. No carrier or warehouse record of a second delivery exists in the readable sources.",
+      "text": "Missing: Carrier proof of delivery for a second pallet of 40 units. No carrier record of the second delivery exists in the readable sources. The warehouse's own scan, in the corrected goods receipt, is the only record of it.",
       "refs": [
         "/coverage_omissions_gaps/missingness/0"
       ]
@@ -125,7 +125,7 @@
     {
       "kind": "proposal",
       "label": "ACT-REL-0417 v2",
-      "text": "Proposed (not executed or approved): ACT-REL-0417 v2, release_payment on invoice INV-2026-0417.",
+      "text": "Proposed (not executed or approved): release payment on invoice INV-2026-0417 (proposal ACT-REL-0417 v2).",
       "refs": [
         "/action_proposals/0"
       ]

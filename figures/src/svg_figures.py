@@ -348,7 +348,7 @@ def f05(c):
     row(c, [dict(kind="pkt", head="Every check passes", body=sub("Reserve allowance. Submit the exact action to the target. Record the outcome, or a timeout."), weight=left_w),
             dict(kind="stop", head="A check fails", body=sub("Rejected before submission. Nothing is submitted."), weight=c.inner - left_w - 10)])
     fork(c, left_w)
-    c.card("pkt", "Receipt (C07)", ["After a pass, the receipt records one of four states: completed and verified, unknown, partly verified, or verified no effect.", "After a failed check: the rejection and its reasons. A rejection alone is not a verified no-effect."], gap=0)
+    c.card("pkt", "Receipt (C07)", ["After a pass, the receipt records the outcome, such as completed and verified, unknown, partly verified or verified no effect.", "After a failed check: the rejection and its reasons. A rejection alone is not a verified no-effect."], gap=0)
     c.down(24)
     c.card("src", "Authoritative verification", sub("against the target, for this attempt, target and scope: confirms or reconciles the outcome, or confirms that there was no effect"))
 
@@ -475,7 +475,7 @@ def f09(c):
 # ------------------------------------------------------------------------------------------------------------------ F10
 EVENTS = [
     ("BEFORE", None, None, None),
-    (None, "own", "Delegation (C06)", "It holds an approval of the proposal that the packet lists. The approval is queued for a later run."),
+    (None, "own", "Delegation (C06)", "It holds an approval of the proposal that the packet lists. The release is queued under that approval for a later run."),
     ("THE CORRECTION CASCADES", None, None, None),
     (None, "src", "Source owner", "A correction is admitted as a new version."),
     (None, "src", "Registry (C02)", "It supersedes the earlier version."),

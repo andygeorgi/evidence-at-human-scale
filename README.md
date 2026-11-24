@@ -45,7 +45,6 @@ More agents give the controller more interpretations to read. The unit of design
 4. **Inspect the blocked action and its receipt**: [example 08, the blocked action](examples/08-blocked-action/README.md). A queued release is refused at commit. The receipt keeps the refusal apart from the check that verified no effect for that one attempt.
 5. **Continue into the architecture** if you want the reasons: [the paper](docs/paper/README.md), then the [architecture reference](architecture/README.md).
 
-<a id="the-smallest-useful-experiment"></a>
 ## Quickstart
 
 ```bash
@@ -72,6 +71,7 @@ Result: PASS. All 6 stages passed, each after evaluating at least one item (240 
 
 A stage passes only if it evaluated something. An empty folder is `NOT ASSESSED`, unreadable input is an `INPUT ERROR`, and a broken example is a `FAIL`. When a check fails, the message names a code, the file and location, and the contract page to read. The [examples guide](examples/README.md) tells you how to break something on purpose, and [`scripts/README.md`](scripts/README.md) documents every script.
 
+<a id="the-smallest-useful-experiment"></a>
 <a id="where-to-go-next"></a>
 ## Go deeper
 

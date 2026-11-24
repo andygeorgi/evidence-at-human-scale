@@ -242,6 +242,19 @@ class OneVoiceOnTheStatus(unittest.TestCase):
 class DeepLinksOfEarlierReleasesKeepWorking(unittest.TestCase):
     """A page was reorganized for the reader, but a link to a section of v1.0.1 still lands on the section that replaced it."""
 
+    def test_the_smallest_useful_experiment_lands_on_the_experiment_and_not_on_the_quickstart(self):
+        """In v1.0.1 this was the exercise of replaying one case on paper. Today that exercise is the row of the guide that follows the anchor."""
+        after = text("README.md").split('<a id="the-smallest-useful-experiment"></a>', 1)[1]
+        heading = next(line for line in after.split("\n") if line.strip() and not line.startswith("<a id="))
+        self.assertEqual(heading, "## Go deeper")
+        section = after.split("\n## ")[1]
+        self.assertIn("replay one recent case on paper", section)
+        self.assertNotIn("pip install", section)
+
+    def test_the_examples_guide_links_the_claims_page_once(self):
+        self.assertEqual(text("examples/README.md").count("(../docs/claims-and-limits.md)"), 1)
+        self.assertIn("They are not evidence that the architecture works.", text("examples/README.md"))
+
     LEGACY = {
         "README.md": ("status-and-limits", "what-a-pass-means-and-what-it-does-not", "the-smallest-useful-experiment", "where-to-go-next"),
         "docs/paper/00-overview.md": ("how-the-paper-is-organized",),
@@ -299,6 +312,48 @@ class DeepLinksOfEarlierReleasesKeepWorking(unittest.TestCase):
             if gone:
                 lost[page] = sorted(gone)
         self.assertEqual(lost, {})
+
+
+class WordingThatStaysTrueToTheSchemaAndTheExamples(unittest.TestCase):
+    """What the figures and the examples say about the receipt, the story and the data is what the schema and the data hold."""
+
+    def figures(self):
+        return {figure["id"]: figure for figure in json.loads(text("figures/figures.json"))["figures"]}
+
+    def test_no_figure_calls_four_outcomes_the_only_states_a_receipt_has(self):
+        """The receipt has five states: submitted, unknown, partial, completed_verified and not_executed_verified."""
+        for figure_id, figure in self.figures().items():
+            for key in ("caption", "alt", "description"):
+                self.assertNotIn("one of four", figure.get(key, ""), "%s %s" % (figure_id, key))
+        self.assertIn("submitted (business completion not yet established)", self.figures()["F05"]["description"])
+        self.assertIn("submitted is the state before any of them", self.figures()["F06"]["caption"])
+        for page in pages("docs/paper/*.md", "examples/*/README.md", "figures/README.md"):
+            self.assertNotIn("records one of four states", text(page), page)
+            self.assertNotIn("reaches one of four receipt states", text(page), page)
+
+    def test_the_late_correction_figure_queues_the_release_under_the_approval(self):
+        """An approval is not queued: the release is, under the approval, and the executor refuses the queued action at commit."""
+        figure = self.figures()["F10"]
+        self.assertNotIn("approval that is queued", figure["description"])
+        self.assertNotIn("an approval is queued", figure["alt"])
+        self.assertIn("release is queued under that approval", figure["description"])
+        self.assertIn("a release is queued under an approval", figure["alt"])
+        self.assertIn("The release is queued under that approval for a later run.", "\n".join(svg_words("F10-light.svg")).replace("\n", " "))
+
+    def test_the_current_packet_does_not_say_that_no_warehouse_record_of_the_second_delivery_exists(self):
+        """Packet v2 cites the corrected goods receipt, which is the warehouse's own record of that delivery. Only the carrier's proof is missing."""
+        for name in ("11-late-correction/c04-PKT-0417-v2.json", "11-late-correction/c03-SEL-0417-v2.json", "06-assistant-response/response-PKT-0417-v2-template.json", "06-assistant-response/response-PKT-0417-v2-template.md"):
+            body = (support.EXAMPLES / name).read_text(encoding="utf-8")
+            self.assertNotIn("carrier or warehouse record", body, name)
+            self.assertIn("No carrier record of the second delivery", body, name)
+        packet_v1 = (support.EXAMPLES / "05-decision-packet/c04-PKT-0417-v1.json").read_text(encoding="utf-8")
+        self.assertIn("No carrier or warehouse record of a second delivery", packet_v1, "that was true when version 1 was written")
+
+    def test_the_proposal_sentence_of_the_template_names_the_action_before_the_identifier(self):
+        for name in ("06-assistant-response/response-PKT-0417-v2-template.md", "06-assistant-response/README.md"):
+            body = (support.EXAMPLES / name).read_text(encoding="utf-8")
+            self.assertIn("Proposed (not executed or approved): release payment on invoice INV-2026-0417 (proposal ACT-REL-0417 v2).", body, name)
+            self.assertNotIn("release_payment on invoice", body, name)
 
 
 class ReferenceSurfacesKeepTheirIdentifiers(unittest.TestCase):

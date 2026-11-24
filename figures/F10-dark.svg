@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 929" width="360" height="929" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">A late correction reaches a pending approval</title>
-<desc id="d">A vertical timeline in three phases. Before: an approval is queued for a later run. Then a correction is admitted as a new version. It supersedes the earlier version and invalidates what was derived from it, the packet included. A revised packet is produced and the pending approval is revoked. At commit: the executor (action gateway) refuses the queued action before submission, and the receipt records why.</desc>
+<desc id="d">A vertical timeline in three phases. Before: a release is queued under an approval. Then a correction is admitted as a new version. It supersedes the earlier version and invalidates what was derived from it, the packet included. A revised packet is produced and the pending approval is revoked. At commit: the executor (action gateway) refuses the queued action before submission, and the receipt records why.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8b949e"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8b949e"/></marker></defs>
 <rect width="360" height="929" fill="#0d1117"/>
 <text x="42.0" y="26.0" font-size="13" text-anchor="start" font-weight="700" fill="#9da7b3">BEFORE</text>
 <rect x="42.0" y="40.0" width="308.0" height="94.2" rx="8" fill="#2D2150" stroke="#A371F7" stroke-width="1.6"/>
 <text x="52.0" y="64.0" font-size="15" text-anchor="start" font-weight="700" fill="#E6DAFF">Delegation (C06)</text>
-<text x="52.0" y="85.1" font-size="13" text-anchor="start" fill="#E6DAFF">It holds an approval of the</text>
-<text x="52.0" y="102.3" font-size="13" text-anchor="start" fill="#E6DAFF">proposal that the packet lists. The</text>
-<text x="52.0" y="119.4" font-size="13" text-anchor="start" fill="#E6DAFF">approval is queued for a later run.</text>
+<text x="52.0" y="85.1" font-size="13" text-anchor="start" fill="#E6DAFF">It holds an approval of the proposal that</text>
+<text x="52.0" y="102.3" font-size="13" text-anchor="start" fill="#E6DAFF">the packet lists. The release is queued</text>
+<text x="52.0" y="119.4" font-size="13" text-anchor="start" fill="#E6DAFF">under that approval for a later run.</text>
 <circle cx="20.0" cy="61.0" r="6" fill="#2D2150" stroke="#A371F7" stroke-width="1.6"/>
 <text x="42.0" y="168.2" font-size="13" text-anchor="start" font-weight="700" fill="#9da7b3">THE CORRECTION CASCADES</text>
 <rect x="42.0" y="182.2" width="308.0" height="59.9" rx="8" fill="#12304F" stroke="#58A6FF" stroke-width="1.6"/>

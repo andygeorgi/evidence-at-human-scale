@@ -352,9 +352,9 @@ def render_response(model: Model, packet: Instance, produced_by: str = "template
     for i, p in enumerate(d["action_proposals"]):
         ref = p["proposal_reference"]
         prop = model.get("C05", ref["id"], ref["version"])
-        what = "%s on %s %s" % (prop.data["action"]["action_kind"], prop.data["action"]["exact_target"]["entity_type"], prop.data["action"]["exact_target"]["entity_id"]) if prop else "an action"
+        what = "%s on %s %s" % (prop.data["action"]["action_kind"].replace("_", " "), prop.data["action"]["exact_target"]["entity_type"], prop.data["action"]["exact_target"]["entity_id"]) if prop else "an action"
         lead = "Proposal from the withdrawn packet (not current advice; not executed or approved)" if withdrawn else "Proposed (not executed or approved)"
-        add("proposal", "%s %s" % (ref["id"], ref["version"]), "%s: %s %s, %s." % (lead, ref["id"], ref["version"], what), "%s%d" % (KIND_PREFIX["proposal"], i))
+        add("proposal", "%s %s" % (ref["id"], ref["version"]), "%s: %s (proposal %s %s)." % (lead, what, ref["id"], ref["version"]), "%s%d" % (KIND_PREFIX["proposal"], i))
     for i, o in enumerate(d["priority_mandatory_obligations"]["obligation_references"]):
         sel = model.get("C03", o["selection_reference"]["id"], o["selection_reference"]["version"])
         ob = next((x for x in sel.data["obligations"] if x["obligation_id"] == o["obligation_id"]), None) if sel else None

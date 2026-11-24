@@ -46,7 +46,7 @@ A response is a list of statements. Each has a `kind` (`claim`, `inference`, `co
 
 ## Proposed actions (none is executed or approved)
 
-- Proposed (not executed or approved): ACT-REL-0417 v2, release_payment on invoice INV-2026-0417. `[ACT-REL-0417 v2]`
+- Proposed (not executed or approved): release payment on invoice INV-2026-0417 (proposal ACT-REL-0417 v2). `[ACT-REL-0417 v2]`
 ```
 
 ## Where the status comes from
