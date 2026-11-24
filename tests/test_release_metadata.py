@@ -87,6 +87,12 @@ class Workflow(unittest.TestCase):
         self.assertIn('"3.9"', self.yml)
         self.assertIn("scripts/check_all.py", self.yml)
 
+    def test_every_python_runs_on_linux_and_on_windows(self):
+        """Coverage must not be dropped quietly when a runner image loses a Python version: each of the four combinations stays."""
+        entries = re.findall(r'(?m)^\s*- \{os: ([\w.-]+), python: "([\d.]+)"\}', self.yml)
+        self.assertEqual(sorted((os_name.split("-")[0], python) for os_name, python in entries),
+                         [("ubuntu", "3.14"), ("ubuntu", "3.9"), ("windows", "3.14"), ("windows", "3.9")])
+
     def test_the_url_check_is_advisory_and_not_run_on_pull_requests(self):
         job = self.yml.split("external-urls:", 1)[1]
         self.assertIn("continue-on-error: true", job)

@@ -25,8 +25,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python: ["3.9", "3.14"]
+        # Every Python runs on Linux and on Windows. Python 3.9 is the oldest supported version and is past its end of life:
+        # actions/python-versions has no build of it for Ubuntu 26.04, which ubuntu-latest has been since November 2026, so Linux
+        # runs it on ubuntu-24.04, the newest image that still has one.
+        include:
+          - {os: ubuntu-24.04, python: "3.9"}
+          - {os: ubuntu-latest, python: "3.14"}
+          - {os: windows-latest, python: "3.9"}
+          - {os: windows-latest, python: "3.14"}
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
