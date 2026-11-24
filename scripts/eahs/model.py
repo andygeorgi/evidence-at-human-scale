@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -132,6 +133,10 @@ def identity_of(data: dict) -> Optional[Tuple[str, str, str]]:
 
 
 def registry_from_dict(raw: dict) -> Registry:
+    """The registry the checks read. Raises ValueError, naming the section, when a section is not shaped as a check reads it."""
+    problem = registry_problem(raw)
+    if problem:
+        raise ValueError(problem)
     return Registry(
         producers=raw.get("producers", {}),
         external_records=raw.get("external_records", {}),
@@ -146,6 +151,66 @@ def registry_from_dict(raw: dict) -> Registry:
     )
 
 
+#: The shape each section of the registry must have. A check reads these as objects and lists, so a section of another shape
+#: is refused when the registry is read, with the section named, and not inside a check.
+REGISTRY_SECTIONS = {
+    "producers": (dict, "an object that maps each producer id to its entry"),
+    "external_records": (dict, "an object that names each external record"),
+    "policies": (dict, "an object that maps each policy id to its versions"),
+    "preconditions": (dict, "an object that maps each condition id to its rule"),
+    "relationship_types": (list, "a list of relationship type names"),
+    "protected_terms": (list, "a list of terms"),
+    "target_states": (list, "a list of recorded states of the target"),
+    "permission_decisions": (dict, "an object that maps each decision to its entry"),
+    "accountability": (dict, "an object"),
+}
+
+
+def _hours(value) -> bool:
+    """A limit in hours that can be compared with an age: a real number (not true or false), finite and not negative."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value) and value >= 0
+    except OverflowError:
+        return False
+
+
+def registry_problem(raw: dict) -> Optional[str]:
+    """Why the registry cannot be read as the checks need it, or None. The message names the section and what it must hold."""
+    for name, (kind, meaning) in REGISTRY_SECTIONS.items():
+        if name in raw and not isinstance(raw[name], kind):
+            return "'%s' must be %s, and this registry holds %s" % (name, meaning, _type_name(raw[name]))
+    for producer, entry in raw.get("producers", {}).items():
+        if not isinstance(entry, dict) or not isinstance(entry.get("permitted_kinds"), list):
+            return "producer %r must be an object with a 'permitted_kinds' list" % producer
+    for policy, versions in raw.get("policies", {}).items():
+        if not isinstance(versions, dict) or not all(isinstance(entry, dict) for entry in versions.values()):
+            return "policy %r must be an object that maps each version to an object" % policy
+        for version, entry in versions.items():
+            if entry.get("type") == "freshness" and not _hours(entry.get("max_age_hours")):
+                return "freshness policy %s %s needs 'max_age_hours' as a number of hours that is not negative" % (policy, version)
+    for condition, rule in raw.get("preconditions", {}).items():
+        if not isinstance(rule, dict):
+            return "precondition %r must be an object" % condition
+        if rule.get("type") == "evidence_fresh" and not _hours(rule.get("max_age_hours")):
+            return "precondition %s needs 'max_age_hours' as a number of hours that is not negative" % condition
+    for name in ("relationship_types", "protected_terms"):
+        if not all(isinstance(item, str) for item in raw.get(name, [])):
+            return "'%s' must list only strings" % name
+    if not all(isinstance(item, dict) for item in raw.get("target_states", [])):
+        return "'target_states' must list only objects, each with an entity_id, a time and a state"
+    accountability = raw.get("accountability", {})
+    roles, together, log = accountability.get("roles", {}), accountability.get("may_hold_together", []), accountability.get("review_log", [])
+    if not isinstance(roles, dict) or not all(isinstance(role, dict) for role in roles.values()):
+        return "'accountability.roles' must be an object that maps each role to an object"
+    if not isinstance(together, list) or not all(isinstance(pair, list) for pair in together):
+        return "'accountability.may_hold_together' must be a list of lists of roles"
+    if not isinstance(log, list) or not all(isinstance(entry, dict) for entry in log):
+        return "'accountability.review_log' must be a list of objects"
+    return None
+
+
 def _no_constant(name):
     raise ValueError("%s is not valid JSON: write a number, a string, true, false or null" % name)
 
@@ -154,6 +219,15 @@ def _finite(text):
     value = float(text)
     if value in (float("inf"), float("-inf")):
         raise ValueError("the number %s is too large to read as a number" % text[:20])
+    return value
+
+
+def _finite_int(text):
+    value = int(text)
+    try:
+        float(value)
+    except OverflowError:
+        raise ValueError("the number %s... is too large to read as a number" % text[:20]) from None
     return value
 
 
@@ -167,12 +241,12 @@ def _no_repeated_key(pairs):
 
 
 def loads_strict(text: str):
-    """JSON as RFC 8259 defines it. Python also reads NaN, Infinity and -Infinity, a number too large for a float and an
-    object that repeats a key (the last value silently wins): other parsers do not, so a file that depends on them means
-    one thing here and another elsewhere. All four are refused (ValueError, like any other malformed JSON), and so is a
-    document nested too deeply for the reader."""
+    """JSON as RFC 8259 defines it. Python also reads NaN, Infinity and -Infinity, a number too large for a float (a whole number
+    as well as a fraction) and an object that repeats a key (the last value silently wins): other parsers do not, so a file that
+    depends on them means one thing here and another elsewhere. All of them are refused (ValueError, like any other malformed
+    JSON), and so is a document nested too deeply for the reader."""
     try:
-        return json.loads(text, parse_constant=_no_constant, parse_float=_finite, object_pairs_hook=_no_repeated_key)
+        return json.loads(text, parse_constant=_no_constant, parse_float=_finite, parse_int=_finite_int, object_pairs_hook=_no_repeated_key)
     except RecursionError as exc:
         raise ValueError("the document is nested too deeply to read (more than about a thousand levels)") from exc
 
@@ -282,7 +356,7 @@ def load_model(root: Path) -> Tuple[Model, List[Finding]]:
             raise registry_error
         registry = load_registry(registry_file)
     except (OSError, ValueError, AttributeError) as exc:
-        findings.append(Finding("ID000", "cannot read the registry: %s" % exc, rel(registry_file), hint="registry.json must be a JSON object, without NaN, Infinity or a repeated key; keep one registry file in the folder"))
+        findings.append(Finding("ID000", "cannot read the registry: %s" % exc, rel(registry_file), hint="registry.json must be a JSON object whose sections have the shape the message names, without NaN, Infinity, a number too large for a float or a repeated key; keep one registry file in the folder"))
         registry = Registry()
     return Model(instances, registry, root, ignored), findings
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import List
 
-from .findings import Finding, describe_error, rel
+from .findings import Finding, InputProblem, describe_error, rel
 from .gateway import Decision, evaluate_commit, ledger_from_receipts, ts
 from .model import Instance, Model
 from .patch import apply_ops
@@ -66,14 +66,33 @@ def expectation(decision: Decision) -> dict:
     return {"decision": "ALLOW" if decision.allow else "BLOCK", "codes": unique(decision.codes), "reasons": [r.as_dict() for r in decision.reasons]}
 
 
+def _entry_problem(index: int, entry) -> str:
+    """Why an evaluation cannot be run, or an empty string if its shape is usable. A row that is not shaped like an evaluation is
+    malformed input, not an evaluation that failed: there is nothing to evaluate."""
+    if not isinstance(entry, dict):
+        return "evaluation %d is not an object" % (index + 1)
+    name = entry.get("label", "evaluation %d" % (index + 1))
+    for key in ("proposal", "grant"):
+        ref = entry.get(key)
+        if not (isinstance(ref, dict) and isinstance(ref.get("id"), str) and isinstance(ref.get("version"), str)):
+            return "%s has no %r reference with an id and a version" % (name, key)
+    if not isinstance(entry.get("at"), str):
+        return "%s has no commit time 'at'" % name
+    if not isinstance(entry.get("expect"), dict):
+        return "%s has no 'expect' object with the decision and the codes it must produce" % name
+    return ""
+
+
 def check_scenario_file(model: Model, data: dict, path) -> List[Finding]:
     findings: List[Finding] = []
     file = rel(path)
-    for index, entry in enumerate(data.get("evaluations", [])):
-        if not isinstance(entry, dict):
-            findings.append(Finding("GW002", "evaluation %d is not an object, so it cannot be evaluated" % (index + 1), file, "/evaluations/%d" % index, doc=DOC,
-                                    hint="write each evaluation as an object with a proposal, a grant, a time and the expected decision"))
-            continue
+    evaluations = data.get("evaluations", [])
+    for index, entry in enumerate(evaluations):
+        reason = _entry_problem(index, entry)
+        if reason:
+            raise InputProblem(reason, "write each evaluation as an object with a proposal and a grant (each with an id and a version), a commit time 'at' and an 'expect' object; "
+                                       "nothing in this file was evaluated")
+    for index, entry in enumerate(evaluations):
         label = entry.get("label", "evaluation %d" % (index + 1))
         try:
             actual = expectation(evaluate_entry(model, entry))

@@ -243,10 +243,29 @@ class TheScenarioFiles(Scratch, Actionable):
         self.assertEqual(gateway.status, INPUT_ERROR)
         self.assertEqual(gateway.evaluated, 24 - 6)
 
-    def test_an_evaluation_that_is_not_an_object_is_a_finding_that_names_it(self):
-        gateway = self.gateway(lambda d: d["evaluations"].append("not an object"))
-        self.assertEqual((gateway.status, [f.code for f in gateway.findings]), (FAIL, ["GW002"]))
-        self.assertIn("evaluation 4", gateway.findings[0].message)
+    def test_an_evaluation_that_is_not_an_object_is_an_input_error_that_names_it(self):
+        for label, row in (("a string", "not an object"), ("null", None), ("a number", 7), ("a list", [1]), ("a boolean", False)):
+            with self.subTest(label):
+                gateway = self.gateway(lambda d: d["evaluations"].append(row))
+                self.assertEqual((gateway.status, [f.code for f in gateway.findings]), (INPUT_ERROR, ["INP002"]))
+                self.assertIn("evaluation 4 is not an object", gateway.findings[0].message)
+                self.assert_actionable(gateway, "gateway-scenarios.json")
+
+    def test_a_row_that_is_not_an_object_is_not_counted_as_evaluated(self):
+        """The file that holds it is rejected as a whole: it is not reported as three evaluations that passed and one that failed."""
+        clean = self.gateway(lambda d: None)
+        rejected = self.gateway(lambda d: d["evaluations"].append(None))
+        self.assertEqual(clean.status, PASS)
+        self.assertEqual(rejected.evaluated, clean.evaluated - 3)
+
+    def test_a_row_without_a_part_it_cannot_be_evaluated_without_is_an_input_error_that_names_the_part(self):
+        for part, remove in (("'proposal' reference", lambda d: d["evaluations"][0].pop("proposal")), ("'grant' reference", lambda d: d["evaluations"][0]["grant"].pop("version")),
+                             ("commit time 'at'", lambda d: d["evaluations"][0].pop("at")), ("'expect' object", lambda d: d["evaluations"][0].update(expect=[]))):
+            with self.subTest(part):
+                gateway = self.gateway(remove)
+                self.assertEqual((gateway.status, [f.code for f in gateway.findings]), (INPUT_ERROR, ["INP002"]))
+                self.assertIn(part, gateway.findings[0].message)
+                self.assert_actionable(gateway, "gateway-scenarios.json")
 
     def test_an_evaluation_that_names_a_proposal_that_does_not_exist_names_the_problem_in_words(self):
         gateway = self.gateway(lambda d: d["evaluations"][0]["proposal"].update(id="ACT-NONE"))
@@ -369,8 +388,8 @@ class StrictJson(Scratch, Actionable):
     last value wins), and other parsers do not, so such a file would mean one thing here and another elsewhere."""
 
     BAD = (("NaN", '{"evaluations": [], "x": NaN}'), ("Infinity", '{"evaluations": [], "x": Infinity}'), ("-Infinity", '{"x": -Infinity}'),
-           ("a number too large for a float", '{"x": 1e999}'), ("a repeated key", '{"evaluations": [], "evaluations": [1]}'),
-           ("a repeated key in a nested object", '{"evaluations": [{"a": 1, "a": 2}]}'))
+           ("a number too large for a float", '{"x": 1e999}'), ("a whole number too large for a float", '{"x": 1%s}' % ("0" * 400)),
+           ("a repeated key", '{"evaluations": [], "evaluations": [1]}'), ("a repeated key in a nested object", '{"evaluations": [{"a": 1, "a": 2}]}'))
 
     def test_each_is_an_input_error_in_a_stage_file_and_blocks_the_stages_that_need_the_model(self):
         for label, content in self.BAD:
@@ -463,6 +482,84 @@ class TheRegistryFile(Scratch, Actionable):
         instances = self.run_stage("instances")
         self.assertEqual(instances.status, INPUT_ERROR)
         self.assertIn("more than one registry", instances.findings[0].message)
+
+
+class ARegistrySectionOfTheWrongShape(Scratch, Actionable):
+    """A section that a check reads as an object or a list is refused when the registry is read, with the registry and the section
+    named, and not found out inside a check, where the diagnostic could not say which file was at fault."""
+
+    def registry_with(self, edit):
+        self.fresh()
+        path = self.root / "registry.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        edit(data)
+        path.write_text(json.dumps(data), encoding="utf-8")
+
+    def freshness_policy(self):
+        data = json.loads((self.root / "registry.json").read_text(encoding="utf-8"))
+        return next((pid, version) for pid, versions in data["policies"].items() for version, policy in versions.items() if policy.get("type") == "freshness")
+
+    def test_each_is_one_diagnostic_that_names_the_registry_and_the_section(self):
+        cases = (
+            ("producers", lambda d: d.update(producers=[]), "'producers' must be an object"),
+            ("a producer without its kinds", lambda d: d["producers"].update({"producer:x": {}}), "permitted_kinds"),
+            ("policies", lambda d: d.update(policies=["POL"]), "'policies' must be an object"),
+            ("a policy that is not an object of versions", lambda d: d["policies"].update({"POL-X": []}), "policy 'POL-X'"),
+            ("preconditions", lambda d: d.update(preconditions=None), "'preconditions' must be an object"),
+            ("a precondition that is not an object", lambda d: d["preconditions"].update({"PRE-X": 3}), "precondition 'PRE-X'"),
+            ("target states", lambda d: d.update(target_states={}), "'target_states' must be a list"),
+            ("a target state that is not an object", lambda d: d["target_states"].append("open"), "'target_states' must list only objects"),
+            ("protected terms", lambda d: d.update(protected_terms=[1]), "'protected_terms' must list only strings"),
+            ("accountability", lambda d: d.update(accountability=[]), "'accountability' must be an object"),
+            ("roles", lambda d: d["accountability"].update(roles=[]), "'accountability.roles'"),
+            ("a review log", lambda d: d["accountability"].update(review_log={}), "'accountability.review_log'"),
+        )
+        for label, edit, message in cases:
+            with self.subTest(label):
+                self.registry_with(edit)
+                results = ve.run(self.root, only={"instances", "semantics"})
+                instances = stage(results, "instances")
+                self.assertEqual(instances.status, INPUT_ERROR)
+                self.assertEqual([f.code for f in instances.findings], ["ID000"])
+                self.assert_actionable(instances, "registry.json")
+                self.assertIn(message, instances.findings[0].message)
+                self.assertEqual(stage(results, "semantics").status, NOT_ASSESSED)
+
+    def test_a_freshness_limit_that_is_not_a_number_of_hours_is_refused_at_the_registry(self):
+        self.fresh()
+        pid, version = self.freshness_policy()
+        for label, value in (("text", "soon"), ("true", True), ("null", None), ("negative", -1), ("a list", [])):
+            with self.subTest(label):
+                self.registry_with(lambda d: d["policies"][pid][version].update(max_age_hours=value))
+                instances = self.run_stage("instances")
+                self.assertEqual((instances.status, [f.code for f in instances.findings]), (INPUT_ERROR, ["ID000"]))
+                self.assertIn("max_age_hours", instances.findings[0].message)
+                self.assert_actionable(instances, "registry.json")
+
+    def test_a_limit_too_large_for_a_float_is_refused_when_the_registry_is_read(self):
+        self.fresh()
+        pid, version = self.freshness_policy()
+        path = self.root / "registry.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["policies"][pid][version]["max_age_hours"] = "HUGE"
+        path.write_text(json.dumps(data).replace('"HUGE"', "1" + "0" * 400), encoding="utf-8")
+        instances = self.run_stage("instances")
+        self.assertEqual((instances.status, [f.code for f in instances.findings]), (INPUT_ERROR, ["ID000"]))
+        self.assertIn("too large", instances.findings[0].message)
+        self.assert_actionable(instances, "registry.json")
+
+    def test_the_command_exits_with_input_error_and_no_traceback(self):
+        self.registry_with(lambda d: d.update(producers=[]))
+        done = cli("--examples", str(self.root))
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertNotIn("Traceback", done.stderr)
+        self.assertIn("registry.json", done.stdout)
+        self.assertIn("'producers' must be an object", done.stdout)
+
+    def test_the_example_registry_and_an_empty_one_are_readable(self):
+        from eahs.model import registry_from_dict, registry_problem
+        self.assertIsNone(registry_problem(json.loads((support.EXAMPLES / "registry.json").read_text(encoding="utf-8"))))
+        self.assertEqual(registry_from_dict({}).producers, {})
 
 
 class ASchemaOnlyRun(Scratch):
