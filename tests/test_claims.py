@@ -218,8 +218,37 @@ class WhatAPayloadClaimMustSay(unittest.TestCase):
         swapped = said(PAYLOAD_CLAIM).replace("invoiced 100 units, received 60 units", "invoiced 60 units, received 100 units")
         found = claim_findings(with_claim(PAYLOAD_CLAIM, swapped))
         self.assertEqual([f.code for f in found], ["PKT005", "PKT005"])
-        self.assertTrue(any("after 'invoiced'" in f.message and "quantity_invoiced is 100" in f.message for f in found), [f.message for f in found])
-        self.assertTrue(any("after 'received'" in f.message and "quantity_received is 60" in f.message for f in found), [f.message for f in found])
+        self.assertTrue(any("next to 'invoiced'" in f.message and "quantity_invoiced is 100" in f.message for f in found), [f.message for f in found])
+        self.assertTrue(any("next to 'received'" in f.message and "quantity_received is 60" in f.message for f in found), [f.message for f in found])
+
+    def test_swapping_the_order_of_figure_and_name_is_found_too(self):
+        """A name in front of a figure names it only when nothing but white space, a colon or filler words lies between them."""
+        for old_text, new_text in (("invoiced 100 units, received 60 units", "60 units invoiced, 100 units received"),
+                                   ("invoiced 100 units, received 60 units", "60 units invoiced (100 units received)"),
+                                   ("invoiced 100 units, received 60 units", "100 received, 60 invoiced"),
+                                   ("variance 40.0%, tolerance 2%", "40.0% tolerance, 2% variance")):
+            with self.subTest(new_text):
+                found = claim_findings(with_claim(PAYLOAD_CLAIM, said(PAYLOAD_CLAIM).replace(old_text, new_text)))
+                self.assertEqual([f.code for f in found], ["PKT005", "PKT005"], [f.message for f in found])
+
+    def test_a_figure_that_follows_its_name_is_still_accepted_in_either_order(self):
+        for new_text in ("100 units invoiced, 60 units received", "100 invoiced; 60 received", "invoiced: 100, received: 60", "invoiced 100 (received 60)"):
+            with self.subTest(new_text):
+                text = said(PAYLOAD_CLAIM).replace("invoiced 100 units, received 60 units", new_text)
+                self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, text)), [])
+
+    def test_a_figure_that_differs_only_beyond_the_precision_of_a_float_is_a_different_figure(self):
+        for new in ("40.000000000000001", "40.00000000000000001", "39.999999999999999"):
+            with self.subTest(new):
+                text = said(PAYLOAD_CLAIM).replace("variance 40.0%", "variance %s%%" % new)
+                found = claim_findings(with_claim(PAYLOAD_CLAIM, text))
+                self.assertEqual([f.code for f in found], ["PKT005"], [f.message for f in found])
+                self.assertIn("does not account for", found[0].message)
+
+    def test_the_same_number_written_differently_is_the_same_figure(self):
+        for new in ("variance 40%", "variance 40.000%", "variance 40.0%", "variance +40.0%"):
+            with self.subTest(new):
+                self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, said(PAYLOAD_CLAIM).replace("variance 40.0%", new))), [])
 
     def test_the_variance_and_the_tolerance_cannot_trade_places(self):
         traded = said(PAYLOAD_CLAIM).replace("variance 40.0%, tolerance 2%", "variance 2%, tolerance 40.0%")
@@ -271,6 +300,15 @@ class WhatIsCompared(unittest.TestCase):
         self.assertEqual(sorted(_numbers_in("Three-way match M3W 2.0 on INV-2026-0417: FAIL (invoiced 100 units, variance 40.0%, tolerance 2%).").elements()), [2.0, 2.0, 40.0, 100.0])
         self.assertEqual(sorted(_numbers_in("Supplier FC-88231 dated 2026-11-22 at 13:45 owes EUR 18,400.00 by 2026-11-30.").elements()), [18400.0])
         self.assertEqual(sorted(_numbers_in("PO-77231 and S-1042 and 5521").elements()), [5521.0])
+
+    def test_figures_are_compared_as_written_not_as_floats(self):
+        self.assertEqual(_numbers_in("40.0"), _numbers_in("40"))
+        self.assertEqual(_numbers_in("18,400.00"), _numbers_in("18400"))
+        self.assertNotEqual(_numbers_in("40.000000000000001"), _numbers_in("40.0"))
+        self.assertNotEqual(_numbers_in("0.1000000000000000055"), _numbers_in("0.1"))
+        from eahs.semantics import _content_values
+        self.assertEqual(_content_values({"variance_pct": 40.0, "tolerance_pct": 2})[0], _numbers_in("40.0 and 2"))
+        self.assertEqual(_content_values({"x": 0.1})[0], _numbers_in("0.1"))
 
     def test_one_figure_cannot_cover_two_statements_of_it(self):
         # The rule version 2.0 and the tolerance 2% are the same number: a payload that holds only one of them accounts for one.

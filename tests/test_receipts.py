@@ -135,6 +135,23 @@ class TheRecordsAVerificationCites(unittest.TestCase):
             with self.subTest(record):
                 self.assertEqual(after_all({"target": record, "ops": [change]}), ["AUTH008"])
 
+    def test_a_verification_rests_on_an_observation_and_not_on_something_derived_or_inferred(self):
+        from eahs import semantics
+        from eahs.cases import mutate_model
+        for kind in ("deterministic_finding", "model_inference"):
+            with self.subTest(kind):
+                model, _ = mutate_model(support.example_model(), [{"target": self.RECORD, "ops": [rep("/identity_schema/kind", kind)]}])
+                found = [f for f in semantics.check_authority(model) if f.code == "AUTH008"]
+                self.assertEqual(len(found), 1, [f.message for f in found])
+                self.assertIn("source record assertion", found[0].message)
+
+    def test_what_the_cited_record_says_is_not_judged_and_the_documents_say_so(self):
+        """A record about the right target and the right moment that says the opposite passes: its claim is free text. The limit is stated, not hidden."""
+        from eahs import semantics
+        self.assertIn("What the cited record SAYS is not judged", semantics._check_verification_binding.__doc__)
+        for page in ("contracts/c07-execution-receipt.md", "examples/08-blocked-action/README.md", "architecture/action-and-degradation.md"):
+            self.assertIn("what the cited record says", (support.REPO / page).read_text(encoding="utf-8").lower().replace("\n", " "), page)
+
     def test_the_finding_names_the_problem_and_where_it_is(self):
         _, findings = run_case(support.example_model(), support.schema(), {"mutations": [{"target": REJECTED, "ops": [rep(CHECK + "/target/entity_id", "INV-2026-9999")]}]})
         found = [f for f in findings if f.code == "AUTH008"]

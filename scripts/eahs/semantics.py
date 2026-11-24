@@ -9,8 +9,10 @@ Passing proves the example set is internally coherent. It proves nothing about a
 """
 from __future__ import annotations
 
+import math
 import re
 from collections import Counter
+from decimal import Decimal, InvalidOperation
 from typing import Dict, List, Optional, Set, Tuple
 
 from .disclosure import Decision, Viewer, binding_problems, differences, gap_entry, may_know, retrieval_entry
@@ -161,7 +163,7 @@ def _check_inference_figures(model: Model, rec: Instance) -> List[Finding]:
     claims = content.get("claims") if content.get("content_type") == "claims" and isinstance(content.get("claims"), list) else []
     for i, claim in enumerate(claims):
         for number in sorted(_numbers_in(str(_object_of(claim).get("text", ""))) - held):
-            out.append(_f("LIN005", "this model inference states the figure %g, which none of the records it rests on holds (%s): a derivation reaches no further than its ancestry" % (number, sources), rec, "/content/claims/%d/text" % i, DOC_LINEAGE))
+            out.append(_f("LIN005", "this model inference states the figure %s, which none of the records it rests on holds (%s): a derivation reaches no further than its ancestry" % (_show_number(number), sources), rec, "/content/claims/%d/text" % i, DOC_LINEAGE))
     return out
 
 
@@ -349,16 +351,40 @@ _STATUS = re.compile(r"\b(pass|fail)(?:ed|es|s|ing|ure)?\b", re.IGNORECASE)
 _WORD = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 #: Words that may stand between a field's name and its figure ("variance of 40.0%", "tolerance is 2%").
 _BETWEEN = frozenset("of is was are were at to be equal equals about only just exactly than".split())
+#: Words that may stand between a figure and the name of the field that follows it ("60 units received", "40.0 percent variance").
+_UNITS = frozenset("unit units piece pieces item items percent pct eur euro euros usd".split())
+_BOUNDARY = re.compile(r"[.;!?](?=\s|$)")
+_TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9_]*|\d+|[^\sA-Za-z0-9_]")
+
+
+def _decimal(value) -> Optional[Decimal]:
+    """A number exactly as written: 40.000000000000001 is not 40.0. Decimal compares by value, so 40.0 and 40 are the same number.
+
+    A float of the payload is read by its shortest text (0.1 is 0.1, not 0.1000000000000000055...), as JSON wrote it.
+    """
+    try:
+        if isinstance(value, str):
+            number = Decimal(value.replace(",", ""))
+        elif isinstance(value, float):
+            number = Decimal(repr(value)) if math.isfinite(value) else None
+        else:
+            number = Decimal(value)
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+    return number if number is not None and number.is_finite() else None
+
+
+def _show_number(value: Decimal) -> str:
+    return "{:f}".format(value.normalize() + 0)
 
 
 def _numbers_in(text: str) -> Counter:
-    """Every number a text states, once for each time it states it."""
+    """Every number a text states, exactly as written, once for each time it states it."""
     found: Counter = Counter()
     for token in _NUMBER.findall(text.replace("\u2212", "-")):
-        try:
-            found[float(token.replace(",", ""))] += 1
-        except ValueError:
-            continue
+        number = _decimal(token)
+        if number is not None:
+            found[number] += 1
     return found
 
 
@@ -376,7 +402,9 @@ def _content_values(node) -> Tuple[Counter, Set[str]]:
         if isinstance(item, bool) or item is None:
             continue
         if isinstance(item, (int, float)):
-            numbers[float(item)] += 1
+            number = _decimal(item)
+            if number is not None:
+                numbers[number] += 1
         elif isinstance(item, str):
             numbers.update(_numbers_in(item))
             statuses |= _statuses_in(item)
@@ -392,12 +420,13 @@ def _stem(word: str) -> str:
     return re.sub(r"(ing|ed|es|e|s|d)$", "", word) if len(word) > 4 else word
 
 
-def _named_numbers(node, name: str = "") -> List[Tuple[str, float]]:
+def _named_numbers(node, name: str = "") -> List[Tuple[str, Decimal]]:
     """(the name of the field, the number) for every number a payload holds; a number in a list belongs to the field that holds the list."""
     if isinstance(node, bool) or node is None:
         return []
     if isinstance(node, (int, float)):
-        return [(name, float(node))]
+        number = _decimal(node)
+        return [] if number is None else [(name, number)]
     if isinstance(node, str):
         return [(name, n) for n in _numbers_in(node)]
     if isinstance(node, dict):
@@ -407,30 +436,55 @@ def _named_numbers(node, name: str = "") -> List[Tuple[str, float]]:
     return []
 
 
-def _label_findings(text: str, payload, skip: Set[float]) -> List[Tuple[float, str, List[str]]]:
-    """Figures in `text` that follow the name of a payload field and are not that field's value: (the figure, the word, the fields' values).
+def _word_before(clause: str) -> Optional[str]:
+    """The word that names the figure which follows `clause`: the last word, if only white space, a colon, an equals sign and filler words lie after it.
+
+    A comma, a bracket or another figure between the word and the figure means that the word belongs to something else:
+    in "60 units invoiced, 100 units received" the word "invoiced" does not name 100.
+    """
+    for token in reversed(_TOKEN.findall(clause[-64:])):
+        if token in (":", "=") or token.lower() in _BETWEEN:
+            continue
+        return token if token[0].isalpha() else None
+    return None
+
+
+def _word_after(rest: str) -> Optional[str]:
+    """The word that names the figure which precedes `rest`: the first word that is not a unit ("60 units received" is about "received")."""
+    for token in _TOKEN.findall(rest[:64]):
+        if token.lower() in _UNITS or token == "%":
+            continue
+        return token if token[0].isalpha() else None
+    return None
+
+
+def _label_findings(text: str, payload, skip: Set[Decimal]) -> List[Tuple[Decimal, str, List[str]]]:
+    """Figures in `text` that sit beside the name of a payload field and are not that field's value: (the figure, the word, the fields' values).
 
     "invoiced 60" is wrong when the payload's quantity_invoiced is 100, even though 60 is in the payload: the figure is tied to the
-    field by the word in front of it. A figure that follows no field's name is not tied to anything and is not judged here, and a
-    figure in `skip` has been reported already.
+    field by the word in front of it, or, when no field's name is in front of it, by the word after it ("60 units invoiced"). A word
+    names a figure only when nothing but white space, a colon, an equals sign, filler words or units lies between them, so that
+    swapping "invoiced 100 units, received 60 units" into "60 units invoiced, 100 units received" is found. A figure that sits
+    beside no field's name is not tied to anything and is not judged here, and a figure in `skip` has been reported already.
     """
-    by_word: Dict[str, List[Tuple[str, float]]] = {}
+    by_word: Dict[str, List[Tuple[str, Decimal]]] = {}
     for name, value in _named_numbers(payload):
         for word in re.findall(r"[A-Za-z]{3,}", re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name)):
             by_word.setdefault(_stem(word), []).append((name, value))
-    found: List[Tuple[float, str, List[str]]] = []
+    found: List[Tuple[Decimal, str, List[str]]] = []
     text = text.replace("\u2212", "-")
     for match in _NUMBER.finditer(text):
-        clause = re.split(r"[.;!?](?=\s|$)", text[max(0, match.start() - 96):match.start()])[-1]
-        words = _WORD.findall(clause[-48:])
-        while words and words[-1].lower() in _BETWEEN:
-            words.pop()
-        if not words or _stem(words[-1]) not in by_word:
+        figure = _decimal(match.group(0))
+        if figure is None:
             continue
-        figure = float(match.group(0).replace(",", ""))
-        fields = by_word[_stem(words[-1])]
+        word = _word_before(_BOUNDARY.split(text[max(0, match.start() - 96):match.start()])[-1])
+        if word is None or _stem(word) not in by_word:
+            word = _word_after(_BOUNDARY.split(text[match.end():match.end() + 96])[0])
+        if word is None or _stem(word) not in by_word:
+            continue
+        fields = by_word[_stem(word)]
         if figure not in skip and figure not in {value for _, value in fields}:
-            found.append((figure, words[-1], ["%s is %g" % (name, value) for name, value in dict.fromkeys(fields)]))
+            found.append((figure, word, ["%s is %s" % (name, _show_number(value)) for name, value in dict.fromkeys(fields)]))
     return found
 
 
@@ -441,8 +495,9 @@ def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -
     reference, exactly what that claim says). A claim that rests on a payload, alone or beside claim references, says what
     the payload holds: after the cited claims' own words are taken out, what is left states every status (pass or fail) of each
     payload it cites and at least one of its figures, states no status or figure that the payloads do not hold (once for each
-    time it is stated, so a claim cannot reuse one figure to cover two), and puts no figure after the name of a payload
-    field that is not that field's value (swapping "invoiced 100, received 60" is found). A minus sign is part of a figure.
+    time it is stated, so a claim cannot reuse one figure to cover two), and puts no figure next to the name of a payload
+    field that is not that field's value (swapping "invoiced 100, received 60" is found, and so is "60 units invoiced, 100 units
+    received"). Figures are compared exactly as written, not as floats. A minus sign is part of a figure.
     These are structured values, compared exactly. They are necessary conditions: a claim that passes them can still say
     something its sources do not support. Nothing here reads prose for meaning, and the schema's free-text claim cannot be made
     to say more without a structured assertion field, which v1.0.2 does not add.
@@ -501,16 +556,16 @@ def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -
     for status in sorted(wrong_statuses):
         out.append(_f("PKT005", "the claim states %r, which what it cites does not hold (%s)" % (status, cited), pkt, loc + "/text", DOC_EVIDENCE))
     for number in sorted(unaccounted):
-        out.append(_f("PKT005", "the claim states the figure %g%s, which what it cites does not account for (%s)" % (number, " more than once" if unaccounted[number] > 1 else "", cited), pkt, loc + "/text", DOC_EVIDENCE))
+        out.append(_f("PKT005", "the claim states the figure %s%s, which what it cites does not account for (%s)" % (_show_number(number), " more than once" if unaccounted[number] > 1 else "", cited), pkt, loc + "/text", DOC_EVIDENCE))
     for payload, name in payloads:
         numbers, statuses = _content_values(payload)
         if not wrong_statuses:
             for status in sorted(statuses - stated_statuses):
                 out.append(_f("PKT005", "the claim does not state %r, which %s holds: a claim that rests on a payload says what it holds" % (status, name), pkt, loc + "/text", DOC_EVIDENCE))
         if numbers and not set(numbers) & set(stated_numbers):
-            out.append(_f("PKT005", "the claim states none of the figures that %s holds (%s)" % (name, ", ".join("%g" % n for n in sorted(numbers))), pkt, loc + "/text", DOC_EVIDENCE))
+            out.append(_f("PKT005", "the claim states none of the figures that %s holds (%s)" % (name, ", ".join(_show_number(n) for n in sorted(numbers))), pkt, loc + "/text", DOC_EVIDENCE))
         for figure, word, fields in _label_findings(remainder, payload, set(unaccounted)):
-            out.append(_f("PKT005", "the claim puts the figure %g after %r, but %s holds %s for it" % (figure, word, name, " and ".join(fields)), pkt, loc + "/text", DOC_EVIDENCE))
+            out.append(_f("PKT005", "the claim puts the figure %s next to %r, but %s holds %s for it" % (_show_number(figure), word, name, " and ".join(fields)), pkt, loc + "/text", DOC_EVIDENCE))
     return out
 
 
@@ -585,9 +640,13 @@ def _check_verification_binding(model: Model, rec: Instance) -> List[Finding]:
     from a verification made after the attempt, of the receipt's own target, for its own action. A check of another target,
     another action or an earlier moment shows nothing about this attempt.
 
-    The labels are not enough: each record the verification cites must itself be about the receipt's target, must describe
-    something observed at or after the attempt and at or before the verification, and must have been admitted by the time of
-    the verification. A record observed before the attempt, or one the verification could not yet have had, verifies nothing.
+    The labels are not enough: each record the verification cites must itself be about the receipt's target, must be an observation
+    (a source record assertion: not something derived from other records or inferred by a model), must describe something
+    observed at or after the attempt and at or before the verification, and must have been admitted by the time of the
+    verification. A record observed before the attempt, or one the verification could not yet have had, verifies nothing.
+    What the cited record SAYS is not judged: its claim is free text, so a record about the right target and the right moment
+    that contradicts the receipt would pass. A structured assertion of the observed effect would let a validator check it;
+    the v1 schema has no such field, and v1.0.2 does not add one.
     """
     d = rec.data
     out: List[Finding] = []
@@ -619,6 +678,10 @@ def _check_verification_binding(model: Model, rec: Instance) -> List[Finding]:
         if record is None:
             continue   # REF001 reports a record that does not exist
         label = "%s %s" % (record.id, record.version)
+        kind = _object_of(record.data.get("identity_schema")).get("kind")
+        if kind != "source_record_assertion":
+            out.append(_f("AUTH008", "the verification cites %s, which is a %s: a verification rests on an observation of the target (a source record assertion), not on something derived from other records or inferred by a model" % (
+                label, str(kind).replace("_", " ")), rec, loc + "/reference", DOC_ACTION))
         named_entities = [e for e in _object_of(record.data.get("scope")).get("entity_references", []) if isinstance(e, dict)]
         if binding["target"] not in named_entities:
             out.append(_f("AUTH008", "the verification cites %s, which is not about the receipt's own target (%s %s): its scope names %s" % (
