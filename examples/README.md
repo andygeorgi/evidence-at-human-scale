@@ -16,7 +16,7 @@ python scripts/validate_examples.py
 Expected output:
 
 ```text
-Evidence at Human Scale 1.0.4: example validation
+Evidence at Human Scale 1.0.5: example validation
 Synthetic data only. A pass is not evidence about any real system.
 
 [1/6] Schema bundle ...           PASS          102 evaluated
@@ -46,7 +46,7 @@ If a check fails, the message names a code, the file and location, and the contr
 
 ### What a pass means, and what it does not
 
-A pass shows that the invented examples are coherent and that the checks behave as documented, and nothing about any real system. [Claims and limits](../docs/claims-and-limits.md) has the full statement.
+A pass shows that the invented examples satisfy the checks, which compare their records with one another, and nothing about any real system. [Claims and limits](../docs/claims-and-limits.md) has the full statement.
 
 ## The story
 
@@ -106,7 +106,7 @@ The set holds 37 contract instances: 19 evidence records (C02), 2 contexts (C01)
 - **Then and now.** A decision is judged by what was visible when it was made, and the end-of-day file is a later projection. The controller who reviewed packet v1 at 10:35 saw it as `awaiting_review`, resting on `GR-5521` v1, which was then the current receipt. The correction at 13:40 changed what is current from that point on. It did not make the 10:40 approval wrong when it was given; it ended it. Read the timestamps to rebuild what was visible at the time.
 - **Versions.** A reference always names an exact version. A newer version never replaces an older one; it supersedes it. A version's content never changes; only its lifecycle state does (for example from `current` to `superseded`).
 - **People.** Four roles recur, and the example's [`registry.json`](registry.json) names who holds each (`accountability`). The **requestor** (`person:ap-analyst-02`, an AP analyst) asks the assistant for a packet and reads it. The **Decision Owner**, the accountable reviewer, is the AP controller (`person:ap-controller-01`, who holds `role:ap-controller`): the controller owns the review obligation, reviews each packet and owns the release decision. The **approver** issues the exact approval of one proposal version; here that is the controller too, and the registry says so explicitly, because the example's policy lets one person hold the Decision Owner and approver roles together. It does not let the requestor hold either role for their own request. The **executor** is `workload:payment-executor`. It is the grantee of every grant, bounded or exact, and every execution receipt is made by the grantee of the grant it cites. The assistant workload (`workload:ap-assistant`) proposes and holds no grant. Bounded grants are issued in the name of the role, exact approvals by its holder. A different domain's policy might require a separate approver; the checks (`ROLE001`–`ROLE008`) read the registry, not this convention.
-- **Registry.** [`registry.json`](registry.json) is the domain's side of the story: registered producers and the evidence kinds each may submit, the external records the contracts name but do not define (access decisions, authority bases, accounting references), the policies with their freshness limits, the commit-time precondition rules, the relationship vocabulary, the terms this requestor may not see, who holds which role and the log of reviews, who each permission decision is for (principal, tenant and purpose) and the complete generic view it lets an output show, and the state of the target system over time. It is domain configuration, not part of the contracts.
+- **Registry.** [`registry.json`](registry.json) is the domain's side of the story: registered producers, the evidence kinds each may submit and whether its findings are computed over records of the set, the external records the contracts name but do not define (access decisions, authority bases, accounting references), the policies with their freshness limits, the commit-time precondition rules, the relationship vocabulary, the terms this requestor may not see, who holds which role and the log of reviews, who each permission decision is for (principal, tenant and purpose) and the complete generic view it lets an output show, and the state of the target system over time. It is domain configuration, not part of the contracts.
 
 <a id="reading-the-papers-abstract-notation"></a>
 ## Reading the abstract labels in the reference material
