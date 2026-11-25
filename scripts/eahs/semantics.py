@@ -352,6 +352,8 @@ _WORD = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 _BETWEEN = frozenset("of is was are were at to be equal equals about only just exactly than".split())
 #: Words that may stand between a figure and the name of the field that follows it ("60 units received", "40.0 percent variance").
 _UNITS = frozenset("unit units piece pieces item items percent pct eur euro euros usd".split())
+#: The quotation marks that may stand around a field's name: straight, typographic and angle quotes, and the backtick.
+_QUOTES = frozenset("\"'`\u2018\u2019\u201a\u201b\u201c\u201d\u201e\u201f\u00ab\u00bb\u2039\u203a")
 _BOUNDARY = re.compile(r"[.;!?](?=\s|$)")
 _TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9_]*|\d+|[^\sA-Za-z0-9_]")
 
@@ -458,7 +460,7 @@ def _word_before(clause: str) -> Optional[str]:
     in "60 units invoiced, 100 units received" the word "invoiced" does not name 100.
     """
     for token in reversed(_TOKEN.findall(clause[-64:])):
-        if token in (":", "=", '"', "'", "`") or token.lower() in _BETWEEN:
+        if token in (":", "=") or token in _QUOTES or token.lower() in _BETWEEN:
             continue
         return token if token[0].isalpha() else None
     return None
@@ -468,7 +470,7 @@ def _word_after(rest: str) -> Optional[str]:
     """The word that names the figure which precedes `rest`: the first word that is not a unit, a filler word or a quotation mark around the name
     ("60 units received", "60 units were received" and "100 units `quantity_received`" are about "received" and "quantity_received")."""
     for token in _TOKEN.findall(rest[:64]):
-        if token.lower() in _UNITS or token.lower() in _BETWEEN or token in ('"', "'", "`") or token == "%":
+        if token.lower() in _UNITS or token.lower() in _BETWEEN or token in _QUOTES or token == "%":
             continue
         return token if token[0].isalpha() else None
     return None

@@ -142,7 +142,7 @@ IDENTIFIER = re.compile(r"\b[A-Z][A-Z0-9]*(?:-[A-Z0-9][A-Za-z0-9.]*)+\b")
 WITHDRAWN_MARKER = re.compile(r"\bwithdrawn\b|\bno longer current\b|\bhistorical\b|\bsuperseded\b|\binvalidated\b", re.I)
 #: Wording that undoes a withdrawal. A withdrawal reason that says the packet is still valid contradicts the packet's own state.
 UNDOES_WITHDRAWAL = re.compile(
-    r"\b(?:not|never|no longer)\s+(?:been\s+|be\s+)?(?:invalidated|superseded|withdrawn)\b"
+    r"(?:\b(?:not|never|no longer)|n't)\s+(?:(?:actually|really|truly|even|yet|ever|been|be)\s+){0,2}(?:invalidated|superseded|withdrawn)\b"
     r"|\bstill\s+(?:current|valid|active|in force|usable)\b"
     r"|\b(?:packet\s+[\w.-]+\s+v\d+|this\s+packet|the\s+packet|this\s+response|the\s+response|it)\s+(?:is|remains?|stays?)\s+(?:current|valid|active|in force|usable)\b"
     r"|\b(?:reinstated|restored|reactivated|re-activated)\b"
@@ -155,9 +155,10 @@ REASON_INTRODUCTIONS = ("", "This response was withdrawn: ")
 #: Words that call something valid today. In a withdrawn response a statement may not use them, unnegated, more often than the
 #: packet items it cites do, so "not current advice" is fine and "This is current advice" is not.
 CURRENCY_WORDS = re.compile(r"\b(?:current(?:ly)?|active|valid|in force|up[- ]to[- ]date)\b", re.I)
-NEGATED_BEFORE = re.compile(r"\b(?:not|no longer|never|isn't|aren't|wasn't|weren't)\s+(?:\w+\s+){0,2}$", re.I)
-#: A negation just before a status word: "did not fail", "no longer current", "isn't stale", "no failures".
-NEGATED_STATUS = re.compile(r"(?:\b(?:not|no|never|none|nothing|nobody|neither|nor|cannot|without|hardly|barely)\b|n't\b)\s+(?:\w+\s+){0,3}$", re.I)
+NEGATED_BEFORE = re.compile(r"\b(?:not(?!\s+(?:only|just|merely)\b)|no longer|never|isn't|aren't|wasn't|weren't)\s+(?:\w+\s+){0,2}$", re.I)
+#: A negation just before a status word: "did not fail", "no longer current", "isn't stale", "no failures". "Not only" is no negation: "not only confirmed but documented"
+#: says it is confirmed, so "not only", "not just" and "not merely" do not count.
+NEGATED_STATUS = re.compile(r"(?:\b(?:not(?!\s+(?:only|just|merely)\b)|no|never|none|nothing|nobody|neither|nor|cannot|without|hardly|barely)\b|n't\b)\s+(?:\w+\s+){0,3}$", re.I)
 #: Where the reach of a negation ends: a sentence, a colon, a bracket, and a word that turns to the opposite ("not executed but approved" does not negate "approved").
 CLAUSE_END = re.compile(r"[.!?;:(]|\b(?:but|however|although|though|except|whereas|nevertheless|nonetheless)\b", re.I)
 _ID = r"[A-Z][A-Z0-9]*(?:-[A-Z0-9][A-Za-z0-9.]*)+"

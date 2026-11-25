@@ -1057,6 +1057,33 @@ class TheLabelAndTheWordingAreHeldToTheRulesOfTheText(unittest.TestCase):
             with self.subTest(label):
                 self.assertEqual(len(self.found(self.changed(self.v1, "recommendation", label=label), "RESP016")), 1)
 
+    def test_not_only_says_what_follows_it_and_does_not_negate_it(self):
+        """"Not only confirmed but also documented" says that it is confirmed: "not only", "not just" and "not merely" are emphasis, not a negation."""
+        for label in ("Not only confirmed but also documented", "Not just verified", "Not merely confirmed"):
+            with self.subTest(label):
+                self.assertEqual(len(self.found(self.changed(self.v1, "claim", 0, label=label), "RESP011")), 1)
+        for label in ("Not only reinstated but also documented", "Not just restored"):
+            with self.subTest(label):
+                self.assertEqual(len(self.found(self.changed(self.v1, "recommendation", label=label), "RESP016")), 1)
+        proposal = "release payment on invoice INV-2026-0417 (proposal ACT-REL-0417 v2)."
+        for label in ("Not only approved but also documented", "Not just executed"):
+            with self.subTest(label):
+                self.assertEqual(len(self.found(self.changed(self.v2, "proposal", label=label), "RESP005")), 1)
+        self.assertTrue(self.found(self.changed(self.v2, "proposal", text="Proposed (not only executed but also approved): " + proposal), "RESP005"))
+        for label in ("Not independently verified", "Not verified, only documented"):
+            with self.subTest(label):
+                self.assertEqual(self.found(self.changed(self.v1, "claim", 0, label=label), "RESP011"), [])
+
+    def test_a_text_that_denies_its_withdrawal_in_other_words_is_found_also_when_a_marker_follows_it(self):
+        """A text that says "not actually withdrawn" takes the withdrawal back, and a marker such as "historical" after a "but" does not undo that."""
+        advice = " (for review, not a decision): Place INV-2026-0417 on payment hold until the quantity difference is resolved."
+        for opening in ("Not actually withdrawn but historical", "Not yet withdrawn but historical", "This hasn't been withdrawn but is historical", "Never really superseded, but withdrawn"):
+            with self.subTest(opening):
+                self.assertEqual(len(self.found(self.changed(self.v1, "recommendation", text=opening + advice), "RESP016")), 1)
+        for opening in ("Withdrawn recommendation, no longer current", "Historical recommendation, no longer current"):
+            with self.subTest(opening):
+                self.assertEqual(self.found(self.changed(self.v1, "recommendation", text=opening + advice), "RESP016"), [])
+
     def test_a_dash_between_words_is_not_a_sign(self):
         self.assertEqual(figures("\u2212EUR 18,400.00"), {"-18,400.00"})
         self.assertEqual(figures("\u2212 EUR 18,400.00"), {"-18,400.00"})

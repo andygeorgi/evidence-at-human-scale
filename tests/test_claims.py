@@ -323,12 +323,13 @@ class WhatAPayloadClaimMustSay(unittest.TestCase):
             ref = reference(PAYLOAD_CLAIM)
             ref["payload_location"] = "/value/" + field
             refs.append(ref)
-        for wrong in ("FAIL. invoice_id 100.", "FAIL. 100 units `quantity_received`.", 'FAIL. 100 units "quantity_received".', "FAIL. 100 units 'quantity_received'."):
+        for wrong in ("FAIL. invoice_id 100.", "FAIL. 100 units `quantity_received`.", 'FAIL. 100 units "quantity_received".', "FAIL. 100 units 'quantity_received'.",
+                      "FAIL. 100 units \u201cquantity_received\u201d.", "FAIL. 100 units \u2018quantity_received\u2019.", "FAIL. 100 units \u00abquantity_received\u00bb.", "FAIL. 100 units \u201equantity_received\u201c."):
             with self.subTest(wrong):
                 found = claim_findings(with_claim(PAYLOAD_CLAIM, wrong, copy.deepcopy(refs)))
                 self.assertEqual([f.code for f in found], ["PKT005"], [f.message for f in found])
                 self.assertIn("does not hold it", found[0].message)
-        for right in ("FAIL. 100 units `quantity_invoiced`.", 'FAIL. 100 units "quantity_invoiced".', "FAIL. quantity_invoiced 100."):
+        for right in ("FAIL. 100 units `quantity_invoiced`.", 'FAIL. 100 units "quantity_invoiced".', "FAIL. quantity_invoiced 100.", "FAIL. 100 units \u201cquantity_invoiced\u201d."):
             with self.subTest(right):
                 self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, right, copy.deepcopy(refs))), [])
 
