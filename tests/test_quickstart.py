@@ -38,7 +38,7 @@ class ExpectedOutput(unittest.TestCase):
         readme = (REPO / "README.md").read_text(encoding="utf-8")
         section = readme.split("## Quickstart", 1)[1].split("\n## ", 1)[0]
         commands = re.findall(r"^python (?!-m pip)(\S+\.py)", section, re.M)
-        self.assertEqual(commands, ["scripts/validate_examples.py", "scripts/check_all.py"])
+        self.assertEqual(commands, ["scripts/validate_examples.py"])
         for command in commands:
             self.assertTrue((REPO / command).is_file(), command)
         self.assertIn("python -m pip install -r requirements.txt", section)

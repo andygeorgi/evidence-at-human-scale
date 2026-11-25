@@ -16,7 +16,7 @@ python scripts/validate_examples.py
 Expected output:
 
 ```text
-Evidence at Human Scale 1.0.2: example validation
+Evidence at Human Scale 1.0.3: example validation
 Synthetic data only. A pass is not evidence about any real system.
 
 [1/6] Schema bundle ...           PASS          102 evaluated
@@ -29,7 +29,7 @@ Synthetic data only. A pass is not evidence about any real system.
 Result: PASS. All 6 stages passed, each after evaluating at least one item (240 items in all).
 ```
 
-It is tested on Windows and Linux; nothing in it is platform-specific, so macOS should work too. Add `--verbose` to see what each stage covered, `--only schema,semantics` to run some stages, `--skip cases` to leave one out, or `--json` for a machine-readable result.
+Add `--verbose` to see what each stage covered, `--only schema,semantics` to run some stages, `--skip cases` to leave one out, or `--json` for a machine-readable result.
 
 A stage passes only if it evaluated something. Run the command on an empty folder and it reports `NOT ASSESSED` and exits with 3; JSON it cannot read is an `INPUT ERROR` (exit 2); a broken example is a `FAIL` (exit 1). Exit code 0 means every stage that ran passed. [`scripts/README.md`](../scripts/README.md#validate_examplespy) has the five states.
 
@@ -107,7 +107,6 @@ The set holds 37 contract instances: 19 evidence records (C02), 2 contexts (C01)
 - **Versions.** A reference always names an exact version. A newer version never replaces an older one; it supersedes it. A version's content never changes; only its lifecycle state does (for example from `current` to `superseded`).
 - **People.** Four roles recur, and the example's [`registry.json`](registry.json) names who holds each (`accountability`). The **requestor** (`person:ap-analyst-02`, an AP analyst) asks the assistant for a packet and reads it. The **Decision Owner**, the accountable reviewer, is the AP controller (`person:ap-controller-01`, who holds `role:ap-controller`): the controller owns the review obligation, reviews each packet and owns the release decision. The **approver** issues the exact approval of one proposal version; here that is the controller too, and the registry says so explicitly, because the example's policy lets one person hold the Decision Owner and approver roles together. It does not let the requestor hold either role for their own request. The **executor** is `workload:payment-executor`. It is the grantee of every grant, bounded or exact, and every execution receipt is made by the grantee of the grant it cites. The assistant workload (`workload:ap-assistant`) proposes and holds no grant. Bounded grants are issued in the name of the role, exact approvals by its holder. A different domain's policy might require a separate approver; the checks (`ROLE001`–`ROLE008`) read the registry, not this convention.
 - **Registry.** [`registry.json`](registry.json) is the domain's side of the story: registered producers and the evidence kinds each may submit, the external records the contracts name but do not define (access decisions, authority bases, accounting references), the policies with their freshness limits, the commit-time precondition rules, the relationship vocabulary, the terms this requestor may not see, who holds which role and the log of reviews, who each permission decision is for (principal, tenant and purpose) and the complete generic view it lets an output show, and the state of the target system over time. It is domain configuration, not part of the contracts.
-- **Generated data.** The JSON is generated from one definition by [`scripts/build_example_data.py`](../scripts/build_example_data.py). `python scripts/build_example_data.py --check` fails if a committed file differs from a fresh build, so an edit by hand shows up. The READMEs are written by hand.
 
 <a id="reading-the-papers-abstract-notation"></a>
 ## Reading the abstract labels in the reference material
