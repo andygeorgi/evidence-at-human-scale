@@ -23,7 +23,7 @@ Everything with an `x-` prefix, every `title`, `description`, `examples` and `$c
 |---|---|
 | `$id` | `urn:evidence-at-human-scale:contracts:1` |
 | Instance `schema_version` | `"1"` |
-| Release | `v1.0.3` |
+| Release | `v1.0.4` |
 | Validation-surface hash | recorded in [`contracts/CHANGES.md`](../contracts/CHANGES.md); recompute with `python scripts/schema_surface_hash.py` |
 
 A change that alters what validates needs a new entry in [`contracts/CHANGES.md`](../contracts/CHANGES.md) with the previous form, the new form, the reason, the compatibility impact and the migration. The repository's checks fail if the validation surface changes without that record.

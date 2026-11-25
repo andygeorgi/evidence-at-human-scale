@@ -55,7 +55,7 @@ python scripts/validate_examples.py         # validate the synthetic examples
 You need Python 3.9 or later. It is tested on Windows and Linux (nothing in it is platform-specific, so macOS should work too), uses no network, and starts no service or model. `validate_examples.py`, the second command, should print:
 
 ```text
-Evidence at Human Scale 1.0.3: example validation
+Evidence at Human Scale 1.0.4: example validation
 Synthetic data only. A pass is not evidence about any real system.
 
 [1/6] Schema bundle ...           PASS          102 evaluated
@@ -101,7 +101,7 @@ The full statement is in [Claims and limits](docs/claims-and-limits.md).
 
 ## Citing, contributing, security
 
-- **Cite.** [`CITATION.cff`](CITATION.cff) lets GitHub offer *Cite this repository*. Cite the release by its version, `v1.0.3`, 25 November 2026.
+- **Cite.** [`CITATION.cff`](CITATION.cff) lets GitHub offer *Cite this repository*. Cite the release by its version, `v1.0.4`, 25 November 2026.
 - **Contribute.** [`CONTRIBUTING.md`](CONTRIBUTING.md) says what is welcome and how to run the checks before you open a pull request.
 - **Report a security concern.** [`SECURITY.md`](SECURITY.md) explains what counts and how to report it privately.
 - **Changes.** [`CHANGELOG.md`](CHANGELOG.md) lists what each release contains.
