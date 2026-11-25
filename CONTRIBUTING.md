@@ -52,6 +52,6 @@ A change to what the schema accepts needs an entry in [`contracts/CHANGES.md`](c
 
 - Keep each one small and focused, and say which checks you ran.
 - Do not add Office files, PDFs, archives, images of text or other binaries; the hygiene check rejects them.
-- If you used an AI assistant, say so in the pull request, as this repository does in its [README](README.md#ai-assistance).
+- If you used an AI assistant, say so in the pull request.
 
 [Security policy](SECURITY.md) · [Changelog](CHANGELOG.md) · [Maintainer notes](docs/maintainers.md)

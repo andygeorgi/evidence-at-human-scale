@@ -28,7 +28,7 @@ The [claims and limits](../docs/claims-and-limits.md) page states the consequenc
 
 ## How this edition was produced
 
-AI assistance is disclosed in the [README](../README.md#ai-assistance). The author is accountable for the content.
+The author is accountable for the content.
 
 ## Checking the URLs
 
