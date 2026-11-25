@@ -45,7 +45,7 @@ from __future__ import annotations
 import math
 import re
 import unicodedata
-from typing import Dict, List, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 from .findings import Finding, rel
 from .model import Instance, Model, iter_refs, resolve_pointer
@@ -74,7 +74,9 @@ ADVICE_KINDS = ("recommendation", "proposal", "obligation")
 #: The only two statuses a response can have. Which one it has is decided by its packet, never by the response.
 RESPONSE_STATUSES = ("current", "withdrawn")
 DECISION_WORDING = re.compile(r"\b(has|have|had|was|were|been|is|are)\s+(now\s+)?(approved|executed|released|paid|sent|submitted)\b", re.I)
-FIGURE = re.compile(r"(?<![\w.,/:-])-?\d[\d,.:/-]*\d|(?<![\w.,/:-])-?\d|\d[\d,.:/-]*\d|\d")
+#: A figure, with its sign. A hyphen is a sign unless it follows a word character, a point, a comma, a slash or another hyphen (S-1042, 2026-11-18). A colon
+#: after a digit makes a time or a ratio ("13:45"), which is one figure; a colon after a word is a delimiter ("Total:-18,400.00"), and a sign behind it is a sign.
+FIGURE = re.compile(r"(?<![\w.,/-])(?<!\d:)-?\d[\d,.:/-]*\d|(?<![\w.,/-])(?<!\d:)-?\d|\d[\d,.:/-]*\d|\d")
 #: The alphabetic codes of ISO 4217 (the currencies in circulation) and the common currency signs. A statement may name a currency only
 #: if the items it cites do, so that EUR 18,400.00 cannot become CAD 18,400.00 or $18,400.00. Matching is by the uppercase code, whole.
 ISO_4217 = frozenset("""
@@ -85,14 +87,15 @@ PHP PKR PLN PYG QAR RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLE SLL SOS SRD 
 UGX USD UYU UZS VES VND VUV WST XAF XCD XOF XPF YER ZAR ZMW ZWL
 """.split())
 _ISO_ALTERNATIVES = "|".join(sorted(ISO_4217))
-#: Every currency sign Unicode knows (category Sc: $, ¢, £, ¥, €, ₹, ₽, ₩ and the rest), so that a sign is not left out because a list did not think of it.
-_CURRENCY_SIGNS = "".join(re.escape(chr(code)) for code in range(0x20, 0x10000) if unicodedata.category(chr(code)) == "Sc")
+#: Every currency sign Unicode knows (category Sc: $, ¢, £, ¥, €, ₹, ₽, ₩, and signs of the second plane such as U+1ECB0), so that a sign is not left out because a list did
+#: not think of it. Unicode keeps its symbols in the first two planes; a test scans the whole range, so that a later version of Unicode that puts one elsewhere is noticed.
+_CURRENCY_SIGNS = "".join(re.escape(chr(code)) for code in range(0x20, 0x20000) if unicodedata.category(chr(code)) == "Sc")
 CURRENCY = re.compile(r"\b(?:%s)\b|[%s]" % (_ISO_ALTERNATIVES, _CURRENCY_SIGNS))
 #: A currency code with a sign right behind it ("EUR-18,400.00", "EUR\u221218,400.00") is a negative amount, not a hyphenated word.
 CODE_THEN_SIGN = re.compile(r"\b(%s)(?=[-\u2212]\d)" % _ISO_ALTERNATIVES)
 #: A sign right in front of a currency ("\u2212EUR 18,400.00", "-$5") is the sign of the amount that follows it. A hyphen counts only when it touches the
 #: currency and is not part of a longer word or number (S-EUR, 5-$3): "100 units - EUR 184.00" is a dash, not a sign. The minus sign (U+2212) always counts.
-SIGN_THEN_CURRENCY = re.compile(r"(?:(?<![\w.,/:-])-|\u2212\s*)((?:%s)\b|[%s])\s*(?=\d)" % (_ISO_ALTERNATIVES, _CURRENCY_SIGNS))
+SIGN_THEN_CURRENCY = re.compile(r"(?:(?<![\w.,/-])(?<!\d:)-|\u2212\s*)((?:%s)\b|[%s])\s*(?=\d)" % (_ISO_ALTERNATIVES, _CURRENCY_SIGNS))
 
 #: Statement kinds on which each structural constraint is applied. Status consistency covers every kind that states something about
 #: the packet: a claim, an inference, a conflict, a gap, a recommendation, a proposal and an obligation.
@@ -115,7 +118,7 @@ STATUS_WORDS = {
 }
 NEGATION = re.compile(r"\b(?:no|not|never|none|nothing|nobody|neither|nor|without|cannot)\b|n't\b", re.I)
 #: Certainty a statement may add only if the items it cites already say it (a source may say "confirmed"; a model may not).
-CERTAINTY = re.compile(r"\b(?:certain(?:ly)?|definite(?:ly)?|undoubted(?:ly)?|guarantee[sd]?|proven|proves?|conclusive(?:ly)?|beyond (?:any )?doubt|without (?:a )?doubt|no doubt|obviously|clearly|confirmed|(?<!not )verified|safe to (?:pay|release))\b", re.I)
+CERTAINTY = re.compile(r"\b(?:certain(?:ly)?|definite(?:ly)?|undoubted(?:ly)?|guarantee[sd]?|proven|proves?|conclusive(?:ly)?|beyond (?:any )?doubt|without (?:a )?doubt|no doubt|obviously|clearly|confirmed|verified|safe to (?:pay|release))\b", re.I)
 #: Wording that closes what the packet keeps open.
 CLOSES_CONFLICT = re.compile(r"\bno (?:longer )?(?:a )?(?:material )?conflicts?\b|\bnot (?:a )?conflicts?\b|\bconflicts? (?:is|are|was|were|has been|have been) (?:now )?(?:resolved|settled|closed|reconciled|cleared)\b|\b(?:resolved|reconciled|settled) conflicts?\b|\bsources (?:agree|are consistent)\b|\bno (?:material )?(?:discrepanc\w+|differences?)\b", re.I)
 DENIES_GAP = re.compile(r"\bnothing (?:is|was) missing\b|\bno (?:gaps?|omissions?|missing (?:evidence|information))\b|\b(?:fully|completely|entirely) (?:covered|checked|assessed)\b|\ball (?:sources|checks|evidence) (?:were|was|have been) (?:checked|covered|available|retrieved)\b", re.I)
@@ -155,6 +158,8 @@ CURRENCY_WORDS = re.compile(r"\b(?:current(?:ly)?|active|valid|in force|up[- ]to
 NEGATED_BEFORE = re.compile(r"\b(?:not|no longer|never|isn't|aren't|wasn't|weren't)\s+(?:\w+\s+){0,2}$", re.I)
 #: A negation just before a status word: "did not fail", "no longer current", "isn't stale", "no failures".
 NEGATED_STATUS = re.compile(r"(?:\b(?:not|no|never|none|nothing|nobody|neither|nor|cannot|without|hardly|barely)\b|n't\b)\s+(?:\w+\s+){0,3}$", re.I)
+#: Where the reach of a negation ends: a sentence, a colon, a bracket, and a word that turns to the opposite ("not executed but approved" does not negate "approved").
+CLAUSE_END = re.compile(r"[.!?;:(]|\b(?:but|however|although|though|except|whereas|nevertheless|nonetheless)\b", re.I)
 _ID = r"[A-Z][A-Z0-9]*(?:-[A-Z0-9][A-Za-z0-9.]*)+"
 #: "GR-5521 v1 was superseded by GR-5521 v2": the direction of a supersession that a withdrawal reason states.
 SUPERSEDED_BY = re.compile(r"(?<![\w-])(?P<old>%s)\s+(?:version\s+)?(?P<old_version>v\d+)\s+(?:was|were|is|has been|had been)\s+(?:superseded|replaced)\s+by\s+(?P<new>%s)\s+(?:version\s+)?(?P<new_version>v\d+)(?!\w|\.\d)" % (_ID, _ID), re.I)
@@ -220,28 +225,40 @@ def currency_assertions(text: str) -> int:
     """
     count = 0
     for match in CURRENCY_WORDS.finditer(text):
-        clause = re.split(r"[.!?;:(]", text[max(0, match.start() - 80):match.start()])[-1]
+        clause = CLAUSE_END.split(text[max(0, match.start() - 80):match.start()])[-1]
         if not NEGATED_BEFORE.search(clause):
             count += 1
     return count
 
 
-def _uses(pattern, text: str) -> Tuple[bool, bool]:
-    """(plain, negated): whether a text uses what `pattern` finds with no negation just before it, and whether it uses it negated.
+def _polarity(pattern, text: str) -> Iterator[Tuple[str, bool]]:
+    """Every match of `pattern` in `text` as (the matched words, whether a negation stands just before it).
 
-    "did not fail", "no longer current" and "isn't stale" use the word negated. Only the clause just before each match is read
-    (at most about three words back, and not past a full stop, a colon, a semicolon or a bracket), so a long text is read in one pass.
+    "did not fail", "no longer current" and "isn't stale" use the word negated. Only the clause just before each match is read (at most about three
+    words back, and not past a full stop, a colon, a semicolon, a bracket or a word that turns to the opposite, such as "but"), so a long text is read
+    in one pass.
     """
-    plain = negated = False
     for match in pattern.finditer(text):
-        clause = re.split(r"[.!?;:(]", text[max(0, match.start() - 80):match.start()])[-1]
-        if NEGATED_STATUS.search(clause):
+        clause = CLAUSE_END.split(text[max(0, match.start() - 80):match.start()])[-1]
+        yield match.group(0), NEGATED_STATUS.search(clause) is not None
+
+
+def _uses(pattern, text: str) -> Tuple[bool, bool]:
+    """(plain, negated): whether a text uses what `pattern` finds with no negation just before it, and whether it uses it negated: see `_polarity`."""
+    plain = negated = False
+    for _, is_negated in _polarity(pattern, text):
+        if is_negated:
             negated = True
         else:
             plain = True
         if plain and negated:
             break
     return plain, negated
+
+
+def _undoes_withdrawal(text: str) -> Optional[str]:
+    """The first wording in `text` that takes a withdrawal back and that no negation stands before: "Not reinstated" denies it, and "Reinstated" does not."""
+    return next((words for words, is_negated in _polarity(UNDOES_WITHDRAWAL, text) if not is_negated), None)
 
 
 def status_uses(text: str, name: str) -> Tuple[bool, bool]:
@@ -477,12 +494,12 @@ def _free_text_findings(kind: str, text: str, label: str, cited_text: str, point
     if kind in STATUS_CHECKED:
         out += _status_findings(text, cited_text, kind, withdrawn, file, loc, "statement")
         out += _status_findings(label, cited_text, kind, withdrawn, file, loc, "label")
-    # A certainty word is licensed only by the same word stated affirmatively in what is cited: "not verified" in a source does not license "Verified".
-    stated = {m.group(0).lower() for m in CERTAINTY.finditer(cited_text)}
+    # A certainty word is licensed only by the same word stated plainly in what is cited: "not verified" or "not independently verified" in a source does not license "Verified".
+    stated = {words.lower() for words, is_negated in _polarity(CERTAINTY, cited_text) if not is_negated}
     for shown, where in ((text, "statement"), (label, "label")):
-        for match in CERTAINTY.finditer(shown):
-            if not _stated(match.group(0).lower(), stated):
-                out.append(Finding("RESP011", "the %s adds certainty (%r) that the cited items do not state" % (where, match.group(0)), file, loc, DOC_RESPONSE))
+        for words, is_negated in _polarity(CERTAINTY, shown):
+            if not is_negated and not _stated(words.lower(), stated):
+                out.append(Finding("RESP011", "the %s adds certainty (%r) that the cited items do not state" % (where, words), file, loc, DOC_RESPONSE))
     if withdrawn:
         # The statement and its label are read together by the reader, so together they may call something current or valid no more often than the cited items do.
         in_text, in_label, allowed = currency_assertions(text), currency_assertions(label), currency_assertions(cited_text)
@@ -494,9 +511,9 @@ def _free_text_findings(kind: str, text: str, label: str, cited_text: str, point
         # A text that does not say it is withdrawn at all has been refused already, so it is not refused twice. A label has no duty to say it, but it may not take it back.
         if kind in ADVICE_KINDS and not called_current:
             for shown, where in ((text, "statement"), (label, "label")):
-                undone = UNDOES_WITHDRAWAL.search(shown) if where == "label" or says_withdrawn(text) else None
+                undone = _undoes_withdrawal(shown) if where == "label" or says_withdrawn(text) else None
                 if undone:
-                    out.append(Finding("RESP016", "this %s undoes the withdrawal in its %s (%r): the packet is withdrawn, and a response cannot reinstate it" % (kind, where, undone.group(0)), file, loc, DOC_RESPONSE))
+                    out.append(Finding("RESP016", "this %s undoes the withdrawal in its %s (%r): the packet is withdrawn, and a response cannot reinstate it" % (kind, where, undone), file, loc, DOC_RESPONSE))
                     break
     if kind in IDENTIFIER_CHECKED:
         # A label is shown to the reader beside the text, so a record named in it is held to the same rule: it may not name a record that the cited items do not rest on.
@@ -574,11 +591,7 @@ def says_withdrawn(text: str) -> bool:
     "This advice was never withdrawn" and "not superseded" name the word and say the opposite, so a marker with a negation just
     before it does not count. Only the clause just before each marker is read (at most about three words back).
     """
-    for match in WITHDRAWN_MARKER.finditer(text):
-        clause = re.split(r"[.!?;:(]", text[max(0, match.start() - 80):match.start()])[-1]
-        if not NEGATED_STATUS.search(clause):
-            return True
-    return False
+    return any(not is_negated for _, is_negated in _polarity(WITHDRAWN_MARKER, text))
 
 
 def _reason_findings(model: Model, response: dict, packet: Instance, expected: str, trusted_reason: str, file: str) -> List[Finding]:
@@ -695,11 +708,14 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
             findings.append(Finding("RESP003", "an inference must be labeled as one (start with \"Inference\")", file, loc, DOC_EVIDENCE))
         if kind == "proposal":
             # A proposal says it is neither executed nor approved, each as a negation: "Approved (not executed)" says only half, and what it says first is the opposite.
+            # Its label is read beside the text, so it may not say that the proposal is executed or approved either.
             for name, (either_form, asserting_form) in PROPOSAL_NOT.items():
                 if _uses(asserting_form, text)[0]:
                     findings.append(Finding("RESP005", "a proposal is not %s, and this one says it is, or says it without a negation" % name, file, loc, "contracts/c05-action-proposal.md"))
                 elif not _uses(either_form, text)[1]:
                     findings.append(Finding("RESP005", "a proposal must say it is not executed or approved: this one does not say it is not %s" % name, file, loc, "contracts/c05-action-proposal.md"))
+                if _uses(asserting_form, label)[0]:
+                    findings.append(Finding("RESP005", "a proposal is not %s, and the label of this one says it is" % name, file, loc, "contracts/c05-action-proposal.md"))
         if kind not in ("claim", "conflict") and DECISION_WORDING.search(text):
             findings.append(Finding("RESP005", "wording presents an action as approved or done, which the packet does not support", file, loc, "contracts/c05-action-proposal.md"))
         exact = _is_permitted_wording(model, packet, text, resolved) if kind == "gap" else False

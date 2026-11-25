@@ -992,6 +992,71 @@ class TheLabelAndTheWordingAreHeldToTheRulesOfTheText(unittest.TestCase):
                 found = self.found(self.changed(self.v1, "claim", 0, text=text), "RESP002")
                 self.assertTrue(any(part in f.message for f in found), [f.message for f in found])
 
+    def test_a_currency_sign_of_the_second_plane_is_a_currency_sign(self):
+        """Unicode's currency signs are not all in the first 65,536 code points (U+1ECB0 is one). The scan that builds the list covers the two planes that hold symbols,
+        and this test scans them all, so that a later Unicode version that puts one elsewhere is noticed."""
+        import unicodedata
+        beyond = [hex(code) for code in range(0x20000, 0x110000) if unicodedata.category(chr(code)) == "Sc"]
+        self.assertEqual(beyond, [], "a currency sign outside the planes the list is built from")
+        self.assertEqual(unicodedata.category("\U0001ecb0"), "Sc")
+        for text, part in (("The invoice asks for -\U0001ecb0 18,400.00.", "the currency \U0001ecb0"), ("The invoice asks for \U0001ecb0 18,400.00.", "the currency \U0001ecb0"),
+                           ("The invoice asks for -\U0001ecb0 18,400.00.", "-18,400.00")):
+            with self.subTest(text):
+                found = self.found(self.changed(self.v1, "claim", 0, text=self.v1["statements"][0]["text"].replace("EUR 18,400.00", text.split("for ")[1].rstrip("."), 1)), "RESP002")
+                self.assertTrue(any(part in f.message for f in found), [f.message for f in found])
+
+    def test_a_colon_after_a_word_is_a_delimiter_and_a_sign_behind_it_is_a_sign_but_a_colon_after_a_digit_is_a_time(self):
+        self.assertEqual(figures("Total:-18,400.00"), {"-18,400.00"})
+        self.assertEqual(figures("Total:-EUR 18,400.00"), {"-18,400.00"})
+        self.assertEqual(figures("Total:18,400.00 at 13:45, 2:1 and 10:00-11:00"), {"18,400.00", "13:45", "2:1", "10:00-11:00"})
+        for text in ("Total:-EUR 18,400.00", "Total:-18,400.00"):
+            with self.subTest(text):
+                body = self.v1["statements"][0]["text"].replace("EUR 18,400.00", text, 1)
+                found = self.found(self.changed(self.v1, "claim", 0, text=body), "RESP002")
+                self.assertTrue(any("-18,400.00" in f.message for f in found), [f.message for f in found])
+        self.assertEqual(self.found(self.changed(self.v1, "claim", 0, text=self.v1["statements"][0]["text"].replace("EUR 18,400.00", "Total:EUR 18,400.00", 1)), "RESP002"), [])
+
+    def test_a_certainty_word_that_the_cited_items_state_only_negated_does_not_license_it(self):
+        """The packet says that its sources are "not independently verified". That is not a statement that anything is verified, however many words stand between."""
+        item = self.model.get("C04", "PKT-0417", "v1").data["supported_claims_references"][0]
+        self.assertIn("not independently verified", str(item))
+        for label in ("Verified", "Source (verified)", "Confirmed", "Verified source"):
+            with self.subTest(label):
+                found = self.found(self.changed(self.v1, "claim", 0, label=label), "RESP011")
+                self.assertEqual(len(found), 1, [f.message for f in found])
+        for label in ("Not independently verified", "PC-1 (not verified)", "unverified"):
+            with self.subTest(label):
+                self.assertEqual(self.found(self.changed(self.v1, "claim", 0, label=label), "RESP011"), [])
+        text = self.v1["statements"][0]["text"] + " This is verified."
+        self.assertEqual(len(self.found(self.changed(self.v1, "claim", 0, text=text), "RESP011")), 1, "in the text as in the label")
+
+    def test_a_word_that_turns_to_the_opposite_ends_the_reach_of_a_negation(self):
+        """"not executed but approved" says that the proposal is approved. The negation reaches "executed" and stops at "but"."""
+        proposal = "release payment on invoice INV-2026-0417 (proposal ACT-REL-0417 v2)."
+        for text in ("Proposed (not executed but approved): " + proposal, "Proposed (not approved but executed): " + proposal, "Proposed (not executed, however approved): " + proposal,
+                     "Proposed (not executed although approved): " + proposal, "Proposed (not executed or approved), but approved by the controller: " + proposal):
+            with self.subTest(text[:50]):
+                self.assertTrue(self.found(self.changed(self.v2, "proposal", text=text), "RESP005"))
+        self.assertEqual(self.found(self.changed(self.v2, "proposal", text="Proposed (not executed or approved), but waiting for the controller: " + proposal), "RESP005"), [])
+
+    def test_the_label_of_a_proposal_may_not_say_that_it_is_approved_or_executed(self):
+        for label in ("Approved", "Executed", "ACT-REL-0417 v2 (approved)", "Executed proposal"):
+            with self.subTest(label):
+                found = self.found(self.changed(self.v2, "proposal", label=label), "RESP005")
+                self.assertEqual(len(found), 1, [f.message for f in found])
+                self.assertIn("the label of this one says it is", found[0].message)
+        for label in ("Proposed (not approved)", "ACT-REL-0417 v2", "Not executed"):
+            with self.subTest(label):
+                self.assertEqual(self.found(self.changed(self.v2, "proposal", label=label), "RESP005"), [])
+
+    def test_a_label_that_denies_a_reinstatement_is_not_a_reinstatement(self):
+        for label in ("Not reinstated", "Never reinstated", "Nothing was reinstated", "Not restored"):
+            with self.subTest(label):
+                self.assertEqual(self.found(self.changed(self.v1, "recommendation", label=label), "RESP016"), [])
+        for label in ("Reinstated", "Restored", "Never withdrawn", "Not withdrawn", "Reinstated, but not executed"):
+            with self.subTest(label):
+                self.assertEqual(len(self.found(self.changed(self.v1, "recommendation", label=label), "RESP016")), 1)
+
     def test_a_dash_between_words_is_not_a_sign(self):
         self.assertEqual(figures("\u2212EUR 18,400.00"), {"-18,400.00"})
         self.assertEqual(figures("\u2212 EUR 18,400.00"), {"-18,400.00"})
