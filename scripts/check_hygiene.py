@@ -33,7 +33,10 @@ has no such list, so a maintainer who has one runs the scan locally before a rel
 says so, and looks for confidentiality-label wording and for the authority's name, which it knows as a digest (below).
 A list inside the folder is never published silently and never read as a file of the repository: a file with the list's name,
 at any path, and the file that the environment variable names when it lies inside the folder are a finding (HYG207) by their
-names alone, and their content is not scanned, not printed and not echoed by ``--pin``.
+names alone, and their content is not scanned, not printed and not echoed by ``--pin``. The path is found as it is written, after
+links (a junction, a symbolic link) are resolved, as a link to the same file, and even when the file is no longer in the folder: a
+copy that was committed once is still in the history under that path. A pattern that means something different on a line than on a
+whole text (one that anchors to the start or the end of the whole string, or looks ahead or behind) is tried line by line.
 
 Git commands run with replacement objects off (``GIT_NO_REPLACE_OBJECTS``), so a ``git replace`` cannot show the scan another
 commit in place of the one a push would publish. Commit messages, identities and refs are read as NUL-separated fields, so that
@@ -278,24 +281,56 @@ def load_private_terms(root: Path = REPO, environ: Optional[Mapping[str, str]] =
 _LIST_PATHS: Set[str] = set()
 
 
-def private_list_paths(root: Path = REPO, environ: Optional[Mapping[str, str]] = None) -> List[str]:
-    """The repository-relative paths of the private term lists that lie inside the folder under any name: the file the environment variable names, if it is one of the folder's.
+def private_list_paths(root: Path = REPO, environ: Optional[Mapping[str, str]] = None, names: Sequence[str] = ()) -> List[str]:
+    """The repository-relative paths where the private term list the environment variable names lies inside the folder, under any name.
 
     A list inside the folder is published with it, and a scan that read it would match each term against its own line and print the term.
-    So such a file is a finding (HYG207) at whatever path it has, and its content is never read, scanned or printed.
+    So such a file is a finding (HYG207) at whatever path it has, and its content is never read, scanned or printed. The path is found
+    as it is written (so that a folder that is a link to elsewhere, a junction or a symbolic link, does not hide it), after links are
+    resolved, and whether or not the file still exists: a list that was committed and later deleted from the folder is still in the
+    history under that path. Of the `names` of the files a scan reads, those that are the same file as the list are found too (a link to it).
     """
-    path = _env_list_file(os.environ if environ is None else environ)
-    if path is None:
+    environ = os.environ if environ is None else environ
+    value = environ.get(PRIVATE_TERMS_ENV, "").strip()
+    if not value or "\n" in value:
         return []
+    found: List[str] = []
     try:
-        return [path.resolve().relative_to(root.resolve()).as_posix()]
+        configured = Path(value)
+        spellings = {os.path.abspath(configured)}
+        try:
+            spellings.add(str(configured.resolve()))
+        except (OSError, RuntimeError):
+            pass
+        bases = {os.path.abspath(root)}
+        try:
+            bases.add(str(Path(root).resolve()))
+        except (OSError, RuntimeError):
+            pass
+        for spelling in spellings:
+            for base in bases:
+                try:
+                    relative = os.path.relpath(spelling, base)
+                except ValueError:   # another drive: it is not inside the folder
+                    continue
+                if relative != "." and not relative.startswith(".."):
+                    found.append(Path(relative).as_posix())
+        listing = _env_list_file(environ)
+        if listing is not None:
+            for name in names:
+                try:
+                    if os.path.samefile(Path(root) / name, listing):
+                        found.append(name)
+                except OSError:
+                    continue
     except (OSError, ValueError):
-        return []
+        return found
+    return list(dict.fromkeys(found))
 
 
-def use_list_paths(root: Path, environ: Optional[Mapping[str, str]] = None) -> None:
+def use_list_paths(root: Path, environ: Optional[Mapping[str, str]] = None, names: Sequence[str] = ()) -> None:
     _LIST_PATHS.clear()
-    _LIST_PATHS.update(path.lower() for path in private_list_paths(root, environ))
+    _LIST_PATHS.update(path.lower() for path in private_list_paths(root, environ, names))
 
 
 def is_list_path(rel: str) -> bool:
@@ -303,15 +338,26 @@ def is_list_path(rel: str) -> bool:
     return PurePosixPath(rel).name.lower() == PRIVATE_TERMS_FILE or rel.lower() in _LIST_PATHS
 
 
+#: What a pattern of the private term list holds that makes it mean something different on one line than on the whole text of a file: the start and the
+#: end of the string (\A, \Z), and looking ahead or behind, which can see a line ending. Such a pattern is looked for line by line, as it is applied.
+_LINE_SENSITIVE = re.compile(r"\\[AZz]|\(\?<?[=!]")
+_PER_LINE: Set["re.Pattern[str]"] = set()
+
+
 def use_private_terms(terms: Sequence[str]) -> List[int]:
     """Make HYG105 look for these patterns as well. Returns the 1-based numbers of those that are not regular expressions."""
     _PRIVATE.clear()
+    _PER_LINE.clear()
     invalid = []
     for number, term in enumerate(terms, 1):
         try:
-            _PRIVATE.append(re.compile(term, re.MULTILINE))
+            compiled = re.compile(term, re.MULTILINE)
         except re.error:
             invalid.append(number)
+            continue
+        _PRIVATE.append(compiled)
+        if _LINE_SENSITIVE.search(term):
+            _PER_LINE.add(compiled)
     return invalid
 
 
@@ -412,12 +458,22 @@ def apply_rule(rule: Rule, rel: str, line: str) -> Optional[str]:
 
 
 def _may_match(rule: Rule, text: str) -> bool:
-    """False only when the rule cannot match anywhere in the text, so that most files are not read line by line for every rule."""
+    """False only when the rule cannot match anywhere in the text, so that most files are not read line by line for every rule.
+
+    A pattern of the private term list is tried on the whole text, except one that means something different on a line than on a whole text
+    (see `_LINE_SENSITIVE`): that one is tried line by line, as it is applied, so that the shortcut never hides a line it would have matched.
+    """
     if rule.needle and rule.needle not in text:
         return False
     if _COMPILED[rule.code].search(text):
         return True
-    return rule.code == "HYG105" and (any(pattern.search(text) for pattern in _PRIVATE) or bool(name_words(text)))
+    if rule.code != "HYG105":
+        return False
+    if any(pattern.search(text) for pattern in _PRIVATE if pattern not in _PER_LINE):
+        return True
+    if _PER_LINE and any(pattern.search(line.rstrip("\r")) for line in text.split("\n") for pattern in _PER_LINE):
+        return True
+    return bool(name_words(text))
 
 
 def _git_env() -> Dict[str, str]:
@@ -532,8 +588,8 @@ def scan(root: Path = REPO, files: Optional[Sequence[str]] = None, private_terms
     """
     terms = load_private_terms(root) if private_terms is None else list(private_terms)
     invalid = use_private_terms(terms)
-    use_list_paths(root)
     names = list(files) if files is not None else candidate_files(root)
+    use_list_paths(root, names=names)
     findings = check_names(names)
     findings += [Finding("HYG206", PRIVATE_TERMS_FILE, 0, "private term number %d is not a valid regular expression, so it was not used" % number) for number in invalid]
     for rel in names:

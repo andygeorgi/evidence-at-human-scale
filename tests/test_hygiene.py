@@ -293,6 +293,24 @@ class Detection(unittest.TestCase):
             with self.subTest(word_start):
                 self.assertEqual(codes_for_text(word_start + lead + claim), ["HYG108"], "the tail of %snot is not a denial" % word_start)
 
+    def test_a_private_pattern_that_means_something_else_on_a_line_than_on_a_whole_file_is_applied_to_every_line(self):
+        """\\A and \\Z mean the start and the end of the text, and a look-around can see a line ending. A pattern written for lines was tried on the whole text first,
+        and a file that did not match as a whole was skipped, whichever line would have matched."""
+        text = b"A first line.\nZebracorp\nA last line.\n"
+        for term in (r"\AZebracorp", r"\AZebracorp\Z", r"(?<![^\n])Zebracorp(?![^\n])", r"(?<!\S)Zebracorp$"):
+            with self.subTest(term):
+                self.assertEqual(codes_for({"docs/page.md": text}, terms=[term]), ["HYG105"])
+                self.assertEqual(codes_for({"docs/page.md": text.replace(b"\n", b"\r\n")}, terms=[term]), ["HYG105"], "with Windows line endings")
+        for term in (r"\AZebracorp\Z", r"(?<![^\n])Zebracorp(?![^\n])"):
+            with self.subTest("no match for " + term):
+                self.assertEqual(codes_for({"docs/page.md": b"A first line.\nx Zebracorp y\n"}, terms=[term]), [], "the pattern still means the whole line")
+
+    def test_a_private_pattern_with_no_line_meaning_is_still_tried_on_the_whole_text_once(self):
+        with mock.patch.object(hyg, "_PER_LINE", set()):
+            self.assertEqual(hyg.use_private_terms([r"Zebracorp", r"\AQuartz"]), [])
+            self.assertEqual(len(hyg._PER_LINE), 1, "only the pattern with \\A is tried line by line")
+        hyg.use_private_terms([])
+
     def test_the_text_before_a_match_starts_at_a_whole_word(self):
         self.assertEqual(hyg._before("knot the x", 9, 8), " the ")      # a cut inside "knot" would leave "not the "
         self.assertEqual(hyg._before("a not the x", 10, 8), "not the ")
@@ -449,6 +467,71 @@ class PrivateTerms(unittest.TestCase):
         asked = {name for call in reader.call_args_list for name in call.args[1]}
         self.assertNotIn(blob, asked)
         self.assertEqual([(f.code, f.path.split(" @ ")[0], f.excerpt) for f in history], [("HYG207", "notes/terms.txt", "")])
+
+    def test_a_list_the_environment_names_that_was_deleted_from_the_folder_is_still_found_in_the_history(self):
+        """The list is in the history under that path whether or not the file is still in the folder, so it is recognised by the path and not by being there."""
+        try:
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+        self.addCleanup(hyg._LIST_PATHS.clear)
+        root = History.repository(self, [("add terms", {"notes/terms.txt": "ListOnly" + "Content\n"}, NOREPLY), ("add a page", {"docs/page.md": "A clean page\n"}, NOREPLY)])
+        blob = git_out(root, "rev-parse", "HEAD:notes/terms.txt")
+        configured = str(root / "notes" / "terms.txt")
+        (root / "notes" / "terms.txt").unlink()
+        self.assertEqual(hyg.private_list_paths(root, {hyg.PRIVATE_TERMS_ENV: configured}), ["notes/terms.txt"])
+        with mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: configured}), mock.patch.object(hyg, "read_blobs", wraps=hyg.read_blobs) as reader:
+            history, _, _ = hyg.scan_history(root)
+        asked = {name for call in reader.call_args_list for name in call.args[1]}
+        self.assertNotIn(blob, asked, "the blob of a list that is no longer in the folder is not read either")
+        self.assertEqual([(f.code, f.path.split(" @ ")[0], f.excerpt) for f in history], [("HYG207", "notes/terms.txt", "")])
+
+    @staticmethod
+    def link_to_directory(target, link):
+        """A symbolic link (or, on Windows without the right to make one, a junction) to a directory; False when neither can be made."""
+        try:
+            os.symlink(target, link, target_is_directory=True)
+            return True
+        except (OSError, NotImplementedError):
+            pass
+        if os.name == "nt":
+            done = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)], capture_output=True)
+            return done.returncode == 0
+        return False
+
+    def test_a_list_is_found_when_the_folder_or_the_path_goes_through_a_link(self):
+        """The path of the list is read as it is written and after links are resolved: a folder that is a link to elsewhere, or a path through a link, does not hide it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            real, away = Path(tmp) / "real", Path(tmp) / "away"
+            (real / "notes").mkdir(parents=True)
+            away.mkdir()
+            (real / "notes" / "terms.txt").write_text("Zebracorp\n", encoding="utf-8")
+            if not (self.link_to_directory(real, Path(tmp) / "folder-link") and self.link_to_directory(real / "notes", away / "notes-link")):
+                self.skipTest("this system cannot make a link to a directory")
+            inside = {hyg.PRIVATE_TERMS_ENV: str(real / "notes" / "terms.txt")}
+            self.assertEqual(hyg.private_list_paths(Path(tmp) / "folder-link", inside), ["notes/terms.txt"], "the folder is the link, and the list is named by its real path")
+            through = {hyg.PRIVATE_TERMS_ENV: str(away / "notes-link" / "terms.txt")}
+            self.assertEqual(hyg.private_list_paths(real, through), ["notes/terms.txt"], "the list is named through a link that leads into the folder")
+            self.assertEqual(hyg.private_list_paths(Path(tmp) / "away", {hyg.PRIVATE_TERMS_ENV: str(real / "notes" / "terms.txt")}), [], "outside the folder is outside")
+
+    def test_a_file_of_the_folder_that_is_the_list_itself_is_found_under_its_own_name(self):
+        """A hard link or a copy by link is the same file as the list: it would be published and scanned against itself."""
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as elsewhere:
+            listing = Path(elsewhere) / "terms.txt"
+            listing.write_text("Zebracorp\n", encoding="utf-8")
+            (Path(tmp) / "docs").mkdir()
+            try:
+                os.link(listing, Path(tmp) / "docs" / "copy.txt")
+            except (OSError, NotImplementedError):
+                self.skipTest("this system cannot make a hard link")
+            (Path(tmp) / "docs" / "page.md").write_text("A page.\n", encoding="utf-8")
+            environ = {hyg.PRIVATE_TERMS_ENV: str(listing)}
+            self.assertEqual(hyg.private_list_paths(Path(tmp), environ), [])
+            self.assertEqual(hyg.private_list_paths(Path(tmp), environ, names=["docs/copy.txt", "docs/page.md"]), ["docs/copy.txt"])
+            self.addCleanup(hyg._LIST_PATHS.clear)
+            with mock.patch.dict(os.environ, environ):
+                findings, _, _ = hyg.scan(Path(tmp))
+        self.assertEqual([(f.code, f.path, f.excerpt) for f in findings], [("HYG207", "docs/copy.txt", "")])
 
     def test_a_scan_without_a_list_says_so(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -726,13 +809,16 @@ class Speed(unittest.TestCase):
         codes_for_text(text, name="figures/x.svg")
         self.assertLess(time.perf_counter() - start, 5)
 
-    def test_a_line_with_thousands_of_claims_is_read_in_one_pass(self):
-        """Each claim of finality is judged with the few words before it, not with the whole line before it."""
+    def test_a_line_with_thousands_of_denied_claims_is_read_in_one_pass_and_the_one_that_is_not_denied_is_found(self):
+        """Each claim of finality is judged with the few words before it, not with the whole line before it. The claims are denied, so each of them has to be judged
+        before the last one is reached: a line of claims that were not denied would stop at the first."""
         import time
-        line = ("the %s publication. " % OFFICIAL) * 20000 + ("not " * 20000) + "the %s version\n" % FINAL
+        line = ("not the %s publication. " % OFFICIAL) * 20000 + "the %s version\n" % FINAL
         start = time.perf_counter()
-        found = codes_for_text(line)
-        self.assertEqual(found, ["HYG108"])
+        with mock.patch.object(hyg, "_before", wraps=hyg._before) as before:
+            findings = hyg.scan_bytes("docs/page.md", line.encode("utf-8"))
+        self.assertEqual([(f.code, f.excerpt) for f in findings], [("HYG108", "%s version" % FINAL)])
+        self.assertGreater(before.call_count, 20000, "every denied claim was judged")
         self.assertLess(time.perf_counter() - start, 5)
 
 
