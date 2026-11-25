@@ -597,21 +597,75 @@ class PrivateTerms(unittest.TestCase):
                     self.assertEqual([(f.code, f.path.split(" @ ")[0], f.excerpt) for f in history], [("HYG207", "docs/copy.txt", "")])
                     self.assertNotIn("ListOnly", "\n".join(f.format() for f in history))
 
+    def test_a_copy_committed_with_windows_line_endings_is_the_list_too(self):
+        """The list on disk has LF line endings and the copy was committed with CRLF (an editor, or a checkout that converts them): it is the same list."""
+        try:
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+        self.addCleanup(hyg._LIST_PATHS.clear)
+        content = "ListOnly" + "Content\nAnother" + "Term\n"
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        git(root, "init", "-q")
+        git(root, "symbolic-ref", "HEAD", "refs/heads/main")
+        git(root, "config", "core.autocrlf", "false")
+        (root / "docs").mkdir()
+        (root / "docs" / "copy.txt").write_bytes(content.replace("\n", "\r\n").encode("utf-8"))
+        git(root, "add", "-A")
+        git(root, "commit", "-q", "-m", "add a copy")
+        blob = git_out(root, "rev-parse", "HEAD:docs/copy.txt")
+        with tempfile.TemporaryDirectory() as elsewhere:
+            listing = Path(elsewhere) / "terms.txt"
+            listing.write_bytes(content.encode("utf-8"))
+            with mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(listing)}), mock.patch.object(hyg, "read_blobs", wraps=hyg.read_blobs) as reader:
+                history, _, _ = hyg.scan_history(root)
+        asked = {name for call in reader.call_args_list for name in call.args[1]}
+        self.assertNotIn(blob, asked, "the version is not read")
+        self.assertEqual([(f.code, f.path.split(" @ ")[0], f.excerpt) for f in history], [("HYG207", "docs/copy.txt", "")])
+
     def test_a_list_with_no_term_in_it_is_not_a_copy_of_every_empty_file(self):
         try:
             subprocess.run(["git", "--version"], capture_output=True, check=True)
         except (OSError, subprocess.CalledProcessError):
             self.skipTest("git is not available")
         self.addCleanup(hyg._LIST_PATHS.clear)
-        root = History.repository(self, [("add empty files", {"docs/empty.txt": "", "docs/blank.txt": "\n\n"}, NOREPLY)])
+        root = History.repository(self, [("add empty files", {"docs/empty.txt": "", "docs/blank.txt": "\n\n", "docs/nbsp.txt": "\u00a0\n", "docs/comment.txt": "# a comment, and no term\n"}, NOREPLY)])
         with tempfile.TemporaryDirectory() as elsewhere:
-            for content in (b"", b"\n  \n"):
+            # A line the loader reads as blank or as a comment is no term, so a list of them protects nothing and is not a copy of a file that has the same bytes.
+            for content in (b"", b"\n  \n", b"\xc2\xa0\n", b"\xe2\x80\x83\n\xc2\xa0 \n", b"# a comment, and no term\n", b"\n   # another\n\n"):
                 listing = Path(elsewhere) / "terms.txt"
                 listing.write_bytes(content)
                 with self.subTest(repr(content)), mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(listing)}):
+                    self.assertEqual(hyg.load_private_terms(root), [])
                     self.assertEqual(hyg.private_list_blobs(root), set())
                     history, _, _ = hyg.scan_history(root)
                     self.assertEqual([f for f in history if f.code == "HYG207"], [])
+            listing.write_bytes(b"\xc2\xa0\r\nZebracorp\r\n")
+            with self.subTest("a no-break space beside a term"), mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(listing)}):
+                self.assertEqual(len(hyg.private_list_blobs(root)), 2, "a list with a term in it has a blob, as it is and with LF line endings")
+
+    def test_a_version_with_the_content_of_the_list_is_still_judged_by_the_rules_about_its_path(self):
+        """The content of such a version is never read, but its path is public: a path that a file-name rule finds is found, besides HYG207."""
+        try:
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+        self.addCleanup(hyg._LIST_PATHS.clear)
+        content = "ListOnly" + "Content\n"
+        flagged = "docs/tenant." + "internal.txt"
+        root = History.repository(self, [("add a copy", {flagged: content, "docs/copy.txt": content}, NOREPLY), ("remove it", {flagged: None, "docs/copy.txt": None, "docs/page.md": "A clean page\n"}, NOREPLY)])
+        blob = git_out(root, "rev-parse", "HEAD~1:docs/copy.txt")
+        with tempfile.TemporaryDirectory() as elsewhere:
+            listing = Path(elsewhere) / "terms.txt"
+            listing.write_bytes(content.replace("\n", "\r\n").encode("utf-8"))
+            with mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(listing)}), mock.patch.object(hyg, "read_blobs", wraps=hyg.read_blobs) as reader:
+                history, _, _ = hyg.scan_history(root)
+        asked = {name for call in reader.call_args_list for name in call.args[1]}
+        self.assertNotIn(blob, asked, "the version is not read")
+        self.assertEqual(sorted((f.code, f.path.split(" @ ")[0]) for f in history), sorted([("HYG207", "docs/copy.txt"), ("HYG207", flagged), ("HYG101", flagged)]))
+        self.assertNotIn("ListOnly", "\n".join(f.format() for f in history))
 
     def test_the_pin_helpers_refuse_a_file_that_is_the_same_file_as_the_list(self):
         """--pin and --pin-quoted print the line they are asked for. A hard link to the list is the list: nothing of it is printed."""
@@ -631,6 +685,28 @@ class PrivateTerms(unittest.TestCase):
                             helper(Path(tmp), "docs/copy.txt:1")
                         self.assertIn("private term list", str(refused.exception))
                         self.assertNotIn(PRIVATE_TERM, str(refused.exception))
+
+    def test_a_hard_link_to_the_list_in_the_folder_is_the_list_too(self):
+        """The list that sits in the folder under its own name is a list as much as the one the environment names, and a link to it under another name would be published."""
+        self.addCleanup(hyg._LIST_PATHS.clear)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / hyg.PRIVATE_TERMS_FILE).write_text("%s\n" % PRIVATE_TERM, encoding="utf-8")
+            try:
+                os.link(root / hyg.PRIVATE_TERMS_FILE, root / "docs" / "copy.txt")
+            except (OSError, NotImplementedError):
+                self.skipTest("this system cannot make a hard link")
+            (root / "docs" / "page.md").write_text("A page.\n", encoding="utf-8")
+            self.assertEqual(hyg.private_list_paths(root, {}, names=["docs/copy.txt", "docs/page.md"]), ["docs/copy.txt"])
+            findings, _, _ = hyg.scan(root, files=["docs/copy.txt", "docs/page.md"], private_terms=[PRIVATE_TERM])
+            self.assertEqual([(f.code, f.path, f.excerpt) for f in findings], [("HYG207", "docs/copy.txt", "")])
+            for helper in (hyg.pin_entry, hyg.pin_quoted):
+                with self.subTest(helper.__name__):
+                    with self.assertRaises(ValueError) as refused:
+                        helper(root, "docs/copy.txt:1")
+                    self.assertIn("private term list", str(refused.exception))
+                    self.assertNotIn(PRIVATE_TERM, str(refused.exception))
 
     def test_a_scan_without_a_list_says_so(self):
         with tempfile.TemporaryDirectory() as tmp:

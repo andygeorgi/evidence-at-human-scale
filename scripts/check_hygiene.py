@@ -290,39 +290,40 @@ def private_list_paths(root: Path = REPO, environ: Optional[Mapping[str, str]] =
     So such a file is a finding (HYG207) at whatever path it has, and its content is never read, scanned or printed. The path is found
     as it is written (so that a folder that is a link to elsewhere, a junction or a symbolic link, does not hide it), after links are
     resolved, and whether or not the file still exists: a list that was committed and later deleted from the folder is still in the
-    history under that path. Of the `names` of the files a scan reads, those that are the same file as the list are found too (a link to it).
+    history under that path. Of the `names` of the files a scan reads, those that are the same file as a list (the one the variable names, or the one in
+    the folder) are found too: a hard link to it.
     """
     environ = os.environ if environ is None else environ
     value = environ.get(PRIVATE_TERMS_ENV, "").strip()
-    if not value or "\n" in value:
-        return []
     found: List[str] = []
     try:
-        configured = Path(value)
-        spellings = {os.path.abspath(configured)}
-        try:
-            spellings.add(str(configured.resolve()))
-        except (OSError, RuntimeError):
-            pass
-        bases = {os.path.abspath(root)}
-        try:
-            bases.add(str(Path(root).resolve()))
-        except (OSError, RuntimeError):
-            pass
-        for spelling in spellings:
-            for base in bases:
-                try:
-                    relative = os.path.relpath(spelling, base)
-                except ValueError:   # another drive: it is not inside the folder
-                    continue
-                if relative != "." and Path(relative).parts[0] != "..":   # a name that merely begins with two points ("..notes") is inside the folder
-                    found.append(Path(relative).as_posix())
-        listing = _env_list_file(environ)
-        if listing is not None:
-            for name in names:
+        if value and "\n" not in value:
+            configured = Path(value)
+            spellings = {os.path.abspath(configured)}
+            try:
+                spellings.add(str(configured.resolve()))
+            except (OSError, RuntimeError):
+                pass
+            bases = {os.path.abspath(root)}
+            try:
+                bases.add(str(Path(root).resolve()))
+            except (OSError, RuntimeError):
+                pass
+            for spelling in spellings:
+                for base in bases:
+                    try:
+                        relative = os.path.relpath(spelling, base)
+                    except ValueError:   # another drive: it is not inside the folder
+                        continue
+                    if relative != "." and Path(relative).parts[0] != "..":   # a name that merely begins with two points ("..notes") is inside the folder
+                        found.append(Path(relative).as_posix())
+        listings = [path for path in (_env_list_file(environ), Path(root) / PRIVATE_TERMS_FILE) if path is not None and path.is_file()]
+        for name in names:
+            for listing in listings:
                 try:
                     if os.path.samefile(Path(root) / name, listing):
                         found.append(name)
+                        break
                 except OSError:
                     continue
     except (OSError, ValueError):
@@ -336,11 +337,12 @@ def use_list_paths(root: Path, environ: Optional[Mapping[str, str]] = None, name
 
 
 def private_list_blobs(root: Path, environ: Optional[Mapping[str, str]] = None) -> Set[str]:
-    """The Git blob ids that a copy of a private term list has: the list the environment names and the list in the folder, as they are and with LF line endings.
+    """The Git blob ids that a copy of a private term list has: the list the environment names and the list in the folder, as they are, with LF line endings and with CRLF.
 
     In the history a file has no identity but its content, so a version whose content is the list's is the list, whatever its path (a hard link that was
-    committed, a copy). Such a version is a finding by its content (HYG207) and is never read. A list with no term in it gives nothing: it would match
-    every empty file.
+    committed, a copy, a copy that a checkout changed from one line ending to the other). Such a version is a finding by its content (HYG207) and is never read.
+    A list with no term in it (empty, blank in any sense of the word, or nothing but comments) gives nothing: it would match every file of the same kind, and it
+    protects nothing.
     """
     environ = os.environ if environ is None else environ
     listings = [path for path in (_env_list_file(environ), root / PRIVATE_TERMS_FILE) if path is not None and path.is_file()]
@@ -350,9 +352,10 @@ def private_list_blobs(root: Path, environ: Optional[Mapping[str, str]] = None) 
             data = listing.read_bytes()
         except OSError:
             continue
-        if not data.strip():
+        if not _term_lines(data.decode("utf-8", errors="replace")):
             continue
-        for variant in {data, data.replace(b"\r\n", b"\n")}:
+        unix = data.replace(b"\r\n", b"\n")
+        for variant in {data, unix, unix.replace(b"\n", b"\r\n")}:
             try:
                 ids.add(_git(root, "hash-object", "--stdin", data=variant).decode().strip())
             except HistoryError:
@@ -569,6 +572,17 @@ def read_text(path: Path) -> Optional[str]:
     return decode_text(path.read_bytes())
 
 
+def name_rule_findings(rel: str) -> List[Finding]:
+    """The findings of the rules that also look at a path (a private link or a local path in a file name), whatever the file holds."""
+    findings: List[Finding] = []
+    for rule in RULES:
+        if rule.on_names:
+            hit = apply_rule(rule, rel, rel)
+            if hit:
+                findings.append(Finding(rule.code, rel, 0, "%s in the file name. %s" % (rule.label, rule.advice), hit))
+    return findings
+
+
 def scan_bytes(rel: str, data: bytes) -> List[Finding]:
     """The findings in one file, given its repository-relative path and its content."""
     findings: List[Finding] = []
@@ -577,11 +591,7 @@ def scan_bytes(rel: str, data: bytes) -> List[Finding]:
         return findings
     if len(data) > MAX_BYTES and rel not in ALLOWED_FILES:
         findings.append(Finding("HYG202", rel, 0, "larger than 1 MiB (%d bytes); the repository is for text and small figures" % len(data)))
-    for rule in RULES:
-        if rule.on_names:
-            hit = apply_rule(rule, rel, rel)
-            if hit:
-                findings.append(Finding(rule.code, rel, 0, "%s in the file name. %s" % (rule.label, rule.advice), hit))
+    findings += name_rule_findings(rel)
     suffix = PurePosixPath(rel).suffix.lower()
     if suffix in BLOCKED_SUFFIXES and rel not in ALLOWED_FILES:
         return findings
@@ -801,6 +811,7 @@ def scan_history(root: Path = REPO, private_terms: Optional[Sequence[str]] = Non
         if blob in list_blobs:
             # A version whose content is the list's own is the list, under another name (a copy, or a hard link that was committed): it is not read either.
             findings.append(Finding("HYG207", "%s @ %s" % (path, commit[:7]), 0, "this file version has the content of the private term list, and it names the private origin of the material. It is not read or printed"))
+            findings += _relabel(name_rule_findings(path), commit)   # the path is public, and the rules about a path still apply to it
             continue
         held_at.setdefault(blob, []).append((path, commit))
     unreadable = 0
