@@ -4,7 +4,7 @@
 
 The evaluation programme as four tables. **No row has a result.** A test, fixture or baseline is NOT ASSESSED, because running it needs things that do not exist yet. A parameter is UNSET, because nobody has given it a value. A count in this catalogue (70 fixtures, 47 parameters) counts things that are defined, never things that passed.
 
-The JSON files are the source. The CSV files and the test sections of the [oracles page](../oracles.md) are generated from them by [`scripts/build_catalogue.py`](../../scripts/build_catalogue.py). Edit the JSON, run the script, and `--check` confirms that everything agrees.
+The JSON files are the source. The CSV files and the test sections of the [oracles page](../oracles.md) are generated from them.
 
 | Table | Rows | One row is | JSON | CSV |
 |---|---|---|---|---|

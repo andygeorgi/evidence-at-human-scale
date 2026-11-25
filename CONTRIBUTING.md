@@ -23,9 +23,8 @@ This repository is licensed under the [MIT License](LICENSE). Under GitHub's Ter
 
 1. **Do not turn NOT ASSESSED into a result.** A status changes only when the test was run and the command, input and output are recorded in the row.
 2. **Keep the evidence classes apart.** Real public records, the author's engagement records, synthetic illustration and "not available" are different things ([claims and limits](docs/claims-and-limits.md)).
-3. **Edit the source, not the output.** The example JSON is written by [`scripts/build_example_data.py`](scripts/build_example_data.py); the catalogue's CSV files and the test sections of the oracles page by [`scripts/build_catalogue.py`](scripts/build_catalogue.py) from the catalogue's JSON; the figure blocks in the Markdown, the README banner and the gallery by [`scripts/sync_figures.py`](scripts/sync_figures.py) from [`figures/figures.json`](figures/figures.json); the figure SVGs by [`figures/src/svg_figures.py`](figures/src/svg_figures.py). A check fails if a generated file is edited by hand.
-4. **Write plainly, in American spelling.** Names that already exist, such as "catalogue" and "programme", stay as they are.
-5. **Say what a figure or an example does not show.** Each example page ends with that.
+3. **Write plainly, in American spelling.** Names that already exist, such as "catalogue" and "programme", stay as they are.
+4. **Say what a figure or an example does not show.** Each example page ends with that.
 
 ## Run the checks
 
@@ -34,13 +33,25 @@ python -m pip install -r requirements.txt
 python scripts/check_all.py
 ```
 
-It needs Python 3.9 or later. Continuous integration runs it on Ubuntu and Windows, with Python 3.9 and 3.14 on each (Python 3.9 on Ubuntu 24.04, the newest Ubuntu image that still has a build of it); nothing in it is platform-specific, so macOS should work too. Each check can also run alone; [`scripts/README.md`](scripts/README.md) lists them. If you change a count, a code or a status, a check tells you which sentence in the documents to update.
+It needs Python 3.9 or later. Each check can also run alone; [`scripts/README.md`](scripts/README.md) lists them. If you change a count, a code or a status, a check tells you which sentence in the documents to update.
+
+## Change examples, the catalogue and figures
+
+Some files are written by a script, and a check fails if one is edited by hand. Change the source, rebuild and run the checks.
+
+| To change | Edit | Rebuild |
+|---|---|---|
+| An example: instances, registry, raw exports, stored evaluations, responses, cases | [`scripts/build_example_data.py`](scripts/build_example_data.py) | `python scripts/build_example_data.py` |
+| The evaluation catalogue, its CSV files and the test sections of the oracles page | The JSON files in [`evaluation/catalogue/`](evaluation/catalogue/README.md) | `python scripts/build_catalogue.py` |
+| A figure's drawing | [`figures/src/svg_figures.py`](figures/src/svg_figures.py) | `python figures/src/svg_figures.py` |
+| A figure's caption, alt text or description, and the figure blocks in the pages | [`figures/figures.json`](figures/figures.json) | `python scripts/sync_figures.py` |
+
+A change to what the schema accepts needs an entry in [`contracts/CHANGES.md`](contracts/CHANGES.md), as the [schemas guide](schemas/README.md) describes.
 
 ## Pull requests
 
 - Keep each one small and focused, and say which checks you ran.
-- Use the prefixes the history uses: `docs:`, `feat:`, `fix:`, `test:`, `chore:`.
 - Do not add Office files, PDFs, archives, images of text or other binaries; the hygiene check rejects them.
 - If you used an AI assistant, say so in the pull request, as this repository does in its [README](README.md#ai-assistance).
 
-[Security policy](SECURITY.md) · [Changelog](CHANGELOG.md)
+[Security policy](SECURITY.md) · [Changelog](CHANGELOG.md) · [Maintainer notes](docs/maintainers.md)
