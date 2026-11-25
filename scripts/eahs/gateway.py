@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from fractions import Fraction
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from .model import Instance, Model, claims_of, payload_of, resolve_pointer, version_number as _vn
 
@@ -245,7 +245,10 @@ def freshness_max_age(model: Model, record: dict) -> Optional[float]:
     policy = _object(_object(model.registry.policies.get(policy_id)).get(version))
     if not policy:
         raise ValueError("the freshness policy %s %s that the record names is not in the registry" % (policy_id, version))
-    if policy.get("type") != "freshness":
+    kind = policy.get("type")
+    if not isinstance(kind, str) or not kind.strip():
+        raise ValueError("the policy %s %s states no kind (its 'type' is missing or is not text), so it cannot be told whether it limits the age of a record" % (policy_id, version))
+    if kind != "freshness":
         return None
     value = policy.get("max_age_hours")
     try:
@@ -313,10 +316,29 @@ def _issued(grant: Instance) -> Optional[datetime]:
     return parse_time(_object(grant.data.get("identity_principals")).get("issuance_time"))
 
 
-def grant_in_force(model: Model, grant_id: str, at: datetime) -> Optional[Instance]:
-    """The latest version of a grant that had been issued by `at`. A version with no known issuance time is not in force."""
-    issued = [g for g in model.versions("C06", grant_id) if _issued(g) is not None and _issued(g) <= at]
+def grant_in_force(model: Model, grant_id: str, at: datetime, current: Optional[Instance] = None) -> Optional[Instance]:
+    """The latest version of a grant that had been issued by `at`. A version with no known issuance time is not in force.
+
+    `current` is the grant that is being evaluated: where a what-if has changed it (an override of its issuance time), its own version
+    is read as it stands, and not as it is stored.
+    """
+    versions = [current if current is not None and g.version == current.version else g for g in model.versions("C06", grant_id)]
+    issued = [g for g in versions if _issued(g) is not None and _issued(g) <= at]
     return issued[-1] if issued else None
+
+
+def _window(limit: dict) -> Optional[Tuple[datetime, datetime]]:
+    """The accounting window of a limit as (start, end), or None when it has no start or no end that can be read, or ends at or before its start."""
+    window = _object(limit.get("accounting_window"))
+    start, end = parse_time(window.get("start")), parse_time(window.get("end"))
+    return None if start is None or end is None or end <= start else (start, end)
+
+
+def _equal(held, wanted) -> bool:
+    """Whether a value read from the target or from a record is the value a rule wants. true and false are not the numbers 1 and 0."""
+    if isinstance(held, bool) or isinstance(wanted, bool):
+        return held is wanted
+    return held == wanted
 
 
 def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datetime, ledger: List[LedgerEntry]) -> Decision:
@@ -351,7 +373,7 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         reasons.append(Reason("GRANT_TIME_UNKNOWN", "the grant's issuance time is missing or unknown, so it cannot be shown to have been issued by the attempt"))
     elif issued > at:
         reasons.append(Reason("GRANT_NOT_YET_VALID", "grant issued after the attempt"))
-    newest = grant_in_force(model, grant.id, at)
+    newest = grant_in_force(model, grant.id, at, current=grant)
     if newest is not None and newest.version != grant.version:
         reasons.append(Reason("GRANT_SUPERSEDED", "grant version %s is in force; %s is no longer usable" % (newest.version, grant.version)))
     for other in model.versions("C06", grant.id):
@@ -440,7 +462,7 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
                     rec = _record(model, ref)
                     if rec and rec.id.startswith(rule["record_prefix"]) and usable_at(rec, at):
                         try:
-                            ok = resolve_pointer(payload_of(rec.data), rule["pointer"]) == rule["equals"]
+                            ok = _equal(resolve_pointer(payload_of(rec.data), rule["pointer"]), rule["equals"])
                         except (KeyError, IndexError, TypeError, ValueError):
                             ok = False
             elif rule.get("type") == "evidence_fresh":
@@ -450,7 +472,9 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
                         age = age_hours(rec.data, at)
                         ok = age is not None and age <= float(rule["max_age_hours"])
             elif rule.get("type") == "target_state_equals":
-                ok = _target_state(model, rule["entity_id"], at).get(rule["key"]) == rule["equals"]
+                # A state that does not hold the key says nothing about it: a missing key is not a value (null) that a rule could ask for.
+                state = _target_state(model, rule["entity_id"], at)
+                ok = rule["key"] in state and _equal(state[rule["key"]], rule["equals"])
         except (KeyError, TypeError, ValueError, OverflowError, AttributeError):
             ok = False
         if not ok:
@@ -463,10 +487,12 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         per_action = []
     for limit in map(_object, per_action):
         units, cap = limit.get("units"), limit.get("quantity")
+        if _window(limit) is None:
+            reasons.append(Reason("GRANT_TIME_UNKNOWN", "the accounting window of the %s per-action limit has a start or an end that is missing, unknown or out of order, so the limit cannot be shown to apply as it was granted" % units))
         qty = action_quantity(p, units) if isinstance(units, str) else None
         if qty is None or not _is_quantity(cap):
             reasons.append(Reason("PER_ACTION_LIMIT", "the per-action limit in %s cannot be checked: the proposal states no readable amount in that unit (one number that is finite and not negative), or the limit states no readable unit or quantity" % units))
-        elif qty > cap:
+        elif _over(Fraction(0), qty, cap):
             reasons.append(Reason("PER_ACTION_LIMIT", "%s %s exceeds the per-action limit of %s %s" % (_fmt(qty), units, _fmt(cap), units)))
     reserve = None
     if not isinstance(ledger, list):
@@ -478,11 +504,11 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
     for limit in map(_object, cumulative):
         units, cap, scope_name = limit.get("units"), limit.get("quantity"), limit.get("accounting_scope")
         qty = action_quantity(p, units) if isinstance(units, str) else None
-        window = _object(limit.get("accounting_window"))
-        window_start, window_end = parse_time(window.get("start")), parse_time(window.get("end"))
-        if window_start is None or window_end is None or window_end <= window_start:
+        window = _window(limit)
+        if window is None:
             reasons.append(Reason("GRANT_TIME_UNKNOWN", "the accounting window of the %s limit has a start or an end that is missing, unknown or out of order, so the capacity already used in it cannot be established" % units))
             continue
+        window_start, window_end = window
         if qty is None or not _is_quantity(cap) or not isinstance(scope_name, str):
             reasons.append(Reason("CUMULATIVE_LIMIT", "the cumulative limit in %s cannot be checked: the proposal states no readable amount in that unit (one number that is finite and not negative), or the limit states no readable unit, quantity or scope" % units))
             continue
@@ -541,7 +567,9 @@ def receipt_known_at(receipt: dict, first_version: bool = False) -> Optional[dat
 def attempt_receipt_ids(model: Model, proposal: Instance, grant: Instance, at: datetime) -> List[str]:
     """The receipts that record this very attempt: they cite this proposal and this grant, and the attempt was submitted at `at`.
 
-    Replaying an attempt must not charge it against itself, so a replay leaves these out of the ledger and nothing else.
+    Replaying an attempt must not charge it against itself, so a replay leaves these out of the ledger and nothing else. Two receipts
+    that record attempts of the same proposal under the same grant at the same instant leave the replay unable to tell which of them is
+    its own, and the other one must count: it raises ValueError (a replay that guessed would free capacity another attempt holds).
     """
     found: List[str] = []
     for rec in model.of("C07"):
@@ -551,6 +579,9 @@ def attempt_receipt_ids(model: Model, proposal: Instance, grant: Instance, at: d
         if (p_ref.get("id"), p_ref.get("version")) == (proposal.id, proposal.version) and (g_ref.get("id"), g_ref.get("version")) == (grant.id, grant.version) \
                 and submitted is not None and submitted == at and rec.id not in found:
             found.append(rec.id)
+    if len(found) > 1:
+        raise ValueError("%s receipts (%s) record an attempt of %s %s under %s %s at the same moment, so a replay cannot tell which one is its own and which one must count "
+                         "against the limit. Give each attempt its own time, or correct the receipts" % (len(found), ", ".join(found), proposal.id, proposal.version, grant.id, grant.version))
     return found
 
 
@@ -611,10 +642,16 @@ def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str
         held = _capacity_held(d, before=before)
         if held is None:
             continue
+        counted = set()
         for limit in map(_object, _list(_object(grant.data.get("limits_lifecycle")).get("cumulative_limits"))):
             scope = limit.get("accounting_scope")
             if not isinstance(scope, str) or not isinstance(limit.get("units"), str):
                 continue
+            # One entry for each attempt, scope and unit, however many windows the grant states for them: every window is applied to the entry
+            # when its limit is evaluated, and a second entry would count the same attempt twice in each of them.
+            if (scope, limit["units"]) in counted:
+                continue
+            counted.add((scope, limit["units"]))
             # An attempt whose amount cannot be read cannot be shown to have used less than everything: it is counted without limit.
             qty = action_quantity(proposal.data, limit["units"])
             entries.append(LedgerEntry(grant.id, scope, limit["units"], float("inf") if qty is None else qty, held, submitted, rec.id))

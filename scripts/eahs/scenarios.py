@@ -8,7 +8,7 @@ Nothing is executed; the overrides never touch the committed example files.
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import List
+from typing import List, Optional
 
 from .findings import Finding, InputProblem, describe_error, rel
 from .gateway import Decision, attempt_receipt_ids, evaluate_commit, ledger_from_receipts, parse_time, ts
@@ -117,15 +117,30 @@ def _entry_problem(index: int, entry) -> str:
     return ""
 
 
+SCENARIO_HINT = ("write each evaluation as an object with a proposal and a grant (each with an id and a version), a commit time 'at' and an 'expect' object; "
+                 "nothing in this file was evaluated")
+
+
+def rows_problem(data) -> Optional[InputProblem]:
+    """The first evaluation of a scenario file that cannot be run because of its shape, as the input problem to report, or None.
+
+    Nothing about the model is needed to see that, so a file whose rows are malformed is reported also when the model cannot be built.
+    """
+    evaluations = data.get("evaluations", []) if isinstance(data, dict) else []
+    for index, entry in enumerate(evaluations if isinstance(evaluations, list) else []):
+        reason = _entry_problem(index, entry)
+        if reason:
+            return InputProblem(reason, SCENARIO_HINT)
+    return None
+
+
 def check_scenario_file(model: Model, data: dict, path) -> List[Finding]:
     findings: List[Finding] = []
     file = rel(path)
     evaluations = data.get("evaluations", [])
-    for index, entry in enumerate(evaluations):
-        reason = _entry_problem(index, entry)
-        if reason:
-            raise InputProblem(reason, "write each evaluation as an object with a proposal and a grant (each with an id and a version), a commit time 'at' and an 'expect' object; "
-                                       "nothing in this file was evaluated")
+    problem = rows_problem(data)
+    if problem is not None:
+        raise problem
     for index, entry in enumerate(evaluations):
         label = entry.get("label", "evaluation %d" % (index + 1))
         try:

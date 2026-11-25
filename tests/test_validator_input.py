@@ -208,6 +208,16 @@ class TheScenarioFiles(Scratch, Actionable):
         self.assertIn("no 'evaluations' list", gateway.findings[0].message)
         self.assert_actionable(gateway, "gateway-scenarios.json")
 
+    def test_a_file_that_has_the_name_of_a_stage_file_but_is_something_else_is_told_how_to_free_the_name(self):
+        """The name belongs to the stage wherever the file lies, a raw/ folder included. The diagnostic says so and says what to do."""
+        self.fresh()
+        self.write("01-source-records/raw/gateway-scenarios.json", json.dumps({"rows": [1, 2]}))
+        gateway = self.run_stage("gateway")
+        raw = [f for f in gateway.findings if "/raw/" in f.file.replace("\\", "/")]
+        self.assertEqual((gateway.status, [f.code for f in raw]), (INPUT_ERROR, ["INP002"]))
+        self.assertIn("rename it", raw[0].hint)
+        self.assertIn("wherever it lies", raw[0].hint)
+
     def test_an_empty_object_is_an_input_error(self):
         gateway = self.gateway(content="{}")
         self.assertEqual((gateway.status, [f.code for f in gateway.findings]), (INPUT_ERROR, ["INP002"]))
@@ -480,6 +490,46 @@ class TheCaseFiles(Scratch, Actionable):
                     apply_ops({"a": {"b": 1}}, [{"op": "replace", "path": path, "value": 2}])
         self.assertEqual(apply_ops({"a": {"b": 1}}, [{"op": "replace", "path": "/a/b", "value": 2}]), {"a": {"b": 2}})
         self.assertEqual(apply_ops({"a/b": {"c~d": 1}}, [{"op": "replace", "path": "/a~1b/c~0d", "value": 2}]), {"a/b": {"c~d": 2}})
+
+    def test_a_position_in_a_list_is_read_by_its_digits_only_and_must_exist(self):
+        """int() would read ' 1', '+1', '1_0' and '-1' (the last item), and a huge position ended in an OverflowError. None of them is a position."""
+        from eahs.patch import apply_ops
+        document = {"a": [10, 20, 30]}
+        for kind in ("replace", "remove", "add"):
+            for token in ("00", "01", "-1", " 1", "+1", "1_0", "1.0", "0x1", "١"):
+                with self.subTest("%s %r" % (kind, token)):
+                    with self.assertRaises(ValueError) as refused:
+                        apply_ops(document, [{"op": kind, "path": "/a/" + token, "value": 1}])
+                    self.assertIn("not a position in a list", str(refused.exception))
+            for token in ("999", "10000000000000000000", "9" * 400):
+                with self.subTest("%s %s" % (kind, token[:12])):
+                    with self.assertRaises(IndexError):
+                        apply_ops(document, [{"op": kind, "path": "/a/" + token, "value": 1}])
+        for kind in ("replace", "remove"):
+            with self.subTest("%s at the end" % kind):
+                with self.assertRaises((ValueError, IndexError)):
+                    apply_ops(document, [{"op": kind, "path": "/a/-", "value": 1}])
+                with self.assertRaises(IndexError):
+                    apply_ops(document, [{"op": kind, "path": "/a/3", "value": 1}])
+
+    def test_an_add_may_name_the_end_of_a_list_and_nothing_beyond_it(self):
+        from eahs.patch import apply_ops
+        document = {"a": [10, 20, 30]}
+        self.assertEqual(apply_ops(document, [{"op": "add", "path": "/a/-", "value": 1}]), {"a": [10, 20, 30, 1]})
+        self.assertEqual(apply_ops(document, [{"op": "add", "path": "/a/3", "value": 1}]), {"a": [10, 20, 30, 1]})
+        self.assertEqual(apply_ops(document, [{"op": "add", "path": "/a/0", "value": 1}]), {"a": [1, 10, 20, 30]})
+        self.assertEqual(apply_ops(document, [{"op": "remove", "path": "/a/2"}]), {"a": [10, 20]})
+        with self.assertRaises(IndexError):
+            apply_ops(document, [{"op": "add", "path": "/a/4", "value": 1}])
+        self.assertEqual(document, {"a": [10, 20, 30]}, "the document that was patched is not changed")
+
+    def test_a_case_whose_position_is_not_a_position_is_a_finding_of_the_case_and_not_an_exception(self):
+        for label, token in (("a leading zero", "00"), ("a sign", "-1"), ("past the end", "999"), ("too large for any list", "10000000000000000000")):
+            with self.subTest(label):
+                cases = self.cases(lambda d: d["cases"][4]["mutations"][0]["ops"][0].update(path="/supported_claims_references/%s/supporting_references/0/version" % token))
+                self.assertEqual((cases.status, [f.code for f in cases.findings]), (FAIL, ["CASE003"]))
+                self.assertIn("could not be applied", cases.findings[0].message)
+                self.assertNotIn("Traceback", cases.findings[0].message)
 
 
 class TheResponseFiles(Scratch, Actionable):
@@ -759,6 +809,16 @@ class ARegistrySectionOfTheWrongShape(Scratch, Actionable):
             ("a decision whose permission to know is a number", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"].update(disclose_existence_allowed=1), "'disclose_existence_allowed' must be true or false"),
             ("a decision whose principal is a list", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"].update(principal=["person:ap-analyst-02"]), "'principal' must be text"),
             ("a decision whose permitted wording is a number", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"].update(permitted_disclosure=7), "'permitted_disclosure' must be text"),
+            ("a decision whose retrieval scope is a list", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"]["permitted_view"]["retrieval"].update(authorized_scope=[]), "'permitted_view.retrieval.authorized_scope' must be text"),
+            ("a decision whose retrieval unit is null", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"]["permitted_view"]["retrieval"].update(retrieval_unit_id=None), "'permitted_view.retrieval.retrieval_unit_id' must be text"),
+            ("a decision whose retrieval time is text", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"]["permitted_view"]["retrieval"].update(attempted_at="never"), "'permitted_view.retrieval.attempted_at' must be an object"),
+            ("a decision whose gap materiality is a number", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"]["permitted_view"]["gap"].update(materiality=3), "'permitted_view.gap.materiality' must be text"),
+            ("a decision whose gap reason is text", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"]["permitted_view"]["gap"].update(reason="none"), "'permitted_view.gap.reason' must be an object"),
+            ("a decision whose gap scope task is a list", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"]["permitted_view"]["gap"]["scope"].update(task=[]), "'permitted_view.gap.scope.task' must be text"),
+            ("a decision whose gap scope units is text", lambda d: d["permission_decisions"]["AUTHZ-READ-LIMIT-0417@v1"]["permitted_view"]["gap"]["scope"].update(units="none"), "'permitted_view.gap.scope.units' must be an object"),
+            ("a policy without a kind", lambda d: d["policies"]["POL-AP-PAY"]["v3"].pop("type"), "policy POL-AP-PAY v3 needs a 'type'"),
+            ("a policy whose kind is not text", lambda d: d["policies"]["POL-AP-PAY"]["v3"].update(type=["payment_policy"]), "policy POL-AP-PAY v3 needs a 'type'"),
+            ("a policy whose kind is blank", lambda d: d["policies"]["POL-FRESH-RECORDS"]["v1"].update(type="  "), "policy POL-FRESH-RECORDS v1 needs a 'type'"),
         )
         for label, edit, message in cases:
             with self.subTest(label):
@@ -898,6 +958,111 @@ class NothingEvaluable(Scratch):
         self.assertEqual([(f.code, f.stage) for f in gateway.findings], [("INP003", "gateway")])
         self.assertIn("registry.json", gateway.findings[0].file)
         self.assertTrue(gateway.findings[0].hint)
+
+    def empty_stage_files(self):
+        for path in list(self.root.rglob("gateway-scenarios.json")):
+            path.write_text(json.dumps({"evaluations": []}), encoding="utf-8")
+        self.edit_json("13-evaluation-cases/cases.json", lambda d: d.update(cases=[]))
+
+    def test_files_that_hold_nothing_to_replay_need_no_registry_to_say_so(self):
+        """Nothing is replayed, so nothing is read from the registry: the answer is NOT ASSESSED (exit 3), and not a missing registry (exit 2)."""
+        self.fresh()
+        (self.root / "registry.json").unlink()
+        self.empty_stage_files()
+        results = ve.run(self.root, only={"gateway", "cases"})
+        self.assertEqual((states(results)["gateway"], states(results)["cases"]), (NOT_ASSESSED, NOT_ASSESSED))
+        self.assertEqual([f.code for r in results for f in r.findings], [])
+        self.assertEqual(overall(results), NOT_ASSESSED)
+        done = cli("--examples", str(self.root), "--only", "gateway,cases")
+        self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
+        self.assertNotIn("Traceback", done.stderr)
+
+    def test_one_file_that_does_hold_something_to_replay_still_needs_the_registry(self):
+        self.fresh()
+        (self.root / "registry.json").unlink()
+        self.empty_stage_files()
+        self.write("08-blocked-action/gateway-scenarios.json", json.dumps(json.loads((support.EXAMPLES / "08-blocked-action" / "gateway-scenarios.json").read_text(encoding="utf-8"))))
+        gateway = self.run_stage("gateway")
+        self.assertEqual((gateway.status, [f.code for f in gateway.findings]), (INPUT_ERROR, ["INP003"]))
+        self.assertEqual(cli("--examples", str(self.root), "--only", "gateway").returncode, 2)
+
+    def test_a_file_that_cannot_be_read_as_a_list_of_evaluations_is_something_to_report_and_needs_the_registry_too(self):
+        """A file that lacks its list is not an empty file. It is reported, and the stage is not allowed to call itself not applicable."""
+        self.fresh()
+        (self.root / "registry.json").unlink()
+        self.empty_stage_files()
+        self.write("08-blocked-action/gateway-scenarios.json", "{}")
+        self.assertEqual(self.run_stage("gateway").status, INPUT_ERROR)
+
+
+class RowsAreReadForTheirShapeAlsoWhenTheStageCannotRun(Scratch, Actionable):
+    """The shape of a row does not depend on the model. A row that cannot be run is an input error also when the stage has no valid instance to
+    replay it against. [null] is damage, and it is not the same as an empty list."""
+
+    def only_stage_files(self, evaluations, cases):
+        self.fresh()
+        for path in list(self.root.rglob("*.json")):
+            name = path.name.lower()
+            if name == "gateway-scenarios.json":
+                path.write_text(json.dumps({"evaluations": evaluations}), encoding="utf-8")
+            elif name == "cases.json":
+                path.write_text(json.dumps({"cases": cases}), encoding="utf-8")
+            elif name != "registry.json":
+                path.unlink()
+
+    def test_a_row_that_is_not_an_object_is_reported_when_there_is_no_instance(self):
+        self.only_stage_files([None], [None])
+        results = ve.run(self.root, only={"gateway", "cases"})
+        by = {r.stage: r for r in results}
+        self.assertEqual(by["instances"].status, NOT_ASSESSED)
+        for name, part, file in (("gateway", "evaluation 1 is not an object", "gateway-scenarios.json"), ("cases", "case 1 is not an object", "cases.json")):
+            with self.subTest(name):
+                self.assertEqual(by[name].status, INPUT_ERROR)
+                self.assertEqual({f.code for f in by[name].findings}, {"INP002"})
+                self.assertTrue(all(part in f.message for f in by[name].findings))
+                self.assert_actionable(by[name], file)
+        self.assertEqual(overall(results), INPUT_ERROR)
+
+    def test_every_damaged_file_is_named_and_not_only_the_first(self):
+        self.only_stage_files([None], [None])
+        gateway = stage(ve.run(self.root, only={"gateway"}), "gateway")
+        self.assertEqual(len({f.file for f in gateway.findings}), 5, "one for each scenario file")
+
+    def test_the_command_exits_with_an_input_error_for_it(self):
+        self.only_stage_files([None], [None])
+        done = cli("--examples", str(self.root), "--only", "gateway")
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertNotIn("Traceback", done.stderr)
+        self.assertIn("evaluation 1 is not an object", done.stdout)
+
+    def test_rows_of_the_right_shape_and_no_instance_are_not_assessed(self):
+        self.fresh()
+        for path in list(self.root.rglob("*.json")):
+            if path.name.lower() not in ("registry.json", "gateway-scenarios.json", "cases.json"):
+                path.unlink()
+        results = ve.run(self.root, only={"gateway", "cases"})
+        self.assertEqual((states(results)["gateway"], states(results)["cases"]), (NOT_ASSESSED, NOT_ASSESSED))
+        self.assertEqual(overall(results), NOT_ASSESSED)
+
+
+class AReferenceWithoutAVersionIsFoundAndNamed(unittest.TestCase):
+    """The schema requires the version of a parent reference, but the checks also run on a model the schema has not judged (a counterfactual, a mutated
+    copy). A parent that names no exact version is an unresolved reference, reported with the file and the place, and not a KeyError."""
+
+    def test_it_is_an_unresolved_reference_and_not_a_key_error(self):
+        from eahs import semantics
+        from eahs.cases import mutate_model
+        model, _ = mutate_model(support.example_model(), [{"target": "C02 M3W-0417 v1", "ops": [{"op": "remove", "path": "/lineage/parent_references/0/version"}]}])
+        found = [f for f in semantics.check_references(model) if f.code == "REF001"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("INV-2026-0417", found[0].message)
+        self.assertIn("no version", found[0].message)
+        self.assertIn("c02-M3W-0417-v1.json", found[0].file)
+        self.assertEqual(found[0].location, "/lineage/parent_references/0")
+
+    def test_the_example_references_are_all_found(self):
+        from eahs import semantics
+        self.assertEqual([f for f in semantics.check_references(support.example_model()) if f.code == "REF001"], [])
 
 
 if __name__ == "__main__":

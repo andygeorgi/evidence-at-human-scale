@@ -49,11 +49,11 @@ from jsonschema.exceptions import SchemaError  # noqa: E402
 
 from eahs import REPO_ROOT, __version__  # noqa: E402
 from eahs import semantics  # noqa: E402
-from eahs.cases import check_cases  # noqa: E402
+from eahs.cases import check_cases, rows_problem as case_rows_problem  # noqa: E402
 from eahs.findings import Finding, InputProblem, describe_error, rel  # noqa: E402
 from eahs.model import Model, Registry, json_files, load_model, loads_strict, registry_path  # noqa: E402
 from eahs.response import check_response, is_canonical  # noqa: E402
-from eahs.scenarios import check_scenario_file  # noqa: E402
+from eahs.scenarios import check_scenario_file, rows_problem as scenario_rows_problem  # noqa: E402
 from eahs.schema import check_embedded_examples, check_schema_itself, load_schema, validate_instance  # noqa: E402
 from eahs.status import (EXIT_CODES, FAIL, INPUT_ERROR, NEXT_STEP, NOT_ASSESSED, PASS, SKIPPED, StageResult,  # noqa: E402
                          input_finding, overall)
@@ -73,6 +73,8 @@ STAGE_FILES = {"gateway-scenarios.json": "gateway", "cases.json": "cases", "resp
 #: depend on the model, so a file of the wrong shape is reported also when its stage cannot run for want of valid instances.
 STAGE_COLLECTIONS = {"gateway": ("gateway-scenarios.json", "evaluations", "a gateway scenario file"), "cases": ("cases.json", "cases", "an evaluation-case file"),
                      "responses": ("response-*.json", "statements", "a response")}
+#: The shape of each row of a stage file does not depend on the model either, so a row that cannot be run is reported also when the stage is blocked.
+ROW_CHECKS = {"gateway": scenario_rows_problem, "cases": case_rows_problem}
 
 
 def _kind(value) -> str:
@@ -147,7 +149,7 @@ class Run:
             except ValueError as exc:
                 return self.result(stage, INPUT_ERROR, findings=[input_finding("INP003", "the registry cannot be chosen: %s" % exc, rel(self.root), "keep one registry.json in the folder")],
                                    detail="the folder holds more than one registry file")
-            if stage in REGISTRY_STAGES and not registry.is_file():
+            if stage in REGISTRY_STAGES and not registry.is_file() and self.has_rows(stage):
                 return self.result(stage, INPUT_ERROR, findings=[input_finding("INP003", "the registry is missing: %s does not exist" % rel(registry), rel(registry),
                                                                                "add registry.json (its layout is in examples/registry.json), or run only the stages that do not read it")],
                                    detail="the registry this stage reads does not exist")
@@ -158,8 +160,23 @@ class Run:
             return self.result(stage, INPUT_ERROR, findings=shape, detail="%d file(s) this stage reads cannot be evaluated, and the %s stage ended %s, so nothing could be replayed against the model either" % (len(shape), needed, state))
         return self.result(stage, NOT_ASSESSED, detail="blocked: the %s stage ended %s, and this stage needs structurally valid instances" % (needed, state))
 
+    def has_rows(self, stage: str) -> bool:
+        """Whether the files of a stage hold anything to evaluate. A stage that has nothing to replay needs no registry to say so (NOT ASSESSED).
+
+        The semantics stage reads the instances themselves, so it always has something. A file that cannot be read, or lacks its list, counts as something: it is reported.
+        """
+        spec = STAGE_COLLECTIONS.get(stage)
+        if spec is None:
+            return True
+        pattern, collection, _ = spec
+        for path in self.files(pattern):
+            data, unreadable = self.read_json(path)
+            if unreadable is not None or not isinstance(data, dict) or not isinstance(data.get(collection), list) or data[collection]:
+                return True
+        return False
+
     def shape_problems(self, stage: str) -> List[Finding]:
-        """The files of a stage that lack the list the stage evaluates. Nothing about the model is needed to see that.
+        """The files of a stage that lack the list the stage evaluates, or hold a row that cannot be run. Nothing about the model is needed to see that.
 
         A file that cannot be read as JSON is not repeated here: the instances stage reads every JSON file and has reported it already.
         """
@@ -173,6 +190,9 @@ class Run:
             if unreadable is not None:
                 continue
             problem = self.collection_problem(stage, path, data, collection, what)
+            if problem is None and stage in ROW_CHECKS:
+                row = ROW_CHECKS[stage](data)
+                problem = self.bad_document(stage, path, row) if row is not None else None
             if problem is not None:
                 problems.append(problem)
         return problems
@@ -192,13 +212,17 @@ class Run:
         return input_finding("INP002", "the %s stage cannot evaluate this document: %s" % (stage, describe_error(exc)), rel(path), hint)
 
     def collection_problem(self, stage: str, path: Path, data, collection: str, what: str) -> Optional[Finding]:
-        """A stage file must be an object that holds the list the stage evaluates. A missing list is an input error; an empty one is not."""
+        """A stage file must be an object that holds the list the stage evaluates. A missing list is an input error; an empty one is not.
+
+        These names belong to the stages wherever the file lies (a raw/ folder does not exempt it), so the hint also says to rename a file that is something else.
+        """
+        rename = "; if the file is something else, such as a raw export, rename it, because %s is read by the %s stage wherever it lies" % (STAGE_COLLECTIONS[stage][0], stage)
         if not isinstance(data, dict):
             return input_finding("INP002", "the %s stage cannot evaluate this document: %s must be a JSON object with a %r list, and this file holds %s" % (stage, what, collection, _kind(data)), rel(path),
-                                 "write the document as an object with a %r list" % collection)
+                                 "write the document as an object with a %r list%s" % (collection, rename))
         if collection not in data:
             return input_finding("INP002", "the %s stage cannot evaluate this document: %s has no %r list, so there is nothing to evaluate in it" % (stage, what, collection), rel(path),
-                                 "add a %r list; write [] only if the file is meant to hold none" % collection)
+                                 "add a %r list; write [] only if the file is meant to hold none%s" % (collection, rename))
         if not isinstance(data[collection], list):
             return input_finding("INP002", "the %s stage cannot evaluate this document: %r must be a list, and this file holds %s" % (stage, collection, _kind(data[collection])), rel(path),
                                  "make %r a list of objects" % collection)

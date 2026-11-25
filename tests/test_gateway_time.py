@@ -806,6 +806,214 @@ class AnythingButAListOfEntriesIsNotALedger(unittest.TestCase):
                 self.assertIn("not given as a list", decision.reasons[0].message)
 
 
+class AWhatIfThatChangesTheGrantIsReadAsItStands(unittest.TestCase):
+    """The version of a grant that is in force is worked out from the grant that is evaluated, not from the stored copy of it."""
+
+    ENTRY = 3   # EUR 2,000 under version 2
+
+    def replay(self, **changes):
+        from eahs.scenarios import evaluate_entry
+        entry = copy.deepcopy(support.read_json("12-controlled-change/gateway-scenarios.json")["evaluations"][self.ENTRY])
+        entry.update(changes)
+        return evaluate_entry(support.example_model(), entry)
+
+    def test_the_stored_entries_keep_their_decisions(self):
+        self.assertEqual((self.replay().allow, self.replay().codes), (True, []))
+
+    def test_a_version_issued_earlier_by_the_what_if_is_the_one_in_force(self):
+        """Version 2 is stored as issued at 14:30. If the what-if says it was issued at 14:20, then at 14:20 it is the version in force, and version 1 is not."""
+        at = "2026-11-23T14:20:00Z"
+        stored = self.replay(at=at)
+        self.assertIn("GRANT_NOT_YET_VALID", stored.codes, "as stored, version 2 does not exist yet at 14:20")
+        moved = self.replay(at=at, overrides=self.entry_overrides() + [{"on": "grant", "path": "/identity_principals/issuance_time", "value": at},
+                                                                       {"on": "grant", "path": "/limits_lifecycle/revocation/checked_at", "value": at}])
+        self.assertEqual((moved.allow, moved.codes), (True, []))
+
+    def entry_overrides(self):
+        return copy.deepcopy(support.read_json("12-controlled-change/gateway-scenarios.json")["evaluations"][self.ENTRY]["overrides"])
+
+    def test_a_version_issued_later_by_the_what_if_is_no_longer_in_force(self):
+        late = [{"on": "grant", "path": "/identity_principals/issuance_time", "value": "2026-11-23T14:50:00Z"},
+                {"on": "grant", "path": "/limits_lifecycle/revocation/checked_at", "value": "2026-11-23T14:30:00Z"}]
+        decision = self.replay(overrides=self.entry_overrides() + late)
+        self.assertFalse(decision.allow)
+        self.assertIn("GRANT_NOT_YET_VALID", decision.codes)
+
+
+class EveryLimitHasItsAccountingWindow(unittest.TestCase):
+    """The contract says that the accounting windows of its limits (each with a start and an end, in order) are known. A per-action limit has one too."""
+
+    GRANT = "C06 GRT-CLASS-HOLD v1"
+    WINDOW = "/limits_lifecycle/per_action_limits/0/accounting_window/%s"
+
+    def test_a_per_action_window_that_cannot_be_read_or_is_out_of_order_blocks(self):
+        for label, path, value in (("start tagged unknown", "start", UNKNOWN), ("start not a time", "start", "bad-time"), ("start finer than a microsecond", "start", "2026-11-23T00:00:00.0000001Z"),
+                                   ("start after the end", "start", "2026-11-25T00:00:00Z"), ("end before the start", "end", "2026-11-22T00:00:00Z"), ("end null", "end", None)):
+            with self.subTest(label):
+                decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", replace(self.GRANT, self.WINDOW % path, value))
+                self.assertEqual((decision.allow, decision.codes), (False, ["GRANT_TIME_UNKNOWN"]))
+                self.assertIn("per-action limit", decision.reasons[0].message)
+
+    def test_a_per_action_window_that_is_missing_blocks_and_does_not_raise(self):
+        decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:00Z", remove(self.GRANT, "/limits_lifecycle/per_action_limits/0/accounting_window"))
+        self.assertEqual((decision.allow, decision.codes), (False, ["GRANT_TIME_UNKNOWN"]))
+
+    def test_the_stored_windows_are_readable_and_ordered(self):
+        for grant in support.example_model().of("C06"):
+            for limit in grant.data["limits_lifecycle"]["per_action_limits"] + grant.data["limits_lifecycle"]["cumulative_limits"]:
+                self.assertIsNotNone(parse_time(limit["accounting_window"]["start"]), grant.label())
+                self.assertLess(parse_time(limit["accounting_window"]["start"]), parse_time(limit["accounting_window"]["end"]), grant.label())
+
+
+class ATargetStateThatLacksTheKeyIsNotNull(unittest.TestCase):
+    """A state that does not hold a key says nothing about it. A rule that asks for null is not satisfied by a state that has no such key."""
+
+    def hold_with(self, key_present, rule_equals, held=None):
+        model = support.example_model()
+        registry = copy.deepcopy(model.registry)
+        registry.preconditions["PRE-INVOICE-OPEN"] = dict(registry.preconditions["PRE-INVOICE-OPEN"], key="hold_reference", equals=rule_equals)
+        state = {"status": "open"}
+        if key_present:
+            state["hold_reference"] = held
+        registry.target_states = [{"entity_id": "INV-2026-0417", "at": "2026-11-23T07:30:00Z", "state": state}]
+        model = dataclasses.replace(model, registry=registry)
+        return evaluate_commit(model, model.get("C05", *HOLD), model.get("C06", *HOLD_GRANT), ts("2026-11-23T10:03:00Z"), [])
+
+    def test_a_missing_key_is_not_a_null_that_a_rule_can_ask_for(self):
+        self.assertEqual(self.hold_with(False, None).codes, ["PRECONDITION_FAILED"])
+        self.assertEqual(self.hold_with(True, None, held=None).codes, [], "a state that records null is a state that holds the key")
+
+    def test_a_true_and_a_one_are_not_the_same_value(self):
+        self.assertEqual(self.hold_with(True, True, held=True).codes, [])
+        self.assertEqual(self.hold_with(True, True, held=1).codes, ["PRECONDITION_FAILED"])
+        self.assertEqual(self.hold_with(True, 0, held=False).codes, ["PRECONDITION_FAILED"])
+
+
+class APolicyThatStatesNoKindIsNotNoPolicy(unittest.TestCase):
+    """A policy without a kind cannot be told from one that limits the age of a record, so the record cannot be shown to be fresh."""
+
+    def registry_with(self, mutate):
+        model = support.example_model()
+        registry = copy.deepcopy(model.registry)
+        mutate(registry.policies["POL-FRESH-RECORDS"]["v1"])
+        return dataclasses.replace(model, registry=registry)
+
+    def test_a_missing_or_unreadable_kind_blocks_with_a_freshness_reason(self):
+        from eahs.gateway import freshness_max_age
+        for label, mutate in (("missing", lambda p: p.pop("type")), ("null", lambda p: p.update(type=None)), ("a list", lambda p: p.update(type=["freshness"])), ("empty", lambda p: p.update(type=" "))):
+            with self.subTest(label):
+                model = self.registry_with(mutate)
+                with self.assertRaises(ValueError) as refused:
+                    freshness_max_age(model, model.get("C02", "INV-2026-0417", "v1").data)
+                self.assertIn("states no kind", str(refused.exception))
+                decision = evaluate_commit(model, model.get("C05", *HOLD), model.get("C06", *HOLD_GRANT), ts("2026-11-23T10:03:00Z"), [])
+                self.assertFalse(decision.allow)
+                self.assertEqual(set(decision.codes), {"EVIDENCE_STALE"})
+
+    def test_a_policy_that_is_explicitly_not_about_freshness_is_still_no_limit(self):
+        from eahs.gateway import freshness_max_age
+        model = self.registry_with(lambda p: p.update(type="read_purpose"))
+        self.assertIsNone(freshness_max_age(model, model.get("C02", "INV-2026-0417", "v1").data))
+
+    def test_the_registry_refuses_a_policy_without_a_kind_and_names_it(self):
+        from eahs.model import registry_problem
+        raw = copy.deepcopy(support.read_json("registry.json"))
+        self.assertIsNone(registry_problem(raw))
+        for label, value in (("missing", MISSING), ("null", None), ("a number", 3)):
+            broken = copy.deepcopy(raw)
+            if value is MISSING:
+                del broken["policies"]["POL-FRESH-RECORDS"]["v1"]["type"]
+            else:
+                broken["policies"]["POL-FRESH-RECORDS"]["v1"]["type"] = value
+            with self.subTest(label):
+                self.assertIn("policy POL-FRESH-RECORDS v1 needs a 'type'", registry_problem(broken))
+
+
+MISSING = object()
+
+
+class OneAttemptIsCountedOnceWhateverWindowsItIsCountedIn(unittest.TestCase):
+    """A grant may state several windows for one scope and unit (a day and an hour). An attempt is one entry in the ledger, and each window is applied to it."""
+
+    GRANT = "C06 GRT-CLASS-HOLD v1"
+
+    def hourly(self):
+        model = support.example_model()
+        grant = model.get("C06", *HOLD_GRANT).data["limits_lifecycle"]["cumulative_limits"][0]
+        hour = dict(copy.deepcopy(grant), limit_id="LIM-HOLD-HOUR", quantity=2, accounting_window={"start": "2026-11-23T10:00:00Z", "end": "2026-11-23T11:00:00Z"})
+        return add(self.GRANT, "/limits_lifecycle/cumulative_limits/-", hour)
+
+    def test_an_attempt_makes_one_ledger_entry_for_one_scope_and_unit(self):
+        model, _ = mutate_model(support.example_model(), [self.hourly()])
+        entries = [e for e in ledger_from_receipts(model, ts("2026-11-23T10:03:01Z")) if e.receipt == "RCP-HOLD-0417"]
+        self.assertEqual(len(entries), 1)
+
+    def test_one_hold_and_one_more_fit_in_an_hour_that_allows_two(self):
+        decision = decide(HOLD, HOLD_GRANT, "2026-11-23T10:03:01Z", self.hourly(), ledger=True)
+        self.assertEqual((decision.allow, decision.codes), (True, []), "one hold already counted plus this one is two, and two are allowed")
+
+    def test_a_third_hold_in_that_hour_is_over_the_limit(self):
+        tight = replace(self.GRANT, "/limits_lifecycle/cumulative_limits/0/quantity", 20)
+        model, _ = mutate_model(support.example_model(), [self.hourly(), tight])
+        grant = model.get("C06", *HOLD_GRANT)
+        scope = grant.data["limits_lifecycle"]["cumulative_limits"][0]["accounting_scope"]
+        two = [LedgerEntry(grant.id, scope, "holds", 1.0, "reserved", ts("2026-11-23T10:01:00Z"), "RCP-X"), LedgerEntry(grant.id, scope, "holds", 1.0, "reserved", ts("2026-11-23T10:02:00Z"), "RCP-Y")]
+        decision = evaluate_commit(model, model.get("C05", *HOLD), grant, ts("2026-11-23T10:03:01Z"), two)
+        self.assertEqual((decision.allow, decision.codes), (False, ["CUMULATIVE_LIMIT"]))
+
+
+class APerActionLimitIsComparedExactly(unittest.TestCase):
+    """A float and an integer that a double cannot tell apart are different numbers, for the per-action limit as for the cumulative one."""
+
+    def test_an_amount_written_as_a_float_is_over_a_cap_one_unit_below_it(self):
+        mutations = [replace("C05 ACT-REL-0417 v2", "/action/typed_parameters/0/value", 100000000000000020.0),
+                     replace("C06 GRT-APPR-0417-B v1", "/limits_lifecycle/per_action_limits/0/quantity", 100000000000000018),
+                     replace("C06 GRT-APPR-0417-B v1", "/limits_lifecycle/cumulative_limits/0/quantity", 10 ** 18)]
+        self.assertEqual(float(100000000000000018), float(100000000000000020.0), "the premise: a double cannot tell the two apart")
+        decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", *mutations)
+        self.assertEqual((decision.allow, unique(decision.codes)), (False, ["PER_ACTION_LIMIT"]))
+
+    def test_an_amount_at_the_cap_and_an_unbounded_cap_are_within_it(self):
+        for cap in (18400, 18400.0, float("inf")):
+            with self.subTest(cap):
+                self.assertEqual(decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", replace("C06 GRT-APPR-0417-B v1", "/limits_lifecycle/per_action_limits/0/quantity", cap)).codes, [])
+
+
+class TwoReceiptsForOneAttemptAreAmbiguousForAReplay(unittest.TestCase):
+    """A replay leaves out the attempt's own receipt. Two receipts that record attempts of the same proposal under the same grant at the same moment leave it unable to tell which one that is."""
+
+    def with_second_attempt(self):
+        from eahs.model import Instance, Model
+        base = support.example_model()
+        old = base.get("C07", "RCP-HOLD-0417", "v1")
+        data = copy.deepcopy(old.data)
+        data["identity_binding"]["receipt_id"] = "RCP-HOLD-0417-SECOND"
+        data["identity_binding"]["execution_attempt_id"] = "ATT-HOLD-0417-SECOND"
+        instances = dict(base.instances)
+        instances[("C07", "RCP-HOLD-0417-SECOND", "v1")] = Instance(old.contract, "RCP-HOLD-0417-SECOND", "v1", data, old.path)
+        return Model(instances, base.registry, base.root)
+
+    def test_the_replay_refuses_to_guess(self):
+        model = self.with_second_attempt()
+        with self.assertRaises(ValueError) as refused:
+            attempt_receipt_ids(model, model.get("C05", *HOLD), model.get("C06", *HOLD_GRANT), ts("2026-11-23T10:03:00Z"))
+        self.assertIn("cannot tell which one is its own", str(refused.exception))
+        self.assertIn("RCP-HOLD-0417-SECOND", str(refused.exception))
+
+    def test_a_scenario_that_meets_it_is_a_finding_that_names_the_problem(self):
+        from eahs.scenarios import check_scenario_file
+        model = self.with_second_attempt()
+        entry = {"label": "the hold again", "proposal": {"id": "ACT-HOLD-0417", "version": "v1"}, "grant": {"id": "GRT-CLASS-HOLD", "version": "v1"}, "at": "2026-11-23T10:03:00Z",
+                 "expect": {"decision": "ALLOW", "codes": []}}
+        findings = check_scenario_file(model, {"evaluations": [entry]}, "gateway-scenarios.json")
+        self.assertEqual([f.code for f in findings], ["GW002"])
+        self.assertIn("cannot tell which one is its own", findings[0].message)
+
+    def test_one_receipt_with_several_versions_is_one_attempt(self):
+        model = support.example_model()
+        self.assertEqual(attempt_receipt_ids(model, model.get("C05", *RELEASE_B), model.get("C06", *APPROVAL_B), ts("2026-11-23T16:00:05Z")), ["RCP-REL-0417-B"])
+
+
 class AVersionNameIsReadByItsAsciiDigitsOnly(unittest.TestCase):
     """int() refuses a digit of another script that str.isdigit() accepts ("v\u00b2"), and a version name is data."""
 

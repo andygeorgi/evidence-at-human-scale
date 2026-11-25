@@ -194,6 +194,8 @@ def registry_problem(raw: dict) -> Optional[str]:
         if not isinstance(versions, dict) or not all(isinstance(entry, dict) for entry in versions.values()):
             return "policy %r must be an object that maps each version to an object" % policy
         for version, entry in versions.items():
+            if not isinstance(entry.get("type"), str) or not entry["type"].strip():
+                return "policy %s %s needs a 'type' (text, for example 'freshness'): without it nothing says whether the policy limits the age of a record" % (policy, version)
             if entry.get("type") == "freshness" and not _hours(entry.get("max_age_hours")):
                 return "freshness policy %s %s needs 'max_age_hours' as a number of hours that is not negative" % (policy, version)
     for condition, rule in raw.get("preconditions", {}).items():
@@ -235,6 +237,16 @@ def registry_problem(raw: dict) -> Optional[str]:
     return None
 
 
+#: What each part of a permission decision's view must be, because the entry the viewer projection builds from it is checked against a schema
+#: that wants text or a known-value object there. A part of another kind is refused with the registry field named, instead of being
+#: reported as a fault of every output that is compared with it.
+VIEW_PARTS = {
+    "gap": {"expected_evidence": str, "materiality": str, "assessment_basis": str, "reason": dict},
+    "retrieval": {"retrieval_unit_id": str, "authorized_scope": str, "reason": str, "attempted_at": dict, "completed_at": dict},
+}
+VIEW_SCOPE_PARTS = {"task": str, "jurisdiction": dict, "units": dict, "interpretation": dict}
+
+
 def _decision_problem(key, decision) -> str:
     """Why a permission decision of the registry is not shaped as the viewer projection reads it, or an empty string.
 
@@ -257,6 +269,11 @@ def _decision_problem(key, decision) -> str:
             return "%s: 'permitted_view.%s' must be an object" % (where, part)
     if "scope" in view.get("gap", {}) and not isinstance(view["gap"]["scope"], dict):
         return "%s: 'permitted_view.gap.scope' must be an object" % where
+    kinds = [("gap", view.get("gap", {}), VIEW_PARTS["gap"]), ("retrieval", view.get("retrieval", {}), VIEW_PARTS["retrieval"]), ("gap.scope", view.get("gap", {}).get("scope", {}), VIEW_SCOPE_PARTS)]
+    for part, content, wanted in kinds:
+        for name, kind in wanted.items():
+            if name in content and not isinstance(content[name], kind):
+                return "%s: 'permitted_view.%s.%s' must be %s, and this registry holds %s" % (where, part, name, "text" if kind is str else "an object", _type_name(content[name]))
     return ""
 
 
@@ -482,7 +499,7 @@ def iter_refs(node, parts: Tuple = ()) -> Iterator[Ref]:
             elif isinstance(value, list) and key in ("parent_references", "challenge_links"):
                 for i, item in enumerate(value):
                     if isinstance(item, dict) and "record_id" in item:
-                        yield Ref("evidence", _ptr(here + (i,)), item["record_id"], item["version"], body=item)
+                        yield Ref("evidence", _ptr(here + (i,)), item["record_id"], item.get("version", ""), body=item)
             else:
                 yield from iter_refs(value, here)
     elif isinstance(node, list):

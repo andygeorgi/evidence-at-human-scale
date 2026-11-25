@@ -9,7 +9,7 @@ which has not been run, and a passing case set says nothing about any real syste
 """
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .findings import Finding, InputProblem, describe_error, rel
 from .model import Instance, Model
@@ -95,14 +95,30 @@ def _case_problem(index: int, case) -> str:
     return ""
 
 
+CASES_HINT = ("give every case a case_id, an 'expect' list of codes (a [] means the case must produce no finding) and a non-empty 'mutations' list of {target, ops}; "
+              "nothing in this file was evaluated")
+
+
+def rows_problem(data) -> Optional[InputProblem]:
+    """The first case of a case file that cannot be run because of its shape, as the input problem to report, or None.
+
+    Nothing about the model is needed to see that, so a file whose rows are malformed is reported also when the model cannot be built.
+    """
+    cases = data.get("cases", []) if isinstance(data, dict) else []
+    for index, case in enumerate(cases if isinstance(cases, list) else []):
+        reason = _case_problem(index, case)
+        if reason:
+            return InputProblem(reason, CASES_HINT)
+    return None
+
+
 def check_cases(model: Model, schema: dict, data: dict, path) -> Tuple[List[Finding], int]:
     problems: List[Finding] = []
     file = rel(path)
     cases = data.get("cases", [])
-    for index, case in enumerate(cases):
-        reason = _case_problem(index, case)
-        if reason:
-            raise InputProblem(reason, "give every case a case_id, an 'expect' list of codes (a [] means the case must produce no finding) and a non-empty 'mutations' list of {target, ops}; nothing in this file was evaluated")
+    problem = rows_problem(data)
+    if problem is not None:
+        raise problem
     seen = set()
     for case in cases:
         case_id = case.get("case_id", "?")
