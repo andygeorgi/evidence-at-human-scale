@@ -990,6 +990,16 @@ class OneAttemptIsCountedOnceWhateverWindowsItIsCountedIn(unittest.TestCase):
         decision = evaluate_commit(model, model.get("C05", *HOLD), grant, ts("2026-11-23T10:03:01Z"), two)
         self.assertEqual((decision.allow, decision.codes), (False, ["CUMULATIVE_LIMIT"]))
 
+    def test_the_message_of_a_total_with_decimals_shows_them_where_a_double_has_no_room_for_them(self):
+        tight = replace(self.GRANT, "/limits_lifecycle/cumulative_limits/0/quantity", 10 ** 16)
+        model, _ = mutate_model(support.example_model(), [tight])
+        grant = model.get("C06", *HOLD_GRANT)
+        scope = grant.data["limits_lifecycle"]["cumulative_limits"][0]["accounting_scope"]
+        counted = [LedgerEntry(grant.id, scope, "holds", 10 ** 16, "reserved", ts("2026-11-23T10:01:00Z"), "RCP-X"), LedgerEntry(grant.id, scope, "holds", 0.5, "reserved", ts("2026-11-23T10:02:00Z"), "RCP-Y")]
+        decision = evaluate_commit(model, model.get("C05", *HOLD), grant, ts("2026-11-23T10:03:01Z"), counted)
+        self.assertEqual((decision.allow, decision.codes), (False, ["CUMULATIVE_LIMIT"]))
+        self.assertTrue([r.message for r in decision.reasons if r.message.startswith("10000000000000000.50 already counted")], [r.message for r in decision.reasons])
+
 
 class APerActionLimitIsComparedExactly(unittest.TestCase):
     """A float and an integer that a double cannot tell apart are different numbers, for the per-action limit as for the cumulative one."""
@@ -1015,6 +1025,20 @@ class APerActionLimitIsComparedExactly(unittest.TestCase):
         self.assertEqual([_fmt(x) for x in (18400, 18400.0, 0.5, 1.005, 100000000000000020.0, 10 ** 30, float("inf"))],
                          ["18400", "18400", "0.50", "1.00", "100000000000000020", "1000000000000000000000000000000", "inf"])
         self.assertIsInstance(_fmt(10 ** 5000), str, "a number beyond what some versions of Python show as text is not turned into an error")
+
+    def test_the_decimals_are_those_of_the_number_that_was_compared_and_not_of_the_nearest_double(self):
+        """A double near 1e14 holds 100000000000000.1 as 100000000000000.09375, so a format applied to the double shows .09. The check compared .10."""
+        from fractions import Fraction
+        from eahs.gateway import _fmt
+        self.assertEqual([_fmt(x) for x in (100000000000000.1, 0.1 + 0.2, -3.456, Fraction(20000000000000001, 2), Fraction(1, 3), Fraction(-1, 1000))],
+                         ["100000000000000.10", "0.30", "-3.46", "10000000000000000.50", "0.33", "0.00"])
+
+    def test_the_message_of_a_per_action_limit_shows_the_decimals_of_the_amount_that_was_compared(self):
+        mutations = [replace("C05 ACT-REL-0417 v2", "/action/typed_parameters/0/value", 100000000000000.1),
+                     replace("C06 GRT-APPR-0417-B v1", "/limits_lifecycle/per_action_limits/0/quantity", 100000000000000),
+                     replace("C06 GRT-APPR-0417-B v1", "/limits_lifecycle/cumulative_limits/0/quantity", 10 ** 18)]
+        decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", *mutations)
+        self.assertIn("100000000000000.10 EUR exceeds the per-action limit of 100000000000000 EUR", [r.message for r in decision.reasons])
 
     def test_an_amount_at_the_cap_and_an_unbounded_cap_are_within_it(self):
         for cap in (18400, 18400.0, float("inf")):

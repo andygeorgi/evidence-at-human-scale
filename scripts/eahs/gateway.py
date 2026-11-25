@@ -531,7 +531,7 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
             continue
         used = _used(counting)
         if _over(used, qty, cap):
-            reasons.append(Reason("CUMULATIVE_LIMIT", "%s already counted plus %s would exceed %s %s in the window" % (_fmt(_plain(used)), _fmt(qty), _fmt(cap), units)))
+            reasons.append(Reason("CUMULATIVE_LIMIT", "%s already counted plus %s would exceed %s %s in the window" % (_fmt(float("inf") if used is None else used), _fmt(qty), _fmt(cap), units)))
         else:
             reserve = {"units": units, "quantity": qty, "counted_before": _plain(used)}
     allow = not reasons
@@ -549,12 +549,16 @@ def _start_readable(entry: "LedgerEntry") -> bool:
 
 
 def _fmt(x) -> str:
-    """A number as the check compared it (as written, see `_exact`): an integer in full, any other with two decimals. A number is not shown as the nearest double of what was written."""
+    """A number as the check compared it (as written, see `_exact`): an integer in full, any other with two decimals, worked out on the exact value and not on the
+    nearest double of it (a double cannot hold the second decimal of 100000000000000.1). A sum that is a `Fraction` is shown the same way."""
     try:
         if isinstance(x, float) and not math.isfinite(x):
             return str(x)
-        exact = _exact(x)
-        return str(int(exact)) if exact.denominator == 1 else "%.2f" % float(exact)
+        exact = x if isinstance(x, Fraction) else _exact(x)
+        if exact.denominator == 1:
+            return str(int(exact))
+        cents = round(exact * 100)
+        return "%s%d.%02d" % ("-" if cents < 0 else "", abs(cents) // 100, abs(cents) % 100)
     except (OverflowError, ValueError):
         return "a number too large to show"
 
