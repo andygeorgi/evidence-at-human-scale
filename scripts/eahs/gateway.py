@@ -335,9 +335,14 @@ def _window(limit: dict) -> Optional[Tuple[datetime, datetime]]:
 
 
 def _equal(held, wanted) -> bool:
-    """Whether a value read from the target or from a record is the value a rule wants. true and false are not the numbers 1 and 0."""
+    """Whether a value read from the target or from a record is the value a rule wants. true and false are not the numbers 1 and 0, at any depth
+    (a value that is an object or a list is compared member by member)."""
     if isinstance(held, bool) or isinstance(wanted, bool):
         return held is wanted
+    if isinstance(held, dict) and isinstance(wanted, dict):
+        return held.keys() == wanted.keys() and all(_equal(held[key], wanted[key]) for key in held)
+    if isinstance(held, list) and isinstance(wanted, list):
+        return len(held) == len(wanted) and all(_equal(a, b) for a, b in zip(held, wanted))
     return held == wanted
 
 
@@ -374,7 +379,8 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
     elif issued > at:
         reasons.append(Reason("GRANT_NOT_YET_VALID", "grant issued after the attempt"))
     newest = grant_in_force(model, grant.id, at, current=grant)
-    if newest is not None and newest.version != grant.version:
+    # Superseded means that a NEWER version is in force. When the version evaluated is itself not yet issued (GRANT_NOT_YET_VALID above), an older one is in force, and that is not a supersession.
+    if newest is not None and _vn(newest.version) > _vn(grant.version):
         reasons.append(Reason("GRANT_SUPERSEDED", "grant version %s is in force; %s is no longer usable" % (newest.version, grant.version)))
     for other in model.versions("C06", grant.id):
         if other.version != grant.version and _issued(other) is None:
@@ -543,10 +549,14 @@ def _start_readable(entry: "LedgerEntry") -> bool:
 
 
 def _fmt(x) -> str:
+    """A number as the check compared it (as written, see `_exact`): an integer in full, any other with two decimals. A number is not shown as the nearest double of what was written."""
     try:
-        return ("%d" % x) if float(x).is_integer() else ("%.2f" % x)
-    except OverflowError:
-        return str(x)
+        if isinstance(x, float) and not math.isfinite(x):
+            return str(x)
+        exact = _exact(x)
+        return str(int(exact)) if exact.denominator == 1 else "%.2f" % float(exact)
+    except (OverflowError, ValueError):
+        return "a number too large to show"
 
 
 def receipt_known_at(receipt: dict, first_version: bool = False) -> Optional[datetime]:

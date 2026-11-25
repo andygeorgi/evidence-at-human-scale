@@ -257,6 +257,19 @@ class TheSameInstantWrittenAnotherWayIsTheSameAttempt(unittest.TestCase):
                 self.assertIn("c07-RCP-REL-0417-B-v2.json", str(caught.exception))
                 self.assertIn("Correct the time", str(caught.exception))
 
+    def test_a_reference_that_does_not_resolve_does_not_hide_a_time_that_cannot_be_compared(self):
+        """The first version cites a proposal that does not exist, so nothing can be replayed. The later version's time is still an input that cannot be judged, and is named."""
+        from eahs import semantics
+        from eahs.cases import mutate_model
+        unresolved = {"target": "C07 RCP-REL-0417-B v1", "ops": [rep("/identity_binding/proposal_reference/version", "v9")]}
+        model, _ = mutate_model(support.example_model(), [unresolved])
+        self.assertEqual([f for f in semantics.check_authority(model) if f.code.startswith(("AUTH004", "AUTH005", "AUTH007", "AUTH009"))], [], "the receipt is left alone when it cannot be replayed")
+        model, _ = mutate_model(support.example_model(), [unresolved, {"target": self.LATER, "ops": [rep("/outcome/timestamps/submitted", "2026-11-23T16:00:05.0000001Z")]}])
+        with self.assertRaises(ValueError) as caught:
+            semantics.check_authority(model)
+        self.assertIn("c07-RCP-REL-0417-B-v2.json", str(caught.exception))
+        self.assertIn("2026-11-23T16:00:05.0000001Z", str(caught.exception))
+
 
 class AnAttemptTimeThatCannotBeComparedIsRejectedWithTheReceiptNamed(unittest.TestCase):
     """A fraction finer than a microsecond cannot be compared with the grant and the evidence exactly. The stage reports an input error that names the receipt."""

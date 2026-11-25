@@ -832,12 +832,21 @@ class AWhatIfThatChangesTheGrantIsReadAsItStands(unittest.TestCase):
     def entry_overrides(self):
         return copy.deepcopy(support.read_json("12-controlled-change/gateway-scenarios.json")["evaluations"][self.ENTRY]["overrides"])
 
-    def test_a_version_issued_later_by_the_what_if_is_no_longer_in_force(self):
+    def test_a_version_issued_later_by_the_what_if_is_not_yet_valid_and_does_not_supersede_itself(self):
+        """The version evaluated is not yet issued, so an older one is in force. That is not a supersession: the code says that a NEWER version is in force."""
         late = [{"on": "grant", "path": "/identity_principals/issuance_time", "value": "2026-11-23T14:50:00Z"},
                 {"on": "grant", "path": "/limits_lifecycle/revocation/checked_at", "value": "2026-11-23T14:30:00Z"}]
         decision = self.replay(overrides=self.entry_overrides() + late)
-        self.assertFalse(decision.allow)
-        self.assertIn("GRANT_NOT_YET_VALID", decision.codes)
+        self.assertEqual((decision.allow, decision.codes), (False, ["GRANT_NOT_YET_VALID"]))
+
+    def test_an_older_version_is_still_superseded_by_a_newer_one_in_force(self):
+        """The stored attempt of version 1 after version 2 was issued: the newer version is in force."""
+        stored = support.read_json("12-controlled-change/gateway-scenarios.json")["evaluations"]
+        superseded = [entry for entry in stored if "GRANT_SUPERSEDED" in entry["expect"]["codes"]]
+        self.assertTrue(superseded, "the stored evaluations show it")
+        from eahs.scenarios import evaluate_entry
+        for entry in superseded:
+            self.assertIn("GRANT_SUPERSEDED", evaluate_entry(support.example_model(), copy.deepcopy(entry)).codes, entry["label"])
 
 
 class EveryLimitHasItsAccountingWindow(unittest.TestCase):
@@ -887,6 +896,26 @@ class ATargetStateThatLacksTheKeyIsNotNull(unittest.TestCase):
         self.assertEqual(self.hold_with(True, True, held=True).codes, [])
         self.assertEqual(self.hold_with(True, True, held=1).codes, ["PRECONDITION_FAILED"])
         self.assertEqual(self.hold_with(True, 0, held=False).codes, ["PRECONDITION_FAILED"])
+
+    def test_nor_inside_an_object_or_a_list(self):
+        """The value a rule asks for may be an object or a list. true and 1 are told apart at every depth, and the numbers 1 and 1.0 are still the same number."""
+        self.assertEqual(self.hold_with(True, {"ready": True}, held={"ready": True}).codes, [])
+        self.assertEqual(self.hold_with(True, {"ready": True}, held={"ready": 1}).codes, ["PRECONDITION_FAILED"])
+        self.assertEqual(self.hold_with(True, {"ready": True, "n": 1}, held={"ready": True, "n": 1.0}).codes, [])
+        self.assertEqual(self.hold_with(True, {"ready": True}, held={"ready": True, "extra": 1}).codes, ["PRECONDITION_FAILED"])
+        self.assertEqual(self.hold_with(True, [True, 0], held=[1, False]).codes, ["PRECONDITION_FAILED"])
+        self.assertEqual(self.hold_with(True, [True, 0], held=[True, False]).codes, ["PRECONDITION_FAILED"])
+        self.assertEqual(self.hold_with(True, [1, 2.0], held=[1.0, 2]).codes, [])
+        self.assertEqual(self.hold_with(True, [1, 2], held=[1]).codes, ["PRECONDITION_FAILED"])
+        self.assertEqual(self.hold_with(True, {"a": [{"b": True}]}, held={"a": [{"b": 1}]}).codes, ["PRECONDITION_FAILED"])
+
+    def test_the_record_rule_tells_them_apart_inside_a_value_too(self):
+        from eahs.gateway import _equal
+        self.assertFalse(_equal({"matched": [1]}, {"matched": [True]}))
+        self.assertTrue(_equal({"matched": [True]}, {"matched": [True]}))
+        self.assertFalse(_equal([[True]], [[1]]))
+        self.assertTrue(_equal(None, None))
+        self.assertFalse(_equal({}, []))
 
 
 class APolicyThatStatesNoKindIsNotNoPolicy(unittest.TestCase):
@@ -972,6 +1001,20 @@ class APerActionLimitIsComparedExactly(unittest.TestCase):
         self.assertEqual(float(100000000000000018), float(100000000000000020.0), "the premise: a double cannot tell the two apart")
         decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", *mutations)
         self.assertEqual((decision.allow, unique(decision.codes)), (False, ["PER_ACTION_LIMIT"]))
+
+    def test_the_message_shows_the_amounts_as_they_were_compared(self):
+        """The check compares numbers as they were written. A message that printed the nearest double (100000000000000016) would show an amount below the cap it was refused for."""
+        mutations = [replace("C05 ACT-REL-0417 v2", "/action/typed_parameters/0/value", 100000000000000020.0),
+                     replace("C06 GRT-APPR-0417-B v1", "/limits_lifecycle/per_action_limits/0/quantity", 100000000000000018),
+                     replace("C06 GRT-APPR-0417-B v1", "/limits_lifecycle/cumulative_limits/0/quantity", 10 ** 18)]
+        decision = decide(RELEASE_B, APPROVAL_B, "2026-11-23T16:00:05Z", *mutations)
+        self.assertIn("100000000000000020 EUR exceeds the per-action limit of 100000000000000018 EUR", [r.message for r in decision.reasons])
+
+    def test_a_number_is_shown_in_full_when_it_is_whole_and_with_two_decimals_otherwise(self):
+        from eahs.gateway import _fmt
+        self.assertEqual([_fmt(x) for x in (18400, 18400.0, 0.5, 1.005, 100000000000000020.0, 10 ** 30, float("inf"))],
+                         ["18400", "18400", "0.50", "1.00", "100000000000000020", "1000000000000000000000000000000", "inf"])
+        self.assertEqual(_fmt(10 ** 5000), "a number too large to show", "a number beyond what Python shows as text is not turned into an error")
 
     def test_an_amount_at_the_cap_and_an_unbounded_cap_are_within_it(self):
         for cap in (18400, 18400.0, float("inf")):

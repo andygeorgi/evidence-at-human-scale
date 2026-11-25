@@ -342,8 +342,9 @@ def check_packets(model: Model) -> List[Finding]:
 
 
 #: Numbers a claim states: decimals that are not part of an identifier, a date or a time (no letter, hyphen, colon or slash touches
-#: them), with a leading minus when they have one, so that -100 is not 100.
-_NUMBER = re.compile(r"(?<![\w.,/:-])-?\d[\d,]*(?:\.\d+)?(?![\w:/-]|\.\d)")
+#: them), with a leading minus when they have one, so that -100 is not 100. A colon right after a digit makes a time or a ratio ("13:45"),
+#: but a colon after a word is a delimiter ("variance:-40.0"), and a number after it is stated, with its sign.
+_NUMBER = re.compile(r"(?<![\w.,/-])(?<!\d:)-?\d[\d,]*(?:\.\d+)?(?![\w:/-]|\.\d)")
 #: The status vocabulary a payload can state and a claim can restate. Only these words are compared: no other prose is interpreted.
 _STATUS = re.compile(r"\b(pass|fail)(?:ed|es|s|ing|ure)?\b", re.IGNORECASE)
 _WORD = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
@@ -436,8 +437,18 @@ def _named_numbers(node, name: str = "") -> List[Tuple[str, Decimal]]:
 
 
 def _name_words(name: str) -> List[str]:
-    """The words of a field name, in order: quantity_invoiced and quantityInvoiced are "quantity", "invoiced"."""
-    return re.findall(r"[A-Za-z]{3,}", re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name))
+    """The words of a field name, in order: quantity_invoiced and quantityInvoiced are "quantity", "invoiced". A word of two letters counts ("invoice_id" has "id"):
+    a name is read whole, and a field is named only by a name that carries all of its words."""
+    return re.findall(r"[A-Za-z]{2,}", re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name))
+
+
+def _field_names(node) -> List[str]:
+    """The name of every field a payload has, whatever it holds (a number, text, an object or a list), at any depth."""
+    if isinstance(node, dict):
+        return [name for key, value in node.items() for name in [str(key)] + _field_names(value)]
+    if isinstance(node, list):
+        return [name for value in node for name in _field_names(value)]
+    return []
 
 
 def _word_before(clause: str) -> Optional[str]:
@@ -454,9 +465,10 @@ def _word_before(clause: str) -> Optional[str]:
 
 
 def _word_after(rest: str) -> Optional[str]:
-    """The word that names the figure which precedes `rest`: the first word that is not a unit or a filler word ("60 units received" and "60 units were received" are about "received")."""
+    """The word that names the figure which precedes `rest`: the first word that is not a unit, a filler word or a quotation mark around the name
+    ("60 units received", "60 units were received" and "100 units `quantity_received`" are about "received" and "quantity_received")."""
     for token in _TOKEN.findall(rest[:64]):
-        if token.lower() in _UNITS or token.lower() in _BETWEEN or token == "%":
+        if token.lower() in _UNITS or token.lower() in _BETWEEN or token in ('"', "'", "`") or token == "%":
             continue
         return token if token[0].isalpha() else None
     return None
@@ -482,6 +494,18 @@ def _index_fields(payloads: List[Tuple[object, str]]) -> Dict[str, List[Tuple[st
         for name, value in _named_numbers(payload, field_name):
             for word in _name_words(name):
                 by_word.setdefault(_stem(word), []).append((name, value))
+    return by_word
+
+
+def _index_names(records: List[object]) -> Dict[str, List[Tuple[str, Optional[Decimal]]]]:
+    """Every field of the records, whatever it holds, filed under each word of its name: which fields exist, with no value to compare."""
+    by_word: Dict[str, List[Tuple[str, Optional[Decimal]]]] = {}
+    for record in records:
+        for name in _field_names(record):
+            for word in _name_words(name):
+                filed = by_word.setdefault(_stem(word), [])
+                if (name, None) not in filed:
+                    filed.append((name, None))
     return by_word
 
 
@@ -525,9 +549,10 @@ def _uncited_findings(text: str, payloads: List[Tuple[object, str]], vocabulary:
 
     A claim that cites one value (/value/quantity_invoiced) holds that value and no other. "quantity_received 100" puts a figure beside a field the
     claim does not cite, whatever the figure is (100 is in what it does cite, as the quantity invoiced), so the claim attributes to that field a value
-    that nothing it cites gives it. A name that is a field of no payload is not judged, and a figure in `skip` has been reported already.
+    that nothing it cites gives it. This holds for every field of the record, whether it holds a number or not ("invoice_id 100"). A name that is a field
+    of no payload is not judged, and a figure in `skip` has been reported already.
     """
-    cited, known = _index_fields(payloads), _index_fields([(payload, "") for payload in vocabulary])
+    cited, known = _index_fields(payloads), _index_names(vocabulary)
     found: List[Tuple[Decimal, str, List[str]]] = []
     for figure, before, after in _figure_words(text):
         if _named_fields(before, cited) or _named_fields(after, cited):
@@ -790,6 +815,16 @@ def _check_receipt(model: Model, first: Instance, versions: List[Instance]) -> L
     out: List[Finding] = []
     rec = first
     d = rec.data
+    submitted = d["outcome"]["timestamps"]["submitted"]
+    at = parse_time(submitted)
+    for version in versions:
+        # The attempt is the same in every version, so the submission time of every version must be one that can be compared exactly. A later version with a time
+        # that cannot be read is an input that cannot be judged (INP002), the same as the first, and not a receipt that merely differs. This is read before
+        # anything is looked up, so that a reference that does not resolve cannot hide it.
+        stated = version.data["outcome"]["timestamps"]["submitted"]
+        if parse_time(stated) is None:
+            raise ValueError("%s: receipt %s %s has a submission time (%r) that is not an RFC 3339 time with a zone and at most six fractional digits, so the attempt it describes "
+                             "cannot be compared with the grant and the evidence exactly. Correct the time" % (version.file, version.id, version.version, stated))
     pref, gref = d["identity_binding"]["proposal_reference"], d["identity_binding"]["grant_reference"]
     prop, grant = model.get("C05", pref["id"], pref["version"]), model.get("C06", gref["id"], gref["version"])
     if prop is None or grant is None:
@@ -799,15 +834,6 @@ def _check_receipt(model: Model, first: Instance, versions: List[Instance]) -> L
     named, proposed = d["identity_binding"].get("target"), _object_of(prop.data["action"]).get("exact_target")
     if named != proposed:
         out.append(_f("AUTH009", "the receipt says the attempt concerned %s, but the proposal it executes names %s: a receipt is for the target of its proposal" % (_entity_name(named), _entity_name(proposed)), rec, "/identity_binding/target", DOC_ACTION))
-    submitted = d["outcome"]["timestamps"]["submitted"]
-    at = parse_time(submitted)
-    for version in versions:
-        # The attempt is the same in every version, so the submission time of every version must be one that can be compared exactly. A later version with a time
-        # that cannot be read is an input that cannot be judged (INP002), the same as the first, and not a receipt that merely differs.
-        stated = version.data["outcome"]["timestamps"]["submitted"]
-        if parse_time(stated) is None:
-            raise ValueError("%s: receipt %s %s has a submission time (%r) that is not an RFC 3339 time with a zone and at most six fractional digits, so the attempt it describes "
-                             "cannot be compared with the grant and the evidence exactly. Correct the time" % (version.file, version.id, version.version, stated))
     decision = evaluate_commit(model, prop, grant, at, ledger_from_receipts(model, at, exclude_receipt_id=rec.id))
     for version in versions:
         out.extend(_check_outcome(version, decision))

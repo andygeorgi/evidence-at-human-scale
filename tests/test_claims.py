@@ -316,6 +316,31 @@ class WhatAPayloadClaimMustSay(unittest.TestCase):
     def test_a_claim_that_cites_the_whole_payload_may_name_any_of_its_fields(self):
         self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, "FAIL. Quantity received: 60. Quantity invoiced: 100. Variance 40.0%. Tolerance 2%.")), [])
 
+    def test_a_field_that_holds_no_number_is_a_name_too_and_so_is_a_name_in_quotation_marks(self):
+        """"invoice_id 100" puts a figure beside the name of a field that holds text, and a name written between backticks or quotation marks after its figure is the name."""
+        refs = []
+        for field in ("result", "quantity_invoiced"):
+            ref = reference(PAYLOAD_CLAIM)
+            ref["payload_location"] = "/value/" + field
+            refs.append(ref)
+        for wrong in ("FAIL. invoice_id 100.", "FAIL. 100 units `quantity_received`.", 'FAIL. 100 units "quantity_received".', "FAIL. 100 units 'quantity_received'."):
+            with self.subTest(wrong):
+                found = claim_findings(with_claim(PAYLOAD_CLAIM, wrong, copy.deepcopy(refs)))
+                self.assertEqual([f.code for f in found], ["PKT005"], [f.message for f in found])
+                self.assertIn("does not hold it", found[0].message)
+        for right in ("FAIL. 100 units `quantity_invoiced`.", 'FAIL. 100 units "quantity_invoiced".', "FAIL. quantity_invoiced 100."):
+            with self.subTest(right):
+                self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, right, copy.deepcopy(refs))), [])
+
+    def test_a_figure_after_a_colon_is_stated_with_its_sign_and_a_time_is_not_a_figure(self):
+        """A colon after a digit is a time or a ratio ("13:45", "2:1"). A colon after a word is a delimiter: the number after it is stated, and a minus sign right behind it is a sign."""
+        from decimal import Decimal
+        self.assertEqual(dict(_numbers_in("variance:35, Total:-18, at 13:45, 2:1, T10:00:00Z")), {Decimal("35"): 1, Decimal("-18"): 1})
+        for new, wrong in (("variance:35%", True), ("variance:-40.0%", True), ("variance:40.0%", False), ("variance: 40.0%", False)):
+            with self.subTest(new):
+                found = claim_findings(with_claim(PAYLOAD_CLAIM, said(PAYLOAD_CLAIM).replace("variance 40.0%", new)))
+                self.assertEqual([f.code for f in found], ["PKT005"] if wrong else [], [f.message for f in found])
+
     def test_a_pointer_to_a_list_position_is_named_by_the_field_that_holds_the_list(self):
         from eahs.semantics import _field_of
         self.assertEqual(_field_of("/value/quantity_invoiced"), "quantity_invoiced")
