@@ -294,12 +294,15 @@ def build_registry():
     }
     for kind in ("source_record_assertion", "deterministic_finding", "analytical_result", "model_inference", "decision_record", "execution_record"):
         ext["registered-kind-%s@v1" % kind] = "Registered evidence kind %s." % kind
+    # A deterministic finding names the records it was computed from, unless its producer computes over data that is not a record of the set:
+    # the duplicate check reads the invoice ledger and the screening service reads its lists.
+    outside_records = {"producer:ledger-check", "producer:screening-service"}
     return {
         "synthetic": True,
         "description": "Domain registry for the synthetic supplier-payment scenario: registered producers, external references that the "
                        "contracts name but do not define, domain policies, commit-time precondition rules, and the target system's state. "
                        "All content is invented.",
-        "producers": {k: {"permitted_kinds": v} for k, v in sorted(permitted.items())},
+        "producers": {k: dict({"permitted_kinds": v}, **({"inputs": "outside_records"} if k in outside_records else {})) for k, v in sorted(permitted.items())},
         "external_records": dict(sorted(ext.items())),
         "policies": {
             "POL-AP-READ": {"v1": {"type": "read_purpose", "summary": "Accounts-payable staff may read records of an invoice under review."}},

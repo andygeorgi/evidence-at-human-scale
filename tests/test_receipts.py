@@ -5,11 +5,15 @@ target and scope. Outcome unknown is what nobody has found out yet. A gateway re
 external effect, so a receipt may say `not_executed_verified` only from a verification of its own target and action, made
 after the attempt.
 """
+import copy
 import unittest
 
 import support  # noqa: F401  (puts scripts/ on the path)
 
+from eahs import semantics
 from eahs.cases import run_case
+from eahs.gateway import ledger_from_receipts, regressive_receipt_versions, ts
+from eahs.model import Instance, Model
 
 REJECTED = "C07 RCP-REL-0417-A v1"
 UNKNOWN = "C07 RCP-REL-0417-B v1"
@@ -355,6 +359,103 @@ class TheRecordsAVerificationCites(unittest.TestCase):
         self.assertIn("own target (invoice INV-2026-0417)", found[0].message)
         self.assertIn("INV-2026-9999", found[0].message)
         self.assertEqual(found[0].location, CHECK + "/target")
+
+
+class AVerifiedOutcomeClosesTheAttempt(unittest.TestCase):
+    """A later ordinary version of a receipt may repeat a verified outcome and may not go back from it. The replay of the ledger keeps the verified outcome.
+
+    Unknown and then completed is the reconciliation of the stored receipt, and it stays valid. No correction of a verified outcome is defined for the
+    ordinary versions of a receipt, so a version that says otherwise is reported and is not the state that the ledger replays.
+    """
+
+    B, A = "RCP-REL-0417-B", "RCP-REL-0417-A"
+    UNRESOLVED = ("submitted", "unknown", "partial")
+    BEFORE_RECONCILIATION, AFTER_RECONCILIATION, LATER = "2026-11-23T16:10:00Z", "2026-11-23T16:21:00Z", "2026-11-23T16:30:00Z"
+
+    def with_version(self, receipt_id, copies, version, state=None):
+        """The example set with one more version of a receipt: a copy of version `copies`, which says `state` when one is given."""
+        base = support.example_model()
+        source = base.get("C07", receipt_id, copies)
+        data = copy.deepcopy(source.data)
+        data["identity_binding"]["version"] = version
+        if state is not None:
+            data["outcome"]["state"] = state
+        path = source.path.with_name(source.path.name.replace("-%s.json" % copies, "-%s.json" % version))
+        instances = dict(base.instances)
+        instances[("C07", receipt_id, version)] = Instance("C07", receipt_id, version, data, path)
+        return Model(instances, base.registry, base.root)
+
+    def regressions(self, model):
+        return [(f.file.replace("\\", "/").rsplit("/", 1)[-1], f.location) for f in semantics.check_authority(model) if f.code == "ACC005"]
+
+    def held(self, model, at):
+        return sorted((entry.receipt, entry.state) for entry in ledger_from_receipts(model, ts(at)) if entry.receipt == self.B)
+
+    def test_unknown_then_completed_is_the_reconciliation_and_not_a_regression(self):
+        model = support.example_model()
+        self.assertEqual([model.get("C07", self.B, version).data["outcome"]["state"] for version in ("v1", "v2")], ["unknown", "completed_verified"])
+        self.assertEqual(self.regressions(model), [])
+        self.assertEqual(regressive_receipt_versions(model), [])
+
+    def test_the_attempt_is_reserved_until_the_verified_outcome_is_available_and_consumed_after(self):
+        model = support.example_model()
+        self.assertEqual(self.held(model, self.BEFORE_RECONCILIATION), [(self.B, "reserved")])
+        for at in (self.AFTER_RECONCILIATION, self.LATER):
+            self.assertEqual(self.held(model, at), [(self.B, "consumed")])
+
+    def test_a_later_version_that_goes_back_to_unknown_is_found(self):
+        model = self.with_version(self.B, "v1", "v3")
+        self.assertEqual(self.regressions(model), [("c07-RCP-REL-0417-B-v3.json", "/outcome/state")])
+        self.assertEqual([(later.version, earlier.version) for later, earlier in regressive_receipt_versions(model)], [("v3", "v2")])
+        message = next(f.message for f in semantics.check_authority(model) if f.code == "ACC005")
+        for part in ("this version says unknown", "version v2", "completed_verified"):
+            self.assertIn(part, message)
+
+    def test_a_history_that_goes_back_is_not_the_state_the_ledger_replays(self):
+        """The third version is invalid and is reported. The replay keeps the verified outcome: the attempt stays consumed, and is not read as reserved again."""
+        stored, regressive = support.example_model(), self.with_version(self.B, "v1", "v3")
+        for at in (self.BEFORE_RECONCILIATION, self.AFTER_RECONCILIATION, self.LATER):
+            with self.subTest(at):
+                self.assertEqual(self.held(regressive, at), self.held(stored, at))
+        self.assertEqual(self.held(regressive, self.LATER), [(self.B, "consumed")])
+        self.assertTrue(self.regressions(regressive), "and the history is reported")
+
+    def test_a_verified_outcome_cannot_go_back_to_an_unresolved_one(self):
+        for state in self.UNRESOLVED:
+            with self.subTest(state):
+                self.assertEqual(self.regressions(self.with_version(self.B, "v2", "v3", state)), [("c07-RCP-REL-0417-B-v3.json", "/outcome/state")])
+
+    def test_a_verified_no_effect_cannot_go_back_to_an_unresolved_one_either(self):
+        for state in self.UNRESOLVED:
+            with self.subTest(state):
+                self.assertEqual(self.regressions(self.with_version(self.A, "v1", "v2", state)), [("c07-RCP-REL-0417-A-v2.json", "/outcome/state")])
+
+    def test_one_verified_outcome_cannot_become_the_other(self):
+        self.assertEqual(self.regressions(self.with_version(self.B, "v2", "v3", "not_executed_verified")), [("c07-RCP-REL-0417-B-v3.json", "/outcome/state")])
+        self.assertEqual(self.regressions(self.with_version(self.A, "v1", "v2", "completed_verified")), [("c07-RCP-REL-0417-A-v2.json", "/outcome/state")])
+
+    def test_a_later_version_may_repeat_the_verified_outcome(self):
+        model = self.with_version(self.B, "v2", "v3")
+        self.assertEqual(self.regressions(model), [])
+        self.assertEqual(self.held(model, self.LATER), [(self.B, "consumed")])
+
+    def test_the_stage_reports_a_regression_in_a_receipt_file_added_to_the_folder(self):
+        import json
+        import shutil
+        import tempfile
+        from pathlib import Path
+
+        import validate_examples as ve
+        from eahs.status import FAIL
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "examples"
+            shutil.copytree(support.EXAMPLES, root)
+            source = next(root.rglob("c07-RCP-REL-0417-B-v1.json"))
+            data = json.loads(source.read_text(encoding="utf-8"))
+            data["identity_binding"]["version"] = "v3"
+            (source.parent / "c07-RCP-REL-0417-B-v3.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
+            stage = next(result for result in ve.run(root, only={"semantics"}) if result.stage == "semantics")
+        self.assertEqual((stage.status, sorted({f.code for f in stage.findings})), (FAIL, ["ACC005"]))
 
 
 if __name__ == "__main__":

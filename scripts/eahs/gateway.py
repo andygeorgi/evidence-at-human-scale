@@ -63,6 +63,15 @@ def ts(value: str) -> datetime:
     return parsed
 
 
+def same_instant(first, second) -> bool:
+    """Whether two timestamps name the same instant, however each is written: 10:00:00Z, 11:00:00+01:00 and 10:00:00.000+00:00 are one instant.
+
+    A time that cannot be compared exactly (see `parse_time`) is the same as another only when the two are written alike.
+    """
+    a, b = parse_time(first), parse_time(second)
+    return a == b if a is not None and b is not None else first == second
+
+
 @dataclass
 class Reason:
     code: str
@@ -181,11 +190,12 @@ def _record(model: Model, ref) -> Optional[Instance]:
     return model.get("C02", record_id, version)
 
 
-def availability_problem(record: Instance, at: datetime) -> Optional[Reason]:
+def availability_problem(record: Instance, at: datetime, moment: str = "the attempt") -> Optional[Reason]:
     """Why the record could not be relied on at `at` because it had not been admitted by then, or None if it was available.
 
     A record is available from the later of its admission time and its ingestion time. The business event it
     describes does not matter here: an event is not known to the system until a record of it has been admitted.
+    `moment` names what `at` is in the messages: the attempt of a commit check, or the as-of time of a decision packet.
     """
     label = "%s %s" % (record.id, record.version)
     admission, times = _object(record.data.get("producer_admission")), _object(record.data.get("times"))
@@ -194,10 +204,10 @@ def availability_problem(record: Instance, at: datetime) -> Optional[Reason]:
     stamps = [("admitted", admission.get("admission_time")), ("ingested", times.get("ingestion"))]
     late = [(name, value) for name, value in stamps if parse_time(value) is not None and parse_time(value) > at]
     if late:
-        return Reason("EVIDENCE_NOT_YET_ADMITTED", "%s was %s at %s, after the attempt" % (label, late[0][0], late[0][1]))
+        return Reason("EVIDENCE_NOT_YET_ADMITTED", "%s was %s at %s, after %s" % (label, late[0][0], late[0][1], moment))
     unknown = [name for name, value in stamps if parse_time(value) is None]
     if unknown:
-        return Reason("EVIDENCE_TIME_UNKNOWN", "the time %s was %s is missing or unknown, so it cannot be shown to have been available at the attempt" % (label, unknown[0]))
+        return Reason("EVIDENCE_TIME_UNKNOWN", "the time %s was %s is missing or unknown, so it cannot be shown to have been available at %s" % (label, unknown[0], moment))
     return None
 
 
@@ -563,6 +573,35 @@ def _fmt(x) -> str:
         return "a number too large to show"
 
 
+#: The outcomes that close an attempt. A later ordinary version of the same receipt may repeat one of them and may not leave it.
+TERMINAL_OUTCOMES = ("completed_verified", "not_executed_verified")
+
+
+def _outcome_state(receipt: Instance):
+    return _object(receipt.data.get("outcome")).get("state")
+
+
+def regressive_receipt_versions(model: Model) -> List[Tuple[Instance, Instance]]:
+    """(the version, the earlier version whose verified outcome it leaves) for each version of a receipt that goes back from a verified outcome.
+
+    The versions of one receipt are read in the order of their numbers. The first version that is `completed_verified` or `not_executed_verified`
+    closes the attempt: a later version may say the same, and one that says anything else (submitted, unknown, partial, or the other verified outcome) leaves it.
+    What the unresolved states do among themselves is not judged here. No correction of a verified outcome is defined for these ordinary versions.
+    """
+    by_id: Dict[str, List[Instance]] = {}
+    for rec in model.of("C07"):
+        by_id.setdefault(rec.id, []).append(rec)
+    found: List[Tuple[Instance, Instance]] = []
+    for versions in by_id.values():
+        closed: Optional[Instance] = None
+        for rec in sorted(versions, key=lambda r: _vn(r.version)):
+            if closed is None:
+                closed = rec if _outcome_state(rec) in TERMINAL_OUTCOMES else None
+            elif _outcome_state(rec) != _outcome_state(closed):
+                found.append((rec, closed))
+    return found
+
+
 def receipt_known_at(receipt: dict, first_version: bool = False) -> Optional[datetime]:
     """When this version of a receipt became known.
 
@@ -630,15 +669,19 @@ def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str
     attempt must not be charged against itself. An attempt is known from its submission, so a receipt that already carries its
     verification still holds its reservation until that verification is available (see `_capacity_held`). A receipt whose time
     is unknown cannot be shown to come after `before`, so it is counted: capacity is never freed by a time that cannot be read.
+
+    A version that goes back from a verified outcome of an earlier version (see `regressive_receipt_versions`) is not the latest state of the attempt:
+    the replay keeps the verified outcome, so that a completed attempt is never read as unresolved again. The validator reports the history (`ACC005`).
     """
     excluded = set(exclude_receipt_ids) | ({exclude_receipt_id} if exclude_receipt_id else set())
     first: Dict[str, int] = {}
     for rec in model.of("C07"):
         first[rec.id] = min(first.get(rec.id, _vn(rec.version)), _vn(rec.version))
+    regressive = {later.key for later, _ in regressive_receipt_versions(model)}
     latest: Dict[str, Instance] = {}
     for rec in model.of("C07"):
         known = receipt_known_at(rec.data, first_version=_vn(rec.version) == first[rec.id])
-        if rec.id in excluded or (known is not None and known > before):
+        if rec.id in excluded or rec.key in regressive or (known is not None and known > before):
             continue
         cur = latest.get(rec.id)
         if cur is None or _vn(rec.version) > _vn(cur.version):

@@ -363,19 +363,28 @@ class WhatAPayloadClaimMustSay(unittest.TestCase):
         self.assertEqual(_field_of("/a~1b"), "a/b")
 
     def test_a_claim_that_cites_two_payloads_may_state_either_ones_figure_beside_a_name(self):
-        """The match said 60 units received, and its correction said 100: a claim about both is right to state both."""
-        later = reference(PAYLOAD_CLAIM)
-        later["version"] = "v2"
+        """The match said 60 units received, and its correction said 100: a claim about both is right to state both.
+
+        The claim sits in the second packet, because only a packet assembled after the correction was admitted can cite it.
+        """
+        second = "C04 PKT-0417 v2"
+        later = reference(PAYLOAD_CLAIM, packet="PKT-0417", version="v2")
+        earlier = copy.deepcopy(later)
+        earlier["version"] = "v1"
         both = ("Three-way match M3W 2.0 on INV-2026-0417: FAIL (invoiced 100 units, received 60 units, variance 40.0%, tolerance 2%), "
                 "then PASS (invoiced 100 units, received 100 units, variance 0.0%, tolerance 2%).")
-        refs = [reference(PAYLOAD_CLAIM), later]
-        self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, both, copy.deepcopy(refs))), [])
+        refs = [earlier, later]
+
+        def found_in_second(text):
+            return claim_findings(with_claim(PAYLOAD_CLAIM, text, copy.deepcopy(refs), packet=second), version="v2")
+
+        self.assertEqual(found_in_second(both), [])
         wrong = both.replace("received 60 units", "received 80 units")
-        found = claim_findings(with_claim(PAYLOAD_CLAIM, wrong, copy.deepcopy(refs)))
+        found = found_in_second(wrong)
         self.assertEqual([f.code for f in found], ["PKT005"], [f.message for f in found])
         self.assertIn("80", found[0].message)
         swapped = both.replace("invoiced 100 units, received 60 units", "invoiced 60 units, received 100 units")
-        found = claim_findings(with_claim(PAYLOAD_CLAIM, swapped, copy.deepcopy(refs)))
+        found = found_in_second(swapped)
         self.assertEqual([f.code for f in found], ["PKT005"], [f.message for f in found])
         self.assertIn("'invoiced'", found[0].message)
 

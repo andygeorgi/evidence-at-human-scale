@@ -3,9 +3,13 @@
 JSON Schema validates shape. These checks validate what shape cannot: that references resolve to the exact
 version they name, that lineage is acyclic and independent of its own derivatives, that corrections invalidate
 what depended on them, that each missingness label is justified, that approvals cease to be current when their
-basis is superseded, and that a receipt agrees with what a gateway would have decided.
+basis is superseded, and that a receipt agrees with what a gateway would have decided. A decision snapshot is held
+together the same way: a context, the selection built under it and the packet built on both state one as-of time,
+the packet rests only on what was available then and carries every obligation of its selection, and a proposal rests
+on the context of its packet.
 
-Passing proves the example set is internally coherent. It proves nothing about any real system.
+Passing shows that the example set satisfies these checks, which compare its records with one another. It does not show
+that the records agree in every other respect, and it proves nothing about any real system.
 """
 from __future__ import annotations
 
@@ -17,7 +21,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from .disclosure import Decision, Viewer, binding_problems, differences, gap_entry, may_know, retrieval_entry
 from .findings import Finding, doc_for_contract
-from .gateway import GATE_CODES, age_hours, availability_problem, evaluate_commit, freshness_max_age, is_current_at, ledger_from_receipts, parse_time, ts
+from .gateway import GATE_CODES, age_hours, availability_problem, evaluate_commit, freshness_max_age, is_current_at, ledger_from_receipts, parse_time, regressive_receipt_versions, same_instant, ts
 from .model import Instance, Model, claims_of, iter_refs, payload_object_of, resolve_pointer, version_number as _vn
 
 DOC_EVIDENCE = "architecture/evidence-semantics.md"
@@ -124,6 +128,20 @@ def roots(model: Model, rec: Instance) -> Set[Tuple[str, str]]:
     return {(a.id, a.version) for a in anc.values() if not a.data["lineage"]["parent_references"]}
 
 
+def _computed_over_records(model: Model, rec: Instance) -> bool:
+    """Whether this record is the result of a rule applied to other records, so that it must name them as its parents.
+
+    A deterministic finding reports what a declared rule produces from specified inputs, and those inputs are records of the set, unless its producer is
+    registered as computing over data that is not a record of the set (a ledger check, a screening run): the registry says so with `"inputs": "outside_records"`.
+    The registry decides, and the record cannot: a producer would otherwise be free to leave out its parents by the way it writes its content.
+    A source record assertion is an original and needs no parent. No other kind is judged here, and nothing recomputes a finding from its parents.
+    """
+    if rec.data["identity_schema"]["kind"] != "deterministic_finding":
+        return False
+    producer = model.registry.producers.get(rec.data["producer_admission"]["producer_id"])
+    return not (isinstance(producer, dict) and producer.get("inputs") == "outside_records")
+
+
 def check_lineage(model: Model) -> List[Finding]:
     out: List[Finding] = []
     allowed = set(model.registry.relationship_types)
@@ -131,6 +149,9 @@ def check_lineage(model: Model) -> List[Finding]:
         for i, p in enumerate(rec.data["lineage"]["parent_references"]):
             if (p["record_id"], p["version"]) == (rec.id, rec.version):
                 out.append(_f("LIN004", "a record cannot be its own parent", rec, "/lineage/parent_references/%d" % i, DOC_LINEAGE))
+        if not rec.data["lineage"]["parent_references"] and _computed_over_records(model, rec):
+            out.append(_f("LIN006", "a deterministic finding reports what a rule produced from specified inputs, so it names the records it was computed from as its parents; this one names none, "
+                                    "and its producer %s is not registered as computing over data outside the records" % rec.data["producer_admission"]["producer_id"], rec, "/lineage/parent_references", DOC_LINEAGE))
         # cycle: the record must not be among its own ancestors
         if (("C02", rec.id, rec.version)) in ancestors(model, rec):
             out.append(_f("LIN001", "derivation ancestry must be acyclic, but %s %s is its own ancestor" % (rec.id, rec.version), rec, "/lineage", DOC_LINEAGE))
@@ -319,16 +340,25 @@ def _check_gap(model: Model, inst: Instance, m: dict, loc: str, as_of: str, sele
 # --------------------------------------------------------------------------- packets
 
 def check_packets(model: Model) -> List[Finding]:
+    """A decision packet and the snapshot it belongs to: the context it is bound to, the selection built under that context, and the packet built on both.
+
+    The three state one as-of time and bind one context. The packet rests only on what was available at that time, carries every obligation of its selection,
+    and the proposals it lists rest on its context. This is the decision-time view of a snapshot, apart from the commit-time check (`gateway.evaluate_commit`),
+    which judges an attempt at the time it is made.
+    """
     out: List[Finding] = []
+    for sel in model.of("C03"):
+        out.extend(_check_selection_context(model, sel))
     for pkt in model.of("C04"):
         d = pkt.data
         ctx_ref, sel_ref = d["decision_context_as_of"]["context_reference"], d["decision_context_as_of"]["selection_reference"]
+        ctx = model.get("C01", ctx_ref["id"], ctx_ref["version"])
         sel = model.get("C03", sel_ref["id"], sel_ref["version"])
-        if sel is not None:
-            if sel.data["identity_scope"]["context_reference"] != ctx_ref:
-                out.append(_f("PKT002", "the packet and its selection must bind the same context", pkt, "/decision_context_as_of/context_reference"))
-            if sel.data["identity_scope"]["as_of"] != d["decision_context_as_of"]["as_of"]:
-                out.append(_f("PKT002", "the packet and its selection must share one as-of time", pkt, "/decision_context_as_of/as_of"))
+        if sel is not None and sel.data["identity_scope"]["context_reference"] != ctx_ref:
+            out.append(_f("PKT002", "the packet and its selection must bind the same context", pkt, "/decision_context_as_of/context_reference"))
+        out.extend(_check_packet_as_of(pkt, ctx, sel))
+        out.extend(_check_packet_basis_available(model, pkt))
+        out.extend(_check_obligations(pkt, sel))
         if d["coverage_omissions_gaps"]["coverage_reference"]["selection_reference"] != sel_ref:
             out.append(_f("PKT003", "coverage must point at the packet's own selection", pkt, "/coverage_omissions_gaps/coverage_reference"))
         for i, claim in enumerate(d["supported_claims_references"]):
@@ -338,6 +368,132 @@ def check_packets(model: Model) -> List[Finding]:
             if pr is not None and pr.data["identity_binding"]["packet_reference"] != {"contract_id": "C04", "id": pkt.id, "version": pkt.version}:
                 out.append(_f("PKT004", "the listed proposal is bound to a different packet", pkt, "/action_proposals/%d" % i, "contracts/c05-action-proposal.md"))
         out.extend(_check_corroboration(model, pkt))
+    out.extend(_check_proposal_contexts(model))
+    return out
+
+
+def _outside(inner: dict, outer: dict) -> Optional[str]:
+    """How the time interval `inner` is not within `outer`, or None when it is.
+
+    Instants are compared, not how they are written. A bound that cannot be read exactly (see `parse_time`) can be shown to lie within another only when the two
+    intervals are written alike.
+    """
+    bounds = [parse_time(value) for value in (inner["start"], inner["end"], outer["start"], outer["end"])]
+    if any(bound is None for bound in bounds):
+        return None if (inner["start"], inner["end"]) == (outer["start"], outer["end"]) else "the two cannot be compared exactly"
+    start_in, end_in, start_out, end_out = bounds
+    return {(True, True): "it starts before the interval and ends after it", (True, False): "it starts before the interval", (False, True): "it ends after the interval"}.get((start_in < start_out, end_in > end_out))
+
+
+def _check_selection_context(model: Model, sel: Instance) -> List[Finding]:
+    """A selection is built under one context: it states that context's as-of time and reads no time that the context's interval does not cover."""
+    scope = sel.data["identity_scope"]
+    ref = scope["context_reference"]
+    ctx = model.get("C01", ref["id"], ref["version"])
+    if ctx is None:
+        return []   # REF004 reports a context that does not exist
+    stated = ctx.data["time_risk_policy"]
+    out: List[Finding] = []
+    if not same_instant(scope["as_of"], stated["as_of"]):
+        out.append(_f("PKT002", "the selection states the as-of time %s, but its context %s %s states %s: a context and the selection built under it are one snapshot, so they state one time" % (
+            scope["as_of"], ctx.id, ctx.version, stated["as_of"]), sel, "/identity_scope/as_of"))
+    outside = _outside(scope["time_scope"], stated["time_interval"])
+    if outside is not None:
+        out.append(_f("PKT002", "the selection's time scope (%s to %s) is not within the time interval of its context %s %s (%s to %s): %s. A selection reads no time that its context does not cover" % (
+            scope["time_scope"]["start"], scope["time_scope"]["end"], ctx.id, ctx.version, stated["time_interval"]["start"], stated["time_interval"]["end"], outside), sel, "/identity_scope/time_scope"))
+    return out
+
+
+def _check_packet_as_of(pkt: Instance, ctx: Optional[Instance], sel: Optional[Instance]) -> List[Finding]:
+    """The packet states the as-of time of the selection it is bound to and of the context it is bound to, as instants and not as written."""
+    as_of = pkt.data["decision_context_as_of"]["as_of"]
+    out: List[Finding] = []
+    if sel is not None and not same_instant(sel.data["identity_scope"]["as_of"], as_of):
+        out.append(_f("PKT002", "the packet states the as-of time %s, but its selection %s %s states %s: the packet and its selection are one snapshot, so they share one as-of time" % (
+            as_of, sel.id, sel.version, sel.data["identity_scope"]["as_of"]), pkt, "/decision_context_as_of/as_of"))
+    if ctx is not None and not same_instant(ctx.data["time_risk_policy"]["as_of"], as_of):
+        out.append(_f("PKT002", "the packet states the as-of time %s, but its context %s %s states %s: the context, the selection and the packet are one snapshot, so they share one as-of time" % (
+            as_of, ctx.id, ctx.version, ctx.data["time_risk_policy"]["as_of"]), pkt, "/decision_context_as_of/as_of"))
+    return out
+
+
+#: The part of a packet that lists the evidence which challenged it afterwards. Those links name later evidence by design, so they are not the packet's basis.
+CHALLENGE_LINKS = "/review_version_history/challenge_links"
+
+
+def _check_packet_basis_available(model: Model, pkt: Instance) -> List[Finding]:
+    """Every record a packet cites as the basis of what it says was available at the packet's as-of time.
+
+    That is every exact support reference (a claim, an inference, a conflict, a negative gap) and every record behind a gap, and no challenge link.
+    Availability is the rule of the commit check, applied at the packet's as-of time: from the later of the admission and the ingestion of the record, and a time equal
+    to the as-of time was reached. Only availability is judged. A record superseded later was current at the cutoff, so a later correction does not make an
+    earlier packet wrong, and the commit-time checks of lifecycle and freshness are not repeated here.
+    """
+    as_of = pkt.data["decision_context_as_of"]["as_of"]
+    cutoff = parse_time(as_of)
+    if cutoff is None:
+        raise ValueError("%s: packet %s %s has an as-of time (%r) that is not an RFC 3339 time with a zone and at most six fractional digits, so what it rests on cannot be compared "
+                         "with it exactly. Correct the time" % (pkt.file, pkt.id, pkt.version, as_of))
+    out: List[Finding] = []
+    seen: Set[Tuple[str, str]] = set()
+    for ref in iter_refs(pkt.data):
+        if ref.kind not in ("support", "evidence") or ref.path.startswith(CHALLENGE_LINKS) or (ref.record_id, ref.version) in seen:
+            continue
+        seen.add((ref.record_id, ref.version))
+        record = model.get("C02", ref.record_id, ref.version)
+        problem = availability_problem(record, cutoff, "the packet's as-of time") if record is not None else None   # REF001 reports a record that does not exist
+        if problem is not None:
+            out.append(_f("PKT007", "the packet is as of %s, but it cites a record that was not available then: %s. A packet rests only on what was available at its as-of time" % (as_of, problem.message), pkt, ref.path, DOC_EVIDENCE))
+    return out
+
+
+def _check_obligations(pkt: Instance, sel: Optional[Instance]) -> List[Finding]:
+    """A packet carries every obligation of its own selection, once: none is left out, none is invented, none is taken from another selection.
+
+    An obligation the reader may not know of is not in the selection at all (permission comes first), so each obligation a selection lists is one the reader
+    must see, and a packet that leaves one out has lost a mandatory item whatever a response made from the packet then says. Acknowledgement is not resolution:
+    the state of an obligation is its selection's business and is not judged here.
+    """
+    if sel is None:
+        return []   # REF004 reports a selection that does not exist
+    sel_ref = pkt.data["decision_context_as_of"]["selection_reference"]
+    where = "/priority_mandatory_obligations/obligation_references"
+    held = Counter(o["obligation_id"] for o in sel.data["obligations"])
+    carried: Counter = Counter()
+    out: List[Finding] = []
+    for i, ref in enumerate(pkt.data["priority_mandatory_obligations"]["obligation_references"]):
+        name, named = ref["obligation_id"], ref["selection_reference"]
+        here = "%s/%d" % (where, i)
+        if named != sel_ref:
+            out.append(_f("PKT008", "the packet lists obligation %s of selection %s %s, but it is bound to selection %s %s: a packet carries the obligations of its own selection" % (
+                name, named["id"], named["version"], sel_ref["id"], sel_ref["version"]), pkt, here))
+        elif held[name] == 0:
+            out.append(_f("PKT008", "the packet lists obligation %s, which its selection %s %s does not hold: a packet lists no obligation that its selection lacks" % (name, sel.id, sel.version), pkt, here))
+        else:
+            carried[name] += 1
+            if held[name] > 1:
+                out.append(_f("PKT008", "the packet lists obligation %s, but its selection %s %s holds that name more than once, so the reference is ambiguous" % (name, sel.id, sel.version), pkt, here))
+            if carried[name] == 2:
+                out.append(_f("PKT008", "the packet lists obligation %s more than once: each obligation of the selection is carried once" % name, pkt, here))
+    for name in held:
+        if not carried[name]:
+            out.append(_f("PKT009", "the packet leaves out obligation %s of its selection %s %s: every obligation of the selection is a mandatory item and stays in the packet" % (name, sel.id, sel.version), pkt, where))
+    return out
+
+
+def _check_proposal_contexts(model: Model) -> List[Finding]:
+    """A proposal rests on the context of the packet it is bound to."""
+    out: List[Finding] = []
+    for prop in model.of("C05"):
+        binding = prop.data["identity_binding"]
+        ref = binding["packet_reference"]
+        pkt = model.get("C04", ref["id"], ref["version"])
+        if pkt is None:
+            continue   # REF004 reports a packet that does not exist
+        context = pkt.data["decision_context_as_of"]["context_reference"]
+        if binding["context_reference"] != context:
+            out.append(_f("PKT006", "the proposal is bound to context %s %s, but the packet %s %s that it is bound to rests on context %s %s: a proposal rests on the context of its packet" % (
+                binding["context_reference"]["id"], binding["context_reference"]["version"], pkt.id, pkt.version, context["id"], context["version"]), prop, "/identity_binding/context_reference"))
     return out
 
 
@@ -715,12 +871,17 @@ def check_authority(model: Model) -> List[Finding]:
     by_id: Dict[str, List[Instance]] = {}
     for rec in model.of("C07"):
         by_id.setdefault(rec.id, []).append(rec)
+    leaving = {later.key: earlier for later, earlier in regressive_receipt_versions(model)}
     for versions in by_id.values():
         versions.sort(key=lambda i: _vn(i.version))
         first = versions[0]
         out.extend(_check_receipt(model, first, versions))
         for later in versions[1:]:
             out.extend(_check_receipt_chain(model, first, later))
+            earlier = leaving.get(later.key)
+            if earlier is not None:
+                out.append(_f("ACC005", "this version says %s, but version %s of the receipt had already reached the verified outcome %s: a verified outcome closes the attempt, and a later version may repeat it "
+                                        "but may not go back to an unresolved outcome or to the other verified one" % (later.data["outcome"]["state"], earlier.version, earlier.data["outcome"]["state"]), later, "/outcome/state", DOC_ACTION))
         for rec in versions:
             if rec.data["outcome"]["state"] in ("completed_verified", "not_executed_verified") and rec.data["verification_recovery"]["accounting"]["state"] != "reconciled":
                 out.append(_f("ACC003", "a verified outcome settles its accounting: the state must be reconciled", rec, "/verification_recovery/accounting/state", DOC_ACTION))
@@ -880,10 +1041,8 @@ def _check_receipt_chain(model: Model, first: Instance, later: Instance) -> List
         if a[key] != b[key]:
             out.append(_f("ACC004", "a later version of a receipt must describe the same attempt (%s changed)" % key, later, "/identity_binding/" + key, DOC_ACTION))
     first_submitted, later_submitted = (_object_of(_object_of(v.data["outcome"]).get("timestamps")).get("submitted") for v in (first, later))
-    first_at, later_at = parse_time(first_submitted), parse_time(later_submitted)
     # The same instant written another way (Z or +00:00, with or without a zero fraction) is the same attempt: instants are compared, not their spelling.
-    same_attempt = first_at == later_at if first_at is not None and later_at is not None else first_submitted == later_submitted
-    if not same_attempt:
+    if not same_instant(first_submitted, later_submitted):
         out.append(_f("ACC004", "a later version of a receipt must describe the same attempt (the submission time changed from %s to %s)" % (first_submitted, later_submitted), later, "/outcome/timestamps/submitted", DOC_ACTION))
     if first.data["outcome"]["state"] in ("unknown", "partial") and later.data["outcome"]["state"] == "completed_verified":
         acct = later.data["verification_recovery"]["accounting"]

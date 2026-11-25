@@ -45,7 +45,8 @@
     "producer:ledger-check": {
       "permitted_kinds": [
         "deterministic_finding"
-      ]
+      ],
+      "inputs": "outside_records"
     },
     "producer:payment-gateway": {
       "permitted_kinds": [
@@ -65,7 +66,8 @@
     "producer:screening-service": {
       "permitted_kinds": [
         "deterministic_finding"
-      ]
+      ],
+      "inputs": "outside_records"
     },
     "producer:service-monitor": {
       "permitted_kinds": [

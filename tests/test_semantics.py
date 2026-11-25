@@ -1,12 +1,14 @@
 import copy
+import dataclasses
 import unittest
 from collections import Counter
 
 import support  # noqa: F401
 
 from eahs import semantics
-from eahs.cases import check_cases, mutate_model
+from eahs.cases import check_cases, mutate_model, run_case
 from eahs.gateway import evaluate_commit, ledger_from_receipts, ts
+from eahs.model import Model
 from eahs.patch import apply_ops
 from eahs.scenarios import evaluate_entry, expectation
 
@@ -69,6 +71,68 @@ class ProvenanceTeaching(unittest.TestCase):
     def test_the_shared_root_is_kept(self):
         model, found = self.summaries()
         self.assertEqual([semantics.roots(model, rec) for rec in found], [{("GR-5521", "v1")}] * 2)
+
+
+class ADerivedFindingNamesTheRecordsItWasComputedFrom(unittest.TestCase):
+    """A deterministic finding reports what a rule produced from specified inputs, so it names them as its parents. A source record is an original and names none."""
+
+    NO_PARENTS = {"op": "replace", "path": "/lineage/parent_references", "value": []}
+
+    def lin006(self, model=None, *mutations):
+        if mutations:
+            model, _ = mutate_model(model or support.example_model(), list(mutations))
+        return [(f.file.replace("\\", "/").rsplit("/", 1)[-1], f.location) for f in semantics.check_lineage(model or support.example_model()) if f.code == "LIN006"]
+
+    def test_the_stored_match_names_its_inputs_and_the_stored_set_passes(self):
+        model = support.example_model()
+        for version in ("v1", "v2"):
+            record = model.get("C02", "M3W-0417", version)
+            self.assertEqual(record.data["identity_schema"]["kind"], "deterministic_finding")
+            self.assertEqual({p["record_id"] for p in record.data["lineage"]["parent_references"]}, {"INV-2026-0417", "PO-77231", "GR-5521"})
+        self.assertEqual(self.lin006(), [])
+
+    def test_a_match_that_names_no_input_is_found(self):
+        for version in ("v1", "v2"):
+            with self.subTest(version):
+                target = {"target": "C02 M3W-0417 %s" % version, "ops": [self.NO_PARENTS]}
+                self.assertEqual(self.lin006(None, target), [("c02-M3W-0417-%s.json" % version, "/lineage/parent_references")])
+                self.assertEqual(run_case(support.example_model(), support.schema(), {"mutations": [target]})[0], ["LIN006"])
+
+    def test_the_finding_names_the_producer_and_what_the_registry_would_have_to_say(self):
+        model, _ = mutate_model(support.example_model(), [{"target": "C02 M3W-0417 v2", "ops": [self.NO_PARENTS]}])
+        (finding,) = [f for f in semantics.check_lineage(model) if f.code == "LIN006"]
+        self.assertIn("producer:rules-engine", finding.message)
+        self.assertIn("outside the records", finding.message)
+
+    def test_a_source_record_is_an_original_and_needs_no_parent(self):
+        model = support.example_model()
+        sources = [r for r in model.of("C02") if r.data["identity_schema"]["kind"] == "source_record_assertion"]
+        self.assertTrue(sources)
+        for record in sources:
+            self.assertEqual(record.data["lineage"]["parent_references"], [], record.label())
+        self.assertEqual(self.lin006(), [])
+
+    def test_a_finding_whose_producer_computes_over_data_outside_the_records_needs_none(self):
+        model = support.example_model()
+        for record_id, version in (("DUP-0417", "v1"), ("SCR-S1042", "v1"), ("SCR-S1042", "v2")):
+            record = model.get("C02", record_id, version)
+            self.assertEqual((record.data["identity_schema"]["kind"], record.data["lineage"]["parent_references"]), ("deterministic_finding", []))
+            self.assertEqual(model.registry.producers[record.data["producer_admission"]["producer_id"]]["inputs"], "outside_records")
+        self.assertEqual(self.lin006(), [])
+
+    def test_the_registry_decides_so_a_producer_it_does_not_name_is_held_to_name_its_inputs(self):
+        model = support.example_model()
+        producers = copy.deepcopy(model.registry.producers)
+        del producers["producer:ledger-check"]["inputs"]
+        held = Model(model.instances, dataclasses.replace(model.registry, producers=producers), model.root)
+        self.assertEqual(self.lin006(held), [("c02-DUP-0417-v1.json", "/lineage/parent_references")])
+
+    def test_a_derived_finding_that_names_a_superseded_input_is_still_a_lifecycle_finding(self):
+        superseded = {"target": "C02 M3W-0417 v2", "ops": [{"op": "replace", "path": "/lineage/parent_references/2/version", "value": "v1"}]}
+        self.assertEqual(run_case(support.example_model(), support.schema(), {"mutations": [superseded]})[0], ["LIFE002"])
+
+    def test_a_record_of_another_kind_is_not_judged_by_this_rule(self):
+        self.assertEqual(self.lin006(None, {"target": "C02 SUM-A-0417 v1", "ops": [self.NO_PARENTS]}), [])
 
 
 class Baseline(unittest.TestCase):

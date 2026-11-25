@@ -849,6 +849,8 @@ class ARegistrySectionOfTheWrongShape(Scratch, Actionable):
         cases = (
             ("producers", lambda d: d.update(producers=[]), "'producers' must be an object"),
             ("a producer without its kinds", lambda d: d["producers"].update({"producer:x": {}}), "permitted_kinds"),
+            ("a producer whose inputs are not one of the two the registry knows", lambda d: d["producers"]["producer:ledger-check"].update(inputs="somewhere"), "'inputs' must be"),
+            ("a producer whose inputs are a list", lambda d: d["producers"]["producer:ledger-check"].update(inputs=["outside_records"]), "'inputs' must be"),
             ("policies", lambda d: d.update(policies=["POL"]), "'policies' must be an object"),
             ("a policy that is not an object of versions", lambda d: d["policies"].update({"POL-X": []}), "policy 'POL-X'"),
             ("preconditions", lambda d: d.update(preconditions=None), "'preconditions' must be an object"),
