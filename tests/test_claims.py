@@ -332,6 +332,17 @@ class WhatAPayloadClaimMustSay(unittest.TestCase):
             with self.subTest(right):
                 self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, right, copy.deepcopy(refs))), [])
 
+    def test_a_word_that_names_the_wrapper_around_the_data_is_not_the_name_of_a_field(self):
+        """A payload is a wrapper (its data type, its schema, its value) around the data a claim is about. "value", "type" and "reference" are words, and not fields of the record."""
+        refs = []
+        for field in ("result", "quantity_invoiced"):
+            ref = reference(PAYLOAD_CLAIM)
+            ref["payload_location"] = "/value/" + field
+            refs.append(ref)
+        for text in ("FAIL. Total value 100.", "FAIL. The data type 100.", "FAIL. Reference 100."):
+            with self.subTest(text):
+                self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, text, copy.deepcopy(refs))), [])
+
     def test_a_figure_after_a_colon_is_stated_with_its_sign_and_a_time_is_not_a_figure(self):
         """A colon after a digit is a time or a ratio ("13:45", "2:1"). A colon after a word is a delimiter: the number after it is stated, and a minus sign right behind it is a sign."""
         from decimal import Decimal

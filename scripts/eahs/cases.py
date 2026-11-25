@@ -34,8 +34,10 @@ def mutate_model(model: Model, mutations: List[dict]) -> Tuple[Model, List[Insta
             raise DescribedKeyError("%s is not in the example set, so it cannot be changed" % mutation["target"])
         try:
             data = apply_ops(base.data, mutation["ops"])
-        except (DescribedKeyError, DescribedIndexError, DescribedTypeError, ValueError) as exc:
+        except (DescribedKeyError, DescribedIndexError, DescribedTypeError) as exc:
             raise type(exc)("%s, %s" % (mutation["target"], exc)) from None
+        except ValueError as exc:
+            raise ValueError("%s, %s" % (mutation["target"], exc)) from None
         new = Instance(base.contract, base.id, base.version, data, base.path)
         instances[key] = new
         changed.append(new)

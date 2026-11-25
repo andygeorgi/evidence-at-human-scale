@@ -616,7 +616,8 @@ def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -
                 continue
             try:
                 payloads.append((resolve_pointer(payload, ref.get("payload_location", "")), "%s %s payload %s" % (rec.id, rec.version, ref.get("payload_location")), _field_of(ref.get("payload_location", ""))))
-                records.append(payload)
+                # The fields a claim can be about are those of the data the payload holds, and not the wrapper around it (its data type, its schema, its value).
+                records.append(payload["value"] if isinstance(payload, dict) and "value" in payload else payload)
             except (KeyError, IndexError, ValueError, TypeError):
                 unresolved = True
     text = claim["text"]

@@ -25,8 +25,10 @@ def apply_overrides(data: dict, overrides: List[dict], which: str) -> dict:
             continue
         try:
             out = apply_ops(out, [{"op": "replace", "path": item["path"], "value": item["value"]}])
-        except (DescribedKeyError, DescribedIndexError, DescribedTypeError, ValueError) as exc:
+        except (DescribedKeyError, DescribedIndexError, DescribedTypeError) as exc:
             raise type(exc)("override %d (on %s), %s" % (position, which, exc)) from None
+        except ValueError as exc:
+            raise ValueError("override %d (on %s), %s" % (position, which, exc)) from None
     return out
 
 
@@ -43,8 +45,10 @@ def with_evidence_overrides(model: Model, overrides: List[dict]) -> Model:
             raise DescribedKeyError("override %d (on evidence) names %s %s, which does not exist" % (position, ref["id"], ref["version"]))
         try:
             data = apply_ops(rec.data, [{"op": "replace", "path": item["path"], "value": item["value"]}])
-        except (DescribedKeyError, DescribedIndexError, DescribedTypeError, ValueError) as exc:
+        except (DescribedKeyError, DescribedIndexError, DescribedTypeError) as exc:
             raise type(exc)("override %d (on evidence %s %s), %s" % (position, ref["id"], ref["version"], exc)) from None
+        except ValueError as exc:
+            raise ValueError("override %d (on evidence %s %s), %s" % (position, ref["id"], ref["version"], exc)) from None
         instances[key] = Instance(rec.contract, rec.id, rec.version, data, rec.path)
     return replace(model, instances=instances)
 
