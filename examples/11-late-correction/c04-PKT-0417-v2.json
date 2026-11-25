@@ -381,9 +381,9 @@
         "materiality": "supporting_detail",
         "reason": {
           "state": "known",
-          "value": "No carrier record of the second delivery exists in the readable sources. The warehouse's own scan, in the corrected goods receipt, is the only record of it."
+          "value": "No carrier record of the second delivery was found in the sources that were read. The warehouse's own scan, in the corrected goods receipt, records it. Search coverage is not established."
         },
-        "assessment_basis": "Expected under the receiving procedure for a multi-pallet order and not present in any source in scope. Search coverage is not established, so this is recorded as missing, not as a negative."
+        "assessment_basis": "Expected under the receiving procedure for a multi-pallet order and not found in any source in scope. Search coverage is not established, so this is recorded as missing, not as a negative."
       },
       {
         "state": "not_retrieved",

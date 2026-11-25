@@ -651,9 +651,9 @@ def missingness_entries(S, version, as_of, scr, dup):
             "state": "missing", "scope": gap_scope("Carrier proof of delivery for the second pallet", "units"),
             "expected_evidence": "Carrier proof of delivery for a second pallet of 40 units",
             "materiality": "supporting_detail" if v2 else "supports_resolution_of_conflict",
-            "reason": known("No carrier record of the second delivery exists in the readable sources. The warehouse's own scan, in the corrected goods receipt, is the only record of it."
-                            if v2 else "No carrier or warehouse record of a second delivery exists in the readable sources."),
-            "assessment_basis": "Expected under the receiving procedure for a multi-pallet order and not present in any source in scope. Search coverage is not established, so this is recorded as missing, not as a negative.",
+            "reason": known("No carrier record of the second delivery was found in the sources that were read. The warehouse's own scan, in the corrected goods receipt, records it. Search coverage is not established."
+                            if v2 else "No carrier or warehouse record of a second delivery was found in the sources that were read. Search coverage is not established."),
+            "assessment_basis": "Expected under the receiving procedure for a multi-pallet order and not found in any source in scope. Search coverage is not established, so this is recorded as missing, not as a negative.",
         },
         {
             "state": "not_retrieved", "scope": gap_scope("Open credit notes for supplier S-1042", "EUR"),

@@ -348,7 +348,7 @@ def f05(c):
     row(c, [dict(kind="pkt", head="Every check passes", body=sub("Reserve allowance. Submit the exact action to the target. Record the outcome, or a timeout."), weight=left_w),
             dict(kind="stop", head="A check fails", body=sub("Rejected before submission. Nothing is submitted."), weight=c.inner - left_w - 10)])
     fork(c, left_w)
-    c.card("pkt", "Receipt (C07)", ["After a pass, the receipt records the outcome, such as completed and verified, unknown, partly verified or verified no effect.", "After a failed check: the rejection and its reasons. A rejection alone is not a verified no-effect."], gap=0)
+    c.card("pkt", "Receipt (C07)", ["After a pass, the receipt records the outcome, such as completed and verified, unknown, partly verified or verified no effect.", "After a failed check: the rejection and its reasons are kept. Verified no effect is recorded only after the target is checked."], gap=0)
     c.down(24)
     c.card("src", "Authoritative verification", sub("against the target, for this attempt, target and scope: confirms or reconciles the outcome, or confirms that there was no effect"))
 
@@ -480,8 +480,8 @@ EVENTS = [
     (None, "src", "Source owner", "A correction is admitted as a new version."),
     (None, "src", "Registry (C02)", "It supersedes the earlier version."),
     (None, "src", "Lineage", "Findings and summaries derived from the earlier version are invalidated, and so is the packet that rested on them."),
-    (None, "pkt", "Packet (C04)", "A revised packet is produced; the prior version stays linked."),
     (None, "own", "Delegation (C06)", "The pending approval is revoked."),
+    (None, "pkt", "Packet (C04)", "A revised packet is produced; the prior version stays linked."),
     ("AT COMMIT", None, None, None),
     (None, "warn", "Executor (action gateway)", "The queued action reaches commit and is rechecked: the grant is revoked and the evidence is no longer current."),
     (None, "pkt", "Receipt (C07)", "Refused before submission, with the reasons. It is a verified no-effect only once the target has been checked."),

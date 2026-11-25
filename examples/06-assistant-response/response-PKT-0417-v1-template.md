@@ -27,7 +27,7 @@ This is a review aid. It is not a decision, an approval or an instruction.
 
 ## What could not be checked
 
-- Missing: Carrier proof of delivery for a second pallet of 40 units. No carrier or warehouse record of a second delivery exists in the readable sources. `[gap 1 (missing)]`
+- Missing: Carrier proof of delivery for a second pallet of 40 units. No carrier or warehouse record of a second delivery was found in the sources that were read. Search coverage is not established. `[gap 1 (missing)]`
 - Not retrieved: Open credit notes for supplier S-1042 in the last 90 days. Retrieval RETR-CREDIT-0417 completed with 0 relevant records; an empty result does not prove absence. `[gap 2 (not_retrieved)]`
 - Inaccessible: Coverage is limited by access permissions; no protected source identity or content is disclosed. `[gap 3 (inaccessible)]`
 - Unavailable: Treasury cash position for 2026-11-23. The cash-position service returned HTTP 503 and did not recover during the retrieval window. Nothing was read or assumed. `[gap 4 (unavailable)]`

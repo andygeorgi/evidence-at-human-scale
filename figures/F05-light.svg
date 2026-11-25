@@ -72,9 +72,9 @@
 <text x="20.0" y="796.0" font-size="14" text-anchor="start" fill="#0F2E1B">the outcome, such as completed</text>
 <text x="20.0" y="814.5" font-size="14" text-anchor="start" fill="#0F2E1B">and verified, unknown, partly</text>
 <text x="20.0" y="832.9" font-size="14" text-anchor="start" fill="#0F2E1B">verified or verified no effect.</text>
-<text x="20.0" y="854.4" font-size="14" text-anchor="start" fill="#0F2E1B">After a failed check: the rejection</text>
-<text x="20.0" y="872.9" font-size="14" text-anchor="start" fill="#0F2E1B">and its reasons. A rejection alone</text>
-<text x="20.0" y="891.4" font-size="14" text-anchor="start" fill="#0F2E1B">is not a verified no-effect.</text>
+<text x="20.0" y="854.4" font-size="14" text-anchor="start" fill="#0F2E1B">After a failed check: the rejection and its</text>
+<text x="20.0" y="872.9" font-size="14" text-anchor="start" fill="#0F2E1B">reasons are kept. Verified no effect is</text>
+<text x="20.0" y="891.4" font-size="14" text-anchor="start" fill="#0F2E1B">recorded only after the target is checked.</text>
 <path d="M180.0 906.6 L180.0 929.6" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
 <rect x="10.0" y="930.6" width="340.0" height="94.2" rx="8" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.6"/>
 <text x="20.0" y="954.5" font-size="15" text-anchor="start" font-weight="700" fill="#0B2540">Authoritative verification</text>

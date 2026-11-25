@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 929" width="360" height="929" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">A late correction reaches a pending approval</title>
-<desc id="d">A vertical timeline in three phases. Before: a release is queued under an approval. Then a correction is admitted as a new version. It supersedes the earlier version and invalidates what was derived from it, the packet included. A revised packet is produced and the pending approval is revoked. At commit: the executor (action gateway) refuses the queued action before submission, and the receipt records why.</desc>
+<desc id="d">A vertical timeline in three phases. Before: a release is queued under an approval. Then a correction is admitted as a new version. It supersedes the earlier version and invalidates what was derived from it, the packet included. The pending approval is revoked, and a revised packet is produced. At commit: the executor (action gateway) refuses the queued action before submission, and the receipt records why.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
 <rect width="360" height="929" fill="#ffffff"/>
 <text x="42.0" y="26.0" font-size="13" text-anchor="start" font-weight="700" fill="#57606a">BEFORE</text>
@@ -28,24 +28,24 @@
 <text x="52.0" y="405.5" font-size="13" text-anchor="start" fill="#0B2540">so is the packet that rested on them.</text>
 <path d="M20.0 281.1 L20.0 341.1" fill="none" stroke="#57606a" stroke-width="1.8"/>
 <circle cx="20.0" cy="347.1" r="6" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.6"/>
-<rect x="42.0" y="432.3" width="308.0" height="77.1" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
-<text x="52.0" y="456.2" font-size="15" text-anchor="start" font-weight="700" fill="#0F2E1B">Packet (C04)</text>
-<text x="52.0" y="477.4" font-size="13" text-anchor="start" fill="#0F2E1B">A revised packet is produced;</text>
-<text x="52.0" y="494.5" font-size="13" text-anchor="start" fill="#0F2E1B">the prior version stays linked.</text>
+<rect x="42.0" y="432.3" width="308.0" height="59.9" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
+<text x="52.0" y="456.2" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">Delegation (C06)</text>
+<text x="52.0" y="477.4" font-size="13" text-anchor="start" fill="#24133F">The pending approval is revoked.</text>
 <path d="M20.0 353.1 L20.0 447.3" fill="none" stroke="#57606a" stroke-width="1.8"/>
-<circle cx="20.0" cy="453.3" r="6" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
-<rect x="42.0" y="521.4" width="308.0" height="59.9" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
-<text x="52.0" y="545.3" font-size="15" text-anchor="start" font-weight="700" fill="#24133F">Delegation (C06)</text>
-<text x="52.0" y="566.5" font-size="13" text-anchor="start" fill="#24133F">The pending approval is revoked.</text>
-<path d="M20.0 459.3 L20.0 536.4" fill="none" stroke="#57606a" stroke-width="1.8"/>
-<circle cx="20.0" cy="542.4" r="6" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
+<circle cx="20.0" cy="453.3" r="6" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
+<rect x="42.0" y="504.2" width="308.0" height="77.1" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
+<text x="52.0" y="528.1" font-size="15" text-anchor="start" font-weight="700" fill="#0F2E1B">Packet (C04)</text>
+<text x="52.0" y="549.3" font-size="13" text-anchor="start" fill="#0F2E1B">A revised packet is produced;</text>
+<text x="52.0" y="566.5" font-size="13" text-anchor="start" fill="#0F2E1B">the prior version stays linked.</text>
+<path d="M20.0 459.3 L20.0 519.2" fill="none" stroke="#57606a" stroke-width="1.8"/>
+<circle cx="20.0" cy="525.2" r="6" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
 <text x="42.0" y="615.3" font-size="13" text-anchor="start" font-weight="700" fill="#57606a">AT COMMIT</text>
 <rect x="42.0" y="629.3" width="308.0" height="94.2" rx="8" fill="#FFF1D6" stroke="#A15F00" stroke-width="1.6"/>
 <text x="52.0" y="653.2" font-size="15" text-anchor="start" font-weight="700" fill="#3D2500">Executor (action gateway)</text>
 <text x="52.0" y="674.4" font-size="13" text-anchor="start" fill="#3D2500">The queued action reaches commit</text>
 <text x="52.0" y="691.5" font-size="13" text-anchor="start" fill="#3D2500">and is rechecked: the grant is revoked</text>
 <text x="52.0" y="708.7" font-size="13" text-anchor="start" fill="#3D2500">and the evidence is no longer current.</text>
-<path d="M20.0 548.4 L20.0 644.3" fill="none" stroke="#57606a" stroke-width="1.8"/>
+<path d="M20.0 531.2 L20.0 644.3" fill="none" stroke="#57606a" stroke-width="1.8"/>
 <circle cx="20.0" cy="650.3" r="6" fill="#FFF1D6" stroke="#A15F00" stroke-width="1.6"/>
 <rect x="42.0" y="735.5" width="308.0" height="94.2" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
 <text x="52.0" y="759.4" font-size="15" text-anchor="start" font-weight="700" fill="#0F2E1B">Receipt (C07)</text>

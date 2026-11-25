@@ -340,14 +340,20 @@ class WordingThatStaysTrueToTheSchemaAndTheExamples(unittest.TestCase):
         self.assertIn("a release is queued under an approval", figure["alt"])
         self.assertIn("The release is queued under that approval for a later run.", "\n".join(svg_words("F10-light.svg")).replace("\n", " "))
 
-    def test_the_current_packet_does_not_say_that_no_warehouse_record_of_the_second_delivery_exists(self):
-        """Packet v2 cites the corrected goods receipt, which is the warehouse's own record of that delivery. Only the carrier's proof is missing."""
+    def test_a_missing_gap_says_what_was_found_in_what_was_read_and_never_that_nothing_exists(self):
+        """"missing" is not "negative": search coverage is not established, so the reason says that nothing was found in the sources that were read.
+        Packet v2 also cites the corrected goods receipt, which is the warehouse's own record of that delivery, so only the carrier's proof is missing."""
         for name in ("11-late-correction/c04-PKT-0417-v2.json", "11-late-correction/c03-SEL-0417-v2.json", "06-assistant-response/response-PKT-0417-v2-template.json", "06-assistant-response/response-PKT-0417-v2-template.md"):
             body = (support.EXAMPLES / name).read_text(encoding="utf-8")
             self.assertNotIn("carrier or warehouse record", body, name)
-            self.assertIn("No carrier record of the second delivery", body, name)
-        packet_v1 = (support.EXAMPLES / "05-decision-packet/c04-PKT-0417-v1.json").read_text(encoding="utf-8")
-        self.assertIn("No carrier or warehouse record of a second delivery", packet_v1, "that was true when version 1 was written")
+            self.assertNotIn("exists in the readable sources", body, name)
+            self.assertIn("No carrier record of the second delivery was found in the sources that were read", body, name)
+            self.assertIn("in the corrected goods receipt, records it", body, name)
+            self.assertIn("Search coverage is not established", body, name)
+        for name in ("05-decision-packet/c04-PKT-0417-v1.json", "04-selection-and-missingness/c03-SEL-0417-v1.json", "06-assistant-response/response-PKT-0417-v1-template.json"):
+            body = (support.EXAMPLES / name).read_text(encoding="utf-8")
+            self.assertIn("No carrier or warehouse record of a second delivery was found in the sources that were read", body, "that was true when version 1 was written: " + name)
+            self.assertNotIn("exists in the readable sources", body, name)
 
     def test_the_proposal_sentence_of_the_template_names_the_action_before_the_identifier(self):
         for name in ("06-assistant-response/response-PKT-0417-v2-template.md", "06-assistant-response/README.md"):

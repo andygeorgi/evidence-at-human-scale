@@ -93,7 +93,7 @@
     {
       "kind": "gap",
       "label": "gap 1 (missing)",
-      "text": "Missing: Carrier proof of delivery for a second pallet of 40 units. No carrier or warehouse record of a second delivery exists in the readable sources.",
+      "text": "Missing: Carrier proof of delivery for a second pallet of 40 units. No carrier or warehouse record of a second delivery was found in the sources that were read. Search coverage is not established.",
       "refs": [
         "/coverage_omissions_gaps/missingness/0"
       ]
