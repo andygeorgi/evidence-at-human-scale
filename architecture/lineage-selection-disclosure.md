@@ -8,7 +8,7 @@ A decision packet has to show where each claim comes from and what is missing, w
 
 In the lineage figure (Figure F03, [chapter 4](../docs/paper/04-evidence-and-lineage.md)), the two AI summaries, both model inferences, derive from one goods receipt, a source record, and both feed the decision packet. Their agreement comes from one origin. It is not independent corroboration. The invoice is a conflicting source assertion. The corrected receipt supersedes the first version of the receipt and invalidates the affected derivatives. A scoped validation record applies only to the target and scope it actually assessed.
 
-Derivation ancestry is directed and acyclic. The dashed relationships in the figure (contradiction, supersession, validation and invalidation) are not ancestry. Every relationship names the actor who asserted it.
+Derivation ancestry is directed and acyclic. A deterministic finding names the records it was computed from as its parents, unless the registry says that its producer computes over data that is not a record of the set (`LIN006`); a source record is an original and names none. The dashed relationships in the figure (contradiction, supersession, validation and invalidation) are not ancestry. Every relationship names the actor who asserted it.
 
 Missingness uses these canonical labels, and they must not be collapsed into one another:
 
@@ -58,7 +58,7 @@ The repository validator is not an authorization service. It cannot stop a discl
 
 ## Constraints before ranking, mandatory continuity
 
-Selection applies authorization, purpose, lifecycle and mandatory constraints first. Only then does it do the discretionary work of ranking, grouping and synthesis. Each item carries its reasons: its obligation, severity, deadline, task relevance, freshness and uncertainty. A severe signal with low confidence may still need prominence, and urgency never stands for confidence. A user's preferences can change the order of items that are discretionary and permitted. They cannot change obligations or access.
+Selection applies authorization, purpose, lifecycle and mandatory constraints first. Only then does it do the discretionary work of ranking, grouping and synthesis. Each item carries its reasons: its obligation, severity, deadline, task relevance, freshness and uncertainty. A severe signal with low confidence may still need prominence, and urgency never stands for confidence. A user's preferences can change the order of items that are discretionary and permitted. They cannot change obligations or access. The obligations of a selection are mandatory for the packet built on it: the packet carries every one of them, once, and none that the selection does not hold, so that an obligation cannot be lost between the selection and the packet (`PKT008`, `PKT009`).
 
 A packet may deduplicate material that shares an origin. It may not present that agreement as corroboration. A material conflict stays visible unless the domain's policy explicitly supersedes one side, within a stated scope. Neither a majority nor a newer timestamp settles a conflict of authority automatically. A packet can move detail out of the first view only while decision-changing evidence, conflicts, uncertainty, omissions and drillback to the original evidence stay visible. The decision packet is a versioned object for review. It does not certify truth, and it does not control execution.
 

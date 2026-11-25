@@ -44,7 +44,7 @@ Only the as-of time and the authorization reference differ. The second context i
 
 ## Checks that run here
 
-Stage 2 validates both contexts. Stage 3 checks that the policy references resolve (`REF007`) and the access decision resolves (`REF005`), and that packets and selections bind the same context and as-of time (`PKT002`). Related case: `CASE-PKT-02`.
+Stage 2 validates both contexts. Stage 3 checks that the policy references resolve (`REF007`) and the access decision resolves (`REF005`), and that the context, the selection and the packet built under it state one as-of time and that the selection reads no time outside the context's interval (`PKT002`). A proposal must rest on the context of its packet (`PKT006`). Related case: `CASE-PKT-02`.
 
 ## What this shows, and what it does not
 
