@@ -908,6 +908,123 @@ class StatementsAreHeldToWhatTheyCite(unittest.TestCase):
         self.assertIn("RESP009", codes(response))
 
 
+class TheLabelAndTheWordingAreHeldToTheRulesOfTheText(unittest.TestCase):
+    """The label is read beside the text, so what the text may not say the label may not say either. What a statement may say about a certainty, a conflict,
+    a gap, a proposal, an amount or a withdrawal is read in the words a reader would read, and not only in the words a list happened to hold."""
+
+    def setUp(self):
+        self.model = support.example_model()
+        self.v1 = render_response(self.model, self.model.get("C04", "PKT-0417", "v1"))
+        self.v2 = render_response(self.model, self.model.get("C04", "PKT-0417", "v2"))
+
+    def found(self, response, code, model=None):
+        return [f for f in check_structural(model or self.model, response, "r.json") if f.code == code]
+
+    def changed(self, response, kind, nth=0, **fields):
+        out = copy.deepcopy(response)
+        [s for s in out["statements"] if s["kind"] == kind][nth].update(fields)
+        return out
+
+    def test_the_label_of_advice_in_a_withdrawn_response_may_not_call_it_current_or_take_the_withdrawal_back(self):
+        for kind in ("recommendation", "proposal", "obligation"):
+            for label, part in (("Current advice", "calls something current or valid"), ("Still valid", "calls something current or valid"),
+                                ("Never withdrawn", "undoes the withdrawal"), ("Reinstated", "undoes the withdrawal")):
+                with self.subTest("%s: %s" % (kind, label)):
+                    found = self.found(self.changed(self.v1, kind, label=label), "RESP016")
+                    self.assertEqual(len(found), 1, [f.message for f in found])
+                    self.assertIn(part, found[0].message)
+                    self.assertIn("label", found[0].message)
+        self.assertEqual(self.found(self.v1, "RESP016"), [], "the labels the renderer writes are not such a call")
+
+    def test_the_text_and_the_label_share_one_allowance_of_calling_something_current(self):
+        """The items the statement cites say 'current' once, so the statement may say it once: in its text or in its label, and not once in each."""
+        style = copy.deepcopy(support.read_json("06-assistant-response/response-PKT-0417-v1-model-style.json"))
+        statement = next(s for s in style["statements"] if s["label"].startswith("REC-0417-1"))
+        self.assertEqual(self.found(style, "RESP016"), [])
+        statement["label"] += " (current)"
+        found = self.found(style, "RESP016")
+        self.assertEqual(len(found), 1, [f.message for f in found])
+        self.assertIn("statement and its label", found[0].message)
+
+    def test_a_certainty_word_in_a_label_is_held_to_what_the_cited_items_state(self):
+        for label in ("Verified", "Inference (verified)", "Confirmed", "Proven inference"):
+            with self.subTest(label):
+                found = self.found(self.changed(self.v1, "inference", label=label), "RESP011")
+                self.assertEqual(len(found), 1, [f.message for f in found])
+                self.assertIn("the label adds certainty", found[0].message)
+        for label in ("M01 (not verified)", "Unverified inference", "M01"):
+            with self.subTest(label):
+                self.assertEqual(self.found(self.changed(self.v1, "inference", label=label), "RESP011"), [])
+
+    def test_a_label_may_not_close_what_the_packet_keeps_open(self):
+        for response, kind, label in ((self.v1, "conflict", "Resolved conflict"), (self.v1, "conflict", "No conflict"), (self.v2, "gap", "No gaps"),
+                                      (self.v2, "obligation", "Already done"), (self.v2, "obligation", "No review required")):
+            with self.subTest("%s: %s" % (kind, label)):
+                found = self.found(self.changed(response, kind, label=label), "RESP008")
+                self.assertEqual(len(found), 1, [f.message for f in found])
+        for response, kind, label in ((self.v1, "conflict", "CONF-QTY"), (self.v2, "gap", "gap 1 (missing)"), (self.v2, "obligation", "OBL-0417-REVIEW")):
+            self.assertEqual(self.found(self.changed(response, kind, label=label), "RESP008"), [])
+
+    def test_a_proposal_says_that_it_is_neither_executed_nor_approved_each_as_a_negation(self):
+        proposal = "release_payment on invoice INV-2026-0417 (proposal ACT-REL-0417 v2)."
+        said = {
+            "Approved (not executed): " + proposal: "a proposal is not approved",
+            "Proposed and approved, not executed: " + proposal: "a proposal is not approved",
+            "Executed, not approved: " + proposal: "a proposal is not executed",
+            "Proposed (not executed): " + proposal: "does not say it is not approved",
+            "Proposed (not approved): " + proposal: "does not say it is not executed",
+            "Proposed: " + proposal: "does not say it is not executed",
+        }
+        for text, part in said.items():
+            with self.subTest(text[:40]):
+                found = self.found(self.changed(self.v2, "proposal", text=text), "RESP005")
+                self.assertTrue(any(part in f.message for f in found), [f.message for f in found])
+        for text in ("Proposed (not executed or approved): " + proposal, "Proposed, neither executed nor approved: " + proposal, "Proposed (not approved and not executed): " + proposal,
+                     "Proposed (no execution and no approval): " + proposal, "Proposed (not executed or approved): " + proposal + " Approval is required from the controller, and execution waits for it."):
+            with self.subTest(text[:40]):
+                self.assertEqual(self.found(self.changed(self.v2, "proposal", text=text), "RESP005"), [])
+
+    def test_an_amount_in_a_currency_sign_the_list_did_not_hold_and_a_sign_in_front_of_a_currency_are_held_to_the_items(self):
+        for text, part in (("The invoice asks for \u20b9 18,400.00: 100 units at EUR 184.00.", "the currency \u20b9"), ("The invoice asks for \u2212EUR 18,400.00: 100 units at EUR 184.00.", "-18,400.00"),
+                           ("The invoice asks for -EUR 18,400.00: 100 units at EUR 184.00.", "-18,400.00"), ("The invoice asks for \u2212 EUR 18,400.00: 100 units at EUR 184.00.", "-18,400.00"),
+                           ("The invoice asks for -$ 18,400.00.", "the currency $")):
+            with self.subTest(text[:40]):
+                found = self.found(self.changed(self.v1, "claim", 0, text=text), "RESP002")
+                self.assertTrue(any(part in f.message for f in found), [f.message for f in found])
+
+    def test_a_dash_between_words_is_not_a_sign(self):
+        self.assertEqual(figures("\u2212EUR 18,400.00"), {"-18,400.00"})
+        self.assertEqual(figures("\u2212 EUR 18,400.00"), {"-18,400.00"})
+        self.assertEqual(figures("-EUR 18,400.00"), {"-18,400.00"})
+        self.assertEqual(figures("-$5"), {"-5"})
+        self.assertEqual(figures("100 units - EUR 184.00 each"), {"100", "184.00"})
+        self.assertEqual(figures("Total - EUR 18,400.00"), {"18,400.00"})
+        self.assertEqual(figures("units-EUR 184.00"), {"184.00"})
+        self.assertEqual(figures("EUR 18,400.00"), {"18,400.00"})
+        text = self.v1["statements"][0]["text"].replace("EUR 18,400.00", "- EUR 18,400.00", 1)
+        self.assertEqual(self.found(self.changed(self.v1, "claim", 0, text=text), "RESP002"), [], "a dash with spaces on both sides is punctuation")
+
+    def test_a_superseded_record_the_packet_does_not_name_is_not_part_of_the_withdrawal_reason(self):
+        """The reason is built from the records the packet rests on. A superseded record that the packet does not name may be one the reader may not know of."""
+        from eahs.model import Instance, Model
+        old = self.model.get("C02", "GR-5521", "v1")
+        hidden = copy.deepcopy(old.data)
+        hidden["identity_schema"]["version"] = "v0"
+        hidden["disclosure_permissions"] = dict(hidden.get("disclosure_permissions", {}), purpose="Investigation file; not for payment review")
+        instances = dict(self.model.instances)
+        instances[("C02", "GR-5521", "v0")] = Instance(old.contract, "GR-5521", "v0", hidden, old.path)
+        model = Model(instances, self.model.registry, self.model.root)
+        packet = model.get("C04", "PKT-0417", "v1")
+        trusted = trusted_lifecycle(self.model, self.model.get("C04", "PKT-0417", "v1"))
+        self.assertEqual(trusted_lifecycle(model, packet), trusted)
+        self.assertNotIn("GR-5521 v0", trusted[1])
+        self.assertEqual(render_response(model, packet), self.v1)
+        naming_it = copy.deepcopy(self.v1)
+        naming_it["status_reason"] = trusted[1] + " GR-5521 v0 was superseded by GR-5521 v2."
+        self.assertIn("RESP015", [f.code for f in check_structural(model, naming_it, "r.json")])
+        self.assertEqual(check_structural(model, self.v1, "r.json"), [])
+
+
 class ClaimBoundary(unittest.TestCase):
     """What each validation promises. The documents must say the same, and the code must not promise more."""
 

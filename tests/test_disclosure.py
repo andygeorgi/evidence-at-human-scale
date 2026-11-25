@@ -438,6 +438,27 @@ class SnapshotValidation(unittest.TestCase):
                     self.assertIsNone(semantics.permitted_wording(model, packet, {"record_id": "AUTHZ-READ-LIMIT-0417", "version": "v1"}))
                     self.assertEqual([s for s in render_response(model, packet)["statements"] if "(inaccessible)" in s["label"]], [])
 
+    def test_a_retrieval_that_says_it_was_read_may_not_cite_a_decision_that_does_not_let_the_viewer_read(self):
+        """The generic entry (status not_permitted) is the only retrieval unit that may stand for what the viewer may not read. A completed unit that names such a
+        decision tells the reader that the input was read, or names an input whose existence they may not know."""
+        unit = "/retrieval/0/authorization_reference"
+        for record, code, part in (("AUTHZ-READ-WITHHELD-0417", "DISC002", "withholds the existence"), ("AUTHZ-READ-LIMIT-0417", "DISC003", "does not let this viewer read")):
+            with self.subTest(record):
+                _, model = self.codes({"target": "C03 SEL-0417 v1", "ops": [{"op": "replace", "path": unit + "/record_id", "value": record}]})
+                found = [f for f in semantics.check_disclosure(model) if f.location == unit]
+                self.assertEqual([f.code for f in found], [code], [f.message for f in found])
+                self.assertIn(part, found[0].message)
+        self.assertEqual([f for f in semantics.check_disclosure(self.model) if f.location.endswith("/authorization_reference")], [], "the stored units cite the read-scope context, which is not a registry decision")
+
+    def test_a_retrieval_that_cites_a_decision_that_binds_to_nobody_present_is_found(self):
+        unit = "/retrieval/0/authorization_reference"
+        _, model = self.codes({"target": "C03 SEL-0417 v1", "ops": [{"op": "replace", "path": unit + "/record_id", "value": "AUTHZ-READ-LIMIT-0417"}]})
+        model.registry = copy.deepcopy(model.registry)
+        model.registry.permission_decisions["AUTHZ-READ-LIMIT-0417@v1"]["principal"] = "person:ap-analyst-03"
+        found = [f for f in semantics.check_disclosure(model) if f.location == unit]
+        self.assertEqual([f.code for f in found], ["DISC004"])
+        self.assertIn("authorizes no retrieval", found[0].message)
+
     def test_a_decision_is_bound_to_the_context_the_output_names_not_to_a_default(self):
         _, model = self.codes({"target": "C01 CTX-0417 v1", "ops": [{"op": "replace", "path": "/identity_principal/requesting_principal", "value": "person:ap-analyst-09"}]})
         found = [f for f in semantics.check_disclosure(model) if f.code == "DISC004"]

@@ -44,10 +44,11 @@ from __future__ import annotations
 
 import math
 import re
+import unicodedata
 from typing import Dict, List, Tuple
 
 from .findings import Finding, rel
-from .model import Instance, Model, resolve_pointer
+from .model import Instance, Model, iter_refs, resolve_pointer
 
 DOC = "docs/implementation-guide.md"
 DOC_EVIDENCE = "architecture/evidence-semantics.md"
@@ -84,9 +85,14 @@ PHP PKR PLN PYG QAR RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLE SLL SOS SRD 
 UGX USD UYU UZS VES VND VUV WST XAF XCD XOF XPF YER ZAR ZMW ZWL
 """.split())
 _ISO_ALTERNATIVES = "|".join(sorted(ISO_4217))
-CURRENCY = re.compile(r"\b(?:%s)\b|[\u20ac$\u00a3\u00a5]" % _ISO_ALTERNATIVES)
+#: Every currency sign Unicode knows (category Sc: $, ¢, £, ¥, €, ₹, ₽, ₩ and the rest), so that a sign is not left out because a list did not think of it.
+_CURRENCY_SIGNS = "".join(re.escape(chr(code)) for code in range(0x20, 0x10000) if unicodedata.category(chr(code)) == "Sc")
+CURRENCY = re.compile(r"\b(?:%s)\b|[%s]" % (_ISO_ALTERNATIVES, _CURRENCY_SIGNS))
 #: A currency code with a sign right behind it ("EUR-18,400.00", "EUR\u221218,400.00") is a negative amount, not a hyphenated word.
 CODE_THEN_SIGN = re.compile(r"\b(%s)(?=[-\u2212]\d)" % _ISO_ALTERNATIVES)
+#: A sign right in front of a currency ("\u2212EUR 18,400.00", "-$5") is the sign of the amount that follows it. A hyphen counts only when it touches the
+#: currency and is not part of a longer word or number (S-EUR, 5-$3): "100 units - EUR 184.00" is a dash, not a sign. The minus sign (U+2212) always counts.
+SIGN_THEN_CURRENCY = re.compile(r"(?:(?<![\w.,/:-])-|\u2212\s*)((?:%s)\b|[%s])\s*(?=\d)" % (_ISO_ALTERNATIVES, _CURRENCY_SIGNS))
 
 #: Statement kinds on which each structural constraint is applied. Status consistency covers every kind that states something about
 #: the packet: a claim, an inference, a conflict, a gap, a recommendation, a proposal and an obligation.
@@ -164,8 +170,10 @@ def figures(text: str) -> set:
     """The figures in a text, with their sign: -18,400.00 is not 18,400.00.
 
     A hyphen counts as a minus only when it is a sign (not the hyphen of S-1042 or of a date). The minus sign (U+2212) is always a sign, and so is
-    a hyphen or a minus right behind a currency code: "EUR\u221218,400.00" and "EUR-18,400.00" are negative, however they are spaced.
+    a hyphen or a minus right behind a currency code or sign ("EUR\u221218,400.00", "EUR-18,400.00") or right in front of one ("\u2212EUR 18,400.00",
+    "-$5"): the amount is negative, however it is spaced.
     """
+    text = SIGN_THEN_CURRENCY.sub(r"\1 -", text)
     text = CODE_THEN_SIGN.sub(r"\1 ", text).replace("\u2212", " -")
     return {m.rstrip(".,:-/") for m in FIGURE.findall(text)}
 
@@ -218,14 +226,14 @@ def currency_assertions(text: str) -> int:
     return count
 
 
-def status_uses(text: str, name: str) -> Tuple[bool, bool]:
-    """(plain, negated): whether a text uses the status word `name` with no negation just before it, and whether it uses it negated.
+def _uses(pattern, text: str) -> Tuple[bool, bool]:
+    """(plain, negated): whether a text uses what `pattern` finds with no negation just before it, and whether it uses it negated.
 
     "did not fail", "no longer current" and "isn't stale" use the word negated. Only the clause just before each match is read
     (at most about three words back, and not past a full stop, a colon, a semicolon or a bracket), so a long text is read in one pass.
     """
     plain = negated = False
-    for match in STATUS_WORDS[name].finditer(text):
+    for match in pattern.finditer(text):
         clause = re.split(r"[.!?;:(]", text[max(0, match.start() - 80):match.start()])[-1]
         if NEGATED_STATUS.search(clause):
             negated = True
@@ -234,6 +242,11 @@ def status_uses(text: str, name: str) -> Tuple[bool, bool]:
         if plain and negated:
             break
     return plain, negated
+
+
+def status_uses(text: str, name: str) -> Tuple[bool, bool]:
+    """(plain, negated) for the status word `name`: see `_uses`."""
+    return _uses(STATUS_WORDS[name], text)
 
 
 def _strings(node) -> List[str]:
@@ -288,9 +301,19 @@ def _statements(response: dict) -> list:
     return value if isinstance(value, list) else []
 
 
-def _replaced(model: Model, link) -> List[Instance]:
-    """The C02 records that the trusted data says `link` superseded."""
-    return [r for r in model.of("C02") if _object(r.data.get("lifecycle")).get("state") == "superseded" and r.data["lifecycle"].get("replacement_reference") == link]
+def _packet_records(packet: Instance) -> set:
+    """The (id, version) of every evidence record the packet itself names: the records it rests on, which are the only ones a withdrawal reason may speak of."""
+    return {(ref.record_id, ref.version) for ref in iter_refs(packet.data) if ref.kind in ("evidence", "support")}
+
+
+def _replaced(model: Model, link, packet: Instance) -> List[Instance]:
+    """The C02 records that the trusted data says `link` superseded, among those the packet itself names.
+
+    A record that the packet does not name is not part of the packet's story, and it may be one the reader may not know of (its purpose, its tenant): the
+    reason a response gives for a withdrawal is built from what the packet rests on and not from a scan of every record that happens to be superseded.
+    """
+    rests_on = _packet_records(packet)
+    return [r for r in model.of("C02") if _object(r.data.get("lifecycle")).get("state") == "superseded" and r.data["lifecycle"].get("replacement_reference") == link and (r.id, r.version) in rests_on]
 
 
 def trusted_lifecycle(model: Model, packet: Instance) -> Tuple[str, str]:
@@ -307,7 +330,7 @@ def trusted_lifecycle(model: Model, packet: Instance) -> Tuple[str, str]:
     text = "Packet %s %s was %s%s" % (packet.id, packet.version, history.get("state"), " at %s" % when if when else "")
     causes: List[str] = []
     for link in history.get("challenge_links", []):
-        replaced = _replaced(model, link)
+        replaced = _replaced(model, link, packet)
         if replaced:
             causes += ["%s %s was superseded by %s %s" % (r.id, r.version, link["record_id"], link["version"]) for r in replaced]
         else:
@@ -424,40 +447,57 @@ def _names(text: str, ident: str) -> bool:
     return re.search(r"(?<![\w-])%s(?![\w-]|\.\w)" % re.escape(ident), text) is not None
 
 
+def _stated(word: str, cited: set) -> bool:
+    """True when the items a statement cites state this certainty word themselves (a word and its inflection count as one: certain, certainly)."""
+    return any(held == word or held.startswith(word) or word.startswith(held) for held in cited)
+
+
+#: The two things a proposal must say it is not. Each must be said as a negation ("not executed or approved", "no execution and no approval"), and neither may be
+#: asserted plainly ("Approved (not executed)"). The first pattern finds either form of the word, the second only the one that asserts it: "approval is required" does not.
+PROPOSAL_NOT = {"executed": (re.compile(r"\bexecut(?:ed|ion)\b", re.I), re.compile(r"\bexecuted\b", re.I)),
+                "approved": (re.compile(r"\bapprov(?:ed|al)\b", re.I), re.compile(r"\bapproved\b", re.I))}
+
+
 def _free_text_findings(kind: str, text: str, label: str, cited_text: str, pointers: List[str], packet: dict, file: str, loc: str, withdrawn: bool = False, exact_wording: bool = False) -> List[Finding]:
     """The named constraints of structural free-text validation, for one statement.
 
     Each constraint is a specific, mechanical test. None of them proves that the statement means what its packet means.
-    The label is shown to the reader beside the text, so the status words, the certainty and the claim of being current that
-    the text may not add are held against the label as well. A statement that rests on a packet item with no text in it (a number,
+    The label is shown to the reader beside the text, so the status words, the certainty, the claim of being current and the
+    wording that closes what the packet keeps open that the text may not add are held against the label as well, and the text and the label
+    together may not call something current more often than the cited items do. A statement that rests on a packet item with no text in it (a number,
     a flag) is held to the same constraints, against no text: it may add nothing. A statement that is exactly the wording a permission
     decision allows for an input the reader may not read (`exact_wording`) is not asked to use the words of the missingness label.
     """
     out: List[Finding] = []
     if not pointers:
         return out
-    lowered = cited_text.lower()
     if kind in FIGURE_CHECKED:
         for code in sorted({m.group(0) for m in CURRENCY.finditer(text)} - {m.group(0) for m in CURRENCY.finditer(cited_text)}):
             out.append(Finding("RESP002", "the currency %s does not appear in the cited packet items" % code, file, loc, DOC_EVIDENCE))
     if kind in STATUS_CHECKED:
         out += _status_findings(text, cited_text, kind, withdrawn, file, loc, "statement")
         out += _status_findings(label, cited_text, kind, withdrawn, file, loc, "label")
+    # A certainty word is licensed only by the same word stated affirmatively in what is cited: "not verified" in a source does not license "Verified".
+    stated = {m.group(0).lower() for m in CERTAINTY.finditer(cited_text)}
     for shown, where in ((text, "statement"), (label, "label")):
         for match in CERTAINTY.finditer(shown):
-            if match.group(0).lower() not in lowered:
+            if not _stated(match.group(0).lower(), stated):
                 out.append(Finding("RESP011", "the %s adds certainty (%r) that the cited items do not state" % (where, match.group(0)), file, loc, DOC_RESPONSE))
     if withdrawn:
-        called_current = False
-        for shown, where in ((text, "statement"), (label, "label")):
-            if currency_assertions(shown) > currency_assertions(cited_text):
-                called_current = True
-                out.append(Finding("RESP016", "this %s calls something current or valid in its %s, but the packet is withdrawn and the items it cites do not say so: mark it withdrawn or no longer current" % (kind, where), file, loc, DOC_RESPONSE))
+        # The statement and its label are read together by the reader, so together they may call something current or valid no more often than the cited items do.
+        in_text, in_label, allowed = currency_assertions(text), currency_assertions(label), currency_assertions(cited_text)
+        called_current = in_text + in_label > allowed
+        if called_current:
+            where = "statement and its label" if in_text and in_label else "label" if in_label else "statement"
+            out.append(Finding("RESP016", "this %s calls something current or valid in its %s, but the packet is withdrawn and the items it cites do not say so: mark it withdrawn or no longer current" % (kind, where), file, loc, DOC_RESPONSE))
         # Advice that names the withdrawal and then takes it back ("this advice was reinstated") says the opposite of what the packet's state is.
-        # A text that does not say it is withdrawn at all has been refused already, so it is not refused twice.
-        undone = UNDOES_WITHDRAWAL.search(text) if kind in ADVICE_KINDS and not called_current and says_withdrawn(text) else None
-        if undone:
-            out.append(Finding("RESP016", "this %s undoes the withdrawal (%r): the packet is withdrawn, and a response cannot reinstate it" % (kind, undone.group(0)), file, loc, DOC_RESPONSE))
+        # A text that does not say it is withdrawn at all has been refused already, so it is not refused twice. A label has no duty to say it, but it may not take it back.
+        if kind in ADVICE_KINDS and not called_current:
+            for shown, where in ((text, "statement"), (label, "label")):
+                undone = UNDOES_WITHDRAWAL.search(shown) if where == "label" or says_withdrawn(text) else None
+                if undone:
+                    out.append(Finding("RESP016", "this %s undoes the withdrawal in its %s (%r): the packet is withdrawn, and a response cannot reinstate it" % (kind, where, undone.group(0)), file, loc, DOC_RESPONSE))
+                    break
     if kind in IDENTIFIER_CHECKED:
         # A label is shown to the reader beside the text, so a record named in it is held to the same rule: it may not name a record that the cited items do not rest on.
         # An identifier is held whole: GR-552 is not GR-5521.
@@ -466,12 +506,12 @@ def _free_text_findings(kind: str, text: str, label: str, cited_text: str, point
                 where = "label" if ident in IDENTIFIER.findall(label) and ident not in IDENTIFIER.findall(text) else "statement"
                 out.append(Finding("RESP013", "the %s names %s, which the cited packet items do not rest on: a statement may not attribute its content to another record" % (where, ident), file, loc, DOC_RESPONSE))
     if kind == "conflict":
-        if CLOSES_CONFLICT.search(text):
+        if CLOSES_CONFLICT.search(text) or CLOSES_CONFLICT.search(label):
             out.append(Finding("RESP008", "wording closes a conflict that the packet keeps open", file, loc, DOC_RESPONSE))
         if not KEEPS_CONFLICT_OPEN.search(text):
             out.append(Finding("RESP010", "a conflict statement must say that the conflict is unresolved", file, loc, DOC_RESPONSE))
     elif kind == "gap":
-        if DENIES_GAP.search(text):
+        if DENIES_GAP.search(text) or DENIES_GAP.search(label):
             out.append(Finding("RESP008", "wording denies or closes a gap that the packet keeps open", file, loc, DOC_RESPONSE))
         for pointer in pointers:
             try:
@@ -488,7 +528,7 @@ def _free_text_findings(kind: str, text: str, label: str, cited_text: str, point
         if not KEEPS_RECOMMENDATION_OPEN.search(text):
             out.append(Finding("RESP010", "a recommendation must say that it is for review and not a decision", file, loc, DOC_RESPONSE))
     elif kind == "obligation":
-        if CLOSES_OBLIGATION.search(text):
+        if CLOSES_OBLIGATION.search(text) or CLOSES_OBLIGATION.search(label):
             out.append(Finding("RESP008", "wording closes an obligation that the packet keeps open", file, loc, DOC_RESPONSE))
     return out
 
@@ -570,13 +610,13 @@ def _reason_findings(model: Model, response: dict, packet: Instance, expected: s
     allowed = {packet.id}
     for link in history.get("challenge_links", []):
         allowed.add(link["record_id"])
-    allowed |= {r.id for r in model.of("C02") if _object(r.data.get("lifecycle")).get("replacement_reference") in history.get("challenge_links", [])}
+        allowed |= {r.id for r in _replaced(model, link, packet)}
     for ident in sorted(set(IDENTIFIER.findall(reason)) - allowed):
         out.append(Finding("RESP015", "the withdrawal reason names %s, which is not part of the packet's own history: it may not give another cause" % ident, file, "/status_reason", DOC_RESPONSE))
     times = {_object(history.get("time")).get("value"), packet.data["decision_context_as_of"]["as_of"]}
     for stamp in sorted(set(ISO_TIME.findall(reason)) - times):
         out.append(Finding("RESP015", "the withdrawal reason gives the time %s, which is neither when the packet was withdrawn nor its as-of time" % stamp, file, "/status_reason", DOC_RESPONSE))
-    trusted_pairs = {(r.id.upper(), r.version.lower(), link["record_id"].upper(), link["version"].lower()) for link in history.get("challenge_links", []) for r in _replaced(model, link)}
+    trusted_pairs = {(r.id.upper(), r.version.lower(), link["record_id"].upper(), link["version"].lower()) for link in history.get("challenge_links", []) for r in _replaced(model, link, packet)}
     for found in SUPERSEDED_BY.finditer(reason):
         pair = (found.group("old").upper(), found.group("old_version").lower(), found.group("new").upper(), found.group("new_version").lower())
         if pair not in trusted_pairs:
@@ -653,8 +693,13 @@ def check_structural(model: Model, response: dict, path) -> List[Finding]:
                 findings.append(Finding("RESP002", "figures %s do not appear in the cited packet items" % ", ".join(sorted(extra)), file, loc, DOC_EVIDENCE))
         if kind == "inference" and not text.lower().startswith("inference"):
             findings.append(Finding("RESP003", "an inference must be labeled as one (start with \"Inference\")", file, loc, DOC_EVIDENCE))
-        if kind == "proposal" and "not executed" not in text.lower():
-            findings.append(Finding("RESP005", "a proposal must say it is not executed or approved", file, loc, "contracts/c05-action-proposal.md"))
+        if kind == "proposal":
+            # A proposal says it is neither executed nor approved, each as a negation: "Approved (not executed)" says only half, and what it says first is the opposite.
+            for name, (either_form, asserting_form) in PROPOSAL_NOT.items():
+                if _uses(asserting_form, text)[0]:
+                    findings.append(Finding("RESP005", "a proposal is not %s, and this one says it is, or says it without a negation" % name, file, loc, "contracts/c05-action-proposal.md"))
+                elif not _uses(either_form, text)[1]:
+                    findings.append(Finding("RESP005", "a proposal must say it is not executed or approved: this one does not say it is not %s" % name, file, loc, "contracts/c05-action-proposal.md"))
         if kind not in ("claim", "conflict") and DECISION_WORDING.search(text):
             findings.append(Finding("RESP005", "wording presents an action as approved or done, which the packet does not support", file, loc, "contracts/c05-action-proposal.md"))
         exact = _is_permitted_wording(model, packet, text, resolved) if kind == "gap" else False

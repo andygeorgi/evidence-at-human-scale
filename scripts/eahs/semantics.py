@@ -40,7 +40,7 @@ def check_references(model: Model) -> List[Finding]:
             if ref.kind in ("evidence", "support"):
                 target = model.get("C02", ref.record_id, ref.version)
                 if target is None:
-                    out.append(_f("REF001", "no C02 record %s %s: references name an exact version, never 'latest'" % (ref.record_id, ref.version), inst, ref.path, DOC_EVIDENCE))
+                    out.append(_f("REF001", "no C02 record %s %s: references name an exact version, never 'latest'" % (ref.record_id, ref.version or "(no version stated)"), inst, ref.path, DOC_EVIDENCE))
                     continue
                 if ref.kind == "support":
                     out.extend(_check_support(inst, ref, target))
@@ -153,6 +153,9 @@ def _check_inference_figures(model: Model, rec: Instance) -> List[Finding]:
     and the figure it gives is not in its sources. Each figure it states must be accounted for by a figure in the content of
     its ancestors, once for each time it is stated. This is a necessary condition on structured values: it does not show that a
     summary is faithful to its sources, and it reads no prose for meaning. A model inference that rests on nothing holds no figure.
+
+    The text of the inference's own claims is what is read: an inference whose content is a typed payload is not. Each claim is held to the figures
+    of the ancestry on its own, so a figure that the ancestry holds once may be stated once in each claim and is not used up across the claims.
     """
     out: List[Finding] = []
     held: Counter = Counter()
@@ -461,13 +464,35 @@ def _word_after(rest: str) -> Optional[str]:
 
 def _named_fields(word: Optional[str], by_word: Dict[str, List[Tuple[str, Decimal]]]) -> List[Tuple[str, Decimal]]:
     """The payload fields that `word` names: those that carry it. A field's own name written out ("quantity_invoiced", "quantityInvoiced") names
-    the fields that carry all of its words, so that "variance_pct" is the variance and not every field that ends in "pct"."""
+    the fields that carry all of its words, so that "variance_pct" is the variance and not every field that ends in "pct". A name with a word that no
+    field carries names none of them: "quantity_received" is not "quantity_invoiced" because they share "quantity"."""
     fields: Optional[List[Tuple[str, Decimal]]] = None
     for part in _name_words(word or ""):
         known = by_word.get(_stem(part))
-        if known is not None:
-            fields = list(known) if fields is None else [pair for pair in fields if pair in known]
+        if known is None:
+            return []
+        fields = list(known) if fields is None else [pair for pair in fields if pair in known]
     return fields or []
+
+
+def _index_fields(payloads: List[Tuple[object, str]]) -> Dict[str, List[Tuple[str, Decimal]]]:
+    """Every numeric field of the payloads, filed under each word of its name (quantity_invoiced is filed under "quantity" and "invoiced")."""
+    by_word: Dict[str, List[Tuple[str, Decimal]]] = {}
+    for payload, field_name in payloads:
+        for name, value in _named_numbers(payload, field_name):
+            for word in _name_words(name):
+                by_word.setdefault(_stem(word), []).append((name, value))
+    return by_word
+
+
+def _figure_words(text: str):
+    """(figure, the word in front of it that could name it, the word after it that could name it) for every figure in a text."""
+    text = text.replace("\u2212", "-")
+    for match in _NUMBER.finditer(text):
+        figure = _decimal(match.group(0))
+        if figure is not None:
+            yield (figure, _word_before(_BOUNDARY.split(text[max(0, match.start() - 96):match.start()])[-1]),
+                   _word_after(_BOUNDARY.split(text[match.end():match.end() + 96])[0]))
 
 
 def _label_findings(text: str, payloads: List[Tuple[object, str]], skip: Set[Decimal]) -> List[Tuple[Decimal, str, List[str]]]:
@@ -484,26 +509,35 @@ def _label_findings(text: str, payloads: List[Tuple[object, str]], skip: Set[Dec
     as /value/quantity_invoiced, that name is the field's). The fields of all of them are taken together: a figure beside a name is
     right if any cited payload holds it for a field of that name, because the prose cannot say which of them it is about.
     """
-    by_word: Dict[str, List[Tuple[str, Decimal]]] = {}
-    for payload, field_name in payloads:
-        for name, value in _named_numbers(payload, field_name):
-            for word in _name_words(name):
-                by_word.setdefault(_stem(word), []).append((name, value))
+    by_word = _index_fields(payloads)
     found: List[Tuple[Decimal, str, List[str]]] = []
-    text = text.replace("\u2212", "-")
-    for match in _NUMBER.finditer(text):
-        figure = _decimal(match.group(0))
-        if figure is None:
-            continue
-        word = _word_before(_BOUNDARY.split(text[max(0, match.start() - 96):match.start()])[-1])
-        fields = _named_fields(word, by_word)
+    for figure, before, after in _figure_words(text):
+        word, fields = before, _named_fields(before, by_word)
         if not fields:
-            word = _word_after(_BOUNDARY.split(text[match.end():match.end() + 96])[0])
-            fields = _named_fields(word, by_word)
-        if not fields:
-            continue
-        if figure not in skip and figure not in {value for _, value in fields}:
+            word, fields = after, _named_fields(after, by_word)
+        if fields and figure not in skip and figure not in {value for _, value in fields}:
             found.append((figure, word, ["%s is %s" % (name, _show_number(value)) for name, value in dict.fromkeys(fields)]))
+    return found
+
+
+def _uncited_findings(text: str, payloads: List[Tuple[object, str]], vocabulary: List[object], skip: Set[Decimal]) -> List[Tuple[Decimal, str, List[str]]]:
+    """Figures in `text` that sit beside the name of a field of the cited records' payloads that the claim does not cite: (the figure, the word, the names).
+
+    A claim that cites one value (/value/quantity_invoiced) holds that value and no other. "quantity_received 100" puts a figure beside a field the
+    claim does not cite, whatever the figure is (100 is in what it does cite, as the quantity invoiced), so the claim attributes to that field a value
+    that nothing it cites gives it. A name that is a field of no payload is not judged, and a figure in `skip` has been reported already.
+    """
+    cited, known = _index_fields(payloads), _index_fields([(payload, "") for payload in vocabulary])
+    found: List[Tuple[Decimal, str, List[str]]] = []
+    for figure, before, after in _figure_words(text):
+        if _named_fields(before, cited) or _named_fields(after, cited):
+            continue   # held against what the claim cites, by _label_findings
+        for word in (before, after):
+            outside = _named_fields(word, known)
+            if outside:
+                if figure not in skip:
+                    found.append((figure, word, sorted({name for name, _ in outside})))
+                break
     return found
 
 
@@ -537,6 +571,7 @@ def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -
     loc = "/supported_claims_references/%d" % index
     quoted: List[Tuple[str, str]] = []   # (what a referenced claim says, its name)
     payloads: List[Tuple[object, str, str]] = []   # (what the pointer leads to, its name for a message, the field it ends at)
+    records: List[object] = []   # the whole payload of each cited record: which fields exist, whether or not the claim cites them
     unresolved = False
     for ref in claim["supporting_references"]:
         rec = model.get("C02", ref["record_id"], ref["version"])
@@ -556,6 +591,7 @@ def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -
                 continue
             try:
                 payloads.append((resolve_pointer(payload, ref.get("payload_location", "")), "%s %s payload %s" % (rec.id, rec.version, ref.get("payload_location")), _field_of(ref.get("payload_location", ""))))
+                records.append(payload)
             except (KeyError, IndexError, ValueError, TypeError):
                 unresolved = True
     text = claim["text"]
@@ -593,8 +629,12 @@ def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -
                 out.append(_f("PKT005", "the claim does not state %r, which %s holds: a claim that rests on a payload says what it holds" % (status, name), pkt, loc + "/text", DOC_EVIDENCE))
         if numbers and not set(numbers) & set(stated_numbers):
             out.append(_f("PKT005", "the claim states none of the figures that %s holds (%s)" % (name, ", ".join(_show_number(n) for n in sorted(numbers))), pkt, loc + "/text", DOC_EVIDENCE))
-    for figure, word, fields in _label_findings(remainder, [(payload, field_name) for payload, _, field_name in payloads], set(unaccounted)):
+    cited_leaves = [(payload, field_name) for payload, _, field_name in payloads]
+    for figure, word, fields in _label_findings(remainder, cited_leaves, set(unaccounted)):
         out.append(_f("PKT005", "the claim puts the figure %s next to %r, but what it cites (%s) holds %s for it" % (_show_number(figure), word, cited, " and ".join(fields)), pkt, loc + "/text", DOC_EVIDENCE))
+    for figure, word, names in _uncited_findings(remainder, cited_leaves, records, set(unaccounted)):
+        out.append(_f("PKT005", "the claim puts the figure %s next to %r, which is %s of the record, but what the claim cites (%s) does not hold it: a claim that cites one value holds that value and no other" % (
+            _show_number(figure), word, "the field " + names[0] if len(names) == 1 else "the fields " + ", ".join(names), cited), pkt, loc + "/text", DOC_EVIDENCE))
     return out
 
 
@@ -761,9 +801,13 @@ def _check_receipt(model: Model, first: Instance, versions: List[Instance]) -> L
         out.append(_f("AUTH009", "the receipt says the attempt concerned %s, but the proposal it executes names %s: a receipt is for the target of its proposal" % (_entity_name(named), _entity_name(proposed)), rec, "/identity_binding/target", DOC_ACTION))
     submitted = d["outcome"]["timestamps"]["submitted"]
     at = parse_time(submitted)
-    if at is None:
-        raise ValueError("%s: receipt %s %s has a submission time (%r) that is not an RFC 3339 time with a zone and at most six fractional digits, so the attempt it describes "
-                         "cannot be compared with the grant and the evidence exactly. Correct the time" % (rec.file, rec.id, rec.version, submitted))
+    for version in versions:
+        # The attempt is the same in every version, so the submission time of every version must be one that can be compared exactly. A later version with a time
+        # that cannot be read is an input that cannot be judged (INP002), the same as the first, and not a receipt that merely differs.
+        stated = version.data["outcome"]["timestamps"]["submitted"]
+        if parse_time(stated) is None:
+            raise ValueError("%s: receipt %s %s has a submission time (%r) that is not an RFC 3339 time with a zone and at most six fractional digits, so the attempt it describes "
+                             "cannot be compared with the grant and the evidence exactly. Correct the time" % (version.file, version.id, version.version, stated))
     decision = evaluate_commit(model, prop, grant, at, ledger_from_receipts(model, at, exclude_receipt_id=rec.id))
     for version in versions:
         out.extend(_check_outcome(version, decision))
@@ -781,7 +825,8 @@ def _check_outcome(rec: Instance, decision) -> List[Finding]:
         if state != "not_executed_verified":
             out.append(_f("AUTH004", "the gateway would have blocked this attempt (%s) but the receipt says %s" % (", ".join(sorted(set(decision.codes))), state), rec, "/outcome/state", DOC_ACTION))
         else:
-            missing = sorted({c for c in decision.codes if c not in reason})
+            named = set(GATE_CODE.findall(reason))   # whole names: GRANT_REVOKED_LEGACY does not name GRANT_REVOKED
+            missing = sorted({c for c in decision.codes if c not in named})
             if missing:
                 out.append(_f("AUTH005", "the receipt reason must name the blocking checks; missing %s" % ", ".join(missing), rec, "/outcome/reason", DOC_ACTION))
             extra = sorted({c for c in cited if c not in decision.codes})
@@ -806,7 +851,10 @@ def _check_receipt_chain(model: Model, first: Instance, later: Instance) -> List
         if a[key] != b[key]:
             out.append(_f("ACC004", "a later version of a receipt must describe the same attempt (%s changed)" % key, later, "/identity_binding/" + key, DOC_ACTION))
     first_submitted, later_submitted = (_object_of(_object_of(v.data["outcome"]).get("timestamps")).get("submitted") for v in (first, later))
-    if first_submitted != later_submitted:
+    first_at, later_at = parse_time(first_submitted), parse_time(later_submitted)
+    # The same instant written another way (Z or +00:00, with or without a zero fraction) is the same attempt: instants are compared, not their spelling.
+    same_attempt = first_at == later_at if first_at is not None and later_at is not None else first_submitted == later_submitted
+    if not same_attempt:
         out.append(_f("ACC004", "a later version of a receipt must describe the same attempt (the submission time changed from %s to %s)" % (first_submitted, later_submitted), later, "/outcome/timestamps/submitted", DOC_ACTION))
     if first.data["outcome"]["state"] in ("unknown", "partial") and later.data["outcome"]["state"] == "completed_verified":
         acct = later.data["verification_recovery"]["accounting"]
@@ -916,6 +964,37 @@ def _check_existence_disclosure(model: Model) -> List[Finding]:
                     out.append(_f("DISC003", "the wording shown is not the wording that permission decision %s allows" % ref["record_id"], inst, loc + pointer, DOC_LINEAGE))
                 else:
                     out.append(_f("DISC003", "this entry says more or other than the generic disclosure that permission decision %s configures: the field %s must be %s" % (ref["record_id"], pointer, _show(want)), inst, loc + pointer, DOC_LINEAGE))
+    out.extend(_check_read_retrievals(model, decisions))
+    return out
+
+
+def _check_read_retrievals(model: Model, decisions: dict) -> List[Finding]:
+    """A retrieval that says it was read may not cite a permission decision that does not let the viewer read.
+
+    The retrieval units of a selection that stand for something the viewer read (completed, failed, and so on) cite the read-scope decision that authorized them.
+    When that is a decision of the registry, it must bind to the viewer and allow reading. One that withholds the existence of what it protects may not be named
+    in an output at all, and one that lets the viewer know of an input and not read it belongs to the generic entry (status `not_permitted`), not to a retrieval.
+    """
+    out: List[Finding] = []
+    for inst in model.of("C03"):
+        viewer = viewer_of(model, inst)
+        for i, unit in enumerate(inst.data["retrieval"]):
+            unit = _object_of(unit)
+            ref = unit.get("authorization_reference")
+            if unit.get("status") == "not_permitted" or not isinstance(ref, dict):
+                continue
+            raw = decisions.get("%s@%s" % (ref.get("record_id"), ref.get("version")))
+            if raw is None:
+                continue   # a read-scope decision that the registry does not hold is an external record; REF005 sees whether it exists
+            loc = "/retrieval/%d/authorization_reference" % i
+            decision = Decision.from_registry(raw)
+            problems = ["the output names no readable C01 context"] if viewer is None else binding_problems(decision, viewer)
+            if problems:
+                out.extend(_f("DISC004", "permission decision %s does not bind to this viewer, so it authorizes no retrieval for them: %s" % (ref.get("record_id"), problem), inst, loc, DOC_LINEAGE) for problem in problems)
+            elif not decision.disclose_existence_allowed and not decision.read_allowed:
+                out.append(_f("DISC002", "this retrieval unit names permission decision %s, which withholds the existence of what it protects: no output may name it" % ref.get("record_id"), inst, loc, DOC_LINEAGE))
+            elif not decision.read_allowed:
+                out.append(_f("DISC003", "this retrieval unit says it was %s, but permission decision %s does not let this viewer read what it protects: only the generic entry (status not_permitted) may stand for it" % (unit.get("status"), ref.get("record_id")), inst, loc, DOC_LINEAGE))
     return out
 
 

@@ -296,6 +296,26 @@ class WhatAPayloadClaimMustSay(unittest.TestCase):
                 found = claim_findings(with_claim(PAYLOAD_CLAIM, swapped, copy.deepcopy(refs)))
                 self.assertEqual([f.code for f in found], ["PKT005", "PKT005"], [f.message for f in found])
 
+    def test_a_claim_that_cites_some_values_may_not_put_a_figure_beside_a_field_it_does_not_cite(self):
+        """The claim cites the result and the quantity invoiced (100). "quantity_received 100" uses a figure it does hold, as the value of a field it does not
+        cite: the claim then attributes to that field a value that nothing it cites gives it."""
+        refs = []
+        for field in ("result", "quantity_invoiced"):
+            ref = reference(PAYLOAD_CLAIM)
+            ref["payload_location"] = "/value/" + field
+            refs.append(ref)
+        self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, "FAIL. quantity_invoiced 100.", copy.deepcopy(refs))), [])
+        self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, "FAIL. 100 units invoiced.", copy.deepcopy(refs))), [])
+        for wrong in ("FAIL. quantity_received 100.", "FAIL. 100 units received.", "FAIL. Received 100.", "FAIL. quantityReceived=100."):
+            with self.subTest(wrong):
+                found = claim_findings(with_claim(PAYLOAD_CLAIM, wrong, copy.deepcopy(refs)))
+                self.assertEqual([f.code for f in found], ["PKT005"], [f.message for f in found])
+                self.assertIn("does not hold it", found[0].message)
+                self.assertIn("quantity_received", found[0].message)
+
+    def test_a_claim_that_cites_the_whole_payload_may_name_any_of_its_fields(self):
+        self.assertEqual(claim_findings(with_claim(PAYLOAD_CLAIM, "FAIL. Quantity received: 60. Quantity invoiced: 100. Variance 40.0%. Tolerance 2%.")), [])
+
     def test_a_pointer_to_a_list_position_is_named_by_the_field_that_holds_the_list(self):
         from eahs.semantics import _field_of
         self.assertEqual(_field_of("/value/quantity_invoiced"), "quantity_invoiced")

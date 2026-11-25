@@ -215,6 +215,48 @@ class AReceiptThatCitesACheckTheGatewayPassesIsFoundAlsoWhenTheGatewayBlocksForO
         reason = "Rejected before submission by the action gateway: GRANT_REVOKED, EVIDENCE_NOT_CURRENT, EVIDENCE_STALE."
         self.assertEqual(after(REJECTED, rep("/outcome/reason", reason)), ["AUTH005"])
 
+    def test_a_required_code_is_named_whole_and_not_by_a_longer_name_that_starts_with_it(self):
+        """GRANT_REVOKED_LEGACY is not GRANT_REVOKED: the receipt that writes it names no check that failed."""
+        reason = "Rejected before submission by the action gateway: GRANT_REVOKED_LEGACY, EVIDENCE_NOT_CURRENT, EVIDENCE_STALE, PRECONDITION_FAILED."
+        self.assertEqual(after(REJECTED, rep("/outcome/reason", reason)), ["AUTH005"])
+        wrong_end = "Rejected before submission by the action gateway: GRANT_REVOKED, EVIDENCE_NOT_CURRENT_AT_ALL, EVIDENCE_STALE, PRECONDITION_FAILED."
+        self.assertEqual(after(REJECTED, rep("/outcome/reason", wrong_end)), ["AUTH005"])
+
+
+class TheSameInstantWrittenAnotherWayIsTheSameAttempt(unittest.TestCase):
+    """A later version of a receipt describes the same attempt when it names the same instant, however the time is written. Instants are compared, not spellings."""
+
+    LATER = "C07 RCP-REL-0417-B v2"
+
+    def chain(self, value):
+        from eahs import semantics
+        from eahs.cases import mutate_model
+        model, _ = mutate_model(support.example_model(), [{"target": self.LATER, "ops": [rep("/outcome/timestamps/submitted", value)]}])
+        return [f.code for f in semantics.check_authority(model) if f.code == "ACC004"]
+
+    def test_another_spelling_of_the_same_instant_is_not_another_attempt(self):
+        for value in ("2026-11-23T17:00:05+01:00", "2026-11-23T16:00:05.000Z", "2026-11-23T16:00:05.000000+00:00"):
+            with self.subTest(value):
+                self.assertEqual(self.chain(value), [])
+
+    def test_another_instant_is_another_attempt(self):
+        for value in ("2026-11-23T16:00:06Z", "2026-11-23T16:00:05.000001Z", "2026-11-23T16:00:05+01:00"):
+            with self.subTest(value):
+                self.assertEqual(self.chain(value), ["ACC004"])
+
+    def test_a_later_version_whose_time_cannot_be_compared_is_an_input_error_like_the_first(self):
+        """The same damage to the first version is INP002 with the receipt named. A later version is not judged as a receipt that merely differs."""
+        from eahs import semantics
+        from eahs.cases import mutate_model
+        for value in ("2026-11-23T16:00:05.0000001Z", "not a time", "2026-11-23T16:00:05"):
+            with self.subTest(value):
+                model, _ = mutate_model(support.example_model(), [{"target": self.LATER, "ops": [rep("/outcome/timestamps/submitted", value)]}])
+                with self.assertRaises(ValueError) as caught:
+                    semantics.check_authority(model)
+                self.assertIn("RCP-REL-0417-B v2", str(caught.exception))
+                self.assertIn("c07-RCP-REL-0417-B-v2.json", str(caught.exception))
+                self.assertIn("Correct the time", str(caught.exception))
+
 
 class AnAttemptTimeThatCannotBeComparedIsRejectedWithTheReceiptNamed(unittest.TestCase):
     """A fraction finer than a microsecond cannot be compared with the grant and the evidence exactly. The stage reports an input error that names the receipt."""
