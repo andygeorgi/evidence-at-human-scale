@@ -30,7 +30,7 @@ def release_date():
 
 class Version(unittest.TestCase):
     def test_the_same_version_is_stated_everywhere(self):
-        self.assertEqual(__version__, "1.0.2")
+        self.assertEqual(__version__, "1.0.3")
         cff = text("CITATION.cff")
         self.assertEqual(len(re.findall(r'(?m)^\s*version: "%s"$' % re.escape(__version__), cff)), 2, "the version of the repository and that of its preferred citation")
         self.assertIn("## %s, %s\n" % (__version__, release_date()), text("CHANGELOG.md"))
