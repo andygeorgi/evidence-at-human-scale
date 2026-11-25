@@ -588,7 +588,8 @@ def scan_bytes(rel: str, data: bytes) -> List[Finding]:
     findings: List[Finding] = []
     if is_list_path(rel):
         # Always a finding (HYG207, from the file name), at any path. Its content is not read, so that no finding can print the terms the list holds.
-        return findings
+        # Its path is public, so the rules about a path still apply to it.
+        return name_rule_findings(rel)
     if len(data) > MAX_BYTES and rel not in ALLOWED_FILES:
         findings.append(Finding("HYG202", rel, 0, "larger than 1 MiB (%d bytes); the repository is for text and small figures" % len(data)))
     findings += name_rule_findings(rel)
@@ -613,9 +614,9 @@ def scan_bytes(rel: str, data: bytes) -> List[Finding]:
 
 
 def scan_file(root: Path, rel: str) -> List[Finding]:
-    """The findings in one file of the folder. A private term list is not opened at all: it is a finding by its name (HYG207) and nothing in it is read."""
+    """The findings in one file of the folder. A private term list is not opened at all: it is a finding by its name (HYG207), nothing in it is read, and only the rules about its path apply."""
     if is_list_path(rel):
-        return []
+        return name_rule_findings(rel)
     return scan_bytes(rel, (root / rel).read_bytes())
 
 
@@ -807,7 +808,8 @@ def scan_history(root: Path = REPO, private_terms: Optional[Sequence[str]] = Non
     findings: List[Finding] = []
     for (blob, path), commit in versions.items():
         if is_list_path(path):
-            continue   # a private term list is a finding by its name (HYG207) wherever it was held, and its content is never read
+            findings += _relabel(name_rule_findings(path), commit)   # a private term list is a finding by its name (HYG207) wherever it was held; its content is never read, and its path is judged
+            continue
         if blob in list_blobs:
             # A version whose content is the list's own is the list, under another name (a copy, or a hard link that was committed): it is not read either.
             findings.append(Finding("HYG207", "%s @ %s" % (path, commit[:7]), 0, "this file version has the content of the private term list, and it names the private origin of the material. It is not read or printed"))

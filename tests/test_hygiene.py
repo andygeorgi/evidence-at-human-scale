@@ -667,6 +667,46 @@ class PrivateTerms(unittest.TestCase):
         self.assertEqual(sorted((f.code, f.path.split(" @ ")[0]) for f in history), sorted([("HYG207", "docs/copy.txt"), ("HYG207", flagged), ("HYG101", flagged)]))
         self.assertNotIn("ListOnly", "\n".join(f.format() for f in history))
 
+    def test_the_path_of_a_list_is_judged_by_the_rules_about_a_path_however_the_list_is_recognised(self):
+        """A list is recognised as the file the environment names, as the same file as a list (a hard link) or, in the history, by its path. Its content is never read; its path is public."""
+        self.addCleanup(hyg._LIST_PATHS.clear)
+        flagged = "docs/tenant." + "internal.txt"
+        expected = [("HYG101", flagged), ("HYG207", flagged)]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / flagged).write_text("%s\n" % PRIVATE_TERM, encoding="utf-8")
+            with self.subTest("the file the environment names"), mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(root / flagged)}):
+                findings, _, _ = hyg.scan(root, files=[flagged], private_terms=[PRIVATE_TERM])
+                self.assertEqual(sorted((f.code, f.path) for f in findings), expected)
+                self.assertNotIn(PRIVATE_TERM, "\n".join(f.format() for f in findings))
+            (root / flagged).unlink()
+            (root / hyg.PRIVATE_TERMS_FILE).write_text("%s\n" % PRIVATE_TERM, encoding="utf-8")
+            try:
+                os.link(root / hyg.PRIVATE_TERMS_FILE, root / flagged)
+            except (OSError, NotImplementedError):
+                linked = False
+            else:
+                linked = True
+            if linked:
+                with self.subTest("a hard link to the list in the folder"), mock.patch.dict(os.environ):
+                    os.environ.pop(hyg.PRIVATE_TERMS_ENV, None)
+                    findings, _, _ = hyg.scan(root, files=[flagged], private_terms=[PRIVATE_TERM])
+                    self.assertEqual(sorted((f.code, f.path) for f in findings), expected)
+                    self.assertNotIn(PRIVATE_TERM, "\n".join(f.format() for f in findings))
+        try:
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+        history_root = History.repository(self, [("add terms", {flagged: "ListOnly" + "Content\n"}, NOREPLY), ("add a page", {"docs/page.md": "A clean page\n"}, NOREPLY)])
+        blob = git_out(history_root, "rev-parse", "HEAD:" + flagged)
+        with self.subTest("the history, by the path the environment names"), mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(history_root / flagged)}), mock.patch.object(hyg, "read_blobs", wraps=hyg.read_blobs) as reader:
+            history, _, _ = hyg.scan_history(history_root)
+            asked = {name for call in reader.call_args_list for name in call.args[1]}
+            self.assertNotIn(blob, asked, "the list is not read")
+            self.assertEqual(sorted((f.code, f.path.split(" @ ")[0]) for f in history), expected)
+            self.assertNotIn("ListOnly", "\n".join(f.format() for f in history))
+
     def test_the_pin_helpers_refuse_a_file_that_is_the_same_file_as_the_list(self):
         """--pin and --pin-quoted print the line they are asked for. A hard link to the list is the list: nothing of it is printed."""
         self.addCleanup(hyg._LIST_PATHS.clear)
