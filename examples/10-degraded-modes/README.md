@@ -45,7 +45,7 @@ Also in every state, urgent continuity (independent deterministic notification, 
 
 | File | What it is |
 |---|---|
-| [`gateway-scenarios.json`](gateway-scenarios.json) | Three stored evaluations of the commit check, each with part of its input broken in memory. |
+| [`gateway-scenarios.json`](gateway-scenarios.json) | Six stored evaluations of the commit check, each with part of its input broken in memory. |
 
 There is no data of its own: the rest of the degraded behavior is in the other folders, and this page is the map.
 
@@ -53,26 +53,31 @@ There is no data of its own: the rest of the degraded behavior is in the other f
 
 | What fails | What the architecture does | Where it is shown |
 |---|---|---|
-| A source cannot be read (an outage) | The gap is labeled `unavailable`, tied to a record of the failure. The packet is still produced and says so. Nothing is assumed. | [04](../04-selection-and-missingness/README.md), [05](../05-decision-packet/README.md) |
-| A source is outside the reader's permissions | If the reader may know that it exists, the gap is labeled `inaccessible`, in the wording the permission decision allows and with no identity or content. If not, nothing is shown for it. | [04](../04-selection-and-missingness/README.md) |
-| Evidence is older than policy allows | The gap is labeled `stale`; at commit the check refuses to rely on it. | [04](../04-selection-and-missingness/README.md), [08](../08-blocked-action/README.md) |
-| The assistant model is unavailable | A deterministic template writes the response from the packet. It is less fluent, and it is faithful. | [06](../06-assistant-response/README.md) |
-| A correction arrives late | Everything derived from the corrected record stops being current, and so does every approval that rested on it. | [11](../11-late-correction/README.md) |
-| The outcome of an action is unknown | The allowance stays reserved; no blind retry; reconciliation is required. | [09](../09-unknown-outcome/README.md) |
+| A source cannot be read (an outage) | The gap is labeled `unavailable`, tied to a record of the failure. The packet is still produced and says so. Nothing is assumed. | [Selection and missingness](../04-selection-and-missingness/README.md), [Decision packet](../05-decision-packet/README.md) |
+| A source is outside the reader's permissions | If the reader may know that it exists, the gap is labeled `inaccessible`, in the wording the permission decision allows and with no identity or content. If not, nothing is shown for it. | [Selection and missingness](../04-selection-and-missingness/README.md) |
+| Evidence is older than policy allows | The gap is labeled `stale`; at commit the check refuses to rely on it. | [Selection and missingness](../04-selection-and-missingness/README.md), [Blocked action](../08-blocked-action/README.md) |
+| The assistant model is unavailable | A deterministic template writes the response from the packet. It is less fluent, and it is faithful. | [Assistant response](../06-assistant-response/README.md) |
+| A correction arrives late | Everything derived from the corrected record stops being current, and so does every approval that rested on it. | [Late correction](../11-late-correction/README.md) |
+| The outcome of an action is unknown | The allowance stays reserved; no blind retry; reconciliation is required. | [Unknown outcome](../09-unknown-outcome/README.md) |
 | Revocation cannot be established | The action does not proceed (`REVOCATION_UNVERIFIED`). | here |
+| A time the check needs is missing or unknown | The action does not proceed: the time of the revocation check (`REVOCATION_TIME_UNKNOWN`), the issuance time of the grant (`GRANT_TIME_UNKNOWN`) or the admission time of a cited record (`EVIDENCE_TIME_UNKNOWN`). | here |
 | A cited record cannot be resolved | The action does not proceed (`EVIDENCE_UNRESOLVED`). | here |
 | The executor starts late | An approval is time-bound; it does not stretch (`GRANT_EXPIRED`). | here |
-| The ledger and the target cannot be updated atomically | The weaker guarantee is declared in the grant, with the residual risk and the constraint on unattended operation. | [09](../09-unknown-outcome/README.md) |
+| The ledger and the target cannot be updated atomically | The weaker guarantee is declared in the grant, with the residual risk and the constraint on unattended operation. | [Unknown outcome](../09-unknown-outcome/README.md) |
 
-## The three fail-closed evaluations
+<a id="the-three-fail-closed-evaluations"></a>
+## The six fail-closed evaluations
 
-Each takes job B, which passes the commit check in [09](../09-unknown-outcome/README.md), and breaks one input in memory. The files on disk do not change.
+Each takes job B, which passes the commit check in the [unknown outcome example](../09-unknown-outcome/README.md), and breaks one input in memory. The files on disk do not change.
 
 | What is broken | Decision | Codes | Why |
 |---|---|---|---|
 | The revocation state is `check_unavailable` | BLOCK | `REVOCATION_UNVERIFIED` | If the check cannot show that the grant is unrevoked, the action does not proceed. |
 | One cited evidence record names a version that does not exist (`v9`) | BLOCK | `EVIDENCE_UNRESOLVED` | Evidence that cannot be resolved is not evidence that is current. |
 | The approval's expiry is moved to 16:00:00, before the run starts | BLOCK | `GRANT_EXPIRED` | A delayed executor does not extend an approval. |
+| The time of the revocation check is not recorded | BLOCK | `REVOCATION_TIME_UNKNOWN` | A check that cannot be placed before the attempt cannot show the grant was unrevoked then. |
+| The admission time of the match result is not recorded | BLOCK | `EVIDENCE_TIME_UNKNOWN`, `PRECONDITION_FAILED` | Evidence that cannot be shown to have been admitted by the attempt is not evidence the gateway may rely on, and the precondition that needs it cannot be shown to hold. |
+| The issuance time of the approval is not recorded | BLOCK | `GRANT_TIME_UNKNOWN` | A grant that cannot be shown to have been issued by the attempt is not usable. |
 
 ## Checks that run here
 

@@ -2,11 +2,11 @@
 
 [← 4. Evidence and lineage](04-evidence-and-lineage.md) · [Paper contents](README.md) · [Next: the decision packet →](06-decision-packet.md)
 
-C01 Context records who is asking and for what: the requesting principal, the permitted task and purpose, the relevant entities, the scope, the time and the policy constraints. The workload identity is separate from the requesting principal. Retrieval is authorized against this context before evidence enters model context. Filtering an answer after it has been produced is not enough.
+Context (C01) records who is asking and for what: the requesting principal, the permitted task and purpose, the relevant entities, the scope, the time and the policy constraints. The workload identity is separate from the requesting principal. Retrieval is authorized against this context before evidence enters model context. Filtering an answer after it has been produced is not enough.
 
-This paper uses "context" in three senses and says which one it means wherever the word could be read another way. The *decision context* is the governed, versioned unit selected for one decision. The *C01 Context* is the contract that records the request. The *model context* is what is placed in front of a model. The [glossary](../glossary.md) keeps them apart.
+This paper uses "context" in three senses and says which one it means wherever the word could be read another way. The *decision context* is the governed, versioned unit selected for one decision. The *context contract* (C01) records the request. The *model context* is what is placed in front of a model. The [glossary](../glossary.md) keeps them apart.
 
-C03 Selection records what the system actually considered and retained: the coverage of the authorized retrieval, the evidence selected, the exclusions, the reasons for grouping, the missingness and the constraints. A selected scope is not whole-corpus coverage. The reader must be able to tell an input that was expected but absent from one that was deliberately excluded, inaccessible or outside the retrieval scope. That applies to inputs the reader may know about. An input the reader may not know about has no entry ([chapter 8](08-uncertainty.md)).
+Selection (C03) records what the system actually considered and retained: the coverage of the authorized retrieval, the evidence selected, the exclusions, the reasons for grouping, the missingness and the constraints. A selected scope is not whole-corpus coverage. The reader must be able to tell an input that was expected but absent from one that was deliberately excluded, inaccessible or outside the retrieval scope. That applies to inputs the reader may know about. An input the reader may not know about has no entry ([chapter 8](08-uncertainty.md)).
 
 ## Attention is a budget, and mandatory items come first
 

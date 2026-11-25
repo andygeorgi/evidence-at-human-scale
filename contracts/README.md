@@ -24,11 +24,11 @@ The group tables below list the local group property and emitted field names or 
 
 The JSON examples in this repository are self-contained snapshots, written for the wire and for audit. Each one can be read, validated and archived without opening another file, so a packet, a selection or a proposal repeats the metadata of the records it cites.
 
-That copying is intentional. A supporting reference names an exact record ID and version, which is what binds it. It also repeats the cited record's kind, scope and original locator, so that a stored packet still says what it relied on after the registry has moved on. The check `REF002` compares every copy with the record it cites, so an altered or stale copy is reported rather than trusted. Claim text is copied the same way and checked by `PKT001`.
+That copying is intentional. A supporting reference names an exact record ID and version, which is what binds it. It also repeats the cited record's kind, scope and original locator, so that a stored packet still says what it relied on after the registry has moved on. The check `REF002` compares every copy with the record it cites, so an altered or stale copy is reported rather than trusted. Claim text is copied the same way and checked against every reference that supports it (`PKT001`, `PKT005`).
 
 A snapshot is not what a person reads. The compact human view of a contract is the group table on its page, and for a packet it is the [reading table in example 05](../examples/05-decision-packet/README.md#reading-the-packet). Start there, and open the JSON to check a detail.
 
-Some repetition between instances is accidental rather than intentional. A normalized form could reference a shared scope or policy by ID instead of copying it. That would change what validates, so v1.0.1 does not do it. It is recorded as a possible future design option, not as a decision, and any such change would be recorded in [`CHANGES.md`](CHANGES.md).
+Some repetition between instances is accidental rather than intentional. A normalized form could reference a shared scope or policy by ID instead of copying it. That would change what validates, so this version of the contracts does not do it. It is recorded as a possible future design option, not as a decision, and any such change would be recorded in [`CHANGES.md`](CHANGES.md).
 
 ## How the contracts relate
 
@@ -40,14 +40,14 @@ Some repetition between instances is accidental rather than intentional. A norma
 <p align="center">
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="../figures/F11-dark.svg">
-<img src="../figures/F11-light.svg" alt="C02 evidence is drawn at the top, with dashed arrows to C03, C04, C05, C06 and C07 for references by exact version. Below it, solid arrows run down a chain: C01 context, C03 selection, C04 decision packet, C05 action proposal, C06 delegation and C07 execution receipt. C07 references one proposal and one grant." width="400">
+<img src="../figures/F11-light.svg" alt="An evidence record (C02) is drawn at the top, with dashed arrows to the selection (C03), decision packet (C04), action proposal (C05), delegation (C06) and execution receipt (C07) for references by exact version. Below it, solid arrows run down a chain: context (C01), selection, decision packet, action proposal, delegation and execution receipt. The receipt references one proposal and one grant." width="400">
 </picture>
 </p>
 
 <details>
 <summary>Text description of Figure F11</summary>
 
-C02 evidence is the card at the top. It holds typed records with lineage. Dashed arrows run from it to C03, C04, C05, C06 and C07. Below it, solid arrows run down a chain: C01 context, C03 selection, C04 decision packet, C05 action proposal, C06 delegation and C07 execution receipt. C03 references the context. C04 references the context and the selection. C05 references the context and the packet. A C06 delegation is bound to an exact C05 proposal or to a bounded class. A C07 execution receipt references one proposal and one grant. A solid line runs from C05 to C07 beside C06. It shows the proposal that C07 references. C06 points to C07. Solid arrows point forward along the chain. Dashed arrows reference an exact evidence version.
+An evidence record (C02) is the card at the top. It holds typed records with lineage. Dashed arrows run from it to the selection manifest (C03), decision packet (C04), action proposal (C05), delegation (C06) and execution receipt (C07). Below it, solid arrows run down a chain: context (C01), selection manifest, decision packet, action proposal, delegation and execution receipt. The selection references the context. The decision packet references the context and the selection. The action proposal references the context and the packet. A delegation is bound to an exact action proposal or to a bounded class. An execution receipt references one proposal and one grant. A solid line runs from the proposal to the receipt beside the delegation. It shows the proposal that the receipt references. The delegation points to the receipt. Solid arrows point forward along the chain. Dashed arrows reference an exact evidence version.
 
 [All figures and their descriptions](../figures/README.md#f11-how-the-seven-contracts-refer-to-each-other)
 

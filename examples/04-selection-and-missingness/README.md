@@ -55,21 +55,23 @@ Each label says something different about why a piece of evidence is not in fron
 
 ## Permission before disclosure
 
-Two permission decisions in [`registry.json`](../registry.json) show the two cases the first questions of the figure separate.
+Two permission decisions in [`registry.json`](../registry.json) show the two cases the first questions of the figure separate. Each is **bound** to the principal, the tenant and the purpose of the context it is for (`person:ap-analyst-02`, `tenant:calder-works`, the payment-release review), and a decision that names anyone else permits nothing.
 
 | Decision | The requestor may read it | May the requestor know it exists | What an output may say |
 |---|---|---|---|
-| `AUTHZ-READ-LIMIT-0417` | No | Yes, as a coverage limitation | "Coverage is limited by access permissions; no protected source identity or content is disclosed." This is the `inaccessible` entry, the `not_permitted` retrieval unit and the summary in the packet. It names no source, count, state or age. |
-| `AUTHZ-READ-WITHHELD-0417` | No | **No** | Nothing. No entry, no retrieval unit, no count. The source adds nothing to the coverage statement that every packet carries ("sources outside this principal's permissions … are not covered"), which reads the same whether or not anything is withheld. |
+| The coverage-limit decision (`AUTHZ-READ-LIMIT-0417`) | No | Yes, as a coverage limitation | "Coverage is limited by access permissions; no protected source identity or content is disclosed." This is the `inaccessible` entry, the `not_permitted` retrieval unit and the summary in the packet. **Every field of those entries comes from the decision** (its `permitted_view`): the wording, the scope, the materiality, the reason and the basis. None comes from the source, so none names a source, count, state or age. |
+| The withheld-source decision (`AUTHZ-READ-WITHHELD-0417`) | No | **No** | Nothing. No entry, no retrieval unit, no count. The source adds nothing to the coverage statement that every packet carries ("sources outside this principal's permissions … are not covered"), which reads the same whether or not anything is withheld. |
 
 The second decision is used by no instance, on purpose: its source does not appear in the selection or the packet, and a test checks that no output names it. The identifiers follow the same rule: the retrieval unit is `RETR-SCOPE-0417` and the decision is `AUTHZ-READ-LIMIT-0417`, not names that announce a restricted source.
 
-`DISC002` finds an entry for a source whose decision withholds its existence (`CASE-DISC-02`), and `DISC003` finds a coverage limitation that says more than the decision permits (`CASE-DISC-03`). [`tests/test_disclosure.py`](../../tests/test_disclosure.py) shows the property that matters: for every combination of states, a requestor who may not know a record exists receives the same view with the record and without it.
+The entries are produced by the viewer projection in [`scripts/eahs/disclosure.py`](../../scripts/eahs/disclosure.py), and the example builder uses it. The assistant response is rendered the same way: its sentence about the unreadable part comes from the decision, not from the packet's entry, and it is left out altogether if no decision bound to the requestor lets them know the part exists.
+
+`DISC002` finds an entry for a source whose decision withholds its existence (`CASE-DISC-02`). `DISC003` finds an entry that differs from the decision's generic disclosure in any field, a wording that says more than the decision permits (`CASE-DISC-03`) or a sibling such as a materiality or a reason written from the source. `DISC004` finds a decision that does not bind to the requesting principal, tenant or purpose. `DISC005` finds a record that the output names although it belongs to another tenant or purpose. [`tests/test_disclosure.py`](../../tests/test_disclosure.py) shows the property that matters: for every combination of states, and for any change to a restricted record (its count, category, freshness, materiality or open state), a requestor who may not know it exists receives the same view with the record and without it. Checking the stored outputs against the stored decisions is **snapshot validation**. It is not an authorization service ([how the three parts differ](../../architecture/lineage-selection-disclosure.md#snapshot-validation-authorization-enforcement-and-viewer-projection)).
 
 ## Also in the selection
 
 - **Retrieval** shows what was tried and how it ended: `completed`, `failed` (treasury, with an unknown completion time), `not_permitted` (the part of the scope the requestor may not read, with the permitted wording).
-- **Disposition** includes nine records (among them the two model summaries, labeled as inferences) and excludes one with a reason: the delivery-reliability result is not a payment-release criterion, and it stays retrievable.
+- **Disposition** includes nine records (among them the two AI summaries, labeled as inferences) and excludes one with a reason: the delivery-reliability result is not a payment-release criterion, and it stays retrievable.
 - **Conflict** `CONF-QTY`: the invoice says 100 units, the receipt says 60. Both claims are cited, neither is treated as correct, and there is no "majority" or "latest wins".
 - **Obligation** `OBL-0417-REVIEW`: the controller must review before 15:30, with delivery, acknowledgement and escalation states.
 - **Coverage** is `partial` with limitations stated. A selection is a scope, not the whole corpus.
@@ -83,13 +85,16 @@ The second decision is used by no instance, on purpose: its source does not appe
 | `MISS003` | `stale` must be justified by the freshness policy | `CASE-MISS-01` |
 | `MISS004` | `unavailable` points at an observation of the failure | (checked on the whole set) |
 | `MISS005` | The packet keeps every gap and conflict of its selection | `CASE-MISS-04` |
-| `DISC001` | A derived output does not name what the requestor may not see | `CASE-DISC-01` |
+| `DISC001` | A derived output does not name what the requestor may not see (a backstop word scan; the entry itself is checked by the rules below) | `CASE-DISC-01` |
 | `DISC002` | An entry about an unreadable source needs a decision that lets the requestor know it exists | `CASE-DISC-02` |
-| `DISC003` | The entry uses the decision's words and adds nothing | `CASE-DISC-03` |
+| `DISC003` | The entry is exactly the generic disclosure the decision configures: its words, and every sibling field, and nothing added. An input the decision lets the reader read is not called inaccessible | `CASE-DISC-03` |
+| `DISC004` | The decision binds to the requesting principal of the context (and to the tenant and purpose it claims) | `tests/test_disclosure.py` |
+| `DISC005` | A record the output names belongs to the context's tenant and purpose | `tests/test_disclosure.py` |
 
 ## What this shows, and what it does not
 
 - **Shows:** that "missing" can be said in seven precise ways, each tied to the evidence that justifies it, and that a conflict can stay a conflict.
 - **Does not show:** how relevance or priority is decided (the selection lists what was included, it does not rank), how large a real selection is, or whether people read seven labels. Whether this helps a reader is a human-outcome question; see [human-outcome evaluation](../../evaluation/human-outcome-evaluation.md).
+- **Does not judge free text.** The checks above cover the missingness entries, the wording of a statement about an unreadable source and the records an output names. They do not rebuild a packet's limitation summary or any other free text from the permission decisions, so a restricted detail written into free text is found only if it uses a term from the registry's protected list (`DISC001`, a backstop). See [what snapshot validation cannot judge](../../architecture/lineage-selection-disclosure.md#snapshot-validation-authorization-enforcement-and-viewer-projection).
 
 [← 03 Lineage and common origin](../03-lineage-and-common-origin/README.md) · [Examples](../README.md) · [Next: 05 Decision packet →](../05-decision-packet/README.md)

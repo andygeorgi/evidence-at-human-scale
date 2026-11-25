@@ -100,6 +100,123 @@
           }
         ]
       }
+    },
+    {
+      "label": "The time of the revocation check is not known",
+      "why": "A check that cannot be placed before the attempt cannot show the grant was unrevoked then.",
+      "at": "2026-11-23T16:00:05Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-APPR-0417-B",
+        "version": "v1"
+      },
+      "overrides": [
+        {
+          "on": "grant",
+          "path": "/limits_lifecycle/revocation/checked_at",
+          "value": {
+            "state": "unknown",
+            "reason": "The producing system did not record this time."
+          }
+        }
+      ],
+      "ledger": "empty",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "REVOCATION_TIME_UNKNOWN"
+        ],
+        "reasons": [
+          {
+            "code": "REVOCATION_TIME_UNKNOWN",
+            "message": "the time of the revocation check (state 'not_revoked') is missing or unknown, so it cannot be shown to precede the attempt"
+          }
+        ]
+      }
+    },
+    {
+      "label": "The admission time of a cited record is not known",
+      "why": "Evidence that cannot be shown to have been admitted by the attempt is not evidence the gateway may rely on.",
+      "at": "2026-11-23T16:00:05Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-APPR-0417-B",
+        "version": "v1"
+      },
+      "overrides": [
+        {
+          "on": "evidence",
+          "record": {
+            "id": "M3W-0417",
+            "version": "v2"
+          },
+          "path": "/producer_admission/admission_time",
+          "value": {
+            "state": "unknown",
+            "reason": "The producing system did not record this time."
+          }
+        }
+      ],
+      "ledger": "empty",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "EVIDENCE_TIME_UNKNOWN",
+          "PRECONDITION_FAILED"
+        ],
+        "reasons": [
+          {
+            "code": "EVIDENCE_TIME_UNKNOWN",
+            "message": "the time M3W-0417 v2 was admitted is missing or unknown, so it cannot be shown to have been available at the attempt"
+          },
+          {
+            "code": "PRECONDITION_FAILED",
+            "message": "PRE-MATCH-PASS is not satisfied: A current three-way match result for the invoice is PASS."
+          }
+        ]
+      }
+    },
+    {
+      "label": "The issuance time of the approval is not known",
+      "why": "A grant that cannot be shown to have been issued by the attempt is not usable.",
+      "at": "2026-11-23T16:00:05Z",
+      "proposal": {
+        "id": "ACT-REL-0417",
+        "version": "v2"
+      },
+      "grant": {
+        "id": "GRT-APPR-0417-B",
+        "version": "v1"
+      },
+      "overrides": [
+        {
+          "on": "grant",
+          "path": "/identity_principals/issuance_time",
+          "value": {
+            "state": "unknown",
+            "reason": "The producing system did not record this time."
+          }
+        }
+      ],
+      "ledger": "empty",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "GRANT_TIME_UNKNOWN"
+        ],
+        "reasons": [
+          {
+            "code": "GRANT_TIME_UNKNOWN",
+            "message": "the grant's issuance time is missing or unknown, so it cannot be shown to have been issued by the attempt"
+          }
+        ]
+      }
     }
   ],
   "synthetic": true,

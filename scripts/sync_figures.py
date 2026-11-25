@@ -10,7 +10,7 @@ A document places a figure with a pair of markers:
     <!-- figure:F03:end -->
 
 Everything between the markers is generated: the caption, the picture (a drawing in a light and a dark scheme) and a collapsed text
-description, which for a figure drawn from a table also holds that table. The banner at the top of README.md sits between
+description, which for a figure drawn from a table also holds that table. The banner in README.md, below its first paragraph, sits between
 <!-- banner:start --> and <!-- banner:end -->. Edit figures/figures.json and the drawing code in figures/src, never the generated block.
 """
 from __future__ import annotations

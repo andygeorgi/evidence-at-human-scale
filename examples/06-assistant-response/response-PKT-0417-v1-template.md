@@ -18,8 +18,8 @@ This is a review aid. It is not a decision, an approval or an instruction.
 
 ## Inferences (model-generated, not verified)
 
-- Inference (model-generated, not verified): Model A infers: The goods receipt is probably incomplete: the 40 missing units were probably delivered on a later date and not yet scanned. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source. `[M01]`
-- Inference (model-generated, not verified): Model B infers: The quantity difference is probably a receiving delay; the invoice quantity is consistent with the purchase order. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source. `[M02]`
+- Inference (model-generated, not verified): Model A infers: The goods receipt is probably incomplete: further units were probably delivered on a later date and not yet scanned. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source. `[M01]`
+- Inference (model-generated, not verified): Model B infers: Probably a receiving delay: the delivery was probably only partly scanned when the receipt was posted. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source. `[M02]`
 
 ## Conflicts nobody has resolved
 
@@ -27,7 +27,7 @@ This is a review aid. It is not a decision, an approval or an instruction.
 
 ## What could not be checked
 
-- Missing: Carrier proof of delivery for a second pallet of 40 units. No carrier or warehouse record of a second delivery exists in the readable sources. `[gap 1 (missing)]`
+- Missing: Carrier proof of delivery for a second pallet of 40 units. No carrier or warehouse record of a second delivery was found in the sources that were read. Search coverage is not established. `[gap 1 (missing)]`
 - Not retrieved: Open credit notes for supplier S-1042 in the last 90 days. Retrieval RETR-CREDIT-0417 completed with 0 relevant records; an empty result does not prove absence. `[gap 2 (not_retrieved)]`
 - Inaccessible: Coverage is limited by access permissions; no protected source identity or content is disclosed. `[gap 3 (inaccessible)]`
 - Unavailable: Treasury cash position for 2026-11-23. The cash-position service returned HTTP 503 and did not recover during the retrieval window. Nothing was read or assumed. `[gap 4 (unavailable)]`
@@ -37,17 +37,17 @@ This is a review aid. It is not a decision, an approval or an instruction.
 
 ## Recommendations (for review)
 
-- Recommendation (for review, not a decision): Place INV-2026-0417 on payment hold until the quantity difference is resolved. Basis: Open quantity discrepancy (CONF-QTY) between invoice and goods receipt; policy AP-4; screening is stale. Requires: A hold is within the bounded grant of the AP team; the AP controller is notified. `[REC-0417-1]`
-- Recommendation (for review, not a decision): Release payment at the 16:00 run only if the match passes, screening is current and the invoice is held when the run starts. Basis: Policy AP-4 requires a passing three-way match; the commit-time preconditions enforce it. Requires: Exact approval by the AP controller, bound to ACT-REL-0417 v1. `[REC-0417-1B]`
+- Recommendation from the withdrawn packet (not current advice; for review, not a decision): Place INV-2026-0417 on payment hold until the quantity difference is resolved. Basis: Open quantity discrepancy (CONF-QTY) between invoice and goods receipt; policy AP-4; screening is stale. Requires: A hold is within the bounded grant of the AP team; the AP controller is notified. `[REC-0417-1]`
+- Recommendation from the withdrawn packet (not current advice; for review, not a decision): Release payment at the 16:00 run only if the match passes, screening is current and the invoice is held when the run starts. Basis: Policy AP-4 requires a passing three-way match; the commit-time preconditions enforce it. Requires: Exact approval by the AP controller, bound to ACT-REL-0417 v1. `[REC-0417-1B]`
 
 ## Proposed actions (none is executed or approved)
 
-- Proposed (not executed or approved): ACT-HOLD-0417 v1, hold_payment on invoice INV-2026-0417. `[ACT-HOLD-0417 v1]`
-- Proposed (not executed or approved): ACT-REL-0417 v1, release_payment on invoice INV-2026-0417. `[ACT-REL-0417 v1]`
+- Proposal from the withdrawn packet (not current advice; not executed or approved): hold payment on invoice INV-2026-0417 (proposal ACT-HOLD-0417 v1). `[ACT-HOLD-0417 v1]`
+- Proposal from the withdrawn packet (not current advice; not executed or approved): release payment on invoice INV-2026-0417 (proposal ACT-REL-0417 v1). `[ACT-REL-0417 v1]`
 
 ## Obligations
 
-- Obligation OBL-0417-REVIEW: due 2026-11-23T15:30:00Z, owner role:ap-controller. `[OBL-0417-REVIEW]`
+- Obligation OBL-0417-REVIEW from the withdrawn packet (not current advice): due 2026-11-23T15:30:00Z, owner role:ap-controller. `[OBL-0417-REVIEW]`
 
 ## Limits of this view
 

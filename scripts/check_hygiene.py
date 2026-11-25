@@ -2,19 +2,28 @@
 """Scan the repository for what must not reach a public repository, and for files that do not survive a clone.
 
     python scripts/check_hygiene.py            # scan, exit 1 on any finding
-    python scripts/check_hygiene.py --history  # also scan every commit: each file version, path, message, author and ref
+    python scripts/check_hygiene.py --history  # also scan every commit: each file version at each path, path, message, author and ref
     python scripts/check_hygiene.py --rules    # list what is looked for, and which lines are pinned
     python scripts/check_hygiene.py --pin PATH:LINE  # print the pin for one line of a file (see below)
+    python scripts/check_hygiene.py --pin-quoted PATH:LINE  # print the digest that pins one quoting line of the scanner or its tests
     python scripts/check_hygiene.py --json     # machine-readable result
 
 Standard library only; works offline and is platform-neutral. It scans every file Git would include (tracked, or
 untracked and not ignored), or every file under the folder when Git is not available, and it also reads file names.
 With --history it also reads everything that a push of the whole history would publish: a term that was removed from the
-tree is still in an old commit, and a commit message or an author's address is published with it.
+tree is still in an old commit, and a commit message or an author's address is published with it. Each file version is
+judged at every path that held it, because what a path allows belongs to the path. The history must be whole: a shallow
+clone is refused, since a scan of it would pass on commits it never read.
 
 A finding is a reason to look, not a verdict. If a flagged line is legitimate, change the wording. The one exception is the
 name of the authority that the paper discusses: it may appear only where a public record's own title or address is quoted
 exactly. Such a line is pinned in ``PUBLIC_SOURCE_LINES`` below, by the SHA-256 of the whole line, in a reviewed commit.
+
+The scanner and its tests have to quote the patterns they look for. They are scanned by every rule like any other file.
+``QUOTED_LINES`` excuses one rule on one exact line of one exact file, pinned by the SHA-256 of the whole line, never a whole
+file, a whole rule or a piece of text. A line that differs by one character is a finding, so is the same line in another file,
+and so is any text added to a pinned line or beside it: a private link, a path, a label or an address pasted into either
+file is found like anywhere else.
 
 Private terms. The names that identify the private origin of the material cannot be listed in a public repository, because
 the list would publish them. Rule HYG105 therefore reads them from outside the repository: one regular expression per
@@ -22,6 +31,18 @@ line in a file named ``.hygiene-private-terms`` in the repository folder (Git ig
 variable ``EAHS_PRIVATE_TERMS``, which holds either a path to such a file or the lines themselves. Continuous integration
 has no such list, so a maintainer who has one runs the scan locally before a release. Without a list the scan still runs,
 says so, and looks for confidentiality-label wording and for the authority's name, which it knows as a digest (below).
+A list inside the folder is never published silently and never read as a file of the repository: a file with the list's name,
+at any path, and the file that the environment variable names when it lies inside the folder are a finding (HYG207) by their
+names alone, and their content is not scanned, not printed and not echoed by ``--pin``. The path is found as it is written, after
+links (a junction, a symbolic link) are resolved, as a link to the same file, and even when the file is no longer in the folder: a
+copy that was committed once is still in the history under that path. In the history a file version has no identity but its content, so
+a version whose content is the list's own (a hard link or a copy that was committed under another name) is found by its content. A
+pattern that means something different on a line than on a whole text (one that anchors to the start or the end of the whole string,
+looks ahead or behind, or switches a flag off in a group) is tried line by line.
+
+Git commands run with replacement objects off (``GIT_NO_REPLACE_OBJECTS``), so a ``git replace`` cannot show the scan another
+commit in place of the one a push would publish. Commit messages, identities and refs are read as NUL-separated fields, so that
+no character in a message or a name can end a record early.
 """
 from __future__ import annotations
 
@@ -36,12 +57,10 @@ import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Set, Tuple
 
 REPO = Path(__file__).resolve().parents[1]
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache"}
-# These two files quote the very patterns they look for.
-SELF_FILES = {"scripts/check_hygiene.py", "tests/test_hygiene.py"}
 MAX_BYTES = 1024 * 1024
 PRIVATE_TERMS_FILE = ".hygiene-private-terms"
 PRIVATE_TERMS_ENV = "EAHS_PRIVATE_TERMS"
@@ -80,13 +99,69 @@ PUBLIC_SOURCE_LINES: Tuple[PublicSourceLine, ...] = (
 
 
 @dataclass(frozen=True)
+class QuotedLines:
+    """The exact lines of one exact file that quote what one rule looks for.
+
+    The scanner and its tests have to quote the patterns they look for, so a rule that reads them finds its own words. An entry
+    excuses one rule on each listed line of one file, and each line is pinned by the SHA-256 of its whole text without its line
+    ending (the script cannot list the lines themselves: they would be matches too). A line that differs by a character, the same
+    line in another file, text added to a pinned line or beside it, and every other rule on the pinned line are still findings, so
+    a private link, a path, a credential, a label or an address pasted into these files is found like anywhere else. An exception
+    never travels with content: it belongs to a path and to a line, and it is added in a reviewed commit.
+    """
+    path: str
+    rule: str
+    digests: Tuple[str, ...]  # SHA-256 of each pinned line
+    what: str  # what the lines quote; never a private term
+
+
+QUOTED_LINES: Tuple[QuotedLines, ...] = (
+    QuotedLines("scripts/check_hygiene.py", "HYG101",
+                ("0d2ead2708b33185a4e9deb0429f24b43d15d3952421a6602339b7f974d1cc11", "365aff8fdad97efe5cf7cc8c090a7e2a686a9a4ef2f0f6d8a3caa3ca23e5e823"),
+                "the private-link rule's own pattern"),
+    QuotedLines("scripts/check_hygiene.py", "HYG102",
+                ("ab772b8cad882589c4ecb29ad9f5666ffdde053c64d97e66f6dbf25eed94cb0b",),
+                "the local-path rule's own pattern"),
+    QuotedLines("scripts/check_hygiene.py", "HYG105",
+                ("107633ce04d2c1ccfdad93631f52e0ba9c4f6aad3772816d75608c1a78a1c4c3", "de85b1897321eefbcc9f29da56c63a76f9066f5e51385d732d1a4af2542922de"),
+                "the confidentiality-label rule's own pattern"),
+    QuotedLines("scripts/check_hygiene.py", "HYG107",
+                ("f09adc69a3e286b2471e9dfef2670986c34674acb21362d5f240cf9fa4ef2c00",),
+                "the draft-marker rule's own pattern"),
+    QuotedLines("tests/test_hygiene.py", "HYG101",
+                ("30918176eb6c09e49fa2f17b9ffb457fa72bf6e38a6cef89d572e16c7618312f",),
+                "invented private links that a test expects to be found"),
+    QuotedLines("tests/test_hygiene.py", "HYG102",
+                ("91bc8b3acb103c420f3d3e7107732f6147adfdd7dd3c118a3a7bf1e378cbddb9",),
+                "invented local paths that a test expects to be found"),
+    QuotedLines("tests/test_hygiene.py", "HYG103",
+                ("a6e5fdaa94f010c8f5acb29c327bc17b50c05e4c68f6d3b1b39368735ce35739",),
+                "an invented password that a test expects to be found"),
+    QuotedLines("tests/test_hygiene.py", "HYG104",
+                ("30b9e4fc9ed4c588bde468a4b47cde149fcc0ca3ca45acf1a6c7252f4a16a25d", "5d1c8a70434975da18aa3ad16400d8b12d25d45d57861152486168b5484ac603",
+                 "a0ec640cd929144b4928bf48d0ba4e871097ff19dd324b7f52091507afe3623c", "ceafdefa5453d026631102e94b4fabafba29e2685f5865e50824a89926629fc6",
+                 "dba3186fd8a7860ee6ddc0b4a110802d604fb4738fec582292211699c0f2469f", "eeee487315e61fd5d6f0de0b3ed4704771af62b939cb194cd276bcf7f6ef27c6"),
+                "invented addresses that a test expects to be found"),
+    QuotedLines("tests/test_hygiene.py", "HYG105",
+                ("09394a9412c7e1e306cf7a025b8b22d83b9c55b0c9775e776d6d878a27998ed5", "dba3186fd8a7860ee6ddc0b4a110802d604fb4738fec582292211699c0f2469f"),
+                "label wording that a test expects to be found"),
+    QuotedLines("tests/test_hygiene.py", "HYG107",
+                ("e400d195cb2eaa2d22361203b4eed67d128268e2036d3fda0e24d9ae5461492d",),
+                "draft markers that a test expects to be found"),
+    QuotedLines("tests/test_hygiene.py", "HYG108",
+                ("a7ab71d6fe00b8fade46d70c4527c599974ff36f36bf94757e30df236858230d",),
+                "claims of finality that a test expects to be found"),
+)
+
+
+@dataclass(frozen=True)
 class Rule:
     code: str
     label: str
     pattern: str
     advice: str
     ignore_match: str = ""  # a match that matches this in full is fine
-    ignore_line: str = ""  # a line that matches this is fine for this rule
+    ignore_before: str = ""  # a match is fine when the text before it in the same sentence ends with something that matches this
     on_names: bool = False  # also apply to the file path
     needle: str = ""  # a literal that every match contains: text without it cannot match, so it is not searched
 
@@ -110,7 +185,7 @@ RULES: Tuple[Rule, ...] = (
          "Remove it and rotate the credential: it must be treated as exposed."),
     Rule("HYG104", "e-mail address", r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+",
          "Use a role link or the repository's issue tracker, not a personal address.",
-         ignore_match=r"(?i:[^@]+@(?:users\.noreply\.github\.com|example\.(?:com|org|net))|git@github\.com)", needle="@"),
+         ignore_match=r"(?i:[^@]+@(?:users\.noreply\.github\.com|example\.(?:com|org|net))|git@github\.com|noreply@github\.com)", needle="@"),
     Rule("HYG105", "internal vocabulary, confidentiality label or the authority's name",
          LABEL_MARKERS,
          "This names the private origin of the material, carries a confidentiality label, or names the authority outside a quoted public record. Use the public wording.",
@@ -123,7 +198,12 @@ RULES: Tuple[Rule, ...] = (
          r"(?i:\b(?:final|canonical|definitive|official)\s+(?:version|release|edition|publication|paper)\b"
          r"|officially\s+(?:published|released|approved)|\bfinal\s+paper\b)",
          "Do not call the repository final, canonical or official.",
-         ignore_line=r"(?i:\b(?:not|never|no|nothing|neither|nor|until|before|isn't)\b.{0,60}\b(?:final|canonical|definitive|official)\b)"),
+         # A denial excuses the claim right after it and no other claim on the line: it has to stand within a few filler words of it
+         # (a denial, then the, a, this, here, is and similar), so a denial followed by an unrelated clause excuses nothing.
+         # "not only" and "not just" add to a claim and deny nothing, and "before" and "until" are about time, not about the claim,
+         # so none of them is a denial or a filler.
+         ignore_before=r"(?i:\b(?:not|never|no|nothing|neither|nor|isn't|aren't|wasn't|weren't)\b"
+                       r"(?:[ \t]+(?:the|a|an|this|that|it|is|are|be|been|was|were|here|now|yet|longer|really|necessarily|quite|as)\b){0,3}[ \t]+$)"),
 )
 
 BLOCKED_SUFFIXES = {
@@ -168,32 +248,147 @@ def _term_lines(text: str) -> List[str]:
     return [line.strip() for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")]
 
 
+def _read_list(path: Path) -> str:
+    """The text of a list file. A byte that is not UTF-8 is replaced and does not stop the scan: the list is read, not rejected."""
+    return path.read_text(encoding="utf-8", errors="replace")
+
+
+def _env_list_file(environ: Mapping[str, str]) -> Optional[Path]:
+    """The file the environment variable names, or None when it holds the terms themselves or names nothing."""
+    value = environ.get(PRIVATE_TERMS_ENV, "").strip()
+    if not value or "\n" in value:
+        return None
+    try:
+        path = Path(value)
+        return path if path.is_file() else None
+    except (OSError, ValueError):
+        return None
+
+
 def load_private_terms(root: Path = REPO, environ: Optional[Mapping[str, str]] = None) -> List[str]:
     """The private-term patterns: those in the environment variable first, then those in the file in the folder."""
     environ = os.environ if environ is None else environ
     terms: List[str] = []
     value = environ.get(PRIVATE_TERMS_ENV, "").strip()
     if value:
-        try:
-            from_file = "\n" not in value and Path(value).is_file()
-        except OSError:
-            from_file = False
-        terms += _term_lines(Path(value).read_text(encoding="utf-8") if from_file else value)
+        listing = _env_list_file(environ)
+        terms += _term_lines(_read_list(listing) if listing is not None else value)
     local = root / PRIVATE_TERMS_FILE
     if local.is_file():
-        terms += _term_lines(local.read_text(encoding="utf-8"))
+        terms += _term_lines(_read_list(local))
     return terms
+
+
+#: Repository paths (lower case) of private term lists that sit inside the folder under a name of their own: the environment variable can point at one.
+_LIST_PATHS: Set[str] = set()
+
+
+def private_list_paths(root: Path = REPO, environ: Optional[Mapping[str, str]] = None, names: Sequence[str] = ()) -> List[str]:
+    """The repository-relative paths where the private term list the environment variable names lies inside the folder, under any name.
+
+    A list inside the folder is published with it, and a scan that read it would match each term against its own line and print the term.
+    So such a file is a finding (HYG207) at whatever path it has, and its content is never read, scanned or printed. The path is found
+    as it is written (so that a folder that is a link to elsewhere, a junction or a symbolic link, does not hide it), after links are
+    resolved, and whether or not the file still exists: a list that was committed and later deleted from the folder is still in the
+    history under that path. Of the `names` of the files a scan reads, those that are the same file as a list (the one the variable names, or the one in
+    the folder) are found too: a hard link to it.
+    """
+    environ = os.environ if environ is None else environ
+    value = environ.get(PRIVATE_TERMS_ENV, "").strip()
+    found: List[str] = []
+    try:
+        if value and "\n" not in value:
+            configured = Path(value)
+            spellings = {os.path.abspath(configured)}
+            try:
+                spellings.add(str(configured.resolve()))
+            except (OSError, RuntimeError):
+                pass
+            bases = {os.path.abspath(root)}
+            try:
+                bases.add(str(Path(root).resolve()))
+            except (OSError, RuntimeError):
+                pass
+            for spelling in spellings:
+                for base in bases:
+                    try:
+                        relative = os.path.relpath(spelling, base)
+                    except ValueError:   # another drive: it is not inside the folder
+                        continue
+                    if relative != "." and Path(relative).parts[0] != "..":   # a name that merely begins with two points ("..notes") is inside the folder
+                        found.append(Path(relative).as_posix())
+        listings = [path for path in (_env_list_file(environ), Path(root) / PRIVATE_TERMS_FILE) if path is not None and path.is_file()]
+        for name in names:
+            for listing in listings:
+                try:
+                    if os.path.samefile(Path(root) / name, listing):
+                        found.append(name)
+                        break
+                except OSError:
+                    continue
+    except (OSError, ValueError):
+        return found
+    return list(dict.fromkeys(found))
+
+
+def use_list_paths(root: Path, environ: Optional[Mapping[str, str]] = None, names: Sequence[str] = ()) -> None:
+    _LIST_PATHS.clear()
+    _LIST_PATHS.update(path.lower() for path in private_list_paths(root, environ, names))
+
+
+def private_list_blobs(root: Path, environ: Optional[Mapping[str, str]] = None) -> Set[str]:
+    """The Git blob ids that a copy of a private term list has: the list the environment names and the list in the folder, as they are, with LF line endings and with CRLF.
+
+    In the history a file has no identity but its content, so a version whose content is the list's is the list, whatever its path (a hard link that was
+    committed, a copy, a copy that a checkout changed from one line ending to the other). Such a version is a finding by its content (HYG207) and is never read.
+    A list with no term in it (empty, blank in any sense of the word, or nothing but comments) gives nothing: it would match every file of the same kind, and it
+    protects nothing.
+    """
+    environ = os.environ if environ is None else environ
+    listings = [path for path in (_env_list_file(environ), root / PRIVATE_TERMS_FILE) if path is not None and path.is_file()]
+    ids: Set[str] = set()
+    for listing in listings:
+        try:
+            data = listing.read_bytes()
+        except OSError:
+            continue
+        if not _term_lines(data.decode("utf-8", errors="replace")):
+            continue
+        unix = data.replace(b"\r\n", b"\n")
+        for variant in {data, unix, unix.replace(b"\n", b"\r\n")}:
+            try:
+                ids.add(_git(root, "hash-object", "--stdin", data=variant).decode().strip())
+            except HistoryError:
+                continue
+    return ids
+
+
+def is_list_path(rel: str) -> bool:
+    """True for a file that is a private term list: one named like the list at any path, or the one the environment variable names inside the folder."""
+    return PurePosixPath(rel).name.lower() == PRIVATE_TERMS_FILE or rel.lower() in _LIST_PATHS
+
+
+#: What a pattern of the private term list holds that makes it mean something different on one line than on the whole text of a file: the start and the
+#: end of the string (\A, \Z), looking ahead or behind, which can see a line ending, and a group that switches a flag off (such as (?-m:...), which turns the
+#: line anchors into string anchors). Such a pattern is looked for line by line, as it is applied.
+_LINE_SENSITIVE = re.compile(r"\\[AZz]|\(\?<?[=!]|\(\?[a-zA-Z]*-[a-zA-Z]*[:)]")
+_PER_LINE: Set["re.Pattern[str]"] = set()
 
 
 def use_private_terms(terms: Sequence[str]) -> List[int]:
     """Make HYG105 look for these patterns as well. Returns the 1-based numbers of those that are not regular expressions."""
     _PRIVATE.clear()
+    _PER_LINE.clear()
     invalid = []
     for number, term in enumerate(terms, 1):
         try:
-            _PRIVATE.append(re.compile(term))
+            compiled = re.compile(term, re.MULTILINE)
         except re.error:
             invalid.append(number)
+            continue
+        _PRIVATE.append(compiled)
+        if _LINE_SENSITIVE.search(term):
+            _PER_LINE.add(compiled)
     return invalid
 
 
@@ -240,41 +435,81 @@ def is_public_source_line(rel: str, line: str) -> bool:
     return any(pin.path == rel and pin.digest == digest for pin in PUBLIC_SOURCE_LINES)
 
 
-def _private_match(line: str) -> Optional[str]:
-    """The first private term, or the first word of a name known as a digest, in this line."""
+def is_quoted_line(rel: str, code: str, line: str) -> bool:
+    """True when this exact line of this exact file is pinned as quoting what this rule looks for. Another file, rule or line is not."""
+    digest = line_digest(line)
+    return any(q.path == rel and q.rule == code and digest in q.digests for q in QUOTED_LINES)
+
+
+def _private_matches(line: str) -> Iterator[str]:
+    """Every private term, and every word of a name known as a digest, in this line."""
     for pattern in _PRIVATE:
-        found = pattern.search(line)
-        if found:
-            return found.group(0)
-    words = name_words(line)
-    return words[0] if words else None
+        for found in pattern.finditer(line):
+            yield found.group(0)
+    yield from name_words(line)
 
 
-def apply_rule(rule: Rule, rel: str, line: str) -> Optional[str]:
-    """The first match of the rule on this line that is not ignored, or None.
+_SENTENCE_END = re.compile(r"[.!?;:](?=\s|$)")
 
-    For HYG105 a private term or a name known as a digest is excused only on a line pinned in PUBLIC_SOURCE_LINES; label wording never is.
+
+def _before(line: str, end: int, width: int = 160) -> str:
+    """The text just before `end`, at most `width` characters, and never starting inside a word: a word that the cut would split ("knot" cut to "not") is dropped."""
+    start = max(0, end - width)
+    while 0 < start < end and (line[start - 1].isalnum() or line[start - 1] == "_") and (line[start].isalnum() or line[start] == "_"):
+        start += 1
+    return line[start:end]
+
+
+def find_matches(rule: Rule, rel: str, line: str) -> Iterator[str]:
+    """Every match of the rule on this line that the rule itself does not ignore, in order.
+
+    For HYG105 a private term or a name known as a digest comes after the label wording, and is excused only on a line pinned in
+    PUBLIC_SOURCE_LINES; label wording never is. A rule that a denial can excuse (HYG108) looks at each match with the sentence
+    before it, so that a denial excuses the claim it negates and not another claim on the same line. The text before a match is
+    cut at a whole word, so that the tail of a longer word is never read as a denial.
     """
-    if rule.ignore_line and re.search(rule.ignore_line, line):
-        return None
     for match in _COMPILED[rule.code].finditer(line):
         if rule.ignore_match and re.fullmatch(rule.ignore_match, match.group(0)):
             continue
-        return match.group(0)
-    if rule.code == "HYG105":
-        hit = _private_match(line)
-        if hit is not None and not is_public_source_line(rel, line):
-            return hit
-    return None
+        if rule.ignore_before and re.search(rule.ignore_before, _SENTENCE_END.split(_before(line, match.start()))[-1]):
+            continue
+        yield match.group(0)
+    if rule.code == "HYG105" and not is_public_source_line(rel, line):
+        yield from _private_matches(line)
+
+
+def apply_rule(rule: Rule, rel: str, line: str) -> Optional[str]:
+    """The first match of the rule on this line that nothing excuses, or None.
+
+    A line that is pinned as quoting what this rule looks for is excused for this rule, whole: its exact text is what was reviewed.
+    """
+    if is_quoted_line(rel, rule.code, line):
+        return None
+    return next(find_matches(rule, rel, line), None)
 
 
 def _may_match(rule: Rule, text: str) -> bool:
-    """False only when the rule cannot match anywhere in the text, so that most files are not read line by line for every rule."""
+    """False only when the rule cannot match anywhere in the text, so that most files are not read line by line for every rule.
+
+    A pattern of the private term list is tried on the whole text, except one that means something different on a line than on a whole text
+    (see `_LINE_SENSITIVE`): that one is tried line by line, as it is applied, so that the shortcut never hides a line it would have matched.
+    """
     if rule.needle and rule.needle not in text:
         return False
     if _COMPILED[rule.code].search(text):
         return True
-    return rule.code == "HYG105" and (any(pattern.search(text) for pattern in _PRIVATE) or bool(name_words(text)))
+    if rule.code != "HYG105":
+        return False
+    if any(pattern.search(text) for pattern in _PRIVATE if pattern not in _PER_LINE):
+        return True
+    if _PER_LINE and any(pattern.search(line.rstrip("\r")) for line in text.split("\n") for pattern in _PER_LINE):
+        return True
+    return bool(name_words(text))
+
+
+def _git_env() -> Dict[str, str]:
+    """The environment for every Git command here. Replacement objects are off: a replaced commit would show the scan another commit's content in its place, and a push publishes the original."""
+    return dict(os.environ, GIT_NO_REPLACE_OBJECTS="1")
 
 
 def candidate_files(root: Path) -> List[str]:
@@ -282,7 +517,7 @@ def candidate_files(root: Path) -> List[str]:
     if (root / ".git").exists():
         try:
             done = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-                                  capture_output=True, check=True)
+                                  capture_output=True, check=True, env=_git_env())
             names = [n for n in done.stdout.decode("utf-8", "replace").split("\0") if n]
             return sorted(n for n in set(names) if (root / n).is_file())
         except (OSError, subprocess.CalledProcessError):
@@ -303,7 +538,7 @@ def check_names(paths: Iterable[str]) -> List[Finding]:
         name = rel.rsplit("/", 1)[-1]
         low = name.lower()
         suffix = ("." + low.rsplit(".", 1)[-1]) if "." in low else ""
-        if rel == PRIVATE_TERMS_FILE:
+        if is_list_path(rel):
             findings.append(Finding("HYG207", rel, 0, "the private term list is part of what would be published, and it names the private origin of the material. Keep it out of Git (add it to .gitignore)"))
         if rel not in ALLOWED_FILES:
             if suffix in BLOCKED_SUFFIXES:
@@ -337,18 +572,27 @@ def read_text(path: Path) -> Optional[str]:
     return decode_text(path.read_bytes())
 
 
-def scan_bytes(rel: str, data: bytes) -> List[Finding]:
-    """The findings in one file, given its repository-relative path and its content."""
+def name_rule_findings(rel: str) -> List[Finding]:
+    """The findings of the rules that also look at a path (a private link or a local path in a file name), whatever the file holds."""
     findings: List[Finding] = []
-    if len(data) > MAX_BYTES and rel not in ALLOWED_FILES:
-        findings.append(Finding("HYG202", rel, 0, "larger than 1 MiB (%d bytes); the repository is for text and small figures" % len(data)))
-    if rel in SELF_FILES or rel == PRIVATE_TERMS_FILE:
-        return findings
     for rule in RULES:
         if rule.on_names:
             hit = apply_rule(rule, rel, rel)
             if hit:
                 findings.append(Finding(rule.code, rel, 0, "%s in the file name. %s" % (rule.label, rule.advice), hit))
+    return findings
+
+
+def scan_bytes(rel: str, data: bytes) -> List[Finding]:
+    """The findings in one file, given its repository-relative path and its content."""
+    findings: List[Finding] = []
+    if is_list_path(rel):
+        # Always a finding (HYG207, from the file name), at any path. Its content is not read, so that no finding can print the terms the list holds.
+        # Its path is public, so the rules about a path still apply to it.
+        return name_rule_findings(rel)
+    if len(data) > MAX_BYTES and rel not in ALLOWED_FILES:
+        findings.append(Finding("HYG202", rel, 0, "larger than 1 MiB (%d bytes); the repository is for text and small figures" % len(data)))
+    findings += name_rule_findings(rel)
     suffix = PurePosixPath(rel).suffix.lower()
     if suffix in BLOCKED_SUFFIXES and rel not in ALLOWED_FILES:
         return findings
@@ -356,10 +600,11 @@ def scan_bytes(rel: str, data: bytes) -> List[Finding]:
     if text is None:
         findings.append(Finding("HYG203", rel, 0, "not UTF-8 text; every file here should be readable as text"))
         return findings
-    active = [rule for rule in RULES if _may_match(rule, text)]
+    active = [rule for rule in RULES if _may_match(rule, text.replace("\r\n", "\n"))]
     if not active:
         return findings
     for number, line in enumerate(text.split("\n"), 1):
+        line = line.rstrip("\r")
         for rule in active:
             hit = apply_rule(rule, rel, line)
             if hit:
@@ -369,6 +614,9 @@ def scan_bytes(rel: str, data: bytes) -> List[Finding]:
 
 
 def scan_file(root: Path, rel: str) -> List[Finding]:
+    """The findings in one file of the folder. A private term list is not opened at all: it is a finding by its name (HYG207), nothing in it is read, and only the rules about its path apply."""
+    if is_list_path(rel):
+        return name_rule_findings(rel)
     return scan_bytes(rel, (root / rel).read_bytes())
 
 
@@ -380,6 +628,7 @@ def scan(root: Path = REPO, files: Optional[Sequence[str]] = None, private_terms
     terms = load_private_terms(root) if private_terms is None else list(private_terms)
     invalid = use_private_terms(terms)
     names = list(files) if files is not None else candidate_files(root)
+    use_list_paths(root, names=names)
     findings = check_names(names)
     findings += [Finding("HYG206", PRIVATE_TERMS_FILE, 0, "private term number %d is not a valid regular expression, so it was not used" % number) for number in invalid]
     for rel in names:
@@ -401,7 +650,7 @@ class HistoryError(RuntimeError):
 
 def _git(root: Path, *args: str, data: Optional[bytes] = None) -> bytes:
     try:
-        done = subprocess.run(["git", "-C", str(root)] + list(args), capture_output=True, check=True, input=data)
+        done = subprocess.run(["git", "-C", str(root)] + list(args), capture_output=True, check=True, input=data, env=_git_env())
     except OSError as exc:
         raise HistoryError("git is not available: %s" % exc) from exc
     except subprocess.CalledProcessError as exc:
@@ -422,9 +671,14 @@ def history_commits(root: Path) -> List[str]:
     return _git(root, "rev-list", "--reverse", "--all").decode().split()
 
 
-def history_versions(root: Path, commits: Sequence[str]) -> Dict[str, Tuple[str, str]]:
-    """Every file version that any commit adds or changes: its blob id -> (the first commit that has it, its path there)."""
-    first: Dict[str, Tuple[str, str]] = {}
+def history_versions(root: Path, commits: Sequence[str]) -> Dict[Tuple[str, str], str]:
+    """Every file version that any commit adds or changes: (blob id, path) -> the first commit that has that content at that path.
+
+    The key is the pair, never the blob alone. The same content can sit at several paths, and what a path allows (a pinned line, a
+    quoted match, a permitted file, its own file name) belongs to the path. A version that a path excuses where it was first added
+    must still be judged where it is added again, so each path that ever held the content is judged on its own.
+    """
+    first: Dict[Tuple[str, str], str] = {}
     calls = [("diff-tree", "-r", "-m", "--root", "--no-commit-id", "--no-renames", "--raw", "-z", commit) for commit in commits]
     for commit, output in zip(commits, _git_each(root, calls)):
         raw = output.split(b"\0")
@@ -435,7 +689,7 @@ def history_versions(root: Path, commits: Sequence[str]) -> Dict[str, Tuple[str,
             mode, blob, status = fields[1], fields[3].decode(), fields[4].decode()
             if status.startswith("D") or mode == b"160000" or set(blob) == {"0"}:
                 continue
-            first.setdefault(blob, (commit, path.decode("utf-8", "replace")))
+            first.setdefault((blob, path.decode("utf-8", "replace")), commit)
     return first
 
 
@@ -464,6 +718,7 @@ def scan_text(label: str, text: str) -> List[Finding]:
     """Every rule, applied to each line of a piece of text that is not a file: a commit message, an identity, a ref."""
     findings: List[Finding] = []
     for number, line in enumerate(text.split("\n"), 1):
+        line = line.rstrip("\r")
         for rule in RULES:
             hit = apply_rule(rule, "", line)
             if hit:
@@ -487,16 +742,24 @@ def history_name_findings(root: Path, commits: Sequence[str]) -> Tuple[List[Find
     return findings, len(paths)
 
 
+def _fields(output: bytes, width: int, what: str) -> List[List[str]]:
+    """Records of `width` fields each from NUL-separated Git output. A NUL byte cannot occur inside a field, so no field's content can end or start a record.
+
+    Output that does not divide into whole records is refused instead of read as far as it goes: a scan of a history it could not read
+    must not report it clean.
+    """
+    fields = output.decode("utf-8", "replace").split("\0")
+    if len(fields) % width != 1 or fields[-1].strip():
+        raise HistoryError("git gave %s that cannot be read as records of %d fields (a NUL byte inside a field?)" % (what, width))
+    return [fields[start:start + width] for start in range(0, len(fields) - 1, width)]
+
+
 def history_message_findings(root: Path) -> List[Finding]:
     """The rules on every commit message, and on the name and address of every author and committer."""
-    fmt = "%H%x1f%an%x1f%ae%x1f%cn%x1f%ce%x1f%B%x1e"
     findings: List[Finding] = []
     reported = set()
-    for record in _git(root, "log", "--all", "--format=" + fmt).decode("utf-8", "replace").split("\x1e"):
-        record = record.lstrip("\n")
-        if not record:
-            continue
-        commit, author, author_mail, committer, committer_mail, message = record.split("\x1f", 5)
+    for commit, author, author_mail, committer, committer_mail, message in _fields(
+            _git(root, "log", "--all", "-z", "--format=%H%x00%an%x00%ae%x00%cn%x00%ce%x00%B"), 6, "the commits"):
         for role, name, mail in (("author", author, author_mail), ("committer", committer, committer_mail)):
             for finding in scan_text("commit %s %s" % (commit[:7], role), "%s <%s>" % (name, mail)):
                 key = (finding.code, finding.excerpt, role)
@@ -511,11 +774,11 @@ def history_ref_findings(root: Path) -> Tuple[List[Finding], List[str]]:
     """The rules on every ref name and tag message, and the refs that are not branches."""
     findings: List[Finding] = []
     others = []
-    for record in _git(root, "for-each-ref", "--format=%(refname)%1f%(taggername)%1f%(taggeremail)%1f%(contents)%1e").decode("utf-8", "replace").split("\x1e"):
-        record = record.lstrip("\n")
-        if not record:
+    for ref, tagger, tagger_mail, contents in _fields(
+            _git(root, "for-each-ref", "--format=%(refname)%00%(taggername)%00%(taggeremail)%00%(contents)%00"), 4, "the refs"):
+        ref = ref.lstrip("\n")   # a record ends with a line feed after its last NUL
+        if not ref:
             continue
-        ref, tagger, tagger_mail, contents = record.split("\x1f", 3)
         if not ref.startswith("refs/heads/"):
             others.append(ref)
         findings += scan_text("ref %s" % ref, "%s\n%s <%s>\n%s" % (ref, tagger, tagger_mail, contents) if tagger or contents.strip() else ref)
@@ -525,25 +788,45 @@ def history_ref_findings(root: Path) -> Tuple[List[Finding], List[str]]:
 def scan_history(root: Path = REPO, private_terms: Optional[Sequence[str]] = None) -> Tuple[List[Finding], List[str], Dict[str, int]]:
     """Scan everything that a push of the whole history would publish.
 
-    Every file version that any commit ever added or changed is read and scanned as a file is, so a term that was removed from
-    the tree but is still in an old commit is found. So are the names of all paths, every commit message, every author and
-    committer, and every ref. Returns (findings, notices, counts).
+    Every file version that any commit ever added or changed is read and scanned as a file is, at each path that held it, so a term
+    that was removed from the tree but is still in an old commit is found. So are the names of all paths, every commit message,
+    every author and committer, and every ref. Each distinct blob is read once, however many paths held it. Returns
+    (findings, notices, counts).
+
+    A shallow clone has most of the history missing, so a scan of it would pass on commits it never read. It is refused
+    (HistoryError) instead of being reported as clean: fetch the full history first.
     """
     use_private_terms(load_private_terms(root) if private_terms is None else list(private_terms))
+    use_list_paths(root)
     commits = history_commits(root)
+    if _git(root, "rev-parse", "--is-shallow-repository").strip() == b"true":
+        raise HistoryError("this is a shallow clone, so most of the history is missing and a scan would pass on commits it never read. "
+                           "Fetch the whole history (git fetch --unshallow, or check out with fetch-depth 0) and scan again")
     versions = history_versions(root, commits)
+    list_blobs = private_list_blobs(root)
+    held_at: Dict[str, List[Tuple[str, str]]] = {}
     findings: List[Finding] = []
+    for (blob, path), commit in versions.items():
+        if is_list_path(path):
+            findings += _relabel(name_rule_findings(path), commit)   # a private term list is a finding by its name (HYG207) wherever it was held; its content is never read, and its path is judged
+            continue
+        if blob in list_blobs:
+            # A version whose content is the list's own is the list, under another name (a copy, or a hard link that was committed): it is not read either.
+            findings.append(Finding("HYG207", "%s @ %s" % (path, commit[:7]), 0, "this file version has the content of the private term list, and it names the private origin of the material. It is not read or printed"))
+            findings += _relabel(name_rule_findings(path), commit)   # the path is public, and the rules about a path still apply to it
+            continue
+        held_at.setdefault(blob, []).append((path, commit))
     unreadable = 0
-    ids = list(versions)
+    ids = list(held_at)
     for start in range(0, len(ids), 200):
         batch = ids[start:start + 200]
         blobs = read_blobs(root, batch)
         for blob in batch:
-            commit, rel = versions[blob]
             if blob not in blobs:
-                unreadable += 1
+                unreadable += len(held_at[blob])
                 continue
-            findings += _relabel(scan_bytes(rel, blobs[blob]), commit)
+            for rel, commit in held_at[blob]:
+                findings += _relabel(scan_bytes(rel, blobs[blob]), commit)
     names, path_count = history_name_findings(root, commits)
     findings += names
     findings += history_message_findings(root)
@@ -552,12 +835,10 @@ def scan_history(root: Path = REPO, private_terms: Optional[Sequence[str]] = Non
     notices = []
     if unreadable:
         notices.append("%d file version(s) could not be read, so they were not scanned." % unreadable)
-    if _git(root, "rev-parse", "--is-shallow-repository").strip() == b"true":
-        notices.append("This is a shallow clone: only the commits that were fetched were scanned.")
     if others:
         notices.append("Refs other than branches exist (%s). Pushing them publishes what they point to." % ", ".join(others))
     findings.sort(key=lambda f: (f.path, f.line, f.code))
-    return findings, notices, {"commits": len(commits), "file_versions": len(versions), "paths": path_count}
+    return findings, notices, {"commits": len(commits), "file_versions": len(versions), "blobs": len(held_at), "paths": path_count}
 
 
 def describe_rules() -> str:
@@ -583,10 +864,18 @@ def describe_rules() -> str:
               "  HYG204  file name Windows cannot create, or a path over 200 characters",
               "  HYG205  two files that differ only by case",
               "  HYG206  an entry in the private term list is not a valid regular expression",
-              "  HYG207  the private term list is among the files that would be published",
-              "", "With --history, every rule above is also applied to each file version that any commit added or changed (reported as path @ commit),",
-              "to the path names in every commit, to every commit message, to every author and committer, and to every ref.",
-              "", "Skipped: %s. Two files that quote the patterns are not read: %s." % (", ".join(sorted(SKIP_DIRS)), ", ".join(sorted(SELF_FILES)))]
+              "  HYG207  the private term list is among the files that would be published (a file with its name at any path, or the file that",
+              "          the environment variable names, if that lies inside the folder, or a version in the history with the list's own content):",
+              "          its content is never read, scanned or printed",
+              "", "With --history, every rule above is also applied to each file version that any commit added or changed, at each path that held it",
+              "(reported as path @ commit), to the path names in every commit, to every commit message, to every author and committer, and to every ref.",
+              "A shallow clone is refused: its missing history would pass unread.",
+              "", "Quoted lines. The scanner and its tests quote the patterns they look for. Exactly these %d lines, each for one rule in one file, are excused," % sum(len(q.digests) for q in QUOTED_LINES),
+              "each pinned by the SHA-256 of the whole line (the first 12 characters are shown). A line that differs by a character, the same line in",
+              "another file, any other rule on the line and any text added to it or beside it is a finding, in these two files too:"]
+    for quoted in QUOTED_LINES:
+        lines.append("  %s  %s  %s  (%s)" % (quoted.path, quoted.rule, " ".join(d[:12] for d in quoted.digests), quoted.what))
+    lines += ["", "Skipped: %s. The private term list is not read, even if it is among the files (HYG207 fails the scan)." % ", ".join(sorted(SKIP_DIRS))]
     return "\n".join(lines)
 
 
@@ -598,6 +887,10 @@ def pin_entry(root: Path, spec: str) -> Tuple[str, str]:
     target = (root / path).resolve()
     if root.resolve() not in target.parents or not target.is_file():
         raise ValueError("%s is not a file inside %s" % (path, root))
+    rel = target.relative_to(root.resolve()).as_posix()
+    use_list_paths(root, names=[rel])
+    if is_list_path(rel):
+        raise ValueError("%s is a private term list: it is never read, and none of its lines is printed" % path)
     text = read_text(target)
     if text is None:
         raise ValueError("%s is not UTF-8 text" % path)
@@ -605,8 +898,18 @@ def pin_entry(root: Path, spec: str) -> Tuple[str, str]:
     if int(number) > len(rows):
         raise ValueError("%s has only %d lines" % (path, len(rows)))
     line = rows[int(number) - 1].rstrip("\r")
-    rel = target.relative_to(root.resolve()).as_posix()
     return line, 'PublicSourceLine("%s", "%s", "<which record, and its title or its address>"),' % (rel, line_digest(line))
+
+
+def pin_quoted(root: Path, spec: str) -> Tuple[str, List[str]]:
+    """For 'path:line number', the exact line and the QUOTED_LINES digest and rules it needs (the rules that match it as it stands).
+
+    Raises ValueError if there is no such line. Only the scanner and its tests quote what the rules look for.
+    """
+    line, _entry = pin_entry(root, spec)
+    rel = spec.rpartition(":")[0].replace("\\", "/")
+    rules = [rule.code for rule in RULES if next(find_matches(rule, rel, line), None) is not None]
+    return line_digest(line), rules
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -615,10 +918,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--history", action="store_true", help="also scan the whole Git history: every file version, path, commit message, author, committer and ref")
     parser.add_argument("--rules", action="store_true", help="list the rules and the pinned public-record lines, and exit")
     parser.add_argument("--pin", metavar="PATH:LINE", help="print the PUBLIC_SOURCE_LINES entry for one line of a file, and exit; add it only for a public record's own title or address")
+    parser.add_argument("--pin-quoted", metavar="PATH:LINE", help="print the QUOTED_LINES digest and rules for one line of the scanner or its tests, and exit; add it only for a line that quotes a pattern")
     parser.add_argument("--json", action="store_true", help="print a machine-readable result")
     args = parser.parse_args(argv)
     if args.rules:
         print(describe_rules())
+        return 0
+    if args.pin_quoted:
+        try:
+            digest, rules = pin_quoted(Path(args.root), args.pin_quoted)
+        except ValueError as exc:
+            print("error: %s" % exc, file=sys.stderr)
+            return 2
+        print("The line is pinned by this digest: %s\nIt is matched by: %s\n\nTo excuse it, add the digest to the QuotedLines entry for each of those rules in scripts/check_hygiene.py, in a reviewed commit,\n"
+              "and only if the whole line quotes a pattern or a test sample and holds nothing real." % (digest, ", ".join(rules) or "no rule"))
         return 0
     if args.pin:
         try:

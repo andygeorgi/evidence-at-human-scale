@@ -30,7 +30,7 @@ def release_date():
 
 class Version(unittest.TestCase):
     def test_the_same_version_is_stated_everywhere(self):
-        self.assertEqual(__version__, "1.0.1")
+        self.assertEqual(__version__, "1.0.2")
         cff = text("CITATION.cff")
         self.assertEqual(len(re.findall(r'(?m)^\s*version: "%s"$' % re.escape(__version__), cff)), 2, "the version of the repository and that of its preferred citation")
         self.assertIn("## %s, %s\n" % (__version__, release_date()), text("CHANGELOG.md"))
@@ -139,6 +139,18 @@ class Workflow(unittest.TestCase):
     def test_the_documented_python_floor_matches_the_workflow(self):
         for relative in ("README.md", "CONTRIBUTING.md", "scripts/README.md", "examples/README.md"):
             self.assertIn("Python 3.9 or later", text(relative), relative)
+
+    def test_the_checks_scan_the_whole_history_on_a_full_checkout(self):
+        """A shallow checkout would leave most commits unread, and the scan refuses one: the job that runs it fetches everything."""
+        job = self.yml.split("jobs:", 1)[1].split("external-urls:", 1)[0]
+        self.assertIn("fetch-depth: 0", job)
+        self.assertIn("scripts/check_all.py --verbose --history", job)
+        self.assertNotIn("fetch-depth: 1", self.yml)
+
+    def test_no_private_term_list_is_named_in_the_workflow_or_kept_in_the_repository(self):
+        for name in ("EAHS_PRIVATE_TERMS", ".hygiene-private-terms"):
+            self.assertNotIn(name, self.yml)
+        self.assertIn(".hygiene-private-terms", text(".gitignore"))
 
 
 if __name__ == "__main__":

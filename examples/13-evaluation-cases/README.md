@@ -74,7 +74,7 @@ To try your own, add a case to `scripts/build_example_data.py` (`case_file`) and
 |---|---|---|---|
 | `CASE-LIFE-01` | A late correction that does not reach a derived record | `LIFE002` | When a record is superseded, every derivation that rests on it must stop being current. |
 | `CASE-LIFE-02` | A newer packet exists but the old one still looks active | `LIFE003`, `LIFE004` | A packet that cites superseded records, or has a newer version, must not stay active. |
-| `CASE-LIFE-03` | A pending approval survives the invalidation of its basis | `LIFE005` | An approval cannot outlive the packet it relied on: when the basis is invalidated, the approval is revoked. |
+| `CASE-LIFE-03` | A pending approval survives the invalidation of its basis | `AUTH007`, `LIFE005` | An approval cannot outlive the packet it relied on: when the basis is invalidated, the approval is revoked. The rejection that cited the revocation then cites a check that no longer fails. |
 
 ### Missingness
 

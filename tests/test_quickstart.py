@@ -44,6 +44,15 @@ class ExpectedOutput(unittest.TestCase):
         self.assertIn("python -m pip install -r requirements.txt", section)
         self.assertTrue((REPO / "requirements.txt").is_file())
 
+    def test_the_sentence_before_the_output_names_the_command_that_prints_it(self):
+        """The output belongs to the validator, which is the second command of the block, not to the installation before it."""
+        readme = (REPO / "README.md").read_text(encoding="utf-8")
+        section = readme.split("## Quickstart", 1)[1].split("\n## ", 1)[0]
+        lead = section.split("```text", 1)[0].rstrip().splitlines()[-1]
+        self.assertTrue(lead.rstrip().endswith("should print:"), lead)
+        self.assertIn("validate_examples.py", lead)
+        self.assertNotIn("first command", lead)
+
     def test_the_ten_minute_path_leads_to_pages_that_exist(self):
         readme = (REPO / "README.md").read_text(encoding="utf-8")
         path = readme.split("## Ten-minute path", 1)[1].split("\n## ", 1)[0]

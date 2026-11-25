@@ -4,7 +4,7 @@
 
 Before a consequential decision, a person receives records, events, deterministic findings, analytical results and model interpretations, each in its own form and through its own interface. There may be enough information to decide and still no reliable way to see which statements share an origin, where they disagree and which expected inputs never arrived. What runs short is the person's attention, not output.
 
-Adding agents does not fix this by itself. Two agents can restate the same weak source and look like corroboration: in the [worked example](../../examples/README.md#the-story), two summaries of one goods receipt both say "probably a receiving delay". Additional summaries can hide disagreement beneath a smoother narrative. An impressive answer can also place a recommendation beside an execution control, so that advice appears to carry authority it was never granted.
+Adding agents does not fix this by itself. Two agents can restate the same weak source and look like corroboration: in the [worked example](../../examples/README.md#the-story), two summaries of one goods receipt both suggest a receiving delay. Additional summaries can hide disagreement beneath a smoother narrative. An impressive answer can also place a recommendation beside an execution control, so that advice appears to carry authority it was never granted.
 
 ## Why more output does not help
 

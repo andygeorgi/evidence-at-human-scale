@@ -10,7 +10,7 @@ A good candidate has all of these: the decision recurs, people already struggle 
 
 ## Step 1 · Write the decision card
 
-**Maps to:** [C01 Context](../contracts/c01-context.md), [C05](../contracts/c05-action-proposal.md), [C06](../contracts/c06-delegation.md). **Example:** [02 Context](../examples/02-context-and-normalization/README.md), [07 Authority](../examples/07-authority-and-delegation/README.md).
+**Maps to:** [Context (C01)](../contracts/c01-context.md), [Action proposal (C05)](../contracts/c05-action-proposal.md), [Delegation (C06)](../contracts/c06-delegation.md). **Example:** [02 Context](../examples/02-context-and-normalization/README.md), [07 Authority](../examples/07-authority-and-delegation/README.md).
 
 | Field | Your entry |
 | --- | --- |
@@ -26,7 +26,7 @@ Check: request, review, approval and execution are separate roles, and read, app
 
 ## Step 2 · Inventory the sources and mark the mandatory signals
 
-**Maps to:** [C02 Evidence](../contracts/c02-evidence.md), [C03 Selection](../contracts/c03-selection.md). **Example:** [01 Source records](../examples/01-source-records/README.md).
+**Maps to:** [Evidence record (C02)](../contracts/c02-evidence.md), [Selection manifest (C03)](../contracts/c03-selection.md). **Example:** [01 Source records](../examples/01-source-records/README.md).
 
 | Source | Producer | Evidence kind | Version and identity | Owner | Freshness requirement | Mandatory signal? | Deterministic notification route |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -36,28 +36,33 @@ Check: every row has an owner and a freshness requirement, or an explicit "unres
 
 ## Step 3 · Draft the first view of the decision packet
 
-**Maps to:** [C04 Decision packet](../contracts/c04-decision-packet.md). **Example:** [05 Decision packet](../examples/05-decision-packet/README.md), [06 Assistant response](../examples/06-assistant-response/README.md), [04 Missingness](../examples/04-selection-and-missingness/README.md).
+**Maps to:** [Decision packet (C04)](../contracts/c04-decision-packet.md). **Example:** [05 Decision packet](../examples/05-decision-packet/README.md), [06 Assistant response](../examples/06-assistant-response/README.md), [04 Missingness](../examples/04-selection-and-missingness/README.md).
 
 Draft it on paper or in a document first. Decide what the reader may know before you decide what is missing. For each input the packet could mention, in this order:
 
-1. May the reader's principal know that the input exists? If not, the packet shows nothing about it: no entry, no state, no count.
-2. If the reader may know it exists but may not read it, say so in the wording the permission decision allows, and nothing more.
-3. Only for what the reader may know about, classify it: available, missing, stale, conflicting, not assessed or unavailable.
-4. Show what the reader is authorized to see.
+1. Does a permission decision name this exact reader, their tenant and their purpose? If it names another one, or leaves one out, treat the input as unknown to them.
+2. May the reader's principal know that the input exists? If not, the packet shows nothing about it: no entry, no state, no count, and no change when the input changes.
+3. If the reader may know it exists but may not read it, show the generic disclosure the permission decision configures, every field of it, and nothing from the input. Do not filter the record afterwards or keep a list of forbidden words as the main protection.
+4. Only for what the reader may read, classify it: available, missing, stale, conflicting, not assessed or unavailable.
+5. Show what the reader is authorized to see.
+
+Test this by changing a restricted record (its count, its freshness, its materiality) and checking that the reader's view does not change. Checking a stored packet against stored decisions is not the same as enforcing access when the request arrives: do both.
 
 Then keep five headings, in this order, and never merge them:
 
 1. **Supported claims**, each with the exact record version and claim identifier it rests on.
 2. **Labeled inferences**, each marked as an interpretation with its method and limits.
-3. **Recommendations** and their basis, clearly not instructions.
-4. **Conflicts and gaps**, using the seven labels: `missing`, `not_retrieved`, `inaccessible`, `unavailable`, `negative`, `not_assessed`, `stale` ([how to choose one](paper/08-uncertainty.md)).
+3. **Conflicts and gaps**, using the seven labels: `missing`, `not_retrieved`, `inaccessible`, `unavailable`, `negative`, `not_assessed`, `stale` ([how to choose one](paper/08-uncertainty.md)).
+4. **Recommendations** and their basis, clearly not instructions.
 5. **Proposed actions**, marked "not executed".
+
+The response renderer in [example 06](../examples/06-assistant-response/README.md) writes the same order. It gives the conflicts and the gaps a heading each, and ends with the obligations and the limits of the view.
 
 Then walk it through a recent case with the Decision Owner. Ask: what would have changed the decision, and is it visible on the first screen? Two agents that restate one source are one source ([lineage](../architecture/lineage-selection-disclosure.md)).
 
 ## Step 4 · Put a gateway in front of every consequential action
 
-**Maps to:** [C05](../contracts/c05-action-proposal.md), [C06](../contracts/c06-delegation.md), [C07 Execution receipt](../contracts/c07-execution-receipt.md). **Example:** [08 Blocked action](../examples/08-blocked-action/README.md), [09 Unknown outcome](../examples/09-unknown-outcome/README.md).
+**Maps to:** [Action proposal (C05)](../contracts/c05-action-proposal.md), [Delegation (C06)](../contracts/c06-delegation.md), [Execution receipt (C07)](../contracts/c07-execution-receipt.md). **Example:** [08 Blocked action](../examples/08-blocked-action/README.md), [09 Unknown outcome](../examples/09-unknown-outcome/README.md).
 
 The gateway is separate from the assistant. At commit it rechecks each of the following and records the result:
 
@@ -67,7 +72,7 @@ The gateway is separate from the assistant. At commit it rechecks each of the fo
 - [ ] the target is in the state the proposal assumed;
 - [ ] the per-action limit and the cumulative limit hold, **including consumed and reserved capacity**.
 
-After the attempt, verify the outcome against the authoritative target, not against the executor's own status. Keep the five receipt states apart: `submitted`, `unknown`, `partial`, `completed_verified`, `not_executed_verified`. An unknown outcome keeps its reservation and is reconciled before any retry. A timeout is never evidence that nothing happened.
+After the attempt, verify the outcome against the authoritative target, not against the executor's own status. Keep the five receipt states apart: `submitted`, `unknown`, `partial`, `completed_verified`, `not_executed_verified`. An unknown outcome keeps its reservation and is reconciled before any retry. A timeout is never evidence that nothing happened. A gateway rejection is not either: it records what the gateway did before submission, and a receipt says `not_executed_verified` only after a check of the target, made after the attempt, finds no effect for that attempt, target and scope.
 
 ## Step 5 · Compare simpler baselines on the same fixed cases
 

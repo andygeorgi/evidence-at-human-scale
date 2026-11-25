@@ -6,7 +6,7 @@ A decision packet has to show where each claim comes from and what is missing, w
 
 ## Versioned ancestry and missingness
 
-In the lineage figure (Figure F03, [chapter 4](../docs/paper/04-evidence-and-lineage.md)), M01/v1 (Agent A) and M02/v1 (Agent B) both derive from source record S01/v1, and both feed P01/v1. Their agreement comes from one origin. It is not independent corroboration. S02/v1 is a conflicting source assertion. S01/v2 corrects S01/v1: it supersedes that version and invalidates the affected derivatives. V01/v1 is a scoped validation record. It applies only to the target and scope it actually assessed.
+In the lineage figure (Figure F03, [chapter 4](../docs/paper/04-evidence-and-lineage.md)), the two AI summaries, both model inferences, derive from one goods receipt, a source record, and both feed the decision packet. Their agreement comes from one origin. It is not independent corroboration. The invoice is a conflicting source assertion. The corrected receipt supersedes the first version of the receipt and invalidates the affected derivatives. A scoped validation record applies only to the target and scope it actually assessed.
 
 Derivation ancestry is directed and acyclic. The dashed relationships in the figure (contradiction, supersession, validation and invalidation) are not ancestry. Every relationship names the actor who asserted it.
 
@@ -30,14 +30,31 @@ The schema requires different supporting evidence for each label. For example, `
 
 An expected input that is not in front of the requestor is handled in this order. The order is part of the design (Figure F09):
 
-1. **Decide whether the requestor may know that the record or category exists.** If not, nothing about it appears: no entry, no state, no age, no count. The coverage statement that every output carries reads the same whether or not anything is withheld.
-2. **Apply the safe-disclosure policy.** If the requestor may know that something exists but may not read it, the entry is `inaccessible`, in the wording the permission decision allows: no name, type, count, state or age.
-3. **Classify only what the requestor may read** as stale, not assessed, unavailable, missing, negative or not retrieved.
-4. **Expose only what the requestor is permitted to see** about each classified input.
+1. **Bind the permission decision to the requestor.** A decision counts only if it names the exact requesting principal of the C01 context and that context's tenant and permitted purpose. A decision for any other principal, tenant or purpose, or one that names no tenant or no purpose, is no decision at all, and the input has no entry.
+2. **Decide whether the requestor may know that the record or category exists.** If not, nothing about it appears: no entry, no state, no age, no count. The coverage statement that every output carries reads the same whether or not anything is withheld.
+3. **Apply the safe-disclosure policy.** If the requestor may know that something exists but may not read it, the entry is `inaccessible`, and the entry is the generic disclosure that the decision configures: its wording, its scope, its materiality, its reason and its basis all come from the decision, and none comes from the record. There is no name, type, count, state or age, and no field left to free text.
+4. **Classify only what the requestor may read** as stale, not assessed, unavailable, missing, negative or not retrieved.
+5. **Expose only what the requestor is permitted to see** about each classified input.
 
-The other order leaks. If a record is classified as stale before permission is checked, the label can reach a requestor who may not know the record exists, and the output then tells them that it exists and how old it is. A count of restricted records, the existence of a restricted investigation and the fact that a restricted evidence category was checked leak in the same way. An unauthorized requestor receives the same output whether or not the restricted record exists.
+The other order leaks. If a record is classified as stale before permission is checked, the label can reach a requestor who may not know the record exists, and the output then tells them that it exists and how old it is. A count of restricted records, the existence of a restricted investigation and the fact that a restricted evidence category was checked leak in the same way. An unauthorized requestor receives the same output whether or not the restricted record exists, and a change to the restricted record (its count, its category, its freshness, its materiality, whether an investigation is open) changes nothing that requestor sees.
 
-[`tests/test_disclosure.py`](../tests/test_disclosure.py) shows this for every combination of states. The [registry of the worked example](../examples/04-selection-and-missingness/README.md#permission-before-disclosure) holds one permission decision that allows a coverage limitation and one that allows nothing.
+One safe field among unsafe siblings leaks as well. If the `inaccessible` entry carries the permitted wording but its materiality, scope or reason is written from the record, the siblings say what the wording does not. So the entry is constructed from the decision and checked as a whole. It is not filtered afterwards, and it is not protected by a list of forbidden words. A list of that kind is a backstop at most, because no list can enumerate what an output may not say.
+
+### Snapshot validation, authorization enforcement and viewer projection
+
+Three things are easy to confuse, and the repository has only two of them, as a reference on invented data:
+
+| | What it does | In this repository |
+| --- | --- | --- |
+| **Snapshot validation** | Checks a stored output against the stored permission decisions: each entry about an unreadable source is exactly the entry the decision allows for the requesting principal, and each record the output names belongs to the context's tenant and purpose. | `check_disclosure` (`DISC001`–`DISC005`). A pass says that the stored outputs agree with the stored decisions. |
+| **Authorization enforcement** | Decides, when a request arrives, who may know that an input exists and who may read it, and applies revocation, purpose and freshness at that moment. | Not implemented. A permission decision in `registry.json` stands for its result. |
+| **Viewer projection** | Builds what one viewer is shown from authorized inputs only. | [`scripts/eahs/disclosure.py`](../scripts/eahs/disclosure.py), a reference used by the example builder and by the tests. |
+
+The repository validator is not an authorization service. It cannot stop a disclosure, it cannot tell whether a real system asks these questions, and it reads only the snapshot it is given.
+
+**What snapshot validation cannot judge.** It checks the missingness entries, the wording of a statement about an unreadable source, and the records an output names. The free text of a stored output (a packet's limitation summary, a scope description, a conflict's reason) is not rebuilt from the permission decisions, so restricted detail written into it is found only when it uses a term from the registry's protected list (`DISC001`, a backstop and no more). The reference projection avoids the problem by construction: it builds every entry from the decision and accepts only one piece of free text beside them, the coverage statement that the system itself writes for the task. That statement is a required argument and is not checked, so text that nobody has reviewed and passes there reaches the viewer verbatim. A system that stores free text next to the entries has to apply the same rule to it.
+
+[`tests/test_disclosure.py`](../tests/test_disclosure.py) shows the order and the invariance for every combination of states: a requestor who may not know a record exists receives the same view with the record, without it and with any change to it, and an entry for a record they may know about but not read is the decision's generic disclosure whatever the record says. The [registry of the worked example](../examples/04-selection-and-missingness/README.md#permission-before-disclosure) holds one permission decision that allows a coverage limitation and one that allows nothing, each bound to the requesting principal.
 
 ## Constraints before ranking, mandatory continuity
 

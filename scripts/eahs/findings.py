@@ -31,15 +31,59 @@ class Finding:
     severity: str = ERROR
     extra: dict = field(default_factory=dict)
     hint: str = ""
+    #: the validation stage that produced it, when it belongs to one (set by the command, not by the checks)
+    stage: str = ""
 
     def format(self) -> str:
         where = self.file + (" " + self.location if self.location else "")
         text = "[%s] %s%s" % (self.code, self.message, "  (%s)" % where.strip() if where.strip() else "")
+        if self.stage:
+            text += "\n        stage: %s" % self.stage
         if self.hint:
             text += "\n        fix: %s" % self.hint
         if self.doc:
             text += "\n        read: %s" % self.doc
         return text
+
+
+class InputProblem(Exception):
+    """A document cannot support the check that reads it. `message` says what is wrong and `hint` how to fix it."""
+
+    def __init__(self, message: str, hint: str = ""):
+        super().__init__(message)
+        self.message, self.hint = message, hint
+
+
+class DescribedKeyError(KeyError):
+    """A name that is not there, with a message that already says what is missing and where. A bare KeyError prints its message in quotes; this one does not."""
+
+    def __str__(self) -> str:
+        return str(self.args[0]) if self.args else ""
+
+
+class DescribedIndexError(IndexError):
+    """A position that is not there, with a message that already says what is missing and where."""
+
+
+class DescribedTypeError(TypeError):
+    """A value that cannot be stepped into, with a message that already says where."""
+
+
+def describe_error(exc: Exception) -> str:
+    """What went wrong, in words, for an exception raised while a check read a malformed document (no Python type names)."""
+    if isinstance(exc, InputProblem):
+        return exc.message
+    if isinstance(exc, (DescribedKeyError, DescribedIndexError, DescribedTypeError)):
+        return str(exc)
+    if isinstance(exc, RecursionError):
+        return "a document is nested too deeply for the check to read"
+    if isinstance(exc, KeyError):
+        return "a field the check needs is missing: %s" % exc
+    if isinstance(exc, IndexError):
+        return "a list is shorter than the check needs"
+    if isinstance(exc, (TypeError, AttributeError)):
+        return "a value has a type the check cannot read (%s)" % exc
+    return str(exc) or "the value is not valid"
 
 
 def doc_for_contract(contract_id: Optional[str]) -> str:

@@ -218,12 +218,12 @@ def f02_wide(c):
 
 
 # ------------------------------------------------------------------------------------------------------------------ F03
-def rel_row(c, kind, head, text, arrows, lw=112, tx=220):
+def rel_row(c, kind, head, text, arrows, lw=112, tx=220, size=None):
     """One typed relationship: a record on the left, a dotted arrow for each assertion it makes, and what each one is about."""
     pitch = 50
     y = c.y
-    h = max(c.card(kind, head, sub(*text), w=lw, x=0, y=0, dry=True), len(arrows) * pitch)
-    left = c.card(kind, head, sub(*text), x=c.m + 12, w=lw, y=y, min_h=h)
+    h = max(c.card(kind, head, sub(*text), w=lw, x=0, y=0, dry=True, size=size), len(arrows) * pitch)
+    left = c.card(kind, head, sub(*text), x=c.m + 12, w=lw, y=y, min_h=h, size=size)
     for i, (verb, target, tkind) in enumerate(arrows):
         ay = y + (h - len(arrows) * pitch) / 2 + i * pitch + 28
         c.path([(left.right + 2, ay), (tx - 4, ay)], dashed=True)
@@ -239,13 +239,13 @@ def f03(c):
     c.path([(mx + 14, c.y), (mx + 46, c.y)])
     c.text(mx + 54, c.y + 4.6, "Derivation: solid arrows", 13, True, c.p["muted"], maxw=iw - 70)
     c.y += 20
-    c.card("src", "S01/v1", sub("source record"), x=mx + 90, w=iw - 180, align="middle")
+    c.card("src", "Goods receipt", sub("source record"), x=mx + 90, w=iw - 180, align="middle")
     c.down(20)
     cluster = c.band_start()
     c.y += 8
-    c.text(mx + 22, c.y + 11, "One origin: both derive from S01/v1", 13, True, c.p["muted"], maxw=iw - 44)
+    c.text(mx + 22, c.y + 11, "One origin: both rest on the receipt", 13, True, c.p["muted"], maxw=iw - 44)
     c.y += 20
-    row(c, [dict(kind="warn", head="M01/v1", body=sub("model inference", "Agent A")), dict(kind="warn", head="M02/v1", body=sub("model inference", "Agent B"))],
+    row(c, [dict(kind="warn", head="AI summary A", body=sub("model inference")), dict(kind="warn", head="AI summary B", body=sub("model inference"))],
         gap=10, x=mx + 20, w=iw - 40)
     c.y += 8
     c.text(mx + iw / 2, c.y + 12, "They agree, but from one origin:", 13, False, c.p["muted"], "middle", maxw=iw - 40)
@@ -257,8 +257,8 @@ def f03(c):
     pw = c.w - mx - 12 - px
     c.path([(px + pw / 2, c.y), (px + pw / 2, c.y + 26)])
     c.y += 26
-    s02, pkt = row(c, [dict(kind="stop", head="S02/v1", body=sub("source record", "conflicting assertion"), weight=sw),
-                       dict(kind="pkt", head="P01/v1", body=sub("decision packet", "the conflict stays visible"), weight=pw)], gap=gap, x=sx, w=sw + gap + pw)
+    s02, pkt = row(c, [dict(kind="stop", head="Invoice", body=sub("source record", "conflicting assertion"), weight=sw),
+                       dict(kind="pkt", head="Decision packet", body=sub("the conflict stays visible"), weight=pw)], gap=gap, x=sx, w=sw + gap + pw)
     c.path([(s02.right, s02.cy), (pkt.x, pkt.cy)])
     c.y += 10
     c.band_end(tok, pad=0)
@@ -269,26 +269,26 @@ def f03(c):
     c.text(mx + 54, c.y + 4.6, "Typed relationships: dashed arrows", 13, True, c.p["muted"], maxw=iw - 70)
     c.y += 16
     c.y += c.para(mx + 14, c.y, iw - 28, "Each is an assertion about another record, not ancestry.", 13, False, c.p["muted"]) + 8
-    rel_row(c, "stop", "S02/v1", ("source record",), [("contradicts", "S01/v1", "src")])
+    rel_row(c, "stop", "Invoice", ("source record",), [("contradicts", "Receipt v1", "src")], lw=100, tx=214, size=14)
     c.y += 10
-    rel_row(c, "src", "S01/v2", ("correction",), [("supersedes", "S01/v1", "src"), ("invalidates", "M01 · M02", "warn")])
+    rel_row(c, "src", "Corrected receipt", ("version 2",), [("supersedes", "Receipt v1", "src"), ("invalidates", "AI summaries", "warn")], lw=100, tx=214, size=14)
     c.y += 10
-    rel_row(c, "note", "V01/v1", ("scoped validation",), [("validates", "S01/v1 only", "src")])
+    rel_row(c, "note", "Scoped validation", ("of this record only",), [("validates", "Receipt v1", "src")], lw=100, tx=214, size=14)
     c.y += 2
     c.band_end(tok, pad=8)
 
 
 # ------------------------------------------------------------------------------------------------------------------ F04
 PACKET = [
-    ("pkt", "G01 Context and as-of", "one context, selection and as-of time; everything below is bound to them", None),
-    ("pkt", "G02 Supported claims", "each cites an exact record version", ("C02", "src")),
-    ("warn", "G03 Labeled inferences", "method and limits; never claims", ("C02", "src")),
-    ("pkt", "G04 Recommendations", "with the accountable review requirement", None),
-    ("stop", "G05 Conflicts and uncertainty", "visible, never settled by majority", ("C02", "src")),
-    ("warn", "G06 Coverage, omissions, gaps", "seven missingness labels", ("C03", "sel")),
-    ("pkt", "G07 Obligations", "priority and mandatory items", ("C03", "sel")),
-    ("own", "G08 Action proposals", "proposed, not executed", ("C05", "own")),
-    ("pkt", "G09 Review and version history", "revised versions stay distinguishable", None),
+    ("pkt", "Context and as-of time", "one context, selection and as-of time; everything below is bound to them", None),
+    ("pkt", "Supported claims", "each cites an exact record version", ("evidence", "src")),
+    ("warn", "Labeled inferences", "method and limits; never claims", ("evidence", "src")),
+    ("pkt", "Recommendations", "with the accountable review requirement", None),
+    ("stop", "Conflicts and uncertainty", "visible, never settled by majority", ("evidence", "src")),
+    ("warn", "Coverage, omissions, gaps", "seven missingness labels", ("selection", "sel")),
+    ("pkt", "Obligations", "priority and mandatory items", ("selection", "sel")),
+    ("own", "Action proposals", "proposed, not executed", ("proposal", "own")),
+    ("pkt", "Review and version history", "revised versions stay distinguishable", None),
 ]
 
 
@@ -303,9 +303,9 @@ def f04(c):
     c.down(28, label="tags point to")
     tok = c.band_start()
     header(c, c.m + 14, c.inner - 28, "WHAT THE TAGS POINT TO")
-    c.card("src", "C02 Evidence", sub("records by exact version, claim or payload pointer, original locator, scope, method, lifecycle"), x=c.m + 12, w=c.inner - 24, gap=8)
-    c.card("sel", "C03 Selection manifest", sub("what was retrieved, kept, excluded and missing"), x=c.m + 12, w=c.inner - 24, gap=8)
-    c.card("own", "C05 Action proposal", sub("records with evidence, preconditions, accounting"), x=c.m + 12, w=c.inner - 24)
+    c.card("src", "Evidence record (C02)", sub("by exact version, claim or payload pointer, original locator, scope, method, lifecycle"), x=c.m + 12, w=c.inner - 24, gap=8)
+    c.card("sel", "Selection manifest (C03)", sub("what was retrieved, kept, excluded and missing"), x=c.m + 12, w=c.inner - 24, gap=8)
+    c.card("own", "Action proposal (C05)", sub("records with evidence, preconditions, accounting"), x=c.m + 12, w=c.inner - 24)
     c.band_end(tok)
 
 
@@ -346,11 +346,11 @@ def f05(c):
     left_w = 190
     fork(c, left_w)
     row(c, [dict(kind="pkt", head="Every check passes", body=sub("Reserve allowance. Submit the exact action to the target. Record the outcome, or a timeout."), weight=left_w),
-            dict(kind="stop", head="A check fails", body=sub("Nothing is submitted."), weight=c.inner - left_w - 10)])
+            dict(kind="stop", head="A check fails", body=sub("Rejected before submission. Nothing is submitted."), weight=c.inner - left_w - 10)])
     fork(c, left_w)
-    c.card("pkt", "Receipt (C07)", ["After a pass: the outcome, as completed_verified, unknown, partial or not_executed_verified.", "After a failed check: not_executed_verified, with the reasons."], gap=0)
+    c.card("pkt", "Receipt (C07)", ["After a pass, the receipt records the outcome, such as completed and verified, unknown, partly verified or verified no effect.", "After a failed check: the rejection and its reasons are kept. Verified no effect is recorded only after the target is checked."], gap=0)
     c.down(24)
-    c.card("src", "Authoritative verification", sub("against the target, confirms or reconciles the outcome"))
+    c.card("src", "Authoritative verification", sub("against the target, for this attempt, target and scope: confirms or reconciles the outcome, or confirms that there was no effect"))
 
 
 # ------------------------------------------------------------------------------------------------------------------ F06
@@ -375,10 +375,10 @@ def f06(c):
         box = c.card("pkt", head, sub(text), x=cx, w=cw, size=16, gap=12, tag=("final", "pkt"))
         arrows.append(box.y + 21)
 
-    unresolved("unknown", "timeout or no response", "Only authoritative reconciliation\nmoves it on:", ["completed_verified", "not_executed_verified"])
-    unresolved("partial", "some effects verified, others not; known effects stay charged", "Reconciliation or compensation,\nunder policy, moves it on:", ["completed_verified"])
-    final("completed_verified", "an authoritative outcome confirms the effect")
-    final("not_executed_verified", "authoritatively verified: no business effect")
+    unresolved("Outcome unknown", "unknown \u00b7 timeout or no response", "Only authoritative reconciliation\nmoves it on:", ["Completed and verified", "Verified no effect"])
+    unresolved("Partly verified", "partial \u00b7 some effects verified, others not; known effects stay charged", "Reconciliation or compensation,\nunder policy, moves it on:", ["Completed and verified"])
+    final("Completed and verified", "completed_verified \u00b7 an authoritative outcome confirms the effect")
+    final("Verified no effect", "not_executed_verified \u00b7 authoritatively verified: no effect for this attempt, target and scope")
     c.path([(submitted.x, submitted.cy), (bus, submitted.cy), (bus, arrows[-1])], head=False)
     for y in arrows:
         c.path([(bus, y), (cx - 1, y)])
@@ -475,16 +475,16 @@ def f09(c):
 # ------------------------------------------------------------------------------------------------------------------ F10
 EVENTS = [
     ("BEFORE", None, None, None),
-    (None, "own", "Packet (C04) and delegation (C06)", "An approval is queued for a later run."),
+    (None, "own", "Delegation (C06)", "It holds an approval of the proposal that the packet lists. The release is queued under that approval for a later run."),
     ("THE CORRECTION CASCADES", None, None, None),
     (None, "src", "Source owner", "A correction is admitted as a new version."),
     (None, "src", "Registry (C02)", "It supersedes the earlier version."),
     (None, "src", "Lineage", "Findings and summaries derived from the earlier version are invalidated, and so is the packet that rested on them."),
-    (None, "pkt", "Packet (C04)", "A revised packet is produced; the prior version stays linked."),
     (None, "own", "Delegation (C06)", "The pending approval is revoked."),
+    (None, "pkt", "Packet (C04)", "A revised packet is produced; the prior version stays linked."),
     ("AT COMMIT", None, None, None),
     (None, "warn", "Executor (action gateway)", "The queued action reaches commit and is rechecked: the grant is revoked and the evidence is no longer current."),
-    (None, "pkt", "Receipt (C07)", "Refused: the state is not_executed_verified, with the reasons."),
+    (None, "pkt", "Receipt (C07)", "Refused before submission, with the reasons. It is a verified no-effect only once the target has been checked."),
     (None, "note", "Next", "A new proposal on the revised packet needs a new approval."),
 ]
 
@@ -509,14 +509,14 @@ def f10(c):
 
 
 # ------------------------------------------------------------------------------------------------------------------ F11
-CHAIN = [("sel", "C01 Context", "who, what, why, as of when", None), ("sel", "C03 Selection", "manifest, gaps, obligations", "context"),
-         ("pkt", "C04 Decision packet", "claims, inferences, gaps", "context + selection"), ("own", "C05 Action proposal", "proposed, not executed", "context + packet"),
-         ("own", "C06 Delegation", "exact approval or bounded class", "bound to"),
-         ("pkt", "C07 Execution receipt", "verified outcome; references one proposal (C05) and one grant (C06)", "grant")]
+CHAIN = [("sel", "Context (C01)", "who, what, why, as of when", None), ("sel", "Selection manifest (C03)", "manifest, gaps, obligations", "context"),
+         ("pkt", "Decision packet (C04)", "claims, inferences, gaps", "context + selection"), ("own", "Action proposal (C05)", "proposed, not executed", "context + packet"),
+         ("own", "Delegation (C06)", "exact approval or bounded class", "bound to"),
+         ("pkt", "Execution receipt (C07)", "outcome and verification state; references one proposal and one grant", "grant")]
 
 
 def f11(c):
-    c02 = c.card("src", "C02 Evidence", sub("typed records with lineage, referenced by exact version from C03, C04, C05, C06 and C07"), gap=22)
+    c02 = c.card("src", "Evidence record (C02)", sub("typed records with lineage, referenced by exact version from every later contract"), gap=22)
     bus, cx = c.m + 10, c.m + 34
     cw = c.w - c.m - 14 - cx
     boxes = []
@@ -531,26 +531,62 @@ def f11(c):
     rail = c.w - c.m - 5
     c.path([(boxes[3].right, boxes[3].cy), (rail, boxes[3].cy), (rail, boxes[5].cy), (boxes[5].right + 1, boxes[5].cy)])
     c.y += 14
-    c.y += c.para(c.m, c.y, c.inner, "Solid arrows are carried forward; the line beside C06 is the proposal that C07 references. Dashed arrows reference an exact evidence version.", 13, False, c.p["muted"])
+    c.y += c.para(c.m, c.y, c.inner, "Solid arrows are carried forward; the line beside the delegation is the proposal that the receipt references. Dashed arrows reference an exact evidence version.", 13, False, c.p["muted"])
 
 
 # ------------------------------------------------------------------------------------------------------------------ banner
+BANNER_EVIDENCE = [("Goods receipt", "source record", "src"), ("Three-way match", "deterministic finding", "sel"), ("AI explanation", "model inference", "warn")]
+BANNER_PACKET = [("Claims", "cite evidence", "pkt"), ("Inferences", "remain labeled", "warn"), ("Conflicts and gaps", "stay visible", "stop"), ("Proposals", "are not actions", "own")]
+BANNER_DECISION = "Current evidence is rechecked before action"
+
+
+def banner_row(c, x, y, w, name, what, kind, h=36, stacked=False):
+    """One row of a banner panel: the concept in bold, and what it is or what it does beside it (or under it, when stacked)."""
+    c.rect(x, y, w, h, kind, rx=8, sw=1.3)
+    ink = c.p[kind][2]
+    if stacked:
+        c.text(x + 12, y + 18, name, 14, True, ink, maxw=w - 24)
+        c.text(x + 12, y + 35, what, 13, False, ink, maxw=w - 24)
+    else:
+        aw = text_w(name, 14, True)
+        c.text(x + 12, y + 23, name, 14, True, ink, maxw=aw + 1)
+        c.text(x + w - 12, y + 23, what, 13, False, ink, "end", maxw=w - 24 - aw - 8)
+
+
+def banner_decision(c, cx, y):
+    """The choice a person makes: approve or hold. Returns the y below it."""
+    approve_w, hold_w, or_w = text_w("Approve", 13, True) + 22, text_w("Hold", 13, True) + 30, 30
+    left = cx - (approve_w + or_w + hold_w) / 2
+    c.chip(left, y, approve_w, "Approve", "pkt", h=32)
+    label(c, left + approve_w + or_w / 2, y + 21, "or", anchor="middle")
+    c.chip(left + approve_w + or_w, y, hold_w, "Hold", "warn", h=32)
+    return y + 32
+
+
 def banner(c):
     c.text(c.w / 2, 38, "Evidence at Human Scale", fit("Evidence at Human Scale", c.inner, 24, least=20), True, c.p["text"], "middle", maxw=c.inner)
     c.y = 54
     c.y += c.para(c.m + 10, c.y, c.inner - 20, "Reference architecture for accountable decisions in agentic systems", 14, False, c.p["muted"], anchor="middle") + 10
-    c.card("src", "Versioned records", sub("typed records with versions and lineage"), align="middle")
-    c.down(22)
-    c.card("pkt", "One decision packet", sub("claims, labeled inferences, conflicts, gaps and unexecuted proposals"), align="middle")
-    c.down(22)
-    c.card("own", "A person decides", sub("approve one exact proposal, or hold it"), align="middle", gap=14)
-    c.card("note", ["every item carries its type:", "record, finding, inference, proposal"], align="middle", size=16)
+    for i, (kind, heading, rows) in enumerate((("src", "Evidence stays distinct", BANNER_EVIDENCE), ("pkt", "One decision packet", BANNER_PACKET))):
+        top = c.y
+        c.rect(c.m, top, c.inner, 40 + len(rows) * 44 + 6, kind, rx=12, sw=2)
+        c.text(c.w / 2, top + 28, heading, 17, True, c.p[kind][2], "middle", maxw=c.inner - 20)
+        for j, (name, what, row_kind) in enumerate(rows):
+            banner_row(c, c.m + 12, top + 42 + j * 44, c.inner - 24, name, what, row_kind)
+        c.y = top + 40 + len(rows) * 44 + 6
+        c.down(22)
+    top = c.y
+    c.rect(c.m, top, c.inner, 118, "own", rx=12, sw=2)
+    c.text(c.w / 2, top + 28, "A person decides", 17, True, c.p["own"][2], "middle", maxw=c.inner - 20)
+    below = banner_decision(c, c.w / 2, top + 46)
+    c.text(c.w / 2, below + 24, BANNER_DECISION, 13, False, c.p["muted"], "middle", maxw=c.inner - 24)
+    c.y = top + 118
 
 
 def banner_wide(c):
     c.text(c.w / 2, 46, "Evidence at Human Scale", 34, True, c.p["text"], "middle", maxw=c.inner)
     c.text(c.w / 2, 76, "Reference architecture for accountable decisions in agentic systems", 17, False, c.p["muted"], "middle", maxw=c.inner)
-    widths, gap, top, ph = [236, 288, 236], 26, 100, 238
+    widths, gap, top, ph = [250, 288, 236], 26, 100, 224
     xs, x = [], (c.w - sum(widths) - 2 * gap) / 2
     for w in widths:
         xs.append(x)
@@ -561,36 +597,24 @@ def banner_wide(c):
         c.text(xs[i] + widths[i] / 2, top + 30, s, size, True, c.p[kind][2], "middle", maxw=widths[i] - 20)
 
     c.rect(xs[0], top, widths[0], ph, "src", rx=14, sw=2)
-    heading(0, "src", "Versioned records")
-    for i, (a, b, k) in enumerate([("S01/v1", "source record", "src"), ("D01/v1", "deterministic finding", "sel"), ("M01/v1", "model inference", "warn")]):
-        y = top + 50 + i * 50
-        c.rect(xs[0] + 12, y, widths[0] - 24, 42, k, rx=8)
-        c.text(xs[0] + 24, y + 18, a, 14, True, c.p[k][2], maxw=text_w(a, 14, True) + 1)
-        c.text(xs[0] + 24, y + 35, b, 13, False, c.p[k][2], maxw=widths[0] - 48)
-    c.text(xs[0] + widths[0] / 2, top + ph - 14, "typed · versioned · with lineage", 13, False, c.p["muted"], "middle", maxw=widths[0] - 16)
+    heading(0, "src", "Evidence stays distinct")
+    for i, (name, what, kind) in enumerate(BANNER_EVIDENCE):
+        banner_row(c, xs[0] + 12, top + 52 + i * 54, widths[0] - 24, name, what, kind, h=46, stacked=True)
     c.rect(xs[1], top, widths[1], ph, "pkt", rx=14, sw=2)
     heading(1, "pkt", "One decision packet")
-    for i, (a, b, k) in enumerate([("Claims", "each cites its evidence", "pkt"), ("Inferences", "labeled, never claims", "warn"), ("Conflicts · gaps", "stay visible", "stop"), ("Proposals", "not executed", "own")]):
-        y = top + 50 + i * 44
-        c.rect(xs[1] + 12, y, widths[1] - 24, 36, k, rx=8, sw=1.3)
-        aw = text_w(a, 14, True)
-        c.text(xs[1] + 24, y + 23, a, 14, True, c.p[k][2], maxw=aw + 1)
-        c.text(xs[1] + widths[1] - 24, y + 23, b, 13, False, c.p[k][2], "end", maxw=widths[1] - 48 - aw - 8)
+    for i, (name, what, kind) in enumerate(BANNER_PACKET):
+        banner_row(c, xs[1] + 12, top + 52 + i * 42, widths[1] - 24, name, what, kind)
     cx = xs[2] + widths[2] / 2
     c.rect(xs[2], top, widths[2], ph, "own", rx=14, sw=2)
     heading(2, "own", "A person decides")
-    c.parts.append('<circle cx="%.1f" cy="%.1f" r="14" fill="%s" stroke="%s" stroke-width="2"/>' % (cx, top + 70, c.p["own"][0], c.p["own"][1]))
-    c.parts.append('<path d="M%.1f %.1f q0 -26 28 -26 q28 0 28 26 z" fill="%s" stroke="%s" stroke-width="2"/>' % (cx - 28, top + 112, c.p["own"][0], c.p["own"][1]))
-    approve_w, hold_w = text_w("Approve exactly", 13, True) + 18, text_w("Hold", 13, True) + 30
-    left = cx - (approve_w + 12 + hold_w) / 2
-    c.chip(left, top + 128, approve_w, "Approve exactly", "pkt", h=32)
-    c.chip(left + approve_w + 12, top + 128, hold_w, "Hold", "warn", h=32)
-    c.text(cx, top + 186, "one exact proposal,", 13, False, c.p["muted"], "middle", maxw=widths[2] - 16)
-    c.text(cx, top + 204, "current checks at commit", 13, False, c.p["muted"], "middle", maxw=widths[2] - 16)
+    c.parts.append('<circle cx="%.1f" cy="%.1f" r="14" fill="%s" stroke="%s" stroke-width="2"/>' % (cx, top + 74, c.p["own"][0], c.p["own"][1]))
+    c.parts.append('<path d="M%.1f %.1f q0 -26 28 -26 q28 0 28 26 z" fill="%s" stroke="%s" stroke-width="2"/>' % (cx - 28, top + 116, c.p["own"][0], c.p["own"][1]))
+    below = banner_decision(c, cx, top + 132)
+    c.text(cx, below + 26, "Current evidence is rechecked", 13, False, c.p["muted"], "middle", maxw=widths[2] - 16)
+    c.text(cx, below + 44, "before action", 13, False, c.p["muted"], "middle", maxw=widths[2] - 16)
     for a, b in [(0, 1), (1, 2)]:
         c.path([(xs[a] + widths[a] + 1, top + ph / 2), (xs[b] - 1, top + ph / 2)])
-    c.rect(xs[0], top + ph + 18, sum(widths) + 2 * gap, 40, "note", rx=10, sw=1.2)
-    c.text(c.w / 2, top + ph + 44, "Every item carries its type: record, finding, inference or proposal", 17, True, c.p["text"], "middle", maxw=c.inner)
+    c.y = top + ph + 14
 
 
 # ------------------------------------------------------------------------------------------------------------------ build

@@ -45,6 +45,22 @@ class GatewayCoverage(unittest.TestCase):
         for entry in scenario_entries():
             self.assertIn(entry["expect"]["decision"], ("ALLOW", "BLOCK"), entry["label"])
 
+    def test_the_reason_code_index_links_exactly_the_examples_whose_stored_evaluations_expect_the_code(self):
+        """The 'Shown in' column of the index in Example 08 sends a reader to a scenario that shows the code, so it must not name one that does not or leave one out."""
+        where = {}
+        for path in sorted(support.EXAMPLES.glob("*/gateway-scenarios.json")):
+            for entry in json.loads(path.read_text(encoding="utf-8"))["evaluations"]:
+                for code in entry["expect"]["codes"]:
+                    where.setdefault(code, set()).add(path.parent.name[:2])
+        listed = {}
+        for line in text("examples/08-blocked-action/README.md").splitlines():
+            match = re.match(r"\| `([A-Z_]+)` \|.*\| ([^|]+) \|$", line)
+            if match and match.group(1) in GATE_CODES:
+                shown = set(re.findall(r"\[(\d\d)\]", match.group(2)))
+                listed[match.group(1)] = shown | ({"08"} if "here" in match.group(2) else set())
+        self.assertEqual(sorted(listed), sorted(GATE_CODES), "every code has a row")
+        self.assertEqual({code: shown for code, shown in listed.items() if shown != where[code]}, {}, "the examples named in the table are the ones whose scenarios expect the code")
+
 
 class StatedCounts(unittest.TestCase):
     """Each row is (file, pattern with one number in group 1, name of the quantity). Every match must equal the quantity."""

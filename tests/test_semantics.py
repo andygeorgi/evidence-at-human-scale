@@ -1,13 +1,74 @@
 import copy
 import unittest
+from collections import Counter
 
 import support  # noqa: F401
 
 from eahs import semantics
-from eahs.cases import check_cases
+from eahs.cases import check_cases, mutate_model
 from eahs.gateway import evaluate_commit, ledger_from_receipts, ts
 from eahs.patch import apply_ops
 from eahs.scenarios import evaluate_entry, expectation
+
+
+class ProvenanceTeaching(unittest.TestCase):
+    """Example 03 teaches ancestry, so nothing a summary says may reach beyond the records it declares it rests on."""
+
+    def summaries(self):
+        model = support.example_model()
+        found = [r for r in model.of("C02") if r.data["identity_schema"]["kind"] == "model_inference"]
+        self.assertEqual(sorted(r.id for r in found), ["SUM-A-0417", "SUM-B-0417"])
+        return model, found
+
+    @staticmethod
+    def lin005(model):
+        return [f for f in semantics.check_lineage(model) if f.code == "LIN005"]
+
+    def test_no_summary_states_a_figure_its_ancestry_does_not_hold(self):
+        model, found = self.summaries()
+        self.assertEqual(self.lin005(model), [])
+        for rec in found:
+            held = Counter()
+            for ancestor in semantics.ancestors(model, rec).values():
+                held.update(semantics._content_values(ancestor.data["content"])[0])
+            for claim in rec.data["content"]["claims"]:
+                self.assertEqual(sorted(semantics._numbers_in(claim["text"]) - held), [], "%s states a figure that %s does not hold" % (rec.id, sorted(a.id for a in semantics.ancestors(model, rec).values())))
+
+    def test_the_validator_finds_a_summary_that_reaches_beyond_its_ancestry(self):
+        for text in ("Goods receipt GR-5521 records 60 units received, 40 units fewer than the invoice.", "The receipt records 60 units and the supplier is owed EUR 18,400.00."):
+            with self.subTest(text):
+                model, _ = mutate_model(support.example_model(), [{"target": "C02 SUM-A-0417 v1", "ops": [{"op": "replace", "path": "/content/claims/0/text", "value": text}]}])
+                found = self.lin005(model)
+                self.assertEqual(len(found), 1)
+                self.assertIn("GR-5521 v1", found[0].message)
+                self.assertEqual(found[0].location, "/content/claims/0/text")
+
+    def test_a_summary_may_state_a_figure_its_ancestry_holds_but_not_more_often_than_it_does(self):
+        model, _ = mutate_model(support.example_model(), [{"target": "C02 SUM-A-0417 v1", "ops": [{"op": "replace", "path": "/content/claims/0/text", "value": "The receipt records 60 units, only 60 units."}]}])
+        self.assertEqual([f.message.split(",")[0] for f in self.lin005(model)], ["this model inference states the figure 60"])
+        model, _ = mutate_model(support.example_model(), [{"target": "C02 SUM-A-0417 v1", "ops": [{"op": "replace", "path": "/content/claims/0/text", "value": "The receipt records 60 units."}]}])
+        self.assertEqual(self.lin005(model), [])
+
+    def test_a_summary_that_rests_on_nothing_holds_no_figure(self):
+        model, _ = mutate_model(support.example_model(), [{"target": "C02 SUM-A-0417 v1", "ops": [
+            {"op": "replace", "path": "/lineage/parent_references", "value": []}, {"op": "replace", "path": "/lineage/typed_relationships", "value": []},
+            {"op": "replace", "path": "/content/claims/0/text", "value": "The receipt records 60 units."}]}])
+        found = self.lin005(model)
+        self.assertEqual(len(found), 1)
+        self.assertIn("no record", found[0].message)
+
+    def test_no_summary_compares_with_a_record_it_does_not_rest_on(self):
+        model, found = self.summaries()
+        for rec in found:
+            self.assertEqual({a.id for a in semantics.ancestors(model, rec).values()}, {"GR-5521"})
+            said = " ".join(c["text"] for c in rec.data["content"]["claims"]).lower()
+            for outside in ("invoice", "purchase order", "three-way"):
+                self.assertNotIn(outside, said, "%s names %s, which is not among its sources" % (rec.id, outside))
+            self.assertIn("Makes no comparison with the invoice or the purchase order: they are not among its sources.", rec.data["coverage_uncertainty"]["limitations"])
+
+    def test_the_shared_root_is_kept(self):
+        model, found = self.summaries()
+        self.assertEqual([semantics.roots(model, rec) for rec in found], [{("GR-5521", "v1")}] * 2)
 
 
 class Baseline(unittest.TestCase):
@@ -65,8 +126,9 @@ class GatewayStory(unittest.TestCase):
 
     def test_a_ledger_built_from_receipts_ignores_attempts_not_yet_known(self):
         model = support.example_model()
-        early = ledger_from_receipts(model, ts("2026-11-23T16:00:05Z"))
-        self.assertEqual([e.grant_id for e in early], ["GRT-CLASS-HOLD"])
+        self.assertEqual([e.grant_id for e in ledger_from_receipts(model, ts("2026-11-23T16:00:04Z"))], ["GRT-CLASS-HOLD"], "the release was submitted at 16:00:05")
+        self.assertEqual([e.grant_id for e in ledger_from_receipts(model, ts("2026-11-23T16:00:05Z"))], ["GRT-CLASS-HOLD", "GRT-APPR-0417-B"], "a reservation at the attempt time was available")
+        self.assertEqual([e.grant_id for e in ledger_from_receipts(model, ts("2026-11-23T16:00:05Z"), exclude_receipt_id="RCP-REL-0417-B")], ["GRT-CLASS-HOLD"], "except the attempt's own")
 
     def test_the_decision_has_reasons_a_person_can_read(self):
         model = support.example_model()

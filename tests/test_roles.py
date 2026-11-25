@@ -129,8 +129,17 @@ class TheChecksFireOnPurpose(unittest.TestCase):
         model, _ = mutate_model(self.model, [])
         model.registry = copy.deepcopy(model.registry)
         model.registry.accountability = {}
-        model.instances = {k: v for k, v in model.instances.items() if k[0] not in ("C04", "C06")}
+        model.instances = {k: v for k, v in model.instances.items() if k[0] not in ("C04", "C06", "C07")}
         self.assertEqual(semantics.check_accountability(model), [])
+
+    def test_receipts_and_grants_with_no_roles_registered_are_not_passed_silently_either(self):
+        model, _ = mutate_model(self.model, [])
+        model.registry = copy.deepcopy(model.registry)
+        model.registry.accountability = {}
+        model.instances = {k: v for k, v in model.instances.items() if k[0] not in ("C04",)}
+        found = semantics.check_accountability(model)
+        self.assertEqual([f.code for f in found], ["ROLE005"])
+        self.assertIn("executor of", found[0].message)
 
     def test_the_declared_cases_produce_exactly_their_codes(self):
         data = support.read_json("13-evaluation-cases/cases.json")
@@ -138,6 +147,103 @@ class TheChecksFireOnPurpose(unittest.TestCase):
         self.assertEqual(len(data["cases"]), 3)
         problems, _ = check_cases(self.model, support.schema(), data, support.EXAMPLES / "13-evaluation-cases" / "cases.json")
         self.assertEqual([p.format() for p in problems], [])
+
+
+class TheExecutorReceivesAuthority(unittest.TestCase):
+    """The assistant proposes, the executor receives authority, and only the grantee acts under a grant.
+
+    Both grant shapes follow the same rule: an exact approval covers one proposal version and a bounded class covers a
+    class of actions, but each names the registered executor as its grantee, and each receipt is made by that grantee.
+    """
+
+    EXECUTOR, ASSISTANT = "workload:payment-executor", "workload:ap-assistant"
+
+    def setUp(self):
+        self.model = support.example_model()
+
+    def mutated(self, *mutations):
+        model, _ = mutate_model(self.model, [{"target": t, "ops": [{"op": "replace", "path": p, "value": v}]} for t, p, v in mutations])
+        return model
+
+    def test_every_grant_of_either_shape_names_the_executor_as_its_grantee(self):
+        shapes = set()
+        for grant in self.model.of("C06"):
+            shapes.add(grant.data["scope_binding"]["binding"]["binding_type"])
+            self.assertEqual(grant.data["identity_principals"]["grantee"], self.EXECUTOR, grant.label())
+        self.assertEqual(shapes, {"exact_proposal", "bounded_class"})
+
+    def test_every_receipt_is_made_by_the_grantee_of_the_grant_it_cites(self):
+        self.assertTrue(self.model.of("C07"))
+        for receipt in self.model.of("C07"):
+            ref = receipt.data["identity_binding"]["grant_reference"]
+            grant = self.model.get("C06", ref["id"], ref["version"])
+            self.assertEqual(receipt.data["identity_binding"]["executor"], grant.data["identity_principals"]["grantee"], receipt.label())
+
+    def test_the_assistant_workload_is_the_requestors_tool_and_never_a_grantee_or_an_executor(self):
+        assistants = {c.data["identity_principal"]["workload_identity"] for c in self.model.of("C01")}
+        self.assertEqual(assistants, {self.ASSISTANT})
+        for grant in self.model.of("C06"):
+            self.assertNotIn(grant.data["identity_principals"]["grantee"], assistants)
+        for receipt in self.model.of("C07"):
+            self.assertNotIn(receipt.data["identity_binding"]["executor"], assistants)
+
+    def test_the_grantee_holds_the_executor_role_the_registry_names(self):
+        executors = set(self.model.registry.accountability["roles"]["executor"]["principals"])
+        self.assertEqual(executors, {self.EXECUTOR})
+        self.assertEqual({g.data["identity_principals"]["grantee"] for g in self.model.of("C06")}, executors)
+
+    def test_the_two_shapes_stay_distinct(self):
+        exact = self.model.get("C06", "GRT-APPR-0417-A", "v1").data["scope_binding"]["binding"]
+        bounded = self.model.get("C06", "GRT-CLASS-HOLD", "v1").data["scope_binding"]["binding"]
+        self.assertEqual((exact["binding_type"], bounded["binding_type"]), ("exact_proposal", "bounded_class"))
+        self.assertIn("proposal_reference", exact)
+        self.assertNotIn("proposal_reference", bounded)
+        self.assertIn("class_id", bounded)
+
+    def test_a_receipt_made_by_another_principal_does_not_validate_under_the_grant(self):
+        for who, expected in ((self.ASSISTANT, ["ROLE006", "ROLE008"]), ("workload:other-executor", ["ROLE006", "ROLE007"]), ("person:ap-controller-01", ["ROLE006", "ROLE007"])):
+            with self.subTest(who):
+                model = self.mutated(("C07 RCP-HOLD-0417 v1", "/identity_binding/executor", who))
+                self.assertEqual(codes_of(model), expected)
+
+    def test_the_hold_receipt_under_the_bounded_class_and_the_release_receipt_under_an_exact_approval_are_both_held_to_it(self):
+        for receipt in ("C07 RCP-HOLD-0417 v1", "C07 RCP-REL-0417-B v2"):
+            self.assertIn("ROLE006", codes_of(self.mutated((receipt, "/identity_binding/executor", "workload:other-executor"))), receipt)
+
+    def test_a_grant_to_the_assistant_workload_is_refused_for_either_shape(self):
+        for grant in ("C06 GRT-CLASS-HOLD v1", "C06 GRT-APPR-0417-A v1"):
+            with self.subTest(grant):
+                found = [f for f in semantics.check_accountability(self.mutated((grant, "/identity_principals/grantee", self.ASSISTANT))) if f.code == "ROLE008"]
+                self.assertEqual(len(found), 1)
+                self.assertIn("the assistant proposes, and the executor receives authority", found[0].message)
+
+    def test_a_grantee_that_is_not_a_registered_executor_is_refused(self):
+        found = [f for f in semantics.check_accountability(self.mutated(("C06 GRT-CLASS-LOWVAL v2", "/identity_principals/grantee", "workload:unregistered"))) if f.code == "ROLE007"]
+        self.assertEqual(len(found), 1)
+        self.assertIn("workload:unregistered", found[0].message)
+
+    def test_changing_the_grantee_alone_leaves_the_receipts_that_cite_the_grant_disagreeing(self):
+        model = self.mutated(("C06 GRT-APPR-0417-B v1", "/identity_principals/grantee", "workload:other-executor"))
+        self.assertEqual(codes_of(model), ["ROLE006", "ROLE006", "ROLE007"])
+
+    def test_the_registry_can_register_another_executor_and_then_it_may_receive_authority(self):
+        model = self.mutated(("C06 GRT-CLASS-LOWVAL v2", "/identity_principals/grantee", "workload:second-executor"))
+        model.registry = copy.deepcopy(model.registry)
+        model.registry.accountability["roles"]["executor"]["principals"].append("workload:second-executor")
+        self.assertEqual(codes_of(model), [])
+
+    def test_the_declared_executor_is_what_the_generator_writes(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("build_example_data", support.SCRIPTS / "build_example_data.py")
+        builder = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(builder)
+        self.assertEqual((builder.EXECUTOR, builder.ASSISTANT), (self.EXECUTOR, self.ASSISTANT))
+        grants = builder.build_grants(*builder.build_instances()[:1], builder.build_proposals(builder.build_instances()[0]))
+        self.assertEqual({g["identity_principals"]["grantee"] for g in grants.values()}, {self.EXECUTOR})
+
+
+def codes_of(model):
+    return sorted(f.code for f in semantics.check_accountability(model))
 
 
 class TheNarrative(unittest.TestCase):

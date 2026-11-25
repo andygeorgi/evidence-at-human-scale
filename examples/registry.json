@@ -199,16 +199,60 @@
   "permission_decisions": {
     "AUTHZ-READ-LIMIT-0417@v1": {
       "principal": "person:ap-analyst-02",
+      "tenant": "tenant:calder-works",
+      "purpose": "Accounts-payable payment-release review",
       "read_allowed": false,
       "disclose_existence_allowed": true,
       "permitted_disclosure": "Coverage is limited by access permissions; no protected source identity or content is disclosed.",
-      "summary": "Part of the requested scope is not readable by this principal. The policy lets an output say that coverage is limited by permissions, in the words given here, and nothing else about it."
+      "permitted_view": {
+        "gap": {
+          "scope": {
+            "task": "Part of the requested scope that this principal may not read",
+            "jurisdiction": {
+              "state": "not_applicable",
+              "reason": "Internal accounts-payable review; no external jurisdiction asserted."
+            },
+            "units": {
+              "state": "not_applicable",
+              "reason": "No unit applies to this statement."
+            },
+            "interpretation": {
+              "state": "known",
+              "value": "Statement of a source system or analysis as recorded; not independently verified."
+            }
+          },
+          "expected_evidence": "Evidence in the requested scope that this principal may not read",
+          "materiality": "unknown",
+          "reason": {
+            "state": "known",
+            "value": "Part of the requested scope is outside this principal's read permissions."
+          },
+          "assessment_basis": "Permission decision AUTHZ-READ-LIMIT-0417 applies. It allows a coverage limitation and nothing else: no source, type, count, state or age is disclosed."
+        },
+        "retrieval": {
+          "retrieval_unit_id": "RETR-SCOPE-0417",
+          "authorized_scope": "Outside this principal's read scope",
+          "attempted_at": {
+            "state": "not_applicable",
+            "reason": "Not attempted: outside this principal's permissions."
+          },
+          "completed_at": {
+            "state": "not_applicable",
+            "reason": "Not attempted: outside this principal's permissions."
+          },
+          "reason": "Permission decision applies to this principal."
+        }
+      },
+      "summary": "Part of the requested scope is not readable by this principal. The policy lets an output say that coverage is limited by permissions, in the words given here, and nothing else about it. Every field of the entry comes from this decision, and none from what it protects."
     },
     "AUTHZ-READ-WITHHELD-0417@v1": {
       "principal": "person:ap-analyst-02",
+      "tenant": "tenant:calder-works",
+      "purpose": "Accounts-payable payment-release review",
       "read_allowed": false,
       "disclose_existence_allowed": false,
       "permitted_disclosure": "",
+      "permitted_view": {},
       "summary": "An investigation file that this principal may not read, and whose existence may not be disclosed to them. No output carries an entry, a count, a state or an age for it; it adds nothing to the coverage statement that every output carries."
     }
   },
@@ -240,7 +284,7 @@
         "principals": [
           "workload:payment-executor"
         ],
-        "meaning": "Performs the authorized action after the commit check."
+        "meaning": "Performs the authorized action after the commit check. Every grant names it as its grantee, and every execution receipt is made by the grantee of the grant it cites."
       }
     },
     "may_hold_together": [

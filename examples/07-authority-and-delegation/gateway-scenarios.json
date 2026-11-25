@@ -168,7 +168,7 @@
     },
     {
       "label": "An attempt timed before the grant was issued",
-      "why": "A grant is not valid before its issuance time: clock skew or a replayed request.",
+      "why": "Everything the attempt rests on comes later than the attempt: the grant's issuance, its revocation check and the evidence admitted afterwards. Nothing that happens after an attempt can authorize it.",
       "at": "2026-11-23T05:59:00Z",
       "proposal": {
         "id": "ACT-HOLD-0417",
@@ -182,17 +182,90 @@
       "expect": {
         "decision": "BLOCK",
         "codes": [
+          "REVOCATION_NOT_YET_OBSERVED",
           "GRANT_NOT_YET_VALID",
+          "EVIDENCE_NOT_YET_ADMITTED",
           "PRECONDITION_FAILED"
         ],
         "reasons": [
+          {
+            "code": "REVOCATION_NOT_YET_OBSERVED",
+            "message": "the only revocation check on record ('not_revoked' at 2026-11-23T07:45:00Z) came after the attempt, so it cannot show that grant GRT-CLASS-HOLD v1 was unrevoked then"
+          },
           {
             "code": "GRANT_NOT_YET_VALID",
             "message": "grant issued after the attempt"
           },
           {
+            "code": "EVIDENCE_NOT_YET_ADMITTED",
+            "message": "INV-2026-0417 v1 was admitted at 2026-11-23T07:31:00Z, after the attempt"
+          },
+          {
+            "code": "EVIDENCE_NOT_YET_ADMITTED",
+            "message": "M3W-0417 v1 was admitted at 2026-11-23T09:36:00Z, after the attempt"
+          },
+          {
             "code": "PRECONDITION_FAILED",
             "message": "PRE-INVOICE-OPEN is not satisfied: Invoice INV-2026-0417 is open (not already held or paid)."
+          }
+        ]
+      }
+    },
+    {
+      "label": "A hold at 09:30, before the match result was admitted",
+      "why": "The hold rests on the match result, which was admitted at 09:36. At 09:30 the gateway could not rely on it, however correct it later proved to be.",
+      "at": "2026-11-23T09:30:00Z",
+      "proposal": {
+        "id": "ACT-HOLD-0417",
+        "version": "v1"
+      },
+      "grant": {
+        "id": "GRT-CLASS-HOLD",
+        "version": "v1"
+      },
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "EVIDENCE_NOT_YET_ADMITTED"
+        ],
+        "reasons": [
+          {
+            "code": "EVIDENCE_NOT_YET_ADMITTED",
+            "message": "M3W-0417 v1 was admitted at 2026-11-23T09:36:00Z, after the attempt"
+          }
+        ]
+      }
+    },
+    {
+      "label": "A hold at 10:03 when the only revocation check was made at 10:04",
+      "why": "A check that says the grant is unrevoked cannot authorize an attempt made before the check was recorded.",
+      "at": "2026-11-23T10:03:00Z",
+      "proposal": {
+        "id": "ACT-HOLD-0417",
+        "version": "v1"
+      },
+      "grant": {
+        "id": "GRT-CLASS-HOLD",
+        "version": "v1"
+      },
+      "overrides": [
+        {
+          "on": "grant",
+          "path": "/limits_lifecycle/revocation/checked_at",
+          "value": "2026-11-23T10:04:00Z"
+        }
+      ],
+      "ledger": "from_receipts",
+      "expect": {
+        "decision": "BLOCK",
+        "codes": [
+          "REVOCATION_NOT_YET_OBSERVED"
+        ],
+        "reasons": [
+          {
+            "code": "REVOCATION_NOT_YET_OBSERVED",
+            "message": "the only revocation check on record ('not_revoked' at 2026-11-23T10:04:00Z) came after the attempt, so it cannot show that grant GRT-CLASS-HOLD v1 was unrevoked then"
           }
         ]
       }

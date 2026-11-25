@@ -1,25 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 446" width="360" height="446" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 673" width="360" height="673" role="img" aria-labelledby="t d" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 <title id="t">Evidence at Human Scale</title>
-<desc id="d">Evidence at Human Scale, a reference architecture for accountable decisions in agentic systems. Three steps: versioned records, one decision packet, and a person who approves one exact proposal or holds it. Every item carries its type: record, finding, inference or proposal.</desc>
+<desc id="d">Reference architecture for accountable decisions in agentic systems. Evidence stays distinct: goods receipt, source record; three-way match, deterministic finding; AI explanation, model inference. One decision packet: claims cite evidence, inferences remain labeled, conflicts and gaps stay visible, proposals are not actions. A person decides: approve or hold. Current evidence is rechecked before action.</desc>
 <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#57606a"/></marker></defs>
-<rect width="360" height="446" fill="#ffffff"/>
+<rect width="360" height="673" fill="#ffffff"/>
 <text x="180.0" y="38.0" font-size="23.5" text-anchor="middle" font-weight="700" fill="#1b1f24">Evidence at Human Scale</text>
 <text x="180.0" y="67.3" font-size="14" text-anchor="middle" fill="#57606a">Reference architecture for accountable</text>
 <text x="180.0" y="85.8" font-size="14" text-anchor="middle" fill="#57606a">decisions in agentic systems</text>
-<rect x="10.0" y="101.0" width="340.0" height="59.9" rx="8" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.6"/>
-<text x="180.0" y="124.9" font-size="15" text-anchor="middle" font-weight="700" fill="#0B2540">Versioned records</text>
-<text x="180.0" y="146.1" font-size="13" text-anchor="middle" fill="#0B2540">typed records with versions and lineage</text>
-<path d="M180.0 160.9 L180.0 181.9" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<rect x="10.0" y="182.9" width="340.0" height="77.1" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.6"/>
-<text x="180.0" y="206.8" font-size="15" text-anchor="middle" font-weight="700" fill="#0F2E1B">One decision packet</text>
-<text x="180.0" y="228.0" font-size="13" text-anchor="middle" fill="#0F2E1B">claims, labeled inferences, conflicts,</text>
-<text x="180.0" y="245.1" font-size="13" text-anchor="middle" fill="#0F2E1B">gaps and unexecuted proposals</text>
-<path d="M180.0 259.9 L180.0 280.9" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
-<rect x="10.0" y="281.9" width="340.0" height="59.9" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.6"/>
-<text x="180.0" y="305.9" font-size="15" text-anchor="middle" font-weight="700" fill="#24133F">A person decides</text>
-<text x="180.0" y="327.0" font-size="13" text-anchor="middle" fill="#24133F">approve one exact proposal, or hold it</text>
-<rect x="10.0" y="355.9" width="340.0" height="80.0" rx="8" fill="#F4F4F4" stroke="#6F6F6F" stroke-width="1.6"/>
-<text x="180.0" y="380.7" font-size="16" text-anchor="middle" font-weight="700" fill="#222222">every item carries its type:</text>
-<text x="180.0" y="400.7" font-size="16" text-anchor="middle" font-weight="700" fill="#222222">record, finding,</text>
-<text x="180.0" y="420.7" font-size="16" text-anchor="middle" font-weight="700" fill="#222222">inference, proposal</text>
+<rect x="10.0" y="101.0" width="340.0" height="178.0" rx="12" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="2"/>
+<text x="180.0" y="129.0" font-size="17" text-anchor="middle" font-weight="700" fill="#0B2540">Evidence stays distinct</text>
+<rect x="22.0" y="143.0" width="316.0" height="36.0" rx="8" fill="#E8F1FB" stroke="#2F6DB5" stroke-width="1.3"/>
+<text x="34.0" y="166.0" font-size="14" text-anchor="start" font-weight="700" fill="#0B2540">Goods receipt</text>
+<text x="326.0" y="166.0" font-size="13" text-anchor="end" fill="#0B2540">source record</text>
+<rect x="22.0" y="187.0" width="316.0" height="36.0" rx="8" fill="#E4F4F6" stroke="#1E7F8C" stroke-width="1.3"/>
+<text x="34.0" y="210.0" font-size="14" text-anchor="start" font-weight="700" fill="#06323A">Three-way match</text>
+<text x="326.0" y="210.0" font-size="13" text-anchor="end" fill="#06323A">deterministic finding</text>
+<rect x="22.0" y="231.0" width="316.0" height="36.0" rx="8" fill="#FFF1D6" stroke="#A15F00" stroke-width="1.3"/>
+<text x="34.0" y="254.0" font-size="14" text-anchor="start" font-weight="700" fill="#3D2500">AI explanation</text>
+<text x="326.0" y="254.0" font-size="13" text-anchor="end" fill="#3D2500">model inference</text>
+<path d="M180.0 279.0 L180.0 300.0" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="10.0" y="301.0" width="340.0" height="222.0" rx="12" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="2"/>
+<text x="180.0" y="329.0" font-size="17" text-anchor="middle" font-weight="700" fill="#0F2E1B">One decision packet</text>
+<rect x="22.0" y="343.0" width="316.0" height="36.0" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.3"/>
+<text x="34.0" y="366.0" font-size="14" text-anchor="start" font-weight="700" fill="#0F2E1B">Claims</text>
+<text x="326.0" y="366.0" font-size="13" text-anchor="end" fill="#0F2E1B">cite evidence</text>
+<rect x="22.0" y="387.0" width="316.0" height="36.0" rx="8" fill="#FFF1D6" stroke="#A15F00" stroke-width="1.3"/>
+<text x="34.0" y="410.0" font-size="14" text-anchor="start" font-weight="700" fill="#3D2500">Inferences</text>
+<text x="326.0" y="410.0" font-size="13" text-anchor="end" fill="#3D2500">remain labeled</text>
+<rect x="22.0" y="431.0" width="316.0" height="36.0" rx="8" fill="#FBE4E4" stroke="#B3261E" stroke-width="1.3"/>
+<text x="34.0" y="454.0" font-size="14" text-anchor="start" font-weight="700" fill="#3D0A07">Conflicts and gaps</text>
+<text x="326.0" y="454.0" font-size="13" text-anchor="end" fill="#3D0A07">stay visible</text>
+<rect x="22.0" y="475.0" width="316.0" height="36.0" rx="8" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="1.3"/>
+<text x="34.0" y="498.0" font-size="14" text-anchor="start" font-weight="700" fill="#24133F">Proposals</text>
+<text x="326.0" y="498.0" font-size="13" text-anchor="end" fill="#24133F">are not actions</text>
+<path d="M180.0 523.0 L180.0 544.0" fill="none" stroke="#57606a" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="10.0" y="545.0" width="340.0" height="118.0" rx="12" fill="#EFE9F7" stroke="#6A4BA1" stroke-width="2"/>
+<text x="180.0" y="573.0" font-size="17" text-anchor="middle" font-weight="700" fill="#24133F">A person decides</text>
+<rect x="91.4" y="591.0" width="83.4" height="32.0" rx="8" fill="#E6F4EA" stroke="#2E7D4F" stroke-width="1.4"/>
+<text x="133.1" y="611.4" font-size="13" text-anchor="middle" font-weight="700" fill="#0F2E1B">Approve</text>
+<text x="189.9" y="612.0" font-size="13" text-anchor="middle" fill="#57606a">or</text>
+<rect x="204.9" y="591.0" width="63.7" height="32.0" rx="8" fill="#FFF1D6" stroke="#A15F00" stroke-width="1.4"/>
+<text x="236.7" y="611.4" font-size="13" text-anchor="middle" font-weight="700" fill="#3D2500">Hold</text>
+<text x="180.0" y="647.0" font-size="13" text-anchor="middle" fill="#57606a">Current evidence is rechecked before action</text>
 </svg>

@@ -69,7 +69,7 @@
     {
       "kind": "inference",
       "label": "M01",
-      "text": "Inference (model-generated, not verified): Model A infers: The goods receipt is probably incomplete: the 40 missing units were probably delivered on a later date and not yet scanned. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source.",
+      "text": "Inference (model-generated, not verified): Model A infers: The goods receipt is probably incomplete: further units were probably delivered on a later date and not yet scanned. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source.",
       "refs": [
         "/labeled_inferences/0"
       ]
@@ -77,7 +77,7 @@
     {
       "kind": "inference",
       "label": "M02",
-      "text": "Inference (model-generated, not verified): Model B infers: The quantity difference is probably a receiving delay; the invoice quantity is consistent with the purchase order. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source.",
+      "text": "Inference (model-generated, not verified): Model B infers: Probably a receiving delay: the delivery was probably only partly scanned when the receipt was posted. Limits: Common origin: both model summaries rest on GR-5521 v1 alone; their agreement is not independent corroboration. Model output; not verified against any source.",
       "refs": [
         "/labeled_inferences/1"
       ]
@@ -93,7 +93,7 @@
     {
       "kind": "gap",
       "label": "gap 1 (missing)",
-      "text": "Missing: Carrier proof of delivery for a second pallet of 40 units. No carrier or warehouse record of a second delivery exists in the readable sources.",
+      "text": "Missing: Carrier proof of delivery for a second pallet of 40 units. No carrier or warehouse record of a second delivery was found in the sources that were read. Search coverage is not established.",
       "refs": [
         "/coverage_omissions_gaps/missingness/0"
       ]
@@ -149,7 +149,7 @@
     {
       "kind": "recommendation",
       "label": "REC-0417-1",
-      "text": "Recommendation (for review, not a decision): Place INV-2026-0417 on payment hold until the quantity difference is resolved. Basis: Open quantity discrepancy (CONF-QTY) between invoice and goods receipt; policy AP-4; screening is stale. Requires: A hold is within the bounded grant of the AP team; the AP controller is notified.",
+      "text": "Recommendation from the withdrawn packet (not current advice; for review, not a decision): Place INV-2026-0417 on payment hold until the quantity difference is resolved. Basis: Open quantity discrepancy (CONF-QTY) between invoice and goods receipt; policy AP-4; screening is stale. Requires: A hold is within the bounded grant of the AP team; the AP controller is notified.",
       "refs": [
         "/recommendations/0"
       ]
@@ -157,7 +157,7 @@
     {
       "kind": "recommendation",
       "label": "REC-0417-1B",
-      "text": "Recommendation (for review, not a decision): Release payment at the 16:00 run only if the match passes, screening is current and the invoice is held when the run starts. Basis: Policy AP-4 requires a passing three-way match; the commit-time preconditions enforce it. Requires: Exact approval by the AP controller, bound to ACT-REL-0417 v1.",
+      "text": "Recommendation from the withdrawn packet (not current advice; for review, not a decision): Release payment at the 16:00 run only if the match passes, screening is current and the invoice is held when the run starts. Basis: Policy AP-4 requires a passing three-way match; the commit-time preconditions enforce it. Requires: Exact approval by the AP controller, bound to ACT-REL-0417 v1.",
       "refs": [
         "/recommendations/1"
       ]
@@ -165,7 +165,7 @@
     {
       "kind": "proposal",
       "label": "ACT-HOLD-0417 v1",
-      "text": "Proposed (not executed or approved): ACT-HOLD-0417 v1, hold_payment on invoice INV-2026-0417.",
+      "text": "Proposal from the withdrawn packet (not current advice; not executed or approved): hold payment on invoice INV-2026-0417 (proposal ACT-HOLD-0417 v1).",
       "refs": [
         "/action_proposals/0"
       ]
@@ -173,7 +173,7 @@
     {
       "kind": "proposal",
       "label": "ACT-REL-0417 v1",
-      "text": "Proposed (not executed or approved): ACT-REL-0417 v1, release_payment on invoice INV-2026-0417.",
+      "text": "Proposal from the withdrawn packet (not current advice; not executed or approved): release payment on invoice INV-2026-0417 (proposal ACT-REL-0417 v1).",
       "refs": [
         "/action_proposals/1"
       ]
@@ -181,7 +181,7 @@
     {
       "kind": "obligation",
       "label": "OBL-0417-REVIEW",
-      "text": "Obligation OBL-0417-REVIEW: due 2026-11-23T15:30:00Z, owner role:ap-controller.",
+      "text": "Obligation OBL-0417-REVIEW from the withdrawn packet (not current advice): due 2026-11-23T15:30:00Z, owner role:ap-controller.",
       "refs": [
         "/priority_mandatory_obligations/obligation_references/0"
       ]

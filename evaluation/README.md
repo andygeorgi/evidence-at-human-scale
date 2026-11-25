@@ -2,7 +2,7 @@
 
 [Evaluation oracles](oracles.md) · [Catalogue](catalogue/README.md) · [Human-outcome evaluation](human-outcome-evaluation.md)
 
-This is a reference architecture, not a production deployment or benefit claim. The contracts and synthetic examples are tested; real-world effectiveness has not been evaluated. This guide separates what is tested from what is not evaluated, so that a passing check is not read as evidence of more than it shows.
+This guide separates what is tested from what is not evaluated, so that a passing check is not read as evidence of more than it shows. The architecture is a reference architecture, not a production deployment or benefit claim ([claims and limits](../docs/claims-and-limits.md)).
 
 **Tested.** The schema and the structure of the contracts; the synthetic worked example; the deterministic validators and the reference commit check; the documented failure fixtures (64 invalid schema examples and 37 mutated copies of the example set); and the repository's own tooling.
 
@@ -50,7 +50,7 @@ A status changes only when something was run and recorded, as [the catalogue](ca
 | Schema bundle | `python scripts/validate_examples.py` (stage 1) | The bundle is valid Draft 2020-12; the 102 embedded examples behave as labeled. | The contracts' meaning. A schema checks structure and local constraints. It does not check that a reference was retrieved correctly or that a claim is true. |
 | Example instances | stage 2 | Every example validates against its contract. | |
 | Scenario semantics | stage 3 | References resolve to exact versions. Lineage is acyclic, and common origin is not counted as independence. Corrections propagate. Missingness labels are justified. A restricted record's existence is withheld. Approvals end with their basis. The requestor, the Decision Owner and the approver are the people the example names for those roles. Receipts agree with the commit check. | Real data, real producers, scale. |
-| Gateway scenarios | stage 4 | 19 stored what-if evaluations of the reference commit check; every reason code is exercised. | A real gateway: state, concurrency, a live target. |
+| Gateway scenarios | stage 4 | 24 stored what-if evaluations of the reference commit check; every reason code is exercised. | A real gateway: state, concurrency, a live target. |
 | Assistant responses | stage 5 | A canonical response is compared with what its renderer produces and checked for reversed meaning. A free-form response is checked against named structural requirements: source pointers, labels, figures, uncertainty and certainty. | That free-form prose is semantically correct, and what a real model would write. |
 | Evaluation cases | stage 6 | 37 mutated copies of the example set each produce exactly their declared codes. | The EV01–EV12 fixtures. |
 | Unit tests | `python -m unittest discover -s tests` | The checks themselves, including negative and adversarial cases. | |
@@ -67,20 +67,20 @@ All of these check the contracts, the examples and the repository's own text and
 
 Some example checks cover the same failure area as an EV test, without being the test. The table names them so that the two are not confused.
 
-| Test | Failure area | Related example checks |
+| Evaluation test | Failure area | Related example checks |
 |---|---|---|
-| EV01 Types and source fidelity | A producer promoting its output; a reference that does not resolve | `KIND001`, `KIND002`, `REF001`–`REF003`; cases `CASE-KIND-*`, `CASE-REF-*`; [01](../examples/01-source-records/README.md) |
-| EV02 Rule reproducibility | A rule version changing silently | Only in part: when the match result is recomputed after the correction, the earlier result stays as version 1 with its own method and inputs; the rule version itself does not change in the example. [11](../examples/11-late-correction/README.md) |
-| EV03 Correlated agents | Agreement treated as corroboration | `COR001`, `COR002`, `LIN001`–`LIN003`; [03](../examples/03-lineage-and-common-origin/README.md) |
-| EV04 Conflict retention | A conflict dropped in shortening | `MISS005`; [04](../examples/04-selection-and-missingness/README.md), [05](../examples/05-decision-packet/README.md) |
-| EV05 Missingness | A wrong or unjustified gap label | `MISS001`–`MISS005`; cases `CASE-MISS-*`; [04](../examples/04-selection-and-missingness/README.md) |
-| EV06 Derived and authorised disclosure | A summary that leaks, or a gap label that tells an unauthorized reader that a record exists | `DISC001`–`DISC003`; cases `CASE-DISC-01` to `CASE-DISC-03`; [04](../examples/04-selection-and-missingness/README.md#permission-before-disclosure). Counts, relationships and caches are not modeled. |
-| EV07 Revocation | Acting on a revoked grant or a corrected record | `GRANT_REVOKED`, `LIFE005`, `REVOCATION_UNVERIFIED`; [08](../examples/08-blocked-action/README.md), [10](../examples/10-degraded-modes/README.md). View-time revocation is not modeled. |
-| EV08 Prompt injection | Untrusted content changing controls | **No example check.** |
-| EV09 Obligation overload | Obligations dropped or silently capped | **No example check** beyond one obligation carried through a selection. |
-| EV10 Degradation | Silent substitution when something fails | [06](../examples/06-assistant-response/README.md), [10](../examples/10-degraded-modes/README.md) |
-| EV11 Race, duplicate and unknown action | A blind retry; allowance restored by a timeout | `CUMULATIVE_LIMIT`, `ACC001`–`ACC004`; [09](../examples/09-unknown-outcome/README.md). Races and concurrency are not modeled. |
-| EV12 Late or corrected evidence | A pending approval surviving a correction | `LIFE001`–`LIFE005`; [11](../examples/11-late-correction/README.md) |
+| Types and source fidelity (EV01) | A producer promoting its output; a reference that does not resolve | `KIND001`, `KIND002`, `REF001`–`REF003`; cases `CASE-KIND-*`, `CASE-REF-*`; [01](../examples/01-source-records/README.md) |
+| Rule reproducibility (EV02) | A rule version changing silently | Only in part: when the match result is recomputed after the correction, the earlier result stays as version 1 with its own method and inputs; the rule version itself does not change in the example. [11](../examples/11-late-correction/README.md) |
+| Correlated agents (EV03) | Agreement treated as corroboration | `COR001`, `COR002`, `LIN001`–`LIN003`; [03](../examples/03-lineage-and-common-origin/README.md) |
+| Conflict retention (EV04) | A conflict dropped in shortening | `MISS005`; [04](../examples/04-selection-and-missingness/README.md), [05](../examples/05-decision-packet/README.md) |
+| Missingness (EV05) | A wrong or unjustified gap label | `MISS001`–`MISS005`; cases `CASE-MISS-*`; [04](../examples/04-selection-and-missingness/README.md) |
+| Derived and authorised disclosure (EV06) | A summary that leaks, or a gap label that tells an unauthorized reader that a record exists | `DISC001`–`DISC005`; cases `CASE-DISC-01` to `CASE-DISC-03`; [04](../examples/04-selection-and-missingness/README.md#permission-before-disclosure). The check is a snapshot validation of stored outputs against stored decisions. It is not an authorization service, and counts, relationships and caches are not modeled. |
+| Revocation (EV07) | Acting on a revoked grant or a corrected record | `GRANT_REVOKED`, `LIFE005`, `REVOCATION_UNVERIFIED`; [08](../examples/08-blocked-action/README.md), [10](../examples/10-degraded-modes/README.md). View-time revocation is not modeled. |
+| Prompt injection (EV08) | Untrusted content changing controls | **No example check.** |
+| Obligation overload (EV09) | Obligations dropped or silently capped | **No example check** beyond one obligation carried through a selection. |
+| Degradation (EV10) | Silent substitution when something fails | [06](../examples/06-assistant-response/README.md), [10](../examples/10-degraded-modes/README.md) |
+| Race, duplicate and unknown action (EV11) | A blind retry; allowance restored by a timeout | `CUMULATIVE_LIMIT`, `ACC001`–`ACC004`; [09](../examples/09-unknown-outcome/README.md). Races and concurrency are not modeled. |
+| Late or corrected evidence (EV12) | A pending approval surviving a correction | `LIFE001`–`LIFE005`; [11](../examples/11-late-correction/README.md) |
 
 ## The programme
 
@@ -88,7 +88,7 @@ Some example checks cover the same failure area as an EV test, without being the
 
 | Topic | What the programme defines |
 |---|---|
-| **Tests** | EV01 Types and source fidelity · EV02 Rule reproducibility · EV03 Correlated agents · EV04 Conflict retention · EV05 Missingness · EV06 Derived and authorised disclosure · EV07 Revocation · EV08 Prompt injection · EV09 Obligation overload · EV10 Degradation · EV11 Race, duplicate and unknown action · EV12 Late or corrected evidence |
+| **Tests** | Types and source fidelity (EV01) · Rule reproducibility (EV02) · Correlated agents (EV03) · Conflict retention (EV04) · Missingness (EV05) · Derived and authorised disclosure (EV06) · Revocation (EV07) · Prompt injection (EV08) · Obligation overload (EV09) · Degradation (EV10) · Race, duplicate and unknown action (EV11) · Late or corrected evidence (EV12) |
 | **Gates** | 100% over a positive denominator for the ratio metrics. Zero prohibited events, counted only over adversarial opportunities that were attempted. Both are targets for finite fixtures and are not production safety guarantees. |
 | **Owners** | Unassigned. The usual split: source and domain owners own fidelity and rules; lifecycle and selection owners own lineage, conflict and missingness; access and security owners own disclosure, revocation and injection; obligation and operations owners own continuity; executor and target owners own races and outcomes. |
 
