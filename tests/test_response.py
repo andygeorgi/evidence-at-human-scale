@@ -316,6 +316,14 @@ class TheLifecycleComesFromThePacket(unittest.TestCase):
     def test_a_missing_as_of_time_is_refused(self):
         self.assertIn("RESP006", codes(self.changed(self.v2, as_of=MISSING)))
 
+    def test_the_as_of_time_of_the_packet_may_be_written_with_another_offset_but_not_as_another_instant(self):
+        for written in ("2026-11-23T11:00:00+01:00", "2026-11-23T10:00:00.000Z", "2026-11-23T09:00:00-01:00"):
+            with self.subTest(written):
+                self.assertNotIn("RESP006", codes(self.changed(self.v1, as_of=written)))
+        for other in ("2026-11-23T10:00:01Z", "2026-11-23T10:00:00+01:00", "2026-11-23 10:00"):
+            with self.subTest(other):
+                self.assertIn("RESP006", codes(self.changed(self.v1, as_of=other)))
+
     def test_a_withdrawn_response_must_give_the_reason(self):
         self.assertIn("RESP015", codes(self.changed(self.v1, status_reason=MISSING)))
         self.assertIn("RESP015", codes(self.changed(self.v1, status_reason="")))

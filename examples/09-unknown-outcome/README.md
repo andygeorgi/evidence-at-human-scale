@@ -78,7 +78,7 @@ The allowance ledger and the bank cannot be updated in one atomic step. The gran
 
 ## Checks that run here
 
-Stage 3 requires an unresolved outcome to keep its accounting (`ACC001`), a later version to describe the same attempt (`ACC004`), a verified outcome to settle its accounting (`ACC003`), and allowance to be restored only on authoritative reconciliation (`ACC002`). The schema alone rejects an unknown outcome that claims reconciliation. Related cases: `CASE-SCH-04`, `CASE-ACC-01`, `CASE-ACC-02`.
+Stage 3 requires an unresolved outcome to keep its accounting (`ACC001`), a later version to describe the same attempt (`ACC004`), a verified outcome to settle its accounting (`ACC003`), and allowance to be restored only on authoritative reconciliation (`ACC002`). A verified outcome closes the attempt: a later version may repeat `completed_verified` or `not_executed_verified`, and may not go back to `submitted`, `unknown` or `partial` or become the other verified outcome (`ACC005`). Unknown and then completed, as in v1 and v2 here, is the reconciliation and stays valid, and the ledger replay keeps the verified outcome (the allowance is `reserved` at 16:10 and `consumed` once the verification is available). No correction of a verified outcome is defined for these ordinary versions. The schema alone rejects an unknown outcome that claims reconciliation. Related cases: `CASE-SCH-04`, `CASE-ACC-01`, `CASE-ACC-02`; the progression is covered in `tests/test_receipts.py`.
 
 ## What this shows, and what it does not
 

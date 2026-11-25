@@ -2,6 +2,22 @@
 
 Releases are labeled `vMAJOR.MINOR.PATCH` and tagged in Git. Each entry lists what the release contains.
 
+## 1.0.5, 25 November 2026
+
+A corrective release for four gaps in the reference validator. The contracts, the schema, the figures, the examples and the evaluation statuses are unchanged. A set of records that passed the checks before passes now, unless it falls into one of the four gaps below.
+
+### What changed
+
+- **A decision snapshot is held together.** The context, the selection built under it and the packet built on both state one as-of time, compared as instants and not as written (`10:00:00Z` and `11:00:00+01:00` are one time, in a stored response as well). The selection reads no time outside the interval of its context. A packet cites only records that were available at its as-of time, a record admitted exactly then included, and a later correction does not make an earlier packet wrong. A proposal rests on the context of its packet. A packet time that cannot be compared exactly is an input error (`PKT002`, `PKT006`, `PKT007`, `RESP006`).
+- **A mandatory obligation cannot disappear from a packet.** A packet carries every obligation of its own selection, once, and lists none that its selection does not hold, whatever a response made from the packet then says (`PKT008`, `PKT009`).
+- **A deterministic finding names its inputs.** A finding that is the result of a rule applied to records names at least one parent. The registry of the example says which two producers compute over data outside the records, the duplicate check and the screening, with a new optional `inputs` key (`LIN006`).
+- **A verified outcome is final.** A later version of a receipt may repeat `completed_verified` or `not_executed_verified` and may not go back to an unresolved state or become the other one, and the replay of the ledger keeps the verified outcome instead of reading a completed attempt as reserved again. Unknown and then completed stays valid. No correction of a verified outcome is defined (`ACC005`).
+- **A pass is described more narrowly.** The pages say that a pass shows that the records agree wherever the checks compare them. They no longer call the examples internally coherent.
+
+### Known limitations
+
+The standing claims and limits are on the [claims and limits](docs/claims-and-limits.md) page.
+
 ## 1.0.4, 25 November 2026
 
 A reader-facing cleanup. Nothing functional changed: the contracts, the schema, the examples, the figures, the checks and the evaluation statuses are exactly as in 1.0.3.

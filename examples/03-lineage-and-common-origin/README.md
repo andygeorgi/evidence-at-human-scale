@@ -39,7 +39,7 @@ Solid arrows show derivation. A goods receipt, version 1, is a source record and
 
 ## Look at
 
-1. **Parents.** `lineage.parent_references` in the match result lists three exact versions. Both summaries list one: `GR-5521` v1. Derivation ancestry is directed and acyclic.
+1. **Parents.** `lineage.parent_references` in the match result lists three exact versions. Both summaries list one: `GR-5521` v1. Derivation ancestry is directed and acyclic. A deterministic finding is what a rule produced from inputs, so one that names no parent is a finding (`LIN006`). The duplicate check and the screening read a ledger and lists that are not records of this set, so the [registry](../registry.json) marks their producers `"inputs": "outside_records"`, and a source record is an original and has none.
 2. **Kinds and producers.** Each producer may submit only its registered kind (see `producers` in the [registry](../registry.json)). Agent A cannot submit a deterministic finding, and a model's output is never promoted to a source record.
 3. **Method.** The match result declares `rule_version` `M3W-2.0`; the summaries declare `model_version` and `prompt_version`. The fields that do not apply say `not_applicable`.
 4. **Uncertainty.** The match result says it is exactly as reliable as its inputs ("rule_output"); the summaries say "model_generated: not verified against any source".
@@ -56,6 +56,7 @@ Solid arrows show derivation. A goods receipt, version 1, is a source record and
 | `LIN002` | Relationship types come from the declared vocabulary | `CASE-LIN-02` |
 | `LIN003` | A supersession is acknowledged by the older record | `CASE-LIN-03` |
 | `LIN005` | A model inference states no figure that its ancestry does not hold | `tests/test_semantics.py` |
+| `LIN006` | A deterministic finding names the records it was computed from, unless the registry says its producer computes over data outside the records | `tests/test_semantics.py` |
 | `KIND001` | A producer submits only its registered kind | `CASE-KIND-01` |
 | `KIND004` | A finding declares the rule it applied; an inference declares its model and prompt | (checked on the whole set) |
 | `COR001` | Agreement is not called independent corroboration when it is not | `CASE-COR-02` |

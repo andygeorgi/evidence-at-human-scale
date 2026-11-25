@@ -55,7 +55,7 @@ python scripts/validate_examples.py         # validate the synthetic examples
 You need Python 3.9 or later. It is tested on Windows and Linux (nothing in it is platform-specific, so macOS should work too), uses no network, and starts no service or model. `validate_examples.py`, the second command, should print:
 
 ```text
-Evidence at Human Scale 1.0.4: example validation
+Evidence at Human Scale 1.0.5: example validation
 Synthetic data only. A pass is not evidence about any real system.
 
 [1/6] Schema bundle ...           PASS          102 evaluated
@@ -89,7 +89,7 @@ A stage passes only if it evaluated something. An empty folder is `NOT ASSESSED`
 <a id="what-a-pass-means-and-what-it-does-not"></a>
 ## What this shows, and what it does not
 
-A pass means the invented examples are structurally valid and internally coherent, and that the deterministic checks behave as documented.
+A pass means the invented examples are structurally valid, that their records agree with one another wherever the checks compare them, and that the deterministic checks behave as documented.
 
 It does **not** mean that any real system, model or process is accountable, safe or correct. It does not establish source truth, legal or regulatory compliance, authorization legitimacy, decision quality, human-review quality, production safety, operational readiness or business value. These checks are not the evaluation programme (the twelve evaluation tests, EV01–EV12), which has not been run, and they are not model evaluation or human-outcome evaluation.
 
@@ -101,7 +101,7 @@ The full statement is in [Claims and limits](docs/claims-and-limits.md).
 
 ## Citing, contributing, security
 
-- **Cite.** [`CITATION.cff`](CITATION.cff) lets GitHub offer *Cite this repository*. Cite the release by its version, `v1.0.4`, 25 November 2026.
+- **Cite.** [`CITATION.cff`](CITATION.cff) lets GitHub offer *Cite this repository*. Cite the release by its version, `v1.0.5`, 25 November 2026.
 - **Contribute.** [`CONTRIBUTING.md`](CONTRIBUTING.md) says what is welcome and how to run the checks before you open a pull request.
 - **Report a security concern.** [`SECURITY.md`](SECURITY.md) explains what counts and how to report it privately.
 - **Changes.** [`CHANGELOG.md`](CHANGELOG.md) lists what each release contains.

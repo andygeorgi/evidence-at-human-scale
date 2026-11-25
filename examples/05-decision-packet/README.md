@@ -34,13 +34,13 @@ This table is the human view: what a reader needs from the first version of the 
 
 | Group | What the first version holds |
 |---|---|
-| Context and as-of time (G01) | Exact references to the context (`CTX-0417` v1) and the selection (`SEL-0417` v1); as-of 2026-11-23T10:00:00Z. |
+| Context and as-of time (G01) | Exact references to the context (`CTX-0417` v1) and the selection (`SEL-0417` v1); as-of 2026-11-23T10:00:00Z, the time that the context and the selection state too. |
 | Supported claims (G02) | Seven claims: the invoice, the order, the receipt (60 units), the match result (**FAIL**), the screening, the duplicate check and the policy (`PC-1` to `PC-7`). Each cites an exact record version and claim, or a payload location. A claim that cites a claim says exactly what it says. The match result rests on the whole payload, so its status and every figure in it are checked against that payload. |
 | Labeled inferences (G03) | Two, one for each AI summary (`M01`, `M02`). Neither is a supported claim. Each states its method and its limitations, including **common origin**. |
 | Recommendations (G04) | Hold the invoice (`REC-0417-1`). Release at 16:00 only if the match passes, screening is current and the invoice is held (`REC-0417-1B`). Each names the accountable review requirement. |
 | Conflicts and uncertainty (G05) | The quantity conflict (`CONF-QTY`) carried over from the selection, with the uncertainty "unquantified: the cause is not established". |
 | Coverage, omissions, gaps (G06) | The seven gaps of the selection, unchanged, and a visible limitation summary. |
-| Obligations (G07) | Why the quantity conflict and the stale screening come first, and a reference to the review obligation (`OBL-0417-REVIEW`). |
+| Obligations (G07) | Why the quantity conflict and the stale screening come first, and a reference to the review obligation (`OBL-0417-REVIEW`), the one obligation of the selection. |
 | Action proposals (G08) | The hold and the release, each `proposed`. |
 | Review and version history (G09) | `invalidated` at 13:45, with a challenge link to the correction. This is the end-of-day snapshot; at 10:00 it was `awaiting_review`. |
 
@@ -64,13 +64,19 @@ A proposal ([C05](../../contracts/c05-action-proposal.md)) names an exact action
 | Code | Rule | Case that breaks it |
 |---|---|---|
 | `PKT001` | A claim that cites claims says exactly what they say, in the order cited: for one reference, exactly what that claim says | `CASE-PKT-01` |
-| `PKT002` | The packet and its selection bind one context and one as-of time | `CASE-PKT-02` |
+| `PKT002` | The packet and its selection bind one context, and the context, the selection and the packet state one as-of time (compared as instants, not as written); the selection reads no time outside the interval of its context | `CASE-PKT-02`, `tests/test_snapshot.py` |
 | `PKT003` | Coverage points at the packet's own selection | (checked on the whole set) |
 | `PKT004` | A listed proposal is bound to this packet | (checked on the whole set) |
 | `PKT005` | A claim that rests on a payload says what the payload holds: it states every pass or fail status and at least one figure of it, no other status or figure, and no figure beside the name of a payload field (such as "invoiced") that is not that field's value | `tests/test_claims.py` |
+| `PKT006` | A proposal is bound to the context of the packet that it is bound to | `tests/test_snapshot.py` |
+| `PKT007` | A packet cites only records that were available at its as-of time | `tests/test_snapshot.py` |
+| `PKT008` | A packet lists only obligations that its selection holds, each once | `tests/test_obligations.py` |
+| `PKT009` | A packet carries every obligation of its selection | `tests/test_obligations.py` |
 | `KIND002` | A model inference is never a supported claim | `CASE-KIND-02` |
 | `COR001` / `COR002` | No independent corroboration without independence | `CASE-COR-02`, `CASE-COR-01` |
 | `LIFE003` / `LIFE004` | A packet that cites superseded records, or has a newer version, is not active | `CASE-LIFE-02` |
+
+**One snapshot.** The context, the selection and the packet state one as-of time, and the selection reads no time outside the interval of its context. A packet cites only records that were available at its as-of time: the rule of the commit check, applied at the packet's own time. A record admitted exactly then was available. A later correction does not make an earlier packet wrong, and a challenge link may name evidence that came after. A packet carries every obligation of its selection, once, and a proposal rests on the context of its packet. These decision-time checks are separate from the commit-time checks of the [blocked action example](../08-blocked-action/README.md).
 
 **Every reference counts.** A claim cannot escape these checks by citing a payload or by citing several references. Each supporting reference is validated for its record, kind, locator, scope, claim and pointer (`REF001`–`REF003`), a claim that cites several claims must say them all together, and a claim that cites a payload, alone or beside claims, is compared with it as structured values: after the cited claims' own words are taken out, what is left must state the payload's pass or fail status and at least one of its figures, and no figure or status the payload lacks. A figure that follows the name of a payload field ("invoiced 60" where the payload holds 100) must be that field's value, and a minus sign is part of a figure. The comparison is deliberately narrow: it checks the status and the figures, compared exactly, and it does not read prose for meaning. It does not show that a claim is true, or that a sentence that passes means what its sources mean. A claim could say more only with a structured assertion beside its free text, which would change the schema. This reference implementation deliberately leaves that capability outside its current scope.
 

@@ -23,8 +23,9 @@ like a contract instance must be one, and a stage file must hold the list its st
 error, an explicitly empty one evaluates nothing). Raw source exports are read as non-contract input. A schema-only run
 (--only schema) does not index the folder.
 
-A pass shows that the synthetic examples are structurally valid and internally coherent, and that the deterministic
-checks behave as documented. It does not show that any real system, model or process is accountable, safe or correct.
+A pass shows that the synthetic examples are structurally valid, that their records agree with one another wherever the checks
+compare them, and that the deterministic checks behave as documented. It does not show that any real system, model or process
+is accountable, safe or correct.
 """
 from __future__ import annotations
 

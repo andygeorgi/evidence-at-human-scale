@@ -48,6 +48,7 @@ import unicodedata
 from typing import Dict, Iterator, List, Optional, Tuple
 
 from .findings import Finding, rel
+from .gateway import same_instant
 from .model import Instance, Model, iter_refs, resolve_pointer
 
 DOC = "docs/implementation-guide.md"
@@ -577,8 +578,8 @@ def _lifecycle_findings(model: Model, response: dict, packet: Instance, file: st
     as_of = response.get("as_of")
     if not isinstance(as_of, str) or not as_of.strip():
         out.append(Finding("RESP006", "the response states no as-of time: it must say which snapshot of the packet it speaks about", file, "/as_of", DOC_RESPONSE))
-    elif as_of != packet.data["decision_context_as_of"]["as_of"]:
-        out.append(Finding("RESP006", "the response's as-of time differs from the packet's", file, "/as_of", DOC_RESPONSE))
+    elif not same_instant(as_of, packet.data["decision_context_as_of"]["as_of"]):
+        out.append(Finding("RESP006", "the response's as-of time (%s) is not the packet's (%s): the same instant written another way is the same time, another instant is not" % (as_of, packet.data["decision_context_as_of"]["as_of"]), file, "/as_of", DOC_RESPONSE))
     out.extend(_reason_findings(model, response, packet, expected, trusted_reason, file))
     if expected == "withdrawn":
         for i, st in enumerate(_statements(response)):

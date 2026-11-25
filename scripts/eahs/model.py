@@ -190,6 +190,8 @@ def registry_problem(raw: dict) -> Optional[str]:
     for producer, entry in raw.get("producers", {}).items():
         if not isinstance(entry, dict) or not isinstance(entry.get("permitted_kinds"), list):
             return "producer %r must be an object with a 'permitted_kinds' list" % producer
+        if "inputs" in entry and entry["inputs"] not in ("records", "outside_records"):
+            return "producer %r: 'inputs' must be \"records\" (what a producer computes over by default) or \"outside_records\", and this registry holds %r" % (producer, entry["inputs"])
     for policy, versions in raw.get("policies", {}).items():
         if not isinstance(versions, dict) or not all(isinstance(entry, dict) for entry in versions.values()):
             return "policy %r must be an object that maps each version to an object" % policy

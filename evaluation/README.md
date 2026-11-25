@@ -49,7 +49,7 @@ A status changes only when something was run and recorded, as [the catalogue](ca
 |---|---|---|---|
 | Schema bundle | `python scripts/validate_examples.py` (stage 1) | The bundle is valid Draft 2020-12; the 102 embedded examples behave as labeled. | The contracts' meaning. A schema checks structure and local constraints. It does not check that a reference was retrieved correctly or that a claim is true. |
 | Example instances | stage 2 | Every example validates against its contract. | |
-| Scenario semantics | stage 3 | References resolve to exact versions. Lineage is acyclic, and common origin is not counted as independence. Corrections propagate. Missingness labels are justified. A restricted record's existence is withheld. Approvals end with their basis. The requestor, the Decision Owner and the approver are the people the example names for those roles. Receipts agree with the commit check. | Real data, real producers, scale. |
+| Scenario semantics | stage 3 | References resolve to exact versions. Lineage is acyclic, a deterministic finding names its inputs, and common origin is not counted as independence. Corrections propagate. Missingness labels are justified. A restricted record's existence is withheld. Approvals end with their basis. A decision snapshot holds together: the context, the selection and the packet state one as-of time, the packet cites only what was available then and carries every obligation of its selection. The requestor, the Decision Owner and the approver are the people the example names for those roles. Receipts agree with the commit check, and a later version of a receipt does not go back from a verified outcome. | Real data, real producers, scale. |
 | Gateway scenarios | stage 4 | 24 stored what-if evaluations of the reference commit check; every reason code is exercised. | A real gateway: state, concurrency, a live target. |
 | Assistant responses | stage 5 | A canonical response is compared with what its renderer produces and checked for reversed meaning. A free-form response is checked against named structural requirements: source pointers, labels, figures, uncertainty and certainty. | That free-form prose is semantically correct, and what a real model would write. |
 | Evaluation cases | stage 6 | 37 mutated copies of the example set each produce exactly their declared codes. | The EV01–EV12 fixtures. |
@@ -73,7 +73,7 @@ Some example checks cover the same failure area as an EV test, without being the
 | Prompt injection (EV08) | Untrusted content changing controls | **No example check.** |
 | Obligation overload (EV09) | Obligations dropped or silently capped | **No example check** beyond one obligation carried through a selection. |
 | Degradation (EV10) | Silent substitution when something fails | [06](../examples/06-assistant-response/README.md), [10](../examples/10-degraded-modes/README.md) |
-| Race, duplicate and unknown action (EV11) | A blind retry; allowance restored by a timeout | `CUMULATIVE_LIMIT`, `ACC001`–`ACC004`; [09](../examples/09-unknown-outcome/README.md). Races and concurrency are not modeled. |
+| Race, duplicate and unknown action (EV11) | A blind retry; allowance restored by a timeout | `CUMULATIVE_LIMIT`, `ACC001`–`ACC005`; [09](../examples/09-unknown-outcome/README.md). Races and concurrency are not modeled. |
 | Late or corrected evidence (EV12) | A pending approval surviving a correction | `LIFE001`–`LIFE005`; [11](../examples/11-late-correction/README.md) |
 
 ## The programme
