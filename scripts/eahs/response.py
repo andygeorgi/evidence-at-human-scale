@@ -116,7 +116,11 @@ STATUS_WORDS = {
     "revoked": re.compile(r"\brevoked\b", re.I),
     "withdrawn": re.compile(r"\bwithdrawn\b", re.I),
 }
-NEGATION = re.compile(r"\b(?:no|not|never|none|nothing|nobody|neither|nor|without|cannot)\b|n't\b", re.I)
+#: An apostrophe, straight or typographic: "isn't" and "isn’t" are the same word.
+_APOS = "['\u2018\u2019\u02bc]"
+#: "not", unless it is emphasis ("not only confirmed but also documented", "not just verified", "not merely approved" say that it is) and not the idiom "not just yet".
+_NOT = r"not(?!\s+(?:only|just(?!\s+yet\b)|merely)\b)"
+NEGATION = re.compile(r"\b(?:no|not|never|none|nothing|nobody|neither|nor|without|cannot)\b|n" + _APOS + r"t\b", re.I)
 #: Certainty a statement may add only if the items it cites already say it (a source may say "confirmed"; a model may not).
 CERTAINTY = re.compile(r"\b(?:certain(?:ly)?|definite(?:ly)?|undoubted(?:ly)?|guarantee[sd]?|proven|proves?|conclusive(?:ly)?|beyond (?:any )?doubt|without (?:a )?doubt|no doubt|obviously|clearly|confirmed|verified|safe to (?:pay|release))\b", re.I)
 #: Wording that closes what the packet keeps open.
@@ -142,7 +146,7 @@ IDENTIFIER = re.compile(r"\b[A-Z][A-Z0-9]*(?:-[A-Z0-9][A-Za-z0-9.]*)+\b")
 WITHDRAWN_MARKER = re.compile(r"\bwithdrawn\b|\bno longer current\b|\bhistorical\b|\bsuperseded\b|\binvalidated\b", re.I)
 #: Wording that undoes a withdrawal. A withdrawal reason that says the packet is still valid contradicts the packet's own state.
 UNDOES_WITHDRAWAL = re.compile(
-    r"(?:\b(?:not|never|no longer)|n't)\s+(?:(?:actually|really|truly|even|yet|ever|been|be)\s+){0,2}(?:invalidated|superseded|withdrawn)\b"
+    r"(?:\b(?:not|never|no longer)|n" + _APOS + r"t)\s+(?:(?:\w+ly|even|yet|ever|been|be)\s+){0,2}(?:invalidated|superseded|withdrawn)\b"
     r"|\bstill\s+(?:current|valid|active|in force|usable)\b"
     r"|\b(?:packet\s+[\w.-]+\s+v\d+|this\s+packet|the\s+packet|this\s+response|the\s+response|it)\s+(?:is|remains?|stays?)\s+(?:current|valid|active|in force|usable)\b"
     r"|\b(?:reinstated|restored|reactivated|re-activated)\b"
@@ -155,10 +159,10 @@ REASON_INTRODUCTIONS = ("", "This response was withdrawn: ")
 #: Words that call something valid today. In a withdrawn response a statement may not use them, unnegated, more often than the
 #: packet items it cites do, so "not current advice" is fine and "This is current advice" is not.
 CURRENCY_WORDS = re.compile(r"\b(?:current(?:ly)?|active|valid|in force|up[- ]to[- ]date)\b", re.I)
-NEGATED_BEFORE = re.compile(r"\b(?:not(?!\s+(?:only|just|merely)\b)|no longer|never|isn't|aren't|wasn't|weren't)\s+(?:\w+\s+){0,2}$", re.I)
+NEGATED_BEFORE = re.compile(r"\b(?:" + _NOT + r"|no longer|never|(?:is|are|was|were)n" + _APOS + r"t)\s+(?:\w+\s+){0,2}$", re.I)
 #: A negation just before a status word: "did not fail", "no longer current", "isn't stale", "no failures". "Not only" is no negation: "not only confirmed but documented"
 #: says it is confirmed, so "not only", "not just" and "not merely" do not count.
-NEGATED_STATUS = re.compile(r"(?:\b(?:not(?!\s+(?:only|just|merely)\b)|no|never|none|nothing|nobody|neither|nor|cannot|without|hardly|barely)\b|n't\b)\s+(?:\w+\s+){0,3}$", re.I)
+NEGATED_STATUS = re.compile(r"(?:\b(?:" + _NOT + r"|no|never|none|nothing|nobody|neither|nor|cannot|without|hardly|barely)\b|n" + _APOS + r"t\b)\s+(?:\w+\s+){0,3}$", re.I)
 #: Where the reach of a negation ends: a sentence, a colon, a bracket, and a word that turns to the opposite ("not executed but approved" does not negate "approved").
 CLAUSE_END = re.compile(r"[.!?;:(]|\b(?:but|however|although|though|except|whereas|nevertheless|nonetheless)\b", re.I)
 _ID = r"[A-Z][A-Z0-9]*(?:-[A-Z0-9][A-Za-z0-9.]*)+"

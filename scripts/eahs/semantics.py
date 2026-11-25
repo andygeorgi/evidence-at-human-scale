@@ -352,8 +352,8 @@ _WORD = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 _BETWEEN = frozenset("of is was are were at to be equal equals about only just exactly than".split())
 #: Words that may stand between a figure and the name of the field that follows it ("60 units received", "40.0 percent variance").
 _UNITS = frozenset("unit units piece pieces item items percent pct eur euro euros usd".split())
-#: The quotation marks that may stand around a field's name: straight, typographic and angle quotes, and the backtick.
-_QUOTES = frozenset("\"'`\u2018\u2019\u201a\u201b\u201c\u201d\u201e\u201f\u00ab\u00bb\u2039\u203a")
+#: The quotation marks that may stand around a field's name: straight, typographic, angle and corner quotes, and the backtick.
+_QUOTES = frozenset("\"'`\u2018\u2019\u201a\u201b\u201c\u201d\u201e\u201f\u00ab\u00bb\u2039\u203a\u300c\u300d\u300e\u300f")
 _BOUNDARY = re.compile(r"[.;!?](?=\s|$)")
 _TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9_]*|\d+|[^\sA-Za-z0-9_]")
 

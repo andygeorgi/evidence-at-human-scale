@@ -1070,14 +1070,15 @@ class TheLabelAndTheWordingAreHeldToTheRulesOfTheText(unittest.TestCase):
             with self.subTest(label):
                 self.assertEqual(len(self.found(self.changed(self.v2, "proposal", label=label), "RESP005")), 1)
         self.assertTrue(self.found(self.changed(self.v2, "proposal", text="Proposed (not only executed but also approved): " + proposal), "RESP005"))
-        for label in ("Not independently verified", "Not verified, only documented"):
+        for label in ("Not independently verified", "Not verified, only documented", "Not just yet verified", "Isn\u2019t verified", "Wasn't verified"):
             with self.subTest(label):
                 self.assertEqual(self.found(self.changed(self.v1, "claim", 0, label=label), "RESP011"), [])
 
     def test_a_text_that_denies_its_withdrawal_in_other_words_is_found_also_when_a_marker_follows_it(self):
         """A text that says "not actually withdrawn" takes the withdrawal back, and a marker such as "historical" after a "but" does not undo that."""
         advice = " (for review, not a decision): Place INV-2026-0417 on payment hold until the quantity difference is resolved."
-        for opening in ("Not actually withdrawn but historical", "Not yet withdrawn but historical", "This hasn't been withdrawn but is historical", "Never really superseded, but withdrawn"):
+        for opening in ("Not actually withdrawn but historical", "Not yet withdrawn but historical", "This hasn't been withdrawn but is historical", "Never really superseded, but withdrawn",
+                        "This hasn\u2019t been withdrawn but is historical", "Not officially withdrawn but historical", "Not formally superseded but historical"):
             with self.subTest(opening):
                 self.assertEqual(len(self.found(self.changed(self.v1, "recommendation", text=opening + advice), "RESP016")), 1)
         for opening in ("Withdrawn recommendation, no longer current", "Historical recommendation, no longer current"):
