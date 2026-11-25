@@ -305,6 +305,17 @@ class Detection(unittest.TestCase):
             with self.subTest("no match for " + term):
                 self.assertEqual(codes_for({"docs/page.md": b"A first line.\nx Zebracorp y\n"}, terms=[term]), [], "the pattern still means the whole line")
 
+    def test_a_private_pattern_that_switches_a_flag_off_in_a_group_is_applied_to_every_line(self):
+        """(?-m:...) turns ^ and $ into the start and the end of the whole string, which is not what a line is. The pattern is tried line by line."""
+        text = b"First\r\nZebracorp\r\nLast\r\n"
+        for term in (r"(?-m:^Zebracorp$)", r"(?i-m:^zebracorp$)", r"(?-m:\AZebracorp\Z)"):
+            with self.subTest(term):
+                self.assertEqual(codes_for({"docs/page.md": text}, terms=[term]), ["HYG105"])
+                self.assertEqual(codes_for({"docs/page.md": text.replace(b"\r\n", b"\n")}, terms=[term]), ["HYG105"])
+                self.assertEqual(hyg.use_private_terms([term]), [])
+                self.assertEqual([(f.line, f.excerpt) for f in hyg.scan_bytes("docs/page.md", text)], [(2, "Zebracorp")])
+        hyg.use_private_terms([])
+
     def test_a_private_pattern_with_no_line_meaning_is_still_tried_on_the_whole_text_once(self):
         with mock.patch.object(hyg, "_PER_LINE", set()):
             self.assertEqual(hyg.use_private_terms([r"Zebracorp", r"\AQuartz"]), [])
@@ -532,6 +543,94 @@ class PrivateTerms(unittest.TestCase):
             with mock.patch.dict(os.environ, environ):
                 findings, _, _ = hyg.scan(Path(tmp))
         self.assertEqual([(f.code, f.path, f.excerpt) for f in findings], [("HYG207", "docs/copy.txt", "")])
+
+    def test_a_name_that_merely_begins_with_two_points_is_inside_the_folder(self):
+        """Only a path that leaves the folder starts with the step '..'. A folder called '..notes' is inside it, and a list in it is a list in the folder."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "repo"
+            (root / "..notes").mkdir(parents=True)
+            listing = root / "..notes" / "terms.txt"
+            listing.write_text("Zebracorp\n", encoding="utf-8")
+            environ = {hyg.PRIVATE_TERMS_ENV: str(listing)}
+            self.assertEqual(hyg.private_list_paths(root, environ), ["..notes/terms.txt"])
+            self.assertEqual(hyg.private_list_paths(root, {hyg.PRIVATE_TERMS_ENV: str(Path(tmp) / "terms.txt")}), [], "outside the folder is outside")
+            self.assertEqual(hyg.private_list_paths(root, {hyg.PRIVATE_TERMS_ENV: str(root / ".." / "terms.txt")}), [], "a step '..' leaves the folder")
+
+    def test_a_list_in_a_folder_that_begins_with_two_points_is_found_in_the_history_without_being_read(self):
+        try:
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+        self.addCleanup(hyg._LIST_PATHS.clear)
+        root = History.repository(self, [("add terms", {"..notes/terms.txt": "ListOnly" + "Content\n"}, NOREPLY), ("add a page", {"docs/page.md": "A clean page\n"}, NOREPLY)])
+        blob = git_out(root, "rev-parse", "HEAD:..notes/terms.txt")
+        for present in (True, False):
+            if not present:
+                (root / "..notes" / "terms.txt").unlink()
+            with self.subTest("the file is in the folder" if present else "the file was deleted from the folder"):
+                with mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(root / "..notes" / "terms.txt")}), mock.patch.object(hyg, "read_blobs", wraps=hyg.read_blobs) as reader:
+                    history, _, _ = hyg.scan_history(root)
+                asked = {name for call in reader.call_args_list for name in call.args[1]}
+                self.assertNotIn(blob, asked)
+                self.assertEqual([(f.code, f.path.split(" @ ")[0], f.excerpt) for f in history], [("HYG207", "..notes/terms.txt", "")])
+
+    def test_a_version_in_the_history_with_the_content_of_the_list_is_the_list_whatever_its_path(self):
+        """A hard link that was committed is a file with the list's content. In the history only the content is there, so the version is found by it and is never read."""
+        try:
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+        self.addCleanup(hyg._LIST_PATHS.clear)
+        content = "ListOnly" + "Content\nAnother" + "Term\n"
+        root = History.repository(self, [("add a copy", {"docs/copy.txt": content}, NOREPLY), ("add a page", {"docs/page.md": "A clean page\n"}, NOREPLY)])
+        blob = git_out(root, "rev-parse", "HEAD:docs/copy.txt")
+        with tempfile.TemporaryDirectory() as elsewhere:
+            listing = Path(elsewhere) / "terms.txt"
+            listing.write_bytes(content.encode("utf-8"))
+            for label, written in (("the same bytes", content.encode("utf-8")), ("with Windows line endings, which a repository that normalizes them stores as LF", content.replace("\n", "\r\n").encode("utf-8"))):
+                with self.subTest(label):
+                    listing.write_bytes(written)
+                    with mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(listing)}), mock.patch.object(hyg, "read_blobs", wraps=hyg.read_blobs) as reader:
+                        history, _, _ = hyg.scan_history(root)
+                    asked = {name for call in reader.call_args_list for name in call.args[1]}
+                    self.assertNotIn(blob, asked, "the version is not read")
+                    self.assertEqual([(f.code, f.path.split(" @ ")[0], f.excerpt) for f in history], [("HYG207", "docs/copy.txt", "")])
+                    self.assertNotIn("ListOnly", "\n".join(f.format() for f in history))
+
+    def test_a_list_with_no_term_in_it_is_not_a_copy_of_every_empty_file(self):
+        try:
+            subprocess.run(["git", "--version"], capture_output=True, check=True)
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("git is not available")
+        self.addCleanup(hyg._LIST_PATHS.clear)
+        root = History.repository(self, [("add empty files", {"docs/empty.txt": "", "docs/blank.txt": "\n\n"}, NOREPLY)])
+        with tempfile.TemporaryDirectory() as elsewhere:
+            for content in (b"", b"\n  \n"):
+                listing = Path(elsewhere) / "terms.txt"
+                listing.write_bytes(content)
+                with self.subTest(repr(content)), mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(listing)}):
+                    self.assertEqual(hyg.private_list_blobs(root), set())
+                    history, _, _ = hyg.scan_history(root)
+                    self.assertEqual([f for f in history if f.code == "HYG207"], [])
+
+    def test_the_pin_helpers_refuse_a_file_that_is_the_same_file_as_the_list(self):
+        """--pin and --pin-quoted print the line they are asked for. A hard link to the list is the list: nothing of it is printed."""
+        self.addCleanup(hyg._LIST_PATHS.clear)
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as elsewhere:
+            listing = Path(elsewhere) / "terms.txt"
+            listing.write_text("%s\n" % PRIVATE_TERM, encoding="utf-8")
+            (Path(tmp) / "docs").mkdir()
+            try:
+                os.link(listing, Path(tmp) / "docs" / "copy.txt")
+            except (OSError, NotImplementedError):
+                self.skipTest("this system cannot make a hard link")
+            with mock.patch.dict(os.environ, {hyg.PRIVATE_TERMS_ENV: str(listing)}):
+                for helper in (hyg.pin_entry, hyg.pin_quoted):
+                    with self.subTest(helper.__name__):
+                        with self.assertRaises(ValueError) as refused:
+                            helper(Path(tmp), "docs/copy.txt:1")
+                        self.assertIn("private term list", str(refused.exception))
+                        self.assertNotIn(PRIVATE_TERM, str(refused.exception))
 
     def test_a_scan_without_a_list_says_so(self):
         with tempfile.TemporaryDirectory() as tmp:

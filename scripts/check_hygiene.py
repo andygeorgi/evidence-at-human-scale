@@ -35,8 +35,10 @@ A list inside the folder is never published silently and never read as a file of
 at any path, and the file that the environment variable names when it lies inside the folder are a finding (HYG207) by their
 names alone, and their content is not scanned, not printed and not echoed by ``--pin``. The path is found as it is written, after
 links (a junction, a symbolic link) are resolved, as a link to the same file, and even when the file is no longer in the folder: a
-copy that was committed once is still in the history under that path. A pattern that means something different on a line than on a
-whole text (one that anchors to the start or the end of the whole string, or looks ahead or behind) is tried line by line.
+copy that was committed once is still in the history under that path. In the history a file version has no identity but its content, so
+a version whose content is the list's own (a hard link or a copy that was committed under another name) is found by its content. A
+pattern that means something different on a line than on a whole text (one that anchors to the start or the end of the whole string,
+looks ahead or behind, or switches a flag off in a group) is tried line by line.
 
 Git commands run with replacement objects off (``GIT_NO_REPLACE_OBJECTS``), so a ``git replace`` cannot show the scan another
 commit in place of the one a push would publish. Commit messages, identities and refs are read as NUL-separated fields, so that
@@ -313,7 +315,7 @@ def private_list_paths(root: Path = REPO, environ: Optional[Mapping[str, str]] =
                     relative = os.path.relpath(spelling, base)
                 except ValueError:   # another drive: it is not inside the folder
                     continue
-                if relative != "." and not relative.startswith(".."):
+                if relative != "." and Path(relative).parts[0] != "..":   # a name that merely begins with two points ("..notes") is inside the folder
                     found.append(Path(relative).as_posix())
         listing = _env_list_file(environ)
         if listing is not None:
@@ -333,14 +335,40 @@ def use_list_paths(root: Path, environ: Optional[Mapping[str, str]] = None, name
     _LIST_PATHS.update(path.lower() for path in private_list_paths(root, environ, names))
 
 
+def private_list_blobs(root: Path, environ: Optional[Mapping[str, str]] = None) -> Set[str]:
+    """The Git blob ids that a copy of a private term list has: the list the environment names and the list in the folder, as they are and with LF line endings.
+
+    In the history a file has no identity but its content, so a version whose content is the list's is the list, whatever its path (a hard link that was
+    committed, a copy). Such a version is a finding by its content (HYG207) and is never read. A list with no term in it gives nothing: it would match
+    every empty file.
+    """
+    environ = os.environ if environ is None else environ
+    listings = [path for path in (_env_list_file(environ), root / PRIVATE_TERMS_FILE) if path is not None and path.is_file()]
+    ids: Set[str] = set()
+    for listing in listings:
+        try:
+            data = listing.read_bytes()
+        except OSError:
+            continue
+        if not data.strip():
+            continue
+        for variant in {data, data.replace(b"\r\n", b"\n")}:
+            try:
+                ids.add(_git(root, "hash-object", "--stdin", data=variant).decode().strip())
+            except HistoryError:
+                continue
+    return ids
+
+
 def is_list_path(rel: str) -> bool:
     """True for a file that is a private term list: one named like the list at any path, or the one the environment variable names inside the folder."""
     return PurePosixPath(rel).name.lower() == PRIVATE_TERMS_FILE or rel.lower() in _LIST_PATHS
 
 
 #: What a pattern of the private term list holds that makes it mean something different on one line than on the whole text of a file: the start and the
-#: end of the string (\A, \Z), and looking ahead or behind, which can see a line ending. Such a pattern is looked for line by line, as it is applied.
-_LINE_SENSITIVE = re.compile(r"\\[AZz]|\(\?<?[=!]")
+#: end of the string (\A, \Z), looking ahead or behind, which can see a line ending, and a group that switches a flag off (such as (?-m:...), which turns the
+#: line anchors into string anchors). Such a pattern is looked for line by line, as it is applied.
+_LINE_SENSITIVE = re.compile(r"\\[AZz]|\(\?<?[=!]|\(\?[a-zA-Z]*-[a-zA-Z]*[:)]")
 _PER_LINE: Set["re.Pattern[str]"] = set()
 
 
@@ -764,12 +792,17 @@ def scan_history(root: Path = REPO, private_terms: Optional[Sequence[str]] = Non
         raise HistoryError("this is a shallow clone, so most of the history is missing and a scan would pass on commits it never read. "
                            "Fetch the whole history (git fetch --unshallow, or check out with fetch-depth 0) and scan again")
     versions = history_versions(root, commits)
+    list_blobs = private_list_blobs(root)
     held_at: Dict[str, List[Tuple[str, str]]] = {}
+    findings: List[Finding] = []
     for (blob, path), commit in versions.items():
         if is_list_path(path):
             continue   # a private term list is a finding by its name (HYG207) wherever it was held, and its content is never read
+        if blob in list_blobs:
+            # A version whose content is the list's own is the list, under another name (a copy, or a hard link that was committed): it is not read either.
+            findings.append(Finding("HYG207", "%s @ %s" % (path, commit[:7]), 0, "this file version has the content of the private term list, and it names the private origin of the material. It is not read or printed"))
+            continue
         held_at.setdefault(blob, []).append((path, commit))
-    findings: List[Finding] = []
     unreadable = 0
     ids = list(held_at)
     for start in range(0, len(ids), 200):
@@ -819,7 +852,8 @@ def describe_rules() -> str:
               "  HYG205  two files that differ only by case",
               "  HYG206  an entry in the private term list is not a valid regular expression",
               "  HYG207  the private term list is among the files that would be published (a file with its name at any path, or the file that",
-              "          the environment variable names, if that lies inside the folder): its content is never read, scanned or printed",
+              "          the environment variable names, if that lies inside the folder, or a version in the history with the list's own content):",
+              "          its content is never read, scanned or printed",
               "", "With --history, every rule above is also applied to each file version that any commit added or changed, at each path that held it",
               "(reported as path @ commit), to the path names in every commit, to every commit message, to every author and committer, and to every ref.",
               "A shallow clone is refused: its missing history would pass unread.",
@@ -841,7 +875,7 @@ def pin_entry(root: Path, spec: str) -> Tuple[str, str]:
     if root.resolve() not in target.parents or not target.is_file():
         raise ValueError("%s is not a file inside %s" % (path, root))
     rel = target.relative_to(root.resolve()).as_posix()
-    use_list_paths(root)
+    use_list_paths(root, names=[rel])
     if is_list_path(rel):
         raise ValueError("%s is a private term list: it is never read, and none of its lines is printed" % path)
     text = read_text(target)
