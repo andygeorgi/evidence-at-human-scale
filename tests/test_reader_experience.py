@@ -446,6 +446,11 @@ class WhatWasTakenOutOfTheReaderPagesStaysOut(unittest.TestCase):
     def test_the_readme_has_no_section_on_how_the_repository_was_produced(self):
         self.assertNotRegex(text("README.md"), r"(?mi)^#{1,6}\s+AI assistance\b")
 
+    def test_example_05_states_what_its_claim_check_leaves_out_without_naming_a_release(self):
+        page = text("examples/05-decision-packet/README.md")
+        self.assertIn("only with a structured assertion beside its free text, which would change the schema.", page)
+        self.assertNotRegex(page, r"\bv\d+\.\d+\.\d+\b|for a later version")
+
 
 if __name__ == "__main__":
     unittest.main()
