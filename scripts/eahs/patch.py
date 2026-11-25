@@ -30,7 +30,7 @@ def pointer_problem(pointer) -> str:
 def _tokens(pointer: str) -> List[str]:
     problem = pointer_problem(pointer)
     if problem:
-        raise ValueError("%r is not a JSON pointer: %s" % (pointer, problem))
+        raise ValueError("not a JSON pointer: %s" % problem)
     return [t.replace("~1", "/").replace("~0", "~") for t in pointer[1:].split("/")]
 
 
@@ -93,10 +93,9 @@ def apply_ops(document, ops: List[dict]):
     names the operation and its path, so that a finding about a case or a scenario says which path it could not follow."""
     out = copy.deepcopy(document)
     for op in ops:
-        tokens = _tokens(op["path"])
         where = "%s %s" % (op.get("op"), op["path"])
         try:
-            _apply(out, op, tokens)
+            _apply(out, op, _tokens(op["path"]))
         except (DescribedKeyError, DescribedIndexError, DescribedTypeError):
             raise
         except KeyError as exc:

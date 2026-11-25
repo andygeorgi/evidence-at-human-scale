@@ -518,8 +518,9 @@ class TheCaseFiles(Scratch, Actionable):
         from eahs.patch import apply_ops
         for path in ("a/b", "/", "//a", "/a/", "/a/~2"):
             with self.subTest(path):
-                with self.assertRaises(ValueError):
+                with self.assertRaises(ValueError) as refused:
                     apply_ops({"a": {"b": 1}}, [{"op": "replace", "path": path, "value": 2}])
+                self.assertIn("replace %s: not a JSON pointer" % path, str(refused.exception), "the message names the operation and the path, as it does for every other step that fails")
         self.assertEqual(apply_ops({"a": {"b": 1}}, [{"op": "replace", "path": "/a/b", "value": 2}]), {"a": {"b": 2}})
         self.assertEqual(apply_ops({"a/b": {"c~d": 1}}, [{"op": "replace", "path": "/a~1b/c~0d", "value": 2}]), {"a/b": {"c~d": 2}})
 
