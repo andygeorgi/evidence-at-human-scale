@@ -2,6 +2,19 @@
 
 Releases are labeled `vMAJOR.MINOR.PATCH` and tagged in Git. Each entry lists what the release contains.
 
+## 1.0.4, 25 November 2026
+
+A reader-facing cleanup. Nothing functional changed: the contracts, the schema, the examples, the figures, the checks and the evaluation statuses are exactly as in 1.0.3.
+
+### What changed
+
+- **No "AI assistance" section in the README.** The section is removed, together with the pointers to it.
+- **Example 05 names no version.** The sentence about what its claim check leaves out is now version-neutral.
+
+### Known limitations
+
+The standing claims and limits are on the [claims and limits](docs/claims-and-limits.md) page.
+
 ## 1.0.3, 25 November 2026
 
 A reader-experience patch. The contracts, the schema, the examples, the checks and the evaluation statuses are unchanged, so every check gives the same result as in 1.0.2.

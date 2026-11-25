@@ -5,5 +5,5 @@ architecture: they validate the structure of the contracts and run deterministic
 """
 from pathlib import Path
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 REPO_ROOT = Path(__file__).resolve().parents[2]

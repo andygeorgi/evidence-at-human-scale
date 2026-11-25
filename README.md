@@ -55,7 +55,7 @@ python scripts/validate_examples.py         # validate the synthetic examples
 You need Python 3.9 or later. It is tested on Windows and Linux (nothing in it is platform-specific, so macOS should work too), uses no network, and starts no service or model. `validate_examples.py`, the second command, should print:
 
 ```text
-Evidence at Human Scale 1.0.3: example validation
+Evidence at Human Scale 1.0.4: example validation
 Synthetic data only. A pass is not evidence about any real system.
 
 [1/6] Schema bundle ...           PASS          102 evaluated
@@ -96,13 +96,12 @@ It does **not** mean that any real system, model or process is accountable, safe
 - **A reference architecture, not a deployment.** This is a reference architecture, not a production deployment or benefit claim. The contracts and synthetic examples are tested; real-world effectiveness has not been evaluated. The evaluation programme is defined and none of it has been run ([why](evaluation/README.md#which-tests-can-be-run-today)). The proposed benefit is more inspectable context, not a measured gain in speed, accuracy, cost or decision quality.
 - **All example data is invented.** The buyer, the supplier, the amounts and the systems describe no real organization, person or system.
 - **Case-based, not a client commission.** The design comes from an architecture engagement on a written case about a public-sector fisheries-control authority in Iceland. The authority took no part, and nothing here is a statement by, about or on behalf of it. The observations that came out of the engagement are single dated cases and one internal, AI-assisted test; none measures this architecture's benefit ([claims and limits](docs/claims-and-limits.md) gives their limits).
-- **AI-assisted.** See [AI assistance](#ai-assistance).
 
 The full statement is in [Claims and limits](docs/claims-and-limits.md).
 
 ## Citing, contributing, security
 
-- **Cite.** [`CITATION.cff`](CITATION.cff) lets GitHub offer *Cite this repository*. Cite the release by its version, `v1.0.3`, 25 November 2026.
+- **Cite.** [`CITATION.cff`](CITATION.cff) lets GitHub offer *Cite this repository*. Cite the release by its version, `v1.0.4`, 25 November 2026.
 - **Contribute.** [`CONTRIBUTING.md`](CONTRIBUTING.md) says what is welcome and how to run the checks before you open a pull request.
 - **Report a security concern.** [`SECURITY.md`](SECURITY.md) explains what counts and how to report it privately.
 - **Changes.** [`CHANGELOG.md`](CHANGELOG.md) lists what each release contains.
@@ -114,7 +113,3 @@ This repository is licensed under the [MIT License](LICENSE).
 ## Author
 
 Andy Georgi. This is a personal project, not an official Microsoft publication.
-
-## AI assistance
-
-AI assistance supported drafting, cross-checking and publication production. Andy Georgi is the author and is accountable for this repository. Anyone who reviews it contributes comments, not coauthorship. This repository was assembled with the help of an AI coding assistant (GitHub Copilot) under the author's direction: Markdown conversion, figures, examples and validation scripts.

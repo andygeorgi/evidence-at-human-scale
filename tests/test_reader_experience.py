@@ -279,8 +279,8 @@ class DeepLinksOfEarlierReleasesKeepWorking(unittest.TestCase):
                 following = [line for line in lines[index + 1:index + 4] if not line.startswith("<a id=")]
                 self.assertTrue(following and following[0].startswith("## "), "%s#%s" % (page, anchor))
 
-    #: Sections of v1.0.1 that were removed on purpose in v1.0.3 because they described how the repository is built, not what it says.
-    REMOVED_ON_PURPOSE = {"figures/README.md": {"how-the-figures-are-made", "changing-a-figure"}}
+    #: Sections of v1.0.1 that were removed on purpose in v1.0.3 and v1.0.4 because they described how the repository was built or produced, not what it says.
+    REMOVED_ON_PURPOSE = {"figures/README.md": {"how-the-figures-are-made", "changing-a-figure"}, "README.md": {"ai-assistance"}}
 
     def test_no_other_anchor_of_the_previous_release_was_lost(self):
         """Every other section anchor of v1.0.1 is still a heading of the same page, so that the list above, and the sections removed on purpose, are the whole list."""
@@ -438,6 +438,18 @@ class TheReadingPathDoesNotExplainHowTheRepositoryIsBuilt(unittest.TestCase):
         self.assertLess(len(guide.splitlines()), 60)
         for word in ("release", "tag ", "merge commit"):
             self.assertNotIn(word, guide.lower().replace("see the release", ""), word)
+
+
+class WhatWasTakenOutOfTheReaderPagesStaysOut(unittest.TestCase):
+    """Two things that did not help a reader were taken out in v1.0.4, and nothing replaced them."""
+
+    def test_the_readme_has_no_section_on_how_the_repository_was_produced(self):
+        self.assertNotRegex(text("README.md"), r"(?mi)^#{1,6}\s+AI assistance\b")
+
+    def test_example_05_states_what_its_claim_check_leaves_out_without_naming_a_release(self):
+        page = text("examples/05-decision-packet/README.md")
+        self.assertIn("only with a structured assertion beside its free text, which would change the schema.", page)
+        self.assertNotRegex(page, r"\bv\d+\.\d+\.\d+\b|for a later version")
 
 
 if __name__ == "__main__":
