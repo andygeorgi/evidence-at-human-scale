@@ -5,6 +5,8 @@ import copy
 import re
 from typing import List
 
+from .findings import DescribedIndexError, DescribedKeyError, DescribedTypeError
+
 _BAD_ESCAPE = re.compile(r"~(?![01])")
 
 
@@ -36,7 +38,9 @@ def _step(node, token):
     """One step down: a name in an object, or a position in a list. A position is written as 0 or as digits without a leading zero, and must exist."""
     if isinstance(node, list):
         return node[_position(token, len(node))]
-    return node[token]
+    if isinstance(node, dict):
+        return node[token]
+    raise TypeError("the value there is not an object or a list, so there is nothing to step into")
 
 
 def _position(token: str, length: int, appending: bool = False) -> int:
@@ -51,36 +55,56 @@ def _position(token: str, length: int, appending: bool = False) -> int:
     return position
 
 
+def _apply(out, op: dict, tokens: List[str]) -> None:
+    """One operation, applied in place to `out`."""
+    parent = out
+    for token in tokens[:-1]:
+        parent = _step(parent, token)
+    if not isinstance(parent, (dict, list)):
+        raise TypeError("the value there is not an object or a list, so there is nothing to change in it")
+    last = tokens[-1]
+    kind = op["op"]
+    if kind == "replace":
+        _step(parent, last)  # the target must already exist
+        if isinstance(parent, list):
+            parent[_position(last, len(parent))] = copy.deepcopy(op["value"])
+        else:
+            parent[last] = copy.deepcopy(op["value"])
+    elif kind == "add":
+        if isinstance(parent, list):
+            if last == "-":
+                parent.append(copy.deepcopy(op["value"]))
+            else:
+                parent.insert(_position(last, len(parent), appending=True), copy.deepcopy(op["value"]))
+        else:
+            parent[last] = copy.deepcopy(op["value"])
+    elif kind == "remove":
+        if isinstance(parent, list):
+            del parent[_position(last, len(parent))]
+        else:
+            del parent[last]
+    else:
+        raise ValueError("unknown op %r" % kind)
+
+
 def apply_ops(document, ops: List[dict]):
     """Return a deep copy of `document` with each op applied in order. Raises ValueError for a path that is not a pointer or a step that is not a
-    position, KeyError/IndexError for one that leads nowhere (an add may name the end of a list: its length, or `-`)."""
+    position, KeyError/IndexError/TypeError for one that leads nowhere (an add may name the end of a list: its length, or `-`). The message of each
+    names the operation and its path, so that a finding about a case or a scenario says which path it could not follow."""
     out = copy.deepcopy(document)
     for op in ops:
         tokens = _tokens(op["path"])
-        parent = out
-        for token in tokens[:-1]:
-            parent = _step(parent, token)
-        last = tokens[-1]
-        kind = op["op"]
-        if kind == "replace":
-            _step(parent, last)  # the target must already exist
-            if isinstance(parent, list):
-                parent[_position(last, len(parent))] = copy.deepcopy(op["value"])
-            else:
-                parent[last] = copy.deepcopy(op["value"])
-        elif kind == "add":
-            if isinstance(parent, list):
-                if last == "-":
-                    parent.append(copy.deepcopy(op["value"]))
-                else:
-                    parent.insert(_position(last, len(parent), appending=True), copy.deepcopy(op["value"]))
-            else:
-                parent[last] = copy.deepcopy(op["value"])
-        elif kind == "remove":
-            if isinstance(parent, list):
-                del parent[_position(last, len(parent))]
-            else:
-                del parent[last]
-        else:
-            raise ValueError("unknown op %r" % kind)
+        where = "%s %s" % (op.get("op"), op["path"])
+        try:
+            _apply(out, op, tokens)
+        except (DescribedKeyError, DescribedIndexError, DescribedTypeError):
+            raise
+        except KeyError as exc:
+            raise DescribedKeyError("%s: there is no field %s" % (where, exc)) from None
+        except IndexError as exc:
+            raise DescribedIndexError("%s: %s" % (where, exc)) from None
+        except TypeError as exc:
+            raise DescribedTypeError("%s: %s" % (where, exc)) from None
+        except ValueError as exc:
+            raise ValueError("%s: %s" % (where, exc)) from None
     return out

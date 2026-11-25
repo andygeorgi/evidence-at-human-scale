@@ -54,10 +54,27 @@ class InputProblem(Exception):
         self.message, self.hint = message, hint
 
 
+class DescribedKeyError(KeyError):
+    """A name that is not there, with a message that already says what is missing and where. A bare KeyError prints its message in quotes; this one does not."""
+
+    def __str__(self) -> str:
+        return str(self.args[0]) if self.args else ""
+
+
+class DescribedIndexError(IndexError):
+    """A position that is not there, with a message that already says what is missing and where."""
+
+
+class DescribedTypeError(TypeError):
+    """A value that cannot be stepped into, with a message that already says where."""
+
+
 def describe_error(exc: Exception) -> str:
     """What went wrong, in words, for an exception raised while a check read a malformed document (no Python type names)."""
     if isinstance(exc, InputProblem):
         return exc.message
+    if isinstance(exc, (DescribedKeyError, DescribedIndexError, DescribedTypeError)):
+        return str(exc)
     if isinstance(exc, RecursionError):
         return "a document is nested too deeply for the check to read"
     if isinstance(exc, KeyError):

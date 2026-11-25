@@ -209,14 +209,30 @@ class TheScenarioFiles(Scratch, Actionable):
         self.assert_actionable(gateway, "gateway-scenarios.json")
 
     def test_a_file_that_has_the_name_of_a_stage_file_but_is_something_else_is_told_how_to_free_the_name(self):
-        """The name belongs to the stage wherever the file lies, a raw/ folder included. The diagnostic says so and says what to do."""
-        self.fresh()
-        self.write("01-source-records/raw/gateway-scenarios.json", json.dumps({"rows": [1, 2]}))
-        gateway = self.run_stage("gateway")
-        raw = [f for f in gateway.findings if "/raw/" in f.file.replace("\\", "/")]
-        self.assertEqual((gateway.status, [f.code for f in raw]), (INPUT_ERROR, ["INP002"]))
-        self.assertIn("rename it", raw[0].hint)
-        self.assertIn("wherever it lies", raw[0].hint)
+        """The name belongs to the stage wherever the file lies, a raw/ folder included. Every kind of diagnostic about such a file says so and says what to do:
+        a document that is not an object, a missing list, a list that is not a list, and a row that is not an evaluation."""
+        shapes = (
+            ("gateway", "gateway-scenarios.json", "gateway-scenarios.json", ({"rows": [1, 2]}, [], {"evaluations": {}}, {"evaluations": "none"}, {"evaluations": [{"ticket": 1}]}, {"evaluations": [None]})),
+            ("cases", "cases.json", "cases.json", ({}, [1], {"cases": {}}, {"cases": [{"case_id": "TICKET-1", "state": "closed"}]}, {"cases": [7]})),
+            ("responses", "response-export.json", "response-*.json", ({}, [], {"statements": "none"}, {"statements": {}})),
+        )
+        for stage_name, name, pattern, documents in shapes:
+            for document in documents:
+                with self.subTest("%s %s" % (name, json.dumps(document)[:50])):
+                    self.fresh()
+                    self.write("01-source-records/raw/" + name, json.dumps(document))
+                    result = self.run_stage(stage_name)
+                    raw = [f for f in result.findings if "/raw/" in f.file.replace("\\", "/")]
+                    self.assertEqual([f.code for f in raw], ["INP002"], [f.message for f in result.findings])
+                    self.assertIn("rename it", raw[0].hint)
+                    self.assertIn("wherever it lies", raw[0].hint)
+                    self.assertIn(pattern, raw[0].hint)
+
+    def test_a_row_problem_in_a_file_of_the_scenarios_themselves_is_not_told_to_rename_it_for_nothing(self):
+        """The hint is the same everywhere, but the diagnostic still names the row, so that a real scenario file is repaired and not renamed."""
+        gateway = self.gateway(lambda d: d["evaluations"].append(None))
+        self.assertIn("evaluation 4 is not an object", gateway.findings[0].message)
+        self.assertIn("nothing in this file was evaluated", gateway.findings[0].hint)
 
     def test_an_empty_object_is_an_input_error(self):
         gateway = self.gateway(content="{}")
@@ -282,6 +298,22 @@ class TheScenarioFiles(Scratch, Actionable):
         gateway = self.gateway(lambda d: d["evaluations"][0]["proposal"].update(id="ACT-NONE"))
         self.assertEqual([f.code for f in gateway.findings], ["GW002"])
         self.assertNotIn("KeyError", gateway.findings[0].message)
+        self.assertIn("the scenario names proposal ACT-NONE", gateway.findings[0].message)
+        self.assertNotIn("a field the check needs is missing", gateway.findings[0].message)
+
+    def test_an_override_that_leads_nowhere_names_the_override_and_the_path(self):
+        """GW002 says which override could not be applied and which path it could not follow, and not only that a list is shorter than the check needs."""
+        for label, override, part in (("a field that is not there", {"on": "grant", "path": "/limits_lifecycle/nothing", "value": 1}, "there is no field 'nothing'"),
+                                      ("a position past the end", {"on": "grant", "path": "/limits_lifecycle/per_action_limits/9/quantity", "value": 1}, "there is no position 9"),
+                                      ("a record that is not there", {"on": "evidence", "record": {"id": "NOPE", "version": "v1"}, "path": "/a", "value": 1}, "names NOPE v1, which does not exist")):
+            with self.subTest(label):
+                gateway = self.gateway(lambda d: d["evaluations"][0].update(overrides=[override]))
+                self.assertEqual([f.code for f in gateway.findings], ["GW002"])
+                message = gateway.findings[0].message
+                self.assertIn("override 1", message)
+                self.assertIn(part, message)
+                if override["on"] == "grant":
+                    self.assertIn(override["path"], message)
 
     def test_a_ledger_mode_the_check_does_not_know_is_an_input_error_and_not_an_empty_ledger(self):
         """Any other value used to count no capacity at all and pass."""
@@ -530,6 +562,44 @@ class TheCaseFiles(Scratch, Actionable):
                 self.assertEqual((cases.status, [f.code for f in cases.findings]), (FAIL, ["CASE003"]))
                 self.assertIn("could not be applied", cases.findings[0].message)
                 self.assertNotIn("Traceback", cases.findings[0].message)
+
+    def test_a_finding_about_a_path_that_leads_nowhere_names_the_target_the_operation_and_the_path(self):
+        """The reader is told which path could not be followed, and why, and not only that 'a list is shorter than the check needs'."""
+        target = "C04 PKT-0417 v2"
+        for label, path, part in (("a position past the end", "/supported_claims_references/99/supporting_references/0/version", "the list has 7 items, so there is no position 99"),
+                                  ("a field that is not there", "/supported_claims_references/0/nothing", "there is no field 'nothing'"),
+                                  ("a step into a value that has no inside", "/decision_context_as_of/packet_id/x", "nothing to change in it"),
+                                  ("a position that is not one", "/supported_claims_references/00/text", "is not a position in a list")):
+            with self.subTest(label):
+                cases = self.cases(lambda d: d["cases"][4]["mutations"][0]["ops"][0].update(path=path))
+                self.assertEqual([f.code for f in cases.findings], ["CASE003"])
+                message = cases.findings[0].message
+                self.assertIn(target, message)
+                self.assertIn(path, message)
+                self.assertIn(part, message)
+                self.assertIn("replace", message, "the operation")
+
+    def test_a_target_that_is_not_in_the_example_set_is_named_in_words(self):
+        cases = self.cases(lambda d: d["cases"][4]["mutations"][0].update(target="C05 ACT-NONE v1"))
+        self.assertEqual([f.code for f in cases.findings], ["CASE003"])
+        self.assertIn("C05 ACT-NONE v1 is not in the example set", cases.findings[0].message)
+        self.assertNotIn("a field the check needs is missing", cases.findings[0].message)
+
+    def test_a_collection_that_is_not_a_list_is_an_input_problem_also_for_a_caller_that_does_not_go_through_the_command(self):
+        from eahs.cases import check_cases
+        from eahs.findings import InputProblem
+        from eahs.scenarios import check_scenario_file
+        model = support.example_model()
+        for document in ({"cases": {"row": {}}}, {"cases": "none"}, {}, []):
+            with self.subTest(repr(document)):
+                with self.assertRaises(InputProblem) as refused:
+                    check_cases(model, support.schema(), document, "cases.json")
+                self.assertIn("'cases' list", refused.exception.message)
+        for document in ({"evaluations": {"row": {}}}, {"evaluations": 3}, {}, []):
+            with self.subTest(repr(document)):
+                with self.assertRaises(InputProblem) as refused:
+                    check_scenario_file(model, document, "gateway-scenarios.json")
+                self.assertIn("'evaluations' list", refused.exception.message)
 
 
 class TheResponseFiles(Scratch, Actionable):
@@ -958,6 +1028,22 @@ class NothingEvaluable(Scratch):
         self.assertEqual([(f.code, f.stage) for f in gateway.findings], [("INP003", "gateway")])
         self.assertIn("registry.json", gateway.findings[0].file)
         self.assertTrue(gateway.findings[0].hint)
+
+    def test_a_missing_registry_does_not_hide_what_else_is_wrong_with_the_files_of_the_stage(self):
+        """The registry is what is missing, and it is reported with the file of the stage that lacks its list, as the next run would show anyway."""
+        self.fresh()
+        (self.root / "registry.json").unlink()
+        self.write("13-evaluation-cases/cases.json", "{}")
+        cases = self.run_stage("cases")
+        self.assertEqual((cases.status, [f.code for f in cases.findings]), (INPUT_ERROR, ["INP003", "INP002"]))
+        self.assertIn("cases.json", cases.findings[1].file)
+        self.assertIn("no 'cases' list", cases.findings[1].message)
+        self.assertIn("cannot be evaluated either", cases.detail)
+        gateway = self.run_stage("gateway")
+        self.assertEqual([f.code for f in gateway.findings], ["INP003"], "the files of the gateway stage are fine, so the registry is the one thing wrong")
+        done = cli("--examples", str(self.root), "--only", "cases", "--json")
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertEqual([f["code"] for r in json.loads(done.stdout)["stages"] if r["stage"] == "cases" for f in r["findings"]], ["INP003", "INP002"])
 
     def empty_stage_files(self):
         for path in list(self.root.rglob("gateway-scenarios.json")):

@@ -150,9 +150,12 @@ class Run:
                 return self.result(stage, INPUT_ERROR, findings=[input_finding("INP003", "the registry cannot be chosen: %s" % exc, rel(self.root), "keep one registry.json in the folder")],
                                    detail="the folder holds more than one registry file")
             if stage in REGISTRY_STAGES and not registry.is_file() and self.has_rows(stage):
+                # The registry is what is missing, and what else is wrong with the files of this stage is reported with it: the next run would show it anyway.
+                shape = self.shape_problems(stage)
+                also = "; %d file(s) this stage reads cannot be evaluated either" % len(shape) if shape else ""
                 return self.result(stage, INPUT_ERROR, findings=[input_finding("INP003", "the registry is missing: %s does not exist" % rel(registry), rel(registry),
-                                                                               "add registry.json (its layout is in examples/registry.json), or run only the stages that do not read it")],
-                                   detail="the registry this stage reads does not exist")
+                                                                               "add registry.json (its layout is in examples/registry.json), or run only the stages that do not read it")] + shape,
+                                   detail="the registry this stage reads does not exist" + also)
             return None
         state = base.status if base is not None else "not run"
         shape = self.shape_problems(stage)
@@ -207,16 +210,23 @@ class Run:
         except (OSError, ValueError) as exc:
             return None, input_finding("ID000", "cannot read JSON: %s" % exc, rel(path), "repair or remove the file; JSON has no NaN, Infinity or repeated key")
 
+    def rename_note(self, stage: str) -> str:
+        """What to add to the hint about a file that has the name of a stage file: these names belong to the stage wherever the file lies, so a file that is something else is renamed."""
+        spec = STAGE_COLLECTIONS.get(stage)
+        if spec is None:
+            return ""
+        return "; if the file is something else, such as a raw export, rename it, because %s is read by the %s stage wherever it lies (a raw/ folder does not exempt it)" % (spec[0], stage)
+
     def bad_document(self, stage: str, path: Path, exc: Exception) -> Finding:
         hint = exc.hint if isinstance(exc, InputProblem) and exc.hint else "the document lacks a structure the checks read; compare it with the example it is modelled on"
-        return input_finding("INP002", "the %s stage cannot evaluate this document: %s" % (stage, describe_error(exc)), rel(path), hint)
+        return input_finding("INP002", "the %s stage cannot evaluate this document: %s" % (stage, describe_error(exc)), rel(path), hint + self.rename_note(stage))
 
     def collection_problem(self, stage: str, path: Path, data, collection: str, what: str) -> Optional[Finding]:
         """A stage file must be an object that holds the list the stage evaluates. A missing list is an input error; an empty one is not.
 
-        These names belong to the stages wherever the file lies (a raw/ folder does not exempt it), so the hint also says to rename a file that is something else.
+        These names belong to the stages wherever the file lies (a raw/ folder does not exempt it), so every hint also says to rename a file that is something else.
         """
-        rename = "; if the file is something else, such as a raw export, rename it, because %s is read by the %s stage wherever it lies" % (STAGE_COLLECTIONS[stage][0], stage)
+        rename = self.rename_note(stage)
         if not isinstance(data, dict):
             return input_finding("INP002", "the %s stage cannot evaluate this document: %s must be a JSON object with a %r list, and this file holds %s" % (stage, what, collection, _kind(data)), rel(path),
                                  "write the document as an object with a %r list%s" % (collection, rename))
@@ -225,7 +235,7 @@ class Run:
                                  "add a %r list; write [] only if the file is meant to hold none%s" % (collection, rename))
         if not isinstance(data[collection], list):
             return input_finding("INP002", "the %s stage cannot evaluate this document: %r must be a list, and this file holds %s" % (stage, collection, _kind(data[collection])), rel(path),
-                                 "make %r a list of objects" % collection)
+                                 "make %r a list of objects%s" % (collection, rename))
         return None
 
     def collect(self, stage: str, pattern: str, evaluate, summary, collection: Optional[str] = None, what: str = "the document", empty_is_evaluated: bool = False) -> StageResult:

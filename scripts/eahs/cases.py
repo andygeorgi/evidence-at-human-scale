@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple
 
-from .findings import Finding, InputProblem, describe_error, rel
+from .findings import DescribedIndexError, DescribedKeyError, DescribedTypeError, Finding, InputProblem, describe_error, rel
 from .model import Instance, Model
 from .patch import apply_ops, pointer_problem
 from .schema import validate_instance
@@ -29,8 +29,14 @@ def mutate_model(model: Model, mutations: List[dict]) -> Tuple[Model, List[Insta
     changed: List[Instance] = []
     for mutation in mutations:
         key = _parse_target(mutation["target"])
-        base = instances[key]
-        new = Instance(base.contract, base.id, base.version, apply_ops(base.data, mutation["ops"]), base.path)
+        base = instances.get(key)
+        if base is None:
+            raise DescribedKeyError("%s is not in the example set, so it cannot be changed" % mutation["target"])
+        try:
+            data = apply_ops(base.data, mutation["ops"])
+        except (DescribedKeyError, DescribedIndexError, DescribedTypeError, ValueError) as exc:
+            raise type(exc)("%s, %s" % (mutation["target"], exc)) from None
+        new = Instance(base.contract, base.id, base.version, data, base.path)
         instances[key] = new
         changed.append(new)
     return Model(instances, model.registry, model.root), changed
@@ -102,10 +108,13 @@ CASES_HINT = ("give every case a case_id, an 'expect' list of codes (a [] means 
 def rows_problem(data) -> Optional[InputProblem]:
     """The first case of a case file that cannot be run because of its shape, as the input problem to report, or None.
 
-    Nothing about the model is needed to see that, so a file whose rows are malformed is reported also when the model cannot be built.
+    Nothing about the model is needed to see that, so a file whose rows are malformed is reported also when the model cannot be built. A document that is not an
+    object with a list of cases is one too: a caller that reaches this check with such a document is told so, and is not left to fail on the first row.
     """
-    cases = data.get("cases", []) if isinstance(data, dict) else []
-    for index, case in enumerate(cases if isinstance(cases, list) else []):
+    cases = data.get("cases") if isinstance(data, dict) else None
+    if not isinstance(cases, list):
+        return InputProblem("a case file must be an object with a 'cases' list, and this document has none", CASES_HINT)
+    for index, case in enumerate(cases):
         reason = _case_problem(index, case)
         if reason:
             return InputProblem(reason, CASES_HINT)
@@ -115,10 +124,10 @@ def rows_problem(data) -> Optional[InputProblem]:
 def check_cases(model: Model, schema: dict, data: dict, path) -> Tuple[List[Finding], int]:
     problems: List[Finding] = []
     file = rel(path)
-    cases = data.get("cases", [])
     problem = rows_problem(data)
     if problem is not None:
         raise problem
+    cases = data["cases"]
     seen = set()
     for case in cases:
         case_id = case.get("case_id", "?")
