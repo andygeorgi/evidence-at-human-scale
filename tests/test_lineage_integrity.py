@@ -187,6 +187,20 @@ class WhatRestsOnADerivedRecordDoesNotRestOnAnInputThatCameLater(unittest.TestCa
         self.assertEqual((decision.allow, decision.codes), (False, ["EVIDENCE_NOT_YET_ADMITTED"]))
         self.assertIn("PO-77231 v1", decision.reasons[0].message)
 
+    def test_every_input_that_was_not_available_is_a_reason_whatever_the_order_its_parents_are_listed_in(self):
+        """One input came after the attempt and another has no admission time that can be read: both are said, and the order of the list decides nothing."""
+        cited = rep("C05 ACT-HOLD-0417 v1", "/action/evidence_references", [{"record_id": "SUM-A-0417", "version": "v1"}])
+        deeper = parents_of("C02 SUM-A-0417 v1", ("M3W-0417", "v1"))
+        parents = [("INV-2026-0417", "v1"), ("PO-77231", "v1"), ("GR-5521", "v1")]
+        results = set()
+        for order in (parents, parents[::-1]):
+            decision = self.hold_at("2026-11-23T10:03:00Z", cited, deeper, parents_of("C02 M3W-0417 v1", *order), *available_at("C02 PO-77231 v1", "2026-11-23T10:03:01Z"), rep("C02 GR-5521 v1", ADMITTED, "unknown"))
+            results.add((decision.allow, tuple(r.code for r in decision.reasons), tuple(r.message for r in decision.reasons)))
+        self.assertEqual(len(results), 1, "the same reasons, in the same order")
+        (allow, codes, messages), = results
+        self.assertEqual((allow, sorted(codes)), (False, ["EVIDENCE_NOT_YET_ADMITTED", "EVIDENCE_TIME_UNKNOWN"]))
+        self.assertTrue(any("PO-77231 v1" in m for m in messages) and any("GR-5521 v1" in m for m in messages))
+
     def test_a_declared_input_that_does_not_exist_is_the_business_of_the_reference_check(self):
         decision = self.hold_at("2026-11-23T10:03:00Z", rep("C02 M3W-0417 v1", PARENTS + "/1/version", "v9"))
         self.assertEqual(decision.codes, [])

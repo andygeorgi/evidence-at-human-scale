@@ -230,16 +230,18 @@ def declared_inputs(model: Model, record: Instance) -> List[Instance]:
     return found
 
 
-def input_availability_problem(model: Model, record: Instance, at: datetime, moment: str = "the attempt") -> Optional[Reason]:
-    """Why a record that was available itself could not be relied on at `at`: it is derived from an input that was not. None when every input it rests on was available.
+def input_availability_problems(model: Model, record: Instance, at: datetime, moment: str = "the attempt") -> List[Reason]:
+    """Why a record that was available itself could not be relied on at `at`: it is derived from inputs that were not. One reason for each declared input, at any depth, that was not available, in the order
+    of their identities, so that the order in which a record lists its parents decides nothing. None when every input it rests on was available.
 
     A derived record is built from its parents, so the record cannot be relied on before they could be. A record that names an input which arrived later does not stand in for that input.
     """
-    for parent in declared_inputs(model, record):
+    out: List[Reason] = []
+    for parent in sorted(declared_inputs(model, record), key=lambda r: (r.id, r.version)):
         problem = availability_problem(parent, at, moment)
         if problem is not None:
-            return Reason(problem.code, "%s %s is derived from an input that was not available: %s" % (record.id, record.version, problem.message))
-    return None
+            out.append(Reason(problem.code, "%s %s is derived from an input that was not available: %s" % (record.id, record.version, problem.message)))
+    return out
 
 
 def lifecycle_problem(record: Instance, at: datetime) -> Optional[Reason]:
@@ -499,9 +501,10 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         if rec is None:
             reasons.append(Reason("EVIDENCE_UNRESOLVED", "evidence %s %s does not exist" % (ref.get("record_id"), ref.get("version"))))
             continue
-        unavailable = availability_problem(rec, at) or input_availability_problem(model, rec, at)
-        if unavailable is not None:
-            reasons.append(unavailable)
+        unavailable = availability_problem(rec, at)
+        unavailable = [unavailable] if unavailable is not None else input_availability_problems(model, rec, at)
+        if unavailable:
+            reasons.extend(unavailable)
             continue
         stale_or_gone = lifecycle_problem(rec, at)
         if stale_or_gone is not None:

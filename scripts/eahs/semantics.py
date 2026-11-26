@@ -22,7 +22,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from .disclosure import Decision, Viewer, binding_problems, differences, gap_entry, may_know, retrieval_entry
 from .findings import Finding, doc_for_contract
-from .gateway import (GATE_CODES, TERMINAL_OUTCOMES, age_hours, attempt_of, availability_problem, evaluate_commit, freshness_max_age, in_order, input_availability_problem, is_current_at, ledger_from_receipts,
+from .gateway import (GATE_CODES, TERMINAL_OUTCOMES, age_hours, attempt_of, availability_problem, evaluate_commit, freshness_max_age, in_order, input_availability_problems, is_current_at, ledger_from_receipts,
                       parse_time, receipt_chains, regressive_receipt_versions, same_instant, same_value, ts)
 from .model import IDENTITY, Instance, Model, claims_of, is_later, iter_refs, payload_object_of, resolve_pointer, version_problems
 
@@ -601,10 +601,11 @@ def _check_packet_basis_available(model: Model, pkt: Instance) -> List[Finding]:
             continue
         seen.add((ref.record_id, ref.version))
         record = model.get("C02", ref.record_id, ref.version)
-        problem = None
+        problems = []
         if record is not None:   # REF001 reports a record that does not exist
-            problem = availability_problem(record, cutoff, "the packet's as-of time") or input_availability_problem(model, record, cutoff, "the packet's as-of time")
-        if problem is not None:
+            direct = availability_problem(record, cutoff, "the packet's as-of time")
+            problems = [direct] if direct is not None else input_availability_problems(model, record, cutoff, "the packet's as-of time")
+        for problem in problems:
             out.append(_f("PKT007", "the packet is as of %s, but it cites a record that was not available then: %s. A packet rests only on what was available at its as-of time" % (as_of, problem.message), pkt, ref.path, DOC_EVIDENCE))
     return out
 

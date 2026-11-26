@@ -218,8 +218,9 @@ class TheVersionsOfAReceiptAreNotPickedByTheSpellingOfTheirNames(unittest.TestCa
                 self.assertEqual([f.code for f in semantics.check_authority(model) if f.code == "ACC005"], [])
 
     def test_the_authority_check_still_runs_on_the_other_receipts(self):
-        model = receipt_chain(self.A)
-        self.assertIsInstance(semantics.check_authority(model), list)
+        """The versions of the corrected release's receipt cannot be put in order. The receipt of the rejected release is judged as before: made to say that it ran, it is found."""
+        model, _ = mutate_model(receipt_chain(self.A), [rep("C07 RCP-REL-0417-A v1", "/outcome/state", "completed_verified")])
+        self.assertIn(("AUTH004", "c07-RCP-REL-0417-A-v1.json"), [(f.code, f.file.replace("\\", "/").rsplit("/", 1)[-1]) for f in semantics.check_authority(model)])
 
     def test_the_replay_of_the_stored_attempt_in_another_chain_is_not_changed_by_it(self):
         model = receipt_chain(self.A)
