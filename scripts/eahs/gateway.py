@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from fractions import Fraction
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Collection, Dict, Iterable, List, Optional, Tuple
 
 from .model import Instance, Model, VersionOrderError, claims_of, is_later, ordered, payload_of, resolve_pointer
 
@@ -270,9 +270,28 @@ def is_current_at(record: Instance, at: datetime) -> bool:
     return lifecycle_problem(record, at) is None
 
 
-def usable_at(record: Instance, at: datetime) -> bool:
-    """A record can support a precondition at `at` only if it had been admitted and was still current."""
-    return availability_problem(record, at) is None and lifecycle_problem(record, at) is None
+def input_lifecycle_problems(model: Model, record: Instance, at: datetime, judged: Collection[tuple] = ()) -> List[Reason]:
+    """Why a record that was available and current itself could not be relied on at `at`: it is derived from inputs that were not current. One reason for each declared input, at any depth, whose
+    lifecycle did not allow use at `at`, in the order of their identities, so that the order in which a record lists its parents decides nothing. None when every input it rests on was current.
+
+    A derived record is built from its parents, so it cannot be relied on while a parent it declares is not current: the record and its parents each have a lifecycle of their own, and an input that has been
+    replaced leaves the record that rests on it current until the record itself is replaced. Only declared inputs are followed, and only as they stand at `at`: a record that names no parent (an original,
+    or a finding of a producer that computes outside the records) has none to lose, and a replacement of an input after `at` does not reach back into an attempt made before it.
+    An input whose key is in `judged` is cited itself and is judged at its own citation, so it is not named a second time.
+    """
+    out: List[Reason] = []
+    for parent in sorted(declared_inputs(model, record), key=lambda r: (r.id, r.version)):
+        problem = None if parent.key in judged else lifecycle_problem(parent, at)
+        if problem is not None:
+            out.append(Reason(problem.code, "%s %s is derived from an input that was not current: %s" % (record.id, record.version, problem.message)))
+    return out
+
+
+def usable_at(record: Instance, at: datetime, model: Optional[Model] = None) -> bool:
+    """A record can support a precondition at `at` only if it had been admitted and was still current. Given the `model`, a derived record also needs each input it declares to have been available and current."""
+    if availability_problem(record, at) is not None or lifecycle_problem(record, at) is not None:
+        return False
+    return model is None or not (input_availability_problems(model, record, at) or input_lifecycle_problems(model, record, at))
 
 
 def freshness_max_age(model: Model, record: dict) -> Optional[float]:
@@ -424,6 +443,36 @@ def same_value(first, second) -> bool:
     return _equal(first, second)
 
 
+def _evidence_precondition(model: Model, refs: List[dict], at: datetime, rule: dict) -> Tuple[bool, str]:
+    """Whether a precondition that reads evidence holds at `at`, and, where the cited records disagree, the words to add to the reason.
+
+    The rule selects the cited records whose id starts with its prefix and that were usable at `at`. It holds only if at least one such record exists and every one of them satisfies it. The evidence is
+    read as a set: the proposal's references and the grant's constraints are not ranked by where they stand, a record that fails the rule is not outweighed by one that meets it, and records that
+    disagree are not resolved in favour of the first or the last: the rule is not satisfied. A record that does not hold what the rule reads (no such value, no event time) does not satisfy it.
+    A record that was not usable is not read at all, for or against: the evidence checks refuse it for their own reason.
+    """
+    prefix = rule["record_prefix"]
+    selected = sorted((rec for rec in (_record(model, ref) for ref in refs) if rec is not None and rec.id.startswith(prefix) and usable_at(rec, at, model)), key=lambda rec: (rec.id, rec.version))
+    if rule.get("type") == "evidence_payload_equals":
+        def satisfies(rec: Instance) -> bool:
+            try:
+                return _equal(resolve_pointer(payload_of(rec.data), rule["pointer"]), rule["equals"])
+            except (KeyError, IndexError, TypeError, ValueError):
+                return False
+    else:
+        limit = float(rule["max_age_hours"])
+
+        def satisfies(rec: Instance) -> bool:
+            age = age_hours(rec.data, at)
+            return age is not None and age <= limit
+    verdicts = [(rec, satisfies(rec)) for rec in selected]
+    failing = ", ".join("%s %s" % (rec.id, rec.version) for rec, met in verdicts if not met)
+    passing = ", ".join("%s %s" % (rec.id, rec.version) for rec, met in verdicts if met)
+    if failing and passing:
+        return False, " (the cited records disagree: satisfied by %s, not by %s)" % (passing, failing)
+    return bool(verdicts) and not failing, ""
+
+
 def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datetime, ledger: List[LedgerEntry]) -> Decision:
     """Recheck, at commit, everything an earlier approval cannot vouch for. Returns ALLOW only if every check holds.
 
@@ -490,13 +539,15 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         if not isinstance(name, str) or not isinstance(data_type, str) or allowed_params.get(name) != data_type:
             reasons.append(Reason("PARAMETER_NOT_PERMITTED", "parameter %s (%s) is not permitted by the grant" % (name, data_type)))
 
-    # 3. The evidence had been admitted by the attempt, was still current, and was fresh.
+    # 3. The evidence had been admitted by the attempt, was still current, and was fresh. A derived record also rests on inputs that were available and are current.
     # A proposal cites at least one record (C05), and a missing list is not an empty one: no evidence at all cannot support an action.
     if not _list(action.get("evidence_references")):
         reasons.append(Reason("EVIDENCE_UNRESOLVED", "the proposal cites no evidence (its list of evidence references is missing or empty), so nothing shows that it rests on a record"))
     if not isinstance(scope.get("evidence_constraints"), list):
         reasons.append(Reason("EVIDENCE_UNRESOLVED", "the grant states no list of evidence constraints (the field is missing or is not a list), so it cannot be shown which records it was given for"))
-    for ref in evidence_refs(p, g):
+    refs = evidence_refs(p, g)
+    cited = {rec.key for rec in (_record(model, ref) for ref in refs) if rec is not None}
+    for ref in refs:
         rec = _record(model, ref)
         if rec is None:
             reasons.append(Reason("EVIDENCE_UNRESOLVED", "evidence %s %s does not exist" % (ref.get("record_id"), ref.get("version"))))
@@ -509,6 +560,8 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         stale_or_gone = lifecycle_problem(rec, at)
         if stale_or_gone is not None:
             reasons.append(stale_or_gone)
+        else:
+            reasons.extend(input_lifecycle_problems(model, rec, at, cited))
         try:
             limit = freshness_max_age(model, rec.data)
         except ValueError as exc:
@@ -525,8 +578,8 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
                 reasons.append(Reason("EVIDENCE_STALE", "%s %s is %.1f h old; policy allows %.0f h" % (rec.id, rec.version, age, limit)))
 
     # 4. Preconditions hold, judged only on evidence that was usable at the attempt. A rule that cannot be read is not satisfied.
+    # A rule that reads evidence needs at least one usable record that it selects, and every one it selects must satisfy it (`_evidence_precondition`).
     # A missing list is not an empty one. An empty list is allowed only with the approved justification that C05 requires for it.
-    refs = evidence_refs(p, g)
     preconditions = action.get("preconditions")
     if not isinstance(preconditions, list):
         reasons.append(Reason("PRECONDITION_UNDEFINED", "the proposal states no list of preconditions (the field is missing or is not a list), so it cannot be shown that nothing needed checking"))
@@ -548,20 +601,8 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         ok = False
         unresolved = ""
         try:
-            if rule.get("type") == "evidence_payload_equals":
-                for ref in refs:
-                    rec = _record(model, ref)
-                    if rec and rec.id.startswith(rule["record_prefix"]) and usable_at(rec, at):
-                        try:
-                            ok = _equal(resolve_pointer(payload_of(rec.data), rule["pointer"]), rule["equals"])
-                        except (KeyError, IndexError, TypeError, ValueError):
-                            ok = False
-            elif rule.get("type") == "evidence_fresh":
-                for ref in refs:
-                    rec = _record(model, ref)
-                    if rec and rec.id.startswith(rule["record_prefix"]) and usable_at(rec, at):
-                        age = age_hours(rec.data, at)
-                        ok = age is not None and age <= float(rule["max_age_hours"])
+            if rule.get("type") in ("evidence_payload_equals", "evidence_fresh"):
+                ok, unresolved = _evidence_precondition(model, refs, at, rule)
             elif rule.get("type") == "target_state_equals":
                 # A state that does not hold the key says nothing about it: a missing key is not a value (null) that a rule could ask for.
                 # Records of the latest instant that disagree about the key leave it unresolved: none of their values is the state, so none is the value that the rule asks for.
