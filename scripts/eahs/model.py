@@ -96,14 +96,66 @@ class Model:
         return [i for k, i in sorted(self.instances.items()) if k[0] == contract]
 
     def versions(self, contract: str, id_: str) -> List[Instance]:
-        return sorted((i for k, i in self.instances.items() if k[0] == contract and k[1] == id_), key=lambda i: version_number(i.version))
+        """Every version of a record, in a fixed order that does not depend on how the records were read: by place in the order, then by name.
+
+        This is a listing. It is not an order: where two names share a place or a name has none, nothing says which version comes first, and `ordered` refuses to say.
+        """
+        return sorted((i for k, i in self.instances.items() if k[0] == contract and k[1] == id_), key=lambda i: (version_key(i.version) or (), i.version))
 
 
-def version_number(version: str) -> int:
-    """The number in a version name ("v2" is 2, "v10" is 10, a name with no digit is 0). Only the digits 0-9 count: a digit of another
-    script ("v²", "v٢") is a character, not a number, and int() would refuse it."""
-    digits = "".join(c for c in version if "0" <= c <= "9")
-    return int(digits) if digits else 0
+_NUMBER_RUN = re.compile(r"[0-9]+")
+
+
+class VersionOrderError(ValueError):
+    """The versions of one record cannot be put in order: two names share a place, or a name has none."""
+
+
+def version_key(version) -> Optional[tuple]:
+    """The place of a version name in the order of the versions of its record, or None when the name has no place.
+
+    The place is the numbers in the name, in the order they stand, each read as a whole number: v2 comes before v10, v1 before v1.1, and v1.2 before v12. Only the digits 0-9 count: a digit of
+    another script is a character. Nothing is made of the digits together, so v1.2 and v12 are two places and not one. Two names with the same numbers (v1 and v01) have the same place: they are
+    different versions that cannot be put in order, and a chain may not hold both. A name with no number (latest) has no place. A key can be compared with another key, and nothing else is meant by it.
+    """
+    if not isinstance(version, str):
+        return None
+    runs = [run.lstrip("0") for run in _NUMBER_RUN.findall(version)]
+    return tuple((len(run), run) for run in runs) if runs else None
+
+
+def version_problems(names: Iterable[str]) -> List[Tuple[str, str]]:
+    """What keeps these version names of one record from being put in order, as (name, why) sorted by name: a name with no number, and names that share a place. One name needs no order."""
+    names = sorted(set(names))
+    if len(names) < 2:
+        return []
+    out: List[Tuple[str, str]] = []
+    places: Dict[tuple, List[str]] = {}
+    for name in names:
+        key = version_key(name)
+        if key is None:
+            out.append((name, "has no number, so it has no place in the order of the other versions"))
+        else:
+            places.setdefault(key, []).append(name)
+    for same in places.values():
+        if len(same) > 1:
+            for name in same:
+                out.append((name, "has the same place in the order as %s, which has the same numbers, so the two cannot be put in order" % " and ".join(other for other in same if other != name)))
+    return sorted(out)
+
+
+def ordered(instances: Iterable[Instance]) -> List[Instance]:
+    """The versions of one record, earliest first. Raises VersionOrderError when they cannot be put in order (see `version_problems`): a guess would let an old version stand for a new one."""
+    items = list(instances)
+    problems = version_problems(i.version for i in items)
+    if problems:
+        raise VersionOrderError("the versions of %s %s cannot be put in order: %s" % (items[0].contract, items[0].id, "; ".join("%s %s" % problem for problem in problems)))
+    return sorted(items, key=lambda i: version_key(i.version) or ())
+
+
+def is_later(newer, older) -> bool:
+    """Whether the version name `newer` stands after `older` in the order. Only two names that both have a place can be compared: v01 is not later than v1, and latest is not later than anything."""
+    a, b = version_key(newer), version_key(older)
+    return a is not None and b is not None and a > b
 
 
 def is_contract_id(value) -> bool:

@@ -13,6 +13,7 @@ that the records agree in every other respect, and it proves nothing about any r
 """
 from __future__ import annotations
 
+import json
 import math
 import re
 from collections import Counter
@@ -21,8 +22,9 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from .disclosure import Decision, Viewer, binding_problems, differences, gap_entry, may_know, retrieval_entry
 from .findings import Finding, doc_for_contract
-from .gateway import GATE_CODES, age_hours, availability_problem, evaluate_commit, freshness_max_age, is_current_at, ledger_from_receipts, parse_time, regressive_receipt_versions, same_instant, ts
-from .model import Instance, Model, claims_of, iter_refs, payload_object_of, resolve_pointer, version_number as _vn
+from .gateway import (GATE_CODES, TERMINAL_OUTCOMES, age_hours, attempt_of, availability_problem, evaluate_commit, freshness_max_age, in_order, input_availability_problem, is_current_at, ledger_from_receipts,
+                      parse_time, receipt_chains, regressive_receipt_versions, same_instant, same_value, ts)
+from .model import IDENTITY, Instance, Model, claims_of, is_later, iter_refs, payload_object_of, resolve_pointer, version_problems
 
 DOC_EVIDENCE = "architecture/evidence-semantics.md"
 DOC_LINEAGE = "architecture/lineage-selection-disclosure.md"
@@ -38,7 +40,6 @@ def _f(code: str, message: str, inst: Instance, location: str = "", doc: str = "
 
 def check_references(model: Model) -> List[Finding]:
     out: List[Finding] = []
-    units = _retrieval_units(model)
     for inst in model.instances.values():
         for ref in iter_refs(inst.data):
             if ref.kind in ("evidence", "support"):
@@ -56,8 +57,7 @@ def check_references(model: Model) -> List[Finding]:
                 if named not in model.registry.external_records and model.get("C02", ref.record_id, ref.version) is None:
                     out.append(_f("REF005", "%s %s is neither a C02 record nor an entry in examples/registry.json external_records" % (ref.record_id, ref.version), inst, ref.path))
             elif ref.kind == "retrieval":
-                if (ref.record_id, ref.version) not in units:
-                    out.append(_f("REF006", "no completed retrieval unit %s %s in any C03 selection" % (ref.record_id, ref.version), inst, ref.path, "contracts/c03-selection.md"))
+                out.extend(_check_retrieval_reference(model, inst, ref))
             elif ref.kind == "policy":
                 if model.registry.policy(ref.record_id, ref.version) is None:
                     out.append(_f("REF007", "policy %s %s is not defined in examples/registry.json" % (ref.record_id, ref.version), inst, ref.path))
@@ -88,13 +88,40 @@ def _check_support(inst: Instance, ref, target: Instance) -> List[Finding]:
     return out
 
 
-def _retrieval_units(model: Model) -> Set[Tuple[str, str]]:
-    units: Set[Tuple[str, str]] = set()
-    for sel in model.of("C03"):
-        for unit in sel.data["retrieval"]:
-            if unit["status"] == "completed":
-                units.add((unit["retrieval_unit_id"], sel.version))
-    return units
+def _selection_of(model: Model, inst: Instance) -> Optional[Instance]:
+    """The selection that the gaps of `inst` belong to: a selection is its own, and a packet's is the one it is bound to. None for a packet whose selection does not exist (REF004 reports it) and for anything else."""
+    if inst.contract == "C03":
+        return inst
+    if inst.contract == "C04":
+        ref = _object_of(_object_of(inst.data.get("decision_context_as_of")).get("selection_reference"))
+        return model.get("C03", ref.get("id"), ref.get("version"))
+    return None
+
+
+def _check_retrieval_reference(model: Model, inst: Instance, ref) -> List[Finding]:
+    """A retrieval reference names a retrieval unit of the selection that its entry belongs to, at that selection's own version.
+
+    A retrieval unit is named by its id and the version of the selection that lists it. The reference is resolved in the one selection that the entry is bound to
+    (the selection that holds it, or the selection of the packet that holds it): another selection that lists a unit of the same name is another run, whatever it was called,
+    and it is never searched for one that fits. The unit must be listed once there and must have completed. When it completed is MISS001's business, not this one's.
+    """
+    sel = _selection_of(model, inst)
+    if sel is None:
+        return []
+    own = "selection %s %s" % (sel.id, sel.version)
+    if ref.version != sel.version:
+        why = "the entry belongs to %s, and a retrieval unit is named by the version of the selection that lists it: an entry rests on a run of its own selection and not on one of another, even one with the same name" % own
+    else:
+        units = [u for u in _object_of(sel.data).get("retrieval", []) if isinstance(u, dict) and u.get("retrieval_unit_id") == ref.record_id]
+        if not units:
+            why = "%s lists no retrieval unit of that name" % own
+        elif len(units) > 1:
+            why = "%s lists %d retrieval units of that name, so the reference is ambiguous" % (own, len(units))
+        elif units[0].get("status") != "completed":
+            why = "the retrieval unit has status %r in %s, not 'completed'" % (units[0].get("status"), own)
+        else:
+            return []
+    return [_f("REF006", "no completed retrieval unit %s %s of its own selection: %s" % (ref.record_id, ref.version, why), inst, ref.path, "contracts/c03-selection.md")]
 
 
 # --------------------------------------------------------------------------- lineage
@@ -120,12 +147,54 @@ def ancestors(model: Model, rec: Instance) -> Dict[Tuple[str, str, str], Instanc
     return seen
 
 
-def roots(model: Model, rec: Instance) -> Set[Tuple[str, str]]:
-    """The records a derivation ultimately rests on (itself if it has no parents)."""
+def _root_records(model: Model, rec: Instance) -> List[Instance]:
+    """The records a derivation ultimately rests on: the records of its ancestry that name no parent (the record itself if it names none)."""
     anc = ancestors(model, rec)
     if not anc:
-        return {(rec.id, rec.version)}
-    return {(a.id, a.version) for a in anc.values() if not a.data["lineage"]["parent_references"]}
+        return [rec]
+    return [a for a in anc.values() if not a.data["lineage"]["parent_references"]]
+
+
+def roots(model: Model, rec: Instance) -> Set[Tuple[str, str]]:
+    """The records a derivation ultimately rests on (itself if it has no parents)."""
+    return {(r.id, r.version) for r in _root_records(model, rec)}
+
+
+def origin_of(root: Instance) -> tuple:
+    """What a root record stands for as an origin, for deciding whether two derivations rest on one origin.
+
+    A source record assertion is a wrapper of a record of a source system, and the wrapper declares which one in `original_source`: the source system, the locator of the record in it, and one immutable
+    version of it, an original version or an immutable snapshot. Two wrappers that declare the same three things wrap the same source record, whatever their C02 identities are, so they are one origin.
+    Only what is declared is compared, exactly and as written: another locator, another version, another source system or another way of pinning the version is another origin, and nothing is inferred
+    between them. A root that is not a source record assertion, or whose declared source does not pin a version, stands for its own record. The C02 identity stays what lineage and references use.
+    """
+    if root.data["identity_schema"]["kind"] == "source_record_assertion":
+        source = _object_of(root.data.get("original_source"))
+        system, locator = source.get("source_id"), source.get("record_locator")
+        if isinstance(system, str) and system and isinstance(locator, str) and locator:
+            version, snapshot = source.get("original_version"), _object_of(source.get("immutable_snapshot_reference"))
+            if isinstance(version, str) and version and "immutable_snapshot_reference" not in source:
+                return ("source", system, locator, "original_version", version)
+            if isinstance(snapshot.get("record_id"), str) and isinstance(snapshot.get("version"), str) and "original_version" not in source:
+                return ("source", system, locator, "immutable_snapshot_reference", snapshot["record_id"], snapshot["version"])
+    return ("record", root.id, root.version)
+
+
+def origins(model: Model, rec: Instance) -> Dict[tuple, List[Instance]]:
+    """The origins that a record rests on, each with the root records that stand for it (`origin_of`), in the order of their identities."""
+    found: Dict[tuple, List[Instance]] = {}
+    for root in sorted(_root_records(model, rec), key=lambda r: (r.id, r.version)):
+        found.setdefault(origin_of(root), []).append(root)
+    return found
+
+
+def _origin_label(identity: tuple, wrappers: List[Instance]) -> str:
+    """How a message names an origin: the record it is, or, when several records wrap one source record, that source record and the records that wrap it."""
+    names = ["%s %s" % (w.id, w.version) for w in sorted(wrappers, key=lambda w: (w.id, w.version))]
+    if identity[0] == "record" or len(names) < 2:
+        return names[0] if len(names) == 1 else "%s %s" % identity[1:3]
+    pinned = "original version %s" % identity[4] if identity[3] == "original_version" else "immutable snapshot %s %s" % identity[4:6]
+    return "source record %s in %s (%s), wrapped by %s" % (identity[2], identity[1], pinned, " and ".join(names))
 
 
 def _computed_over_records(model: Model, rec: Instance) -> bool:
@@ -149,6 +218,10 @@ def check_lineage(model: Model) -> List[Finding]:
         for i, p in enumerate(rec.data["lineage"]["parent_references"]):
             if (p["record_id"], p["version"]) == (rec.id, rec.version):
                 out.append(_f("LIN004", "a record cannot be its own parent", rec, "/lineage/parent_references/%d" % i, DOC_LINEAGE))
+        if rec.data["identity_schema"]["kind"] == "source_record_assertion" and rec.data["lineage"]["parent_references"]:
+            out.append(_f("LIN007", "a source record assertion is an original: it states what a source system recorded, so it names no parent. A parent would make it a derivation and change the origin that it is counted from "
+                                    "(it names %d)" % len(rec.data["lineage"]["parent_references"]), rec, "/lineage/parent_references", DOC_LINEAGE))
+        out.extend(_check_parents_available(model, rec))
         if not rec.data["lineage"]["parent_references"] and _computed_over_records(model, rec):
             out.append(_f("LIN006", "a deterministic finding reports what a rule produced from specified inputs, so it names the records it was computed from as its parents; this one names none, "
                                     "and its producer %s is not registered as computing over data outside the records" % rec.data["producer_admission"]["producer_id"], rec, "/lineage/parent_references", DOC_LINEAGE))
@@ -161,10 +234,50 @@ def check_lineage(model: Model) -> List[Finding]:
             if allowed and rel["relationship_type"] not in allowed:
                 out.append(_f("LIN002", "relationship type %r is not one of %s" % (rel["relationship_type"], sorted(allowed)), rec, "/lineage/typed_relationships/%d" % i, DOC_LINEAGE))
             if rel["relationship_type"] == "supersession":
+                out.extend(_check_supersession_edge(rec, rel, "/lineage/typed_relationships/%d" % i))
                 older = model.get("C02", rel["to"]["record_id"], rel["to"]["version"])
                 if older is not None and (older.data["lifecycle"]["state"] != "superseded" or older.data["lifecycle"].get("replacement_reference") != {"record_id": rec.id, "version": rec.version}):
                     out.append(_f("LIN003", "supersession of %s %s requires that version to be marked superseded with this record as its replacement" % (older.id, older.version), rec, "/lineage/typed_relationships/%d" % i, DOC_LINEAGE))
     return out
+
+
+def _check_parents_available(model: Model, rec: Instance) -> List[Finding]:
+    """A declared parent is an input the record was derived from, so it was available when the record was admitted.
+
+    A parent is available from the later of its admission and its ingestion, and equality counts (the rule of the commit check, `gateway.availability_problem`). The time compared is the admission of
+    the derived record, as instants. Only the availability of a parent that exists is judged (REF001 reports one that does not), and only the parents that the record declares: an input of a producer
+    that computes outside the records (`inputs: outside_records`) is not a record of the set and is not made one here. The time of the event a parent describes does not matter.
+    """
+    out: List[Finding] = []
+    stated = rec.data["producer_admission"].get("admission_time")
+    admitted = parse_time(stated)
+    for i, p in enumerate(rec.data["lineage"]["parent_references"]):
+        parent = model.get("C02", p["record_id"], p["version"])
+        if parent is None or parent.key == rec.key:
+            continue
+        if admitted is None:
+            out.append(_f("LIN008", "the admission time of this record (%r) cannot be compared exactly, so it cannot be shown that its parent %s %s was available when it was admitted" % (stated, parent.id, parent.version), rec, "/lineage/parent_references/%d" % i, DOC_LINEAGE))
+            continue
+        problem = availability_problem(parent, admitted, "this record's admission at %s" % stated)
+        if problem is not None:
+            out.append(_f("LIN008", "a parent is an input that the record was derived from, so it was available when the record was admitted: %s" % problem.message, rec, "/lineage/parent_references/%d" % i, DOC_LINEAGE))
+    return out
+
+
+def _check_supersession_edge(rec: Instance, rel: dict, loc: str) -> List[Finding]:
+    """A typed supersession goes from the record that states it, the replacement, to the older version it replaces.
+
+    The edge starts at the record that holds it, and it does not end there: a record does not supersede itself. Which version it ends at, and that the older version records this one as its replacement,
+    is judged by LIN003 and LIFE001. Nothing here says when the replacement was admitted or when the older version stopped being current.
+    """
+    start = _object_of(rel.get("from"))
+    if (start.get("record_id"), start.get("version")) != (rec.id, rec.version):
+        return [_f("LIN009", "a supersession goes from the record that states it to the older version it replaces, but this edge starts at %s %s and not at %s %s" % (
+            start.get("record_id"), start.get("version"), rec.id, rec.version), rec, loc + "/from", DOC_LINEAGE)]
+    end = _object_of(rel.get("to"))
+    if (end.get("record_id"), end.get("version")) == (rec.id, rec.version):
+        return [_f("LIN009", "a record cannot supersede itself: this edge goes from %s %s to the same record" % (rec.id, rec.version), rec, loc, DOC_LINEAGE)]
+    return []
 
 
 def _check_inference_figures(model: Model, rec: Instance) -> List[Finding]:
@@ -222,14 +335,33 @@ def packet_active(pkt: Instance) -> bool:
     return pkt.data["review_version_history"]["state"] not in INACTIVE_PACKET_STATES
 
 
-def check_lifecycle(model: Model) -> List[Finding]:
+def _check_version_order(model: Model) -> List[Finding]:
+    """The versions of one record can be put in order: each name has a number, and no two names have the same numbers.
+
+    The schema accepts any version name, and the reference reads the order of the versions of a record from the numbers in their names (see `model.version_key`), so a chain in which that order is
+    not defined is a finding, and nothing guesses it: v1 and v01 are two versions with one place, and latest has none. A record with one version needs no order. A record is still found by its exact version.
+    """
     out: List[Finding] = []
+    chains: Dict[Tuple[str, str], List[Instance]] = {}
+    for inst in model.instances.values():
+        chains.setdefault((inst.contract, inst.id), []).append(inst)
+    for (contract, _), versions in sorted(chains.items()):
+        problems = dict(version_problems(inst.version for inst in versions))
+        for inst in sorted(versions, key=lambda i: i.version):
+            if inst.version in problems:
+                out.append(_f("LIFE006", "version %s %s: the versions of one record are put in order by the numbers in their names, and no order is guessed" % (inst.version, problems[inst.version]),
+                              inst, "/%s/version" % IDENTITY[contract][0], DOC_LINEAGE))
+    return out
+
+
+def check_lifecycle(model: Model) -> List[Finding]:
+    out: List[Finding] = _check_version_order(model)
     for rec in model.of("C02"):
         lc = rec.data["lifecycle"]
         if lc["state"] == "superseded":
             repl = lc.get("replacement_reference")
             newer = model.get("C02", repl["record_id"], repl["version"]) if repl else None
-            if newer is None or newer.id != rec.id or _vn(newer.version) <= _vn(rec.version):
+            if newer is None or newer.id != rec.id or not is_later(newer.version, rec.version):
                 out.append(_f("LIFE001", "a superseded record must name a later version of itself as its replacement", rec, "/lifecycle/replacement_reference", DOC_LINEAGE))
         if lc["state"] == "current":
             for anc in ancestors(model, rec).values():
@@ -250,11 +382,14 @@ def check_lifecycle(model: Model) -> List[Finding]:
                     break
         if (pkt.id, pkt.version) in successors and packet_active(pkt):
             out.append(_f("LIFE004", "a newer packet version exists, so this version must be invalidated or superseded", pkt, "/review_version_history/state", DOC_LINEAGE))
-    latest_grants: Dict[str, Instance] = {}
+    grants_by_id: Dict[str, List[Instance]] = {}
     for grant in model.of("C06"):
-        cur = latest_grants.get(grant.id)
-        if cur is None or _vn(grant.version) > _vn(cur.version):
-            latest_grants[grant.id] = grant
+        grants_by_id.setdefault(grant.id, []).append(grant)
+    latest_grants: Dict[str, Instance] = {}
+    for grant_id, versions in grants_by_id.items():
+        chain = in_order(versions)
+        if chain is not None:   # versions that cannot be put in order have no latest (LIFE006 reports them)
+            latest_grants[grant_id] = chain[-1]
     for grant in latest_grants.values():
         binding = grant.data["scope_binding"]["binding"]
         if binding["binding_type"] != "exact_proposal":
@@ -284,9 +419,8 @@ def _packet_evidence_refs(d: dict) -> List[dict]:
 def check_missingness(model: Model) -> List[Finding]:
     out: List[Finding] = []
     for sel in model.of("C03"):
-        base = sel.data
-        for i, m in enumerate(base["conflicts_gaps"]["missingness"]):
-            out.extend(_check_gap(model, sel, m, "/conflicts_gaps/missingness/%d" % i, base["identity_scope"]["as_of"], base))
+        for i, m in enumerate(sel.data["conflicts_gaps"]["missingness"]):
+            out.extend(_check_gap(model, sel, sel, m, "/conflicts_gaps/missingness/%d" % i))
     for pkt in model.of("C04"):
         ref = pkt.data["decision_context_as_of"]["selection_reference"]
         sel = model.get("C03", ref["id"], ref["version"])
@@ -294,7 +428,7 @@ def check_missingness(model: Model) -> List[Finding]:
             continue
         gaps = pkt.data["coverage_omissions_gaps"]["missingness"]
         for i, m in enumerate(gaps):
-            out.extend(_check_gap(model, pkt, m, "/coverage_omissions_gaps/missingness/%d" % i, sel.data["identity_scope"]["as_of"], sel.data))
+            out.extend(_check_gap(model, pkt, sel, m, "/coverage_omissions_gaps/missingness/%d" % i))
         for i, m in enumerate(sel.data["conflicts_gaps"]["missingness"]):
             if m not in gaps:
                 out.append(_f("MISS005", "the packet leaves out a gap of its selection (%s, entry %d): every gap must stay visible in the packet" % (m["state"], i), pkt, "/coverage_omissions_gaps/missingness", DOC_LINEAGE))
@@ -304,15 +438,16 @@ def check_missingness(model: Model) -> List[Finding]:
     return out
 
 
-def _check_gap(model: Model, inst: Instance, m: dict, loc: str, as_of: str, selection: dict) -> List[Finding]:
+def _check_gap(model: Model, inst: Instance, sel: Instance, m: dict, loc: str) -> List[Finding]:
+    """One entry of the missingness of a selection (`inst` is the selection) or of a packet bound to it (`sel` is that selection), judged against the selection's own state."""
     out: List[Finding] = []
     state = m["state"]
     if state == "not_retrieved":
-        unit = next((u for u in selection["retrieval"] if u["retrieval_unit_id"] == m["retrieval_reference"]["record_id"]), None)
-        if unit is None or unit["status"] != "completed":
+        units = [u for u in sel.data["retrieval"] if u["retrieval_unit_id"] == m["retrieval_reference"]["record_id"]]
+        if len(units) != 1 or units[0]["status"] != "completed":
             out.append(_f("MISS001", "not_retrieved needs a COMPLETED retrieval unit in the selection: an interrupted or unperformed retrieval is not an empty result", inst, loc, DOC_LINEAGE))
-        elif unit["completed_at"].get("value") != m["completed_at"]:
-            out.append(_f("MISS001", "completed_at does not match the retrieval unit's completion time", inst, loc, DOC_LINEAGE))
+        else:
+            out.extend(_check_completion(inst, sel, units[0], m, loc))
     elif state == "negative":
         obs = m["observation_reference"]
         rec = model.get("C02", obs["record_id"], obs["version"])
@@ -334,6 +469,31 @@ def _check_gap(model: Model, inst: Instance, m: dict, loc: str, as_of: str, sele
         rec = model.get("C02", m["dependency_failure_reference"]["record_id"], m["dependency_failure_reference"]["version"])
         if rec is not None and rec.data["identity_schema"]["kind"] != "source_record_assertion":
             out.append(_f("MISS004", "a dependency failure must point to an observation of the failure (a source record assertion)", inst, loc, DOC_LINEAGE))
+    return out
+
+
+def _check_completion(inst: Instance, sel: Instance, unit: dict, m: dict, loc: str) -> List[Finding]:
+    """A not_retrieved entry states when the retrieval completed. That is the unit's completion time, as an instant, and it is not later than the selection's as-of time.
+
+    A selection is a snapshot as of one time, so an empty result of a retrieval that had not completed by then cannot be part of it. The cutoff is the selection's as-of time for an entry of
+    its packet too: the packet is bound to that selection and states the same time. A completion time that is not known, or that cannot be compared exactly (see `parse_time`), cannot be shown to be early.
+    """
+    done = unit["completed_at"].get("value") if unit["completed_at"].get("state") == "known" else None
+    finished = parse_time(done)
+    if finished is None:
+        return [_f("MISS001", "the retrieval unit %s has no completion time that can be compared exactly (%s), so it cannot be shown to have completed by the as-of time of the selection" % (
+            unit["retrieval_unit_id"], "unknown" if done is None else repr(done)), inst, loc, DOC_LINEAGE)]
+    as_of = sel.data["identity_scope"]["as_of"]
+    cutoff = parse_time(as_of)
+    if cutoff is None:
+        raise ValueError("%s: selection %s %s has an as-of time (%r) that is not an RFC 3339 time with a zone and at most six fractional digits, so the completion of its retrievals cannot be compared "
+                         "with it exactly. Correct the time" % (sel.file, sel.id, sel.version, as_of))
+    out: List[Finding] = []
+    if finished > cutoff:
+        out.append(_f("MISS001", "the retrieval unit %s completed at %s, after the as-of time %s of selection %s %s: an empty result of a retrieval that had not completed by then is not part of the snapshot" % (
+            unit["retrieval_unit_id"], done, as_of, sel.id, sel.version), inst, loc, DOC_LINEAGE))
+    if not same_instant(done, m["completed_at"]):
+        out.append(_f("MISS001", "completed_at does not match the retrieval unit's completion time", inst, loc, DOC_LINEAGE))
     return out
 
 
@@ -441,7 +601,9 @@ def _check_packet_basis_available(model: Model, pkt: Instance) -> List[Finding]:
             continue
         seen.add((ref.record_id, ref.version))
         record = model.get("C02", ref.record_id, ref.version)
-        problem = availability_problem(record, cutoff, "the packet's as-of time") if record is not None else None   # REF001 reports a record that does not exist
+        problem = None
+        if record is not None:   # REF001 reports a record that does not exist
+            problem = availability_problem(record, cutoff, "the packet's as-of time") or input_availability_problem(model, record, cutoff, "the packet's as-of time")
         if problem is not None:
             out.append(_f("PKT007", "the packet is as of %s, but it cites a record that was not available then: %s. A packet rests only on what was available at its as-of time" % (as_of, problem.message), pkt, ref.path, DOC_EVIDENCE))
     return out
@@ -823,29 +985,37 @@ def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -
 
 
 def _check_corroboration(model: Model, pkt: Instance) -> List[Finding]:
-    """Agreement between derivations that share a root is not independent corroboration."""
+    """Agreement between derivations that share an origin is not independent corroboration.
+
+    An origin is a root of the derivation: a record that names no parent. Wrappers that declare the same immutable source record are one origin (`origin_of`), whatever their C02 identities are.
+    """
     out: List[Finding] = []
     d = pkt.data
 
-    def root_set(refs: List[dict]) -> Set[Tuple[str, str]]:
-        found: Set[Tuple[str, str]] = set()
+    def origin_map(refs: List[dict]) -> Dict[tuple, List[Instance]]:
+        found: Dict[tuple, List[Instance]] = {}
         for r in refs:
             rec = model.get("C02", r["record_id"], r["version"])
             if rec is not None:
-                found |= roots(model, rec)
+                for identity, wrappers in origins(model, rec).items():
+                    known = found.setdefault(identity, [])
+                    known.extend(w for w in wrappers if all(w.key != other.key for other in known))
         return found
 
+    def named(shared, *maps: Dict[tuple, List[Instance]]) -> str:
+        return ", ".join(sorted(_origin_label(identity, [w for found in maps for w in found.get(identity, [])]) for identity in shared))
+
     inferences = d["labeled_inferences"]
-    inference_roots = [root_set(i["supporting_references"]) for i in inferences]
+    inference_origins = [origin_map(i["supporting_references"]) for i in inferences]
     for a in range(len(inferences)):
         for b in range(a + 1, len(inferences)):
-            shared = inference_roots[a] & inference_roots[b]
+            shared = inference_origins[a].keys() & inference_origins[b].keys()
             if not shared:
                 continue
             for idx in (a, b):
                 if not any("common origin" in l.lower() for l in inferences[idx]["limitations"]):
                     out.append(_f("COR002", "inferences %s and %s rest on the same origin (%s); each must say so in its limitations (\"common origin\")" % (
-                        inferences[a]["inference_id"], inferences[b]["inference_id"], ", ".join("%s %s" % x for x in sorted(shared))),
+                        inferences[a]["inference_id"], inferences[b]["inference_id"], named(shared, inference_origins[a], inference_origins[b])),
                         pkt, "/labeled_inferences/%d/limitations" % idx, DOC_LINEAGE))
     items = [("/supported_claims_references/%d" % i, c["text"], c["supporting_references"]) for i, c in enumerate(d["supported_claims_references"])]
     items += [("/labeled_inferences/%d" % i, c["text"], c["supporting_references"]) for i, c in enumerate(inferences)]
@@ -854,10 +1024,11 @@ def _check_corroboration(model: Model, pkt: Instance) -> List[Finding]:
         claims_it = re.search(r"\b(independent(ly)?|corroborat\w*)\b", lowered) and not re.search(r"\bnot\b[^.]{0,40}\b(independent|corroborat\w*)", lowered)
         if not claims_it:
             continue
-        shared = set.intersection(*[root_set([r]) or {("?", "?")} for r in refs]) if refs else set()
+        each = [origin_map([r]) for r in refs]
+        shared = set.intersection(*[set(found) or {("record", "?", "?")} for found in each]) if refs else set()
         if len(refs) < 2 or shared:
             out.append(_f("COR001", "describes agreement as independent corroboration, but the cited records %s" % (
-                "are fewer than two" if len(refs) < 2 else "share one origin (%s)" % ", ".join("%s %s" % x for x in sorted(shared))), pkt, loc, DOC_LINEAGE))
+                "are fewer than two" if len(refs) < 2 else "share one origin (%s)" % named(shared, *each)), pkt, loc, DOC_LINEAGE))
     return out
 
 
@@ -868,24 +1039,143 @@ GATE_CODE = re.compile(r"\b[A-Z]{3,}(?:_[A-Z]+)+\b")
 
 def check_authority(model: Model) -> List[Finding]:
     out: List[Finding] = []
-    by_id: Dict[str, List[Instance]] = {}
-    for rec in model.of("C07"):
-        by_id.setdefault(rec.id, []).append(rec)
+    chains = receipt_chains(model)
+    out.extend(_check_attempt_identity(chains))
     leaving = {later.key: earlier for later, earlier in regressive_receipt_versions(model)}
-    for versions in by_id.values():
-        versions.sort(key=lambda i: _vn(i.version))
-        first = versions[0]
-        out.extend(_check_receipt(model, first, versions))
-        for later in versions[1:]:
+    for receipt_id in sorted(chains):
+        chain = in_order(chains[receipt_id])
+        if chain is None:
+            # While the order of the versions is not known (LIFE006 reports it), no version is the first and none comes after another: only what each version says on its own is judged.
+            for rec in sorted(chains[receipt_id], key=lambda r: r.version):
+                out.extend(_check_version(model, rec))
+            continue
+        first = chain[0]
+        out.extend(_check_receipt(model, first, chain))
+        for later in chain[1:]:
             out.extend(_check_receipt_chain(model, first, later))
             earlier = leaving.get(later.key)
             if earlier is not None:
                 out.append(_f("ACC005", "this version says %s, but version %s of the receipt had already reached the verified outcome %s: a verified outcome closes the attempt, and a later version may repeat it "
                                         "but may not go back to an unresolved outcome or to the other verified one" % (later.data["outcome"]["state"], earlier.version, earlier.data["outcome"]["state"]), later, "/outcome/state", DOC_ACTION))
+        out.extend(_check_verified_effects(chain))
+        for rec in chain:
+            out.extend(_check_version(model, rec))
+    return out
+
+
+def _check_version(model: Model, rec: Instance) -> List[Finding]:
+    """What one version of a receipt says on its own: its accounting, what its verification rests on, and what its effects are for."""
+    out: List[Finding] = []
+    if rec.data["outcome"]["state"] in ("completed_verified", "not_executed_verified") and rec.data["verification_recovery"]["accounting"]["state"] != "reconciled":
+        out.append(_f("ACC003", "a verified outcome settles its accounting: the state must be reconciled", rec, "/verification_recovery/accounting/state", DOC_ACTION))
+    out.extend(_check_verification_binding(model, rec))
+    out.extend(_check_effects_bound(rec))
+    return out
+
+
+def _check_effects_bound(rec: Instance) -> List[Finding]:
+    """Each structured effect of a receipt is for the action and the target of that receipt, where the schema gives the effect those two bindings.
+
+    An effect that names another action or another target is not an effect of this attempt, whatever the outcome says: the ledger does not count it (`gateway.effect_is_bound`), and the receipt
+    is found here. Only the structured references are compared. What the free text of an effect says is not read.
+    """
+    out: List[Finding] = []
+    binding = _object_of(rec.data.get("identity_binding"))
+    for i, effect in enumerate(_list_of(_object_of(rec.data.get("outcome")).get("observed_effects"))):
+        effect, name = _object_of(effect), "%s" % _object_of(effect).get("effect_id")
+        here = "/outcome/observed_effects/%d" % i
+        if not same_value(effect.get("action_reference"), binding.get("proposal_reference")) or not isinstance(effect.get("action_reference"), dict):
+            out.append(_f("AUTH010", "effect %s is for %s, but the receipt is for the proposal %s: an effect is for the action of its receipt" % (
+                name, _reference_name(effect.get("action_reference")), _reference_name(binding.get("proposal_reference"))), rec, here + "/action_reference", DOC_ACTION))
+        if not same_value(effect.get("target"), binding.get("target")) or not isinstance(effect.get("target"), dict):
+            out.append(_f("AUTH010", "effect %s is on %s, but the receipt is for the target %s: an effect is on the target of its receipt" % (
+                name, _entity_name(effect.get("target")), _entity_name(binding.get("target"))), rec, here + "/target", DOC_ACTION))
+    return out
+
+
+def _reference_name(reference) -> str:
+    reference = _object_of(reference)
+    return "%s %s" % (reference.get("id"), reference.get("version"))
+
+
+#: What a verified effect states that a later version of the receipt may not change: (field of the effect, how its values are compared).
+EFFECT_FACTS = ("action_reference", "target", "quantity", "units", "observed_at", "accounting_reference")
+
+
+def _check_verified_effects(chain: List[Instance]) -> List[Finding]:
+    """An effect that a verified outcome has recorded stays as it was recorded: a later version of the receipt that repeats the verified outcome may repeat the effect and add others, not change it or leave it out.
+
+    The first version of the receipt that is `completed_verified` or `not_executed_verified` closes the attempt (`regressive_receipt_versions`). Each of its effects is matched with the effects of a later
+    version that repeats the same outcome by `effect_id`, and what it states about the action, the target, the quantity, the unit, the time it was observed and the accounting record it was charged to must be what
+    it stated. Quantities are compared exactly and times as instants. An effect with another id is neither a correction nor a contradiction: no correction of a verified outcome is defined for ordinary versions.
+    The free text (the description of an effect, the method of a verification) is not read, and neither is a version that is not a repeat of the verified outcome (ACC005 judges that).
+    """
+    out: List[Finding] = []
+    closed = next((rec for rec in chain if _object_of(rec.data.get("outcome")).get("state") in TERMINAL_OUTCOMES), None)
+    if closed is None:
+        return out
+    state = closed.data["outcome"]["state"]
+    verified = {}
+    for effect in map(_object_of, _list_of(closed.data["outcome"].get("observed_effects"))):
+        if isinstance(effect.get("effect_id"), str):
+            verified.setdefault(effect["effect_id"], effect)
+    for later in chain[chain.index(closed) + 1:]:
+        if _object_of(later.data.get("outcome")).get("state") != state:
+            continue
+        effects = [_object_of(e) for e in _list_of(later.data["outcome"].get("observed_effects"))]
+        for name, effect in verified.items():
+            repeats = [(j, e) for j, e in enumerate(effects) if e.get("effect_id") == name]
+            if not repeats:
+                out.append(_f("ACC006", "version %s repeats the verified outcome %s of version %s, but leaves out effect %s that version recorded: an effect that a verified outcome has recorded is not left out by a later version" % (
+                    later.version, state, closed.version, name), later, "/outcome/observed_effects", DOC_ACTION))
+            for j, repeated in repeats:
+                for fact in EFFECT_FACTS:
+                    same = same_instant(effect.get(fact), repeated.get(fact)) if fact == "observed_at" else same_value(effect.get(fact), repeated.get(fact))
+                    if not same:
+                        out.append(_f("ACC006", "version %s repeats the verified outcome %s of version %s, but changes the %s of effect %s from %s to %s: an effect that a verified outcome has recorded is not "
+                                                "rewritten by a later version" % (later.version, state, closed.version, fact.replace("_", " "), name, _fact(effect.get(fact)), _fact(repeated.get(fact))),
+                                      later, "/outcome/observed_effects/%d/%s" % (j, fact), DOC_ACTION))
+    return out
+
+
+def _fact(value) -> str:
+    return json.dumps(value, sort_keys=True) if isinstance(value, (dict, list)) else str(value)
+
+
+def _check_attempt_identity(chains: Dict[str, List[Instance]]) -> List[Finding]:
+    """One execution attempt is described by one receipt (all of its versions): two receipts that claim the same `execution_attempt_id` describe it twice.
+
+    The execution attempt id is the identity of the attempt, and the receipt id is not: the replay and the ledger count an attempt once, so receipts that share an attempt id are not separate attempts and
+    are found in each of them, whether they agree about the proposal, the grant, the target and the time of the attempt or not. This is a statement about the receipts of the reference model: it does
+    not say that nothing ran twice outside it. Versions of one receipt that name different attempts are ACC004.
+    """
+    out: List[Finding] = []
+    claimed: Dict[str, Dict[str, List[Instance]]] = {}
+    for receipt_id, versions in chains.items():
         for rec in versions:
-            if rec.data["outcome"]["state"] in ("completed_verified", "not_executed_verified") and rec.data["verification_recovery"]["accounting"]["state"] != "reconciled":
-                out.append(_f("ACC003", "a verified outcome settles its accounting: the state must be reconciled", rec, "/verification_recovery/accounting/state", DOC_ACTION))
-            out.extend(_check_verification_binding(model, rec))
+            attempt = attempt_of(rec)
+            if isinstance(attempt, str):
+                claimed.setdefault(attempt, {}).setdefault(receipt_id, []).append(rec)
+
+    def how(rec: Instance) -> dict:
+        binding, outcome = _object_of(rec.data.get("identity_binding")), _object_of(rec.data.get("outcome"))
+        return {"proposal": binding.get("proposal_reference"), "grant": binding.get("grant_reference"), "target": binding.get("target"), "submission time": _object_of(outcome.get("timestamps")).get("submitted")}
+
+    def agree(name: str, first, second) -> bool:
+        return same_instant(first, second) if name == "submission time" else same_value(first, second)
+
+    for attempt, holders in sorted(claimed.items()):
+        if len(holders) < 2:
+            continue
+        # The version that is read for a receipt is the first that carries the attempt, in the order of the versions where that is known and in the order of their names where it is not.
+        read = {rid: next(rec for rec in (in_order(chains[rid]) or sorted(chains[rid], key=lambda r: r.version)) if attempt_of(rec) == attempt) for rid in holders}
+        views = {rid: how(rec) for rid, rec in read.items()}
+        for receipt_id in sorted(holders):
+            others = [rid for rid in sorted(holders) if rid != receipt_id]
+            differ = [name for name, value in views[receipt_id].items() if any(not agree(name, value, views[rid][name]) for rid in others)]
+            out.append(_f("ACC007", "the execution attempt %s is also claimed by receipt %s: an attempt is one execution attempt id, so receipts that share it describe one attempt and not several; %s" % (
+                attempt, " and ".join(others), "they disagree about the " + ", ".join(differ) if differ else "they agree about the proposal, the grant, the target and the time of the attempt"),
+                          read[receipt_id], "/identity_binding/execution_attempt_id", DOC_ACTION))
     return out
 
 
@@ -962,6 +1252,10 @@ def _check_verification_binding(model: Model, rec: Instance) -> List[Finding]:
 
 def _object_of(value) -> dict:
     return value if isinstance(value, dict) else {}
+
+
+def _list_of(value) -> list:
+    return value if isinstance(value, list) else []
 
 
 def _entity_name(entity) -> str:
