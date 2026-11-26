@@ -129,7 +129,9 @@ class ADerivedFindingNamesTheRecordsItWasComputedFrom(unittest.TestCase):
 
     def test_a_derived_finding_that_names_a_superseded_input_is_still_a_lifecycle_finding(self):
         superseded = {"target": "C02 M3W-0417 v2", "ops": [{"op": "replace", "path": "/lineage/parent_references/2/version", "value": "v1"}]}
-        self.assertEqual(run_case(support.example_model(), support.schema(), {"mutations": [superseded]})[0], ["LIFE002"])
+        # The corrected release was executed at 16:00:05 on that match result. The commit check now also refuses a derived record whose declared input is no longer current
+        # (EVIDENCE_NOT_CURRENT at the attempt), so the receipt that says it executed disagrees with the check (AUTH004).
+        self.assertEqual(run_case(support.example_model(), support.schema(), {"mutations": [superseded]})[0], ["AUTH004", "LIFE002"])
 
     def test_a_record_of_another_kind_is_not_judged_by_this_rule(self):
         self.assertEqual(self.lin006(None, {"target": "C02 SUM-A-0417 v1", "ops": [self.NO_PARENTS]}), [])

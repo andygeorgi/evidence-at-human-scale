@@ -246,6 +246,60 @@ def codes_of(model):
     return sorted(f.code for f in semantics.check_accountability(model))
 
 
+class TheReviewOfAPacketIsFoundInTheLogAsAnInstant(unittest.TestCase):
+    """The packet says who reviewed it and when, and the registry's review log records the same review. They agree when the actor, the packet and its version are the same and the time is the same instant,
+    however each time is written. The review of packet v2 is at 2026-11-23T15:10:00Z."""
+
+    SAME = "2026-11-23T15:10:00Z"
+    OTHER_OWNER = "person:ap-controller-02"
+
+    def model(self, packet=None, log=None, second_owner=False):
+        """The example set with the review of packet v2 changed in the packet (`packet`: {field of /review_version_history: value}) and in its entry of the review log (`log`)."""
+        mutations = [{"target": "C04 PKT-0417 v2", "ops": [{"op": "replace", "path": "/review_version_history/" + name, "value": value}]} for name, value in (packet or {}).items()]
+        model, _ = mutate_model(support.example_model(), mutations)
+        model.registry = copy.deepcopy(model.registry)
+        entry = next(e for e in model.registry.accountability["review_log"] if e["packet"] == "PKT-0417 v2")
+        entry.update(log or {})
+        if second_owner:
+            model.registry.accountability["roles"]["decision_owner"]["holders"].append(self.OTHER_OWNER)
+        return model
+
+    def test_the_stored_review_agrees_with_its_log(self):
+        self.assertEqual(codes_of(self.model()), [])
+
+    def test_the_same_instant_written_differently_is_one_review(self):
+        for written in ("2026-11-23T16:10:00+01:00", "2026-11-23T15:10:00.000Z", "2026-11-23T15:10:00.000000+00:00", "2026-11-23T14:10:00-01:00"):
+            with self.subTest("the packet says " + written):
+                self.assertEqual(codes_of(self.model(packet={"time/value": written})), [])
+            with self.subTest("the log says " + written):
+                self.assertEqual(codes_of(self.model(log={"time": written})), [])
+
+    def test_another_instant_is_another_review_even_by_a_microsecond(self):
+        for written in ("2026-11-23T15:10:00.000001Z", "2026-11-23T15:09:59.999999Z", "2026-11-23T16:10:00.000001+01:00", "2026-11-23T15:10:00+01:00"):
+            with self.subTest("the packet says " + written):
+                self.assertEqual(codes_of(self.model(packet={"time/value": written})), ["ROLE003"])
+            with self.subTest("the log says " + written):
+                self.assertEqual(codes_of(self.model(log={"time": written})), ["ROLE003"])
+
+    def test_a_different_actor_is_another_review(self):
+        """A second Decision Owner is registered. The packet names one and the log the other."""
+        self.assertEqual(codes_of(self.model(packet={"actor/value": self.OTHER_OWNER}, second_owner=True)), ["ROLE003"])
+        self.assertEqual(codes_of(self.model(log={"actor": self.OTHER_OWNER}, second_owner=True)), ["ROLE003"])
+        self.assertEqual(codes_of(self.model(packet={"actor/value": self.OTHER_OWNER}, log={"actor": self.OTHER_OWNER}, second_owner=True)), [])
+
+    def test_a_different_packet_or_version_is_another_review(self):
+        for named in ("PKT-0417 v1", "PKT-0417 v3", "PKT-0418 v2"):
+            with self.subTest(named):
+                self.assertIn("ROLE003", codes_of(self.model(log={"packet": named})))
+
+    def test_the_same_instant_in_another_offset_does_not_change_the_other_role_checks(self):
+        """The approval follows the review in time whichever way the review is written."""
+        model = self.model(log={"time": "2026-11-23T16:10:00+01:00"})
+        self.assertEqual(codes_of(model), [])
+        later = self.model(log={"time": "2026-11-23T16:21:00+01:00"})
+        self.assertEqual(codes_of(later), ["ROLE003", "ROLE004"])
+
+
 class TheNarrative(unittest.TestCase):
     def text(self, relative):
         return (support.EXAMPLES / relative).read_text(encoding="utf-8")

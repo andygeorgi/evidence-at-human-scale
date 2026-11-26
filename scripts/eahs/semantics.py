@@ -24,7 +24,7 @@ from .disclosure import Decision, Viewer, binding_problems, differences, gap_ent
 from .findings import Finding, doc_for_contract
 from .gateway import (GATE_CODES, TERMINAL_OUTCOMES, age_hours, attempt_of, availability_problem, evaluate_commit, freshness_max_age, in_order, input_availability_problems, is_current_at, ledger_from_receipts,
                       parse_time, receipt_chains, regressive_receipt_versions, same_instant, same_value, ts)
-from .model import IDENTITY, Instance, Model, claims_of, is_later, iter_refs, payload_object_of, resolve_pointer, version_problems
+from .model import IDENTITY, Instance, Model, claims_of, duplicate_claim_ids, is_later, iter_refs, payload_object_of, resolve_pointer, version_problems
 
 DOC_EVIDENCE = "architecture/evidence-semantics.md"
 DOC_LINEAGE = "architecture/lineage-selection-disclosure.md"
@@ -40,6 +40,10 @@ def _f(code: str, message: str, inst: Instance, location: str = "", doc: str = "
 
 def check_references(model: Model) -> List[Finding]:
     out: List[Finding] = []
+    for rec in model.of("C02"):
+        for claim_id, positions in duplicate_claim_ids(rec.data).items():
+            out.append(_f("REF008", "claim_id %r is carried by %d claims of %s %s (claims %s): a claim reference names one claim of an exact version, so a claim_id identifies one claim within a version, and the claims are not told apart by their order" % (
+                claim_id, len(positions), rec.id, rec.version, ", ".join(str(p) for p in positions)), rec, "/content/claims", DOC_EVIDENCE))
     for inst in model.instances.values():
         for ref in iter_refs(inst.data):
             if ref.kind in ("evidence", "support"):
@@ -74,7 +78,9 @@ def _check_support(inst: Instance, ref, target: Instance) -> List[Finding]:
     if body.get("scope") != t["scope"]:
         out.append(_f("REF002", "scope does not match the scope recorded in %s %s" % (target.id, target.version), inst, ref.path, DOC_EVIDENCE))
     if body["reference_type"] == "claim_reference":
-        if body.get("claim_id") not in claims_of(t):
+        if body.get("claim_id") in duplicate_claim_ids(t):
+            out.append(_f("REF008", "claim %r names more than one claim of %s %s, so the reference does not identify the claim it rests on (see the claim_id of the record itself)" % (body.get("claim_id"), target.id, target.version), inst, ref.path, DOC_EVIDENCE))
+        elif body.get("claim_id") not in claims_of(t):
             out.append(_f("REF002", "claim %r is not a claim of %s %s" % (body.get("claim_id"), target.id, target.version), inst, ref.path, DOC_EVIDENCE))
     else:
         payload = payload_object_of(t)
@@ -473,10 +479,11 @@ def _check_gap(model: Model, inst: Instance, sel: Instance, m: dict, loc: str) -
 
 
 def _check_completion(inst: Instance, sel: Instance, unit: dict, m: dict, loc: str) -> List[Finding]:
-    """A not_retrieved entry states when the retrieval completed. That is the unit's completion time, as an instant, and it is not later than the selection's as-of time.
+    """A not_retrieved entry states when the retrieval completed. That is the unit's completion time, as an instant, it is not earlier than the time the retrieval was attempted, and it is not later than the selection's as-of time.
 
-    A selection is a snapshot as of one time, so an empty result of a retrieval that had not completed by then cannot be part of it. The cutoff is the selection's as-of time for an entry of
-    its packet too: the packet is bound to that selection and states the same time. A completion time that is not known, or that cannot be compared exactly (see `parse_time`), cannot be shown to be early.
+    A selection is a snapshot as of one time, so an empty result of a retrieval that had not completed by then cannot be part of it, and a retrieval does not complete before it has started: attempted_at <= completed_at <= as-of,
+    with equality valid at both steps. The cutoff is the selection's as-of time for an entry of its packet too: the packet is bound to that selection and states the same time. A completion time or a start
+    time that is not known, or that cannot be compared exactly (see `parse_time`), cannot be shown to be in order.
     """
     done = unit["completed_at"].get("value") if unit["completed_at"].get("state") == "known" else None
     finished = parse_time(done)
@@ -489,6 +496,15 @@ def _check_completion(inst: Instance, sel: Instance, unit: dict, m: dict, loc: s
         raise ValueError("%s: selection %s %s has an as-of time (%r) that is not an RFC 3339 time with a zone and at most six fractional digits, so the completion of its retrievals cannot be compared "
                          "with it exactly. Correct the time" % (sel.file, sel.id, sel.version, as_of))
     out: List[Finding] = []
+    attempt = _object_of(unit.get("attempted_at"))
+    tried = attempt.get("value") if attempt.get("state") == "known" else None
+    started = parse_time(tried)
+    if started is None:
+        out.append(_f("MISS001", "the retrieval unit %s has no start time that can be compared exactly (%s), so it cannot be shown to have been attempted before it completed" % (
+            unit["retrieval_unit_id"], "unknown" if tried is None else repr(tried)), inst, loc, DOC_LINEAGE))
+    elif started > finished:
+        out.append(_f("MISS001", "the retrieval unit %s was attempted at %s, after the time %s at which it is said to have completed: a retrieval does not complete before it has been attempted" % (
+            unit["retrieval_unit_id"], tried, done), inst, loc, DOC_LINEAGE))
     if finished > cutoff:
         out.append(_f("MISS001", "the retrieval unit %s completed at %s, after the as-of time %s of selection %s %s: an empty result of a retrieval that had not completed by then is not part of the snapshot" % (
             unit["retrieval_unit_id"], done, as_of, sel.id, sel.version), inst, loc, DOC_LINEAGE))
@@ -911,7 +927,7 @@ def _check_claim_support(model: Model, pkt: Instance, index: int, claim: dict) -
     something its sources do not support. Nothing here reads prose for meaning, and the schema's free-text claim cannot be made
     to say more without a structured assertion field, which v1.0.2 does not add.
 
-    A reference that does not resolve is reported by REF001-REF003; the claim is still compared with the references that do.
+    A reference that does not resolve is reported by REF001-REF003, and one that names a claim_id that more than one claim of the record carries by REF008; the claim is still compared with the references that do resolve.
     """
     out: List[Finding] = []
     loc = "/supported_claims_references/%d" % index
@@ -1103,39 +1119,54 @@ def _reference_name(reference) -> str:
 EFFECT_FACTS = ("action_reference", "target", "quantity", "units", "observed_at", "accounting_reference")
 
 
+def _same_fact(fact: str, first, second) -> bool:
+    return same_instant(first, second) if fact == "observed_at" else same_value(first, second)
+
+
 def _check_verified_effects(chain: List[Instance]) -> List[Finding]:
     """An effect that a verified outcome has recorded stays as it was recorded: a later version of the receipt that repeats the verified outcome may repeat the effect and add others, not change it or leave it out.
 
-    The first version of the receipt that is `completed_verified` or `not_executed_verified` closes the attempt (`regressive_receipt_versions`). Each of its effects is matched with the effects of a later
-    version that repeats the same outcome by `effect_id`, and what it states about the action, the target, the quantity, the unit, the time it was observed and the accounting record it was charged to must be what
-    it stated. Quantities are compared exactly and times as instants. An effect with another id is neither a correction nor a contradiction: no correction of a verified outcome is defined for ordinary versions.
-    The free text (the description of an effect, the method of a verification) is not read, and neither is a version that is not a repeat of the verified outcome (ACC005 judges that).
+    The first version of the receipt that is `completed_verified` or `not_executed_verified` closes the attempt (`regressive_receipt_versions`). Each effect of that version is fixed, and so is each effect that a
+    later version that repeats the same outcome states for the first time: an effect is fixed by the first verified version that states it, whichever version that is. Every later version that repeats the
+    outcome is matched with the fixed effects by `effect_id`, and what it states about the action, the target, the quantity, the unit, the time it was observed and the accounting record it was charged to must
+    be what it stated. Quantities are compared exactly and times as instants. A change that was found does not become the fact. An effect with another id is neither a correction nor a contradiction: no
+    correction of a verified outcome is defined for ordinary versions. A version that states one effect more than once, differently, is found, because the order of its rows cannot tell which statement is the
+    effect; it fixes nothing. The free text (the description of an effect, the method of a verification) is not read, and neither is a version that is not a repeat of the verified outcome (ACC005 judges that).
     """
     out: List[Finding] = []
     closed = next((rec for rec in chain if _object_of(rec.data.get("outcome")).get("state") in TERMINAL_OUTCOMES), None)
     if closed is None:
         return out
     state = closed.data["outcome"]["state"]
-    verified = {}
-    for effect in map(_object_of, _list_of(closed.data["outcome"].get("observed_effects"))):
-        if isinstance(effect.get("effect_id"), str):
-            verified.setdefault(effect["effect_id"], effect)
-    for later in chain[chain.index(closed) + 1:]:
-        if _object_of(later.data.get("outcome")).get("state") != state:
+    fixed: Dict[str, Tuple[dict, Instance]] = {}   # effect id -> the effect as it was first stated, and the version that stated it
+    for version in chain[chain.index(closed):]:
+        if _object_of(version.data.get("outcome")).get("state") != state:
             continue
-        effects = [_object_of(e) for e in _list_of(later.data["outcome"].get("observed_effects"))]
-        for name, effect in verified.items():
+        effects = [_object_of(e) for e in _list_of(version.data["outcome"].get("observed_effects"))]
+        for name, (effect, first) in sorted(fixed.items()):
             repeats = [(j, e) for j, e in enumerate(effects) if e.get("effect_id") == name]
             if not repeats:
                 out.append(_f("ACC006", "version %s repeats the verified outcome %s of version %s, but leaves out effect %s that version recorded: an effect that a verified outcome has recorded is not left out by a later version" % (
-                    later.version, state, closed.version, name), later, "/outcome/observed_effects", DOC_ACTION))
+                    version.version, state, first.version, name), version, "/outcome/observed_effects", DOC_ACTION))
             for j, repeated in repeats:
                 for fact in EFFECT_FACTS:
-                    same = same_instant(effect.get(fact), repeated.get(fact)) if fact == "observed_at" else same_value(effect.get(fact), repeated.get(fact))
-                    if not same:
+                    if not _same_fact(fact, effect.get(fact), repeated.get(fact)):
                         out.append(_f("ACC006", "version %s repeats the verified outcome %s of version %s, but changes the %s of effect %s from %s to %s: an effect that a verified outcome has recorded is not "
-                                                "rewritten by a later version" % (later.version, state, closed.version, fact.replace("_", " "), name, _fact(effect.get(fact)), _fact(repeated.get(fact))),
-                                      later, "/outcome/observed_effects/%d/%s" % (j, fact), DOC_ACTION))
+                                                "rewritten by a later version" % (version.version, state, first.version, fact.replace("_", " "), name, _fact(effect.get(fact)), _fact(repeated.get(fact))),
+                                      version, "/outcome/observed_effects/%d/%s" % (j, fact), DOC_ACTION))
+        stated: Dict[str, List[dict]] = {}
+        for effect in effects:
+            if isinstance(effect.get("effect_id"), str):
+                stated.setdefault(effect["effect_id"], []).append(effect)
+        for name, rows in sorted(stated.items()):
+            if name in fixed:
+                continue
+            differing = [fact for fact in EFFECT_FACTS if any(not _same_fact(fact, rows[0].get(fact), row.get(fact)) for row in rows[1:])]
+            if differing:
+                out.append(_f("ACC006", "version %s of the verified outcome %s states effect %s %d times and the statements differ in %s: a verified outcome states an effect once, and the order of the rows cannot tell which statement is the effect" % (
+                    version.version, state, name, len(rows), ", ".join(fact.replace("_", " ") for fact in differing)), version, "/outcome/observed_effects", DOC_ACTION))
+            else:
+                fixed[name] = (rows[0], version)
     return out
 
 
@@ -1604,7 +1635,7 @@ def check_accountability(model: Model) -> List[Finding]:
         actor, when = history["actor"].get("value"), history["time"].get("value")
         if actor not in owners:
             out.append(_f("ROLE003", "packet %s %s was reviewed by %s, who is not a Decision Owner (%s)" % (packet.id, packet.version, actor, ", ".join(sorted(owners)) or "none"), packet, "/review_version_history/actor", DOC_ROLES))
-        elif not any(e.get("packet") == "%s %s" % (packet.id, packet.version) and e.get("actor") == actor and e.get("action") == "reviewed" and e.get("time") == when for e in log):
+        elif not any(e.get("packet") == "%s %s" % (packet.id, packet.version) and e.get("actor") == actor and e.get("action") == "reviewed" and same_instant(e.get("time"), when) for e in log):
             out.append(_f("ROLE003", "the review of packet %s %s by %s at %s is not in the registry's review log" % (packet.id, packet.version, actor, when), packet, "/review_version_history", DOC_ROLES))
     return out
 

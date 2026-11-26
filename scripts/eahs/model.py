@@ -565,10 +565,26 @@ def iter_refs(node, parts: Tuple = ()) -> Iterator[Ref]:
 
 
 def claims_of(record: dict) -> dict:
+    """The claims of a C02 record by claim_id. A claim_id that two claims of the version share names neither of them (see `duplicate_claim_ids`): a reference is never resolved to the claim that happens to be listed first or last."""
     content = record.get("content", {})
     if content.get("content_type") == "claims":
-        return {c["claim_id"]: c for c in content.get("claims", [])}
+        repeated = duplicate_claim_ids(record)
+        return {c["claim_id"]: c for c in content.get("claims", []) if c["claim_id"] not in repeated}
     return {}
+
+
+def duplicate_claim_ids(record: dict) -> Dict[str, List[int]]:
+    """The claim_ids that more than one claim of this version of a C02 record carries, each with the positions of the claims that carry it, in the order of the ids.
+
+    A claim reference names an exact version of a record and one claim of it, so within a version a claim_id identifies one claim. The same id in another record or in another version is another claim.
+    """
+    content = record.get("content") if isinstance(record, dict) else None
+    seen: Dict[str, List[int]] = {}
+    if isinstance(content, dict) and content.get("content_type") == "claims" and isinstance(content.get("claims"), list):
+        for position, claim in enumerate(content["claims"]):
+            if isinstance(claim, dict) and isinstance(claim.get("claim_id"), str):
+                seen.setdefault(claim["claim_id"], []).append(position)
+    return {claim_id: positions for claim_id, positions in sorted(seen.items()) if len(positions) > 1}
 
 
 def payload_of(record: dict):

@@ -2,6 +2,23 @@
 
 Releases are labeled `vMAJOR.MINOR.PATCH` and tagged in Git. Each entry lists what the release contains.
 
+## 1.0.7, 26 November 2026
+
+A corrective release for five gaps in the reference commit check and the reference validator, and a related one in the role check. The schema, the figures, the evaluation statuses and the data of the examples are unchanged, and the contract pages now state the rules that the checks enforce. A set of records that passed the checks before passes now, unless it falls into one of the gaps below.
+
+### What changed
+
+- **An evidence precondition does not depend on the order of the evidence.** A rule that reads evidence selects the usable records that the proposal and the grant name, read together, and is satisfied only if at least one exists and every one of them satisfies it. Records that disagree fail it, whichever is listed first, and a record that was not usable counts neither for nor against (`PRECONDITION_FAILED`).
+- **A derived record is used only while the inputs it declares are current.** At commit, a record derived from other records is refused when an input it declares, at any depth, was not current at the attempt, and a precondition does not rest on it. An earlier attempt is judged as it was: a later supersession does not reach back into it (`EVIDENCE_NOT_CURRENT`).
+- **A verified effect stays as it was first verified.** An effect is fixed by the first verified version of a receipt that states it, whichever version that is, and a later version that repeats the verified outcome keeps it as it was (`ACC006`). A version that states one effect twice, differently, is found.
+- **A claim_id names one claim of a version.** Two claims of one version of a record do not share an id, so a claim reference is never resolved by the position of a claim. The same id in another record or in another version is valid (`REF008`).
+- **A completed retrieval is in order.** The retrieval that a `not_retrieved` entry rests on was attempted no later than it completed, and it completed by the as-of time of its selection. An attempt time that cannot be read cannot show it (`MISS001`).
+- **A review is found in the log as an instant.** The time of the review that a packet states is compared with the registry's review log as an instant, and not as written (`ROLE003`).
+
+### Known limitations
+
+The standing claims and limits are on the [claims and limits](docs/claims-and-limits.md) page.
+
 ## 1.0.6, 26 November 2026
 
 A corrective release for gaps in the reference validator and the reference commit check, which an independent review of 1.0.5 confirmed. The contracts, the schema, the figures, the evaluation statuses and the data of the examples are unchanged, apart from one generated evaluation case. A set of records that passed the checks before passes now, unless it falls into one of the gaps below.

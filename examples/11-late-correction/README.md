@@ -64,7 +64,7 @@ The files show end-of-day snapshots, so a state that was later replaced is not i
 |---|---|---|---|
 | Supplier screening (`SCR-S1042` v1) | current, 50 h old at 10:00 | `superseded` at 13:30, replacement v2 | re-screened |
 | Goods receipt (`GR-5521` v1) | current | `superseded` at 13:40, replacement v2 | correction |
-| Three-way match (`M3W-0417` v1, FAIL) | current | `superseded` at 13:51, replacement v2 (PASS) | its input was corrected, and the match was recomputed |
+| Three-way match (`M3W-0417` v1, FAIL) | current | `superseded` at 13:51, replacement v2 (PASS) | its input was corrected, and the match was recomputed; from 13:40, when its input was superseded, the commit check no longer relies on it (`EVIDENCE_NOT_CURRENT`), and v2 is not admitted until 13:51 |
 | The two AI summaries (`SUM-A-0417` v1, `SUM-B-0417` v1) | current | `withdrawn` at 13:45 | their only basis was superseded; they are not recomputed |
 | The decision packet (`PKT-0417` v1) | `reviewed` by the controller at 10:35 | `invalidated` at 13:45 | it cites superseded records |
 | The first approval (`GRT-APPR-0417-A`) | not revoked | `revoked` at 13:45 | its basis packet was invalidated |

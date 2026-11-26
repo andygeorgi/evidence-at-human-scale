@@ -40,7 +40,7 @@ Required singleton objects are neither null nor omitted. IDs and versions are no
 
 A supporting reference takes one of these tagged forms:
 
-- `claim_reference` requires `record_id`, an exact `version`, `claim_id` and the original locator.
+- `claim_reference` requires `record_id`, an exact `version`, `claim_id` and the original locator. A `claim_id` identifies one claim within that exact version, so a version never carries two claims with one id (`REF008`); the same id in another record or in another version is another claim.
 - `payload_reference` requires `record_id`, an exact `version`, an explicit payload location or pointer, and the original locator.
 
 Both preserve the exact scope, type and source provenance. Payload-only evidence needs no invented `claim_id`. A producer identity never takes the place of the original locator of the source or record and its version, or of an immutable snapshot.
