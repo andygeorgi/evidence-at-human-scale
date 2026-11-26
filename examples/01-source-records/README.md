@@ -42,7 +42,7 @@ A source record is what a source system asserted, in a specific version and scop
 
 ## Checks that run here
 
-Stage 2 validates each file against the C02 definition. Stage 3 checks that the producer may submit this kind (`KIND001`), that every reference resolves to an exact version (`REF001`–`REF007`) and that a superseded record names its replacement (`LIFE001`, `LIN003`). Related evaluation cases: `CASE-SCH-01`, `CASE-SCH-02`, `CASE-KIND-01`, `CASE-LIN-03`.
+Stage 2 validates each file against the C02 definition. Stage 3 checks that the producer may submit this kind (`KIND001`), that every reference resolves to an exact version (`REF001`–`REF008`, which includes that a `claim_id` names one claim of a version) and that a superseded record names its replacement (`LIFE001`, `LIN003`). Related evaluation cases: `CASE-SCH-01`, `CASE-SCH-02`, `CASE-KIND-01`, `CASE-LIN-03`.
 
 ## What this shows, and what it does not
 

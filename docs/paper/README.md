@@ -1,7 +1,7 @@
 # The paper
 
 **Evidence at Human Scale: Reference Architecture for Accountable Decisions in Agentic Systems**
-Andy Georgi · version 1.0.6 · 26 November 2026
+Andy Georgi · version 1.0.7 · 26 November 2026
 
 The paper argues that the unit of design for an agentic system is the decision context, not the agent hierarchy: the outputs selected for one decision and released as one versioned decision packet. Each chapter can be read on its own. It links to the contract or reference page that holds the detail and, where one exists, to a worked example. To run something first, start with the [examples](../../examples/README.md).
 

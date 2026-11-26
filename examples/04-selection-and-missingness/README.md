@@ -78,7 +78,7 @@ The entries are produced by the viewer projection in [`scripts/eahs/disclosure.p
 
 | Code | Rule | Case that breaks it |
 |---|---|---|
-| `MISS001` | `not_retrieved` needs a completed retrieval unit of its own selection, whose completion time is the entry's and is not after the selection's as-of time (an unreadable time is not trusted) | `CASE-MISS-03`, `tests/test_retrieval_binding.py` |
+| `MISS001` | `not_retrieved` needs a completed retrieval unit of its own selection, whose completion time is the entry's, is not before the time it was attempted and is not after the selection's as-of time (an unreadable time is not trusted) | `CASE-MISS-03`, `tests/test_retrieval_binding.py` |
 | `MISS002` | `negative` needs complete coverage of its scope | `CASE-MISS-02` |
 | `MISS003` | `stale` must be justified by the freshness policy | `CASE-MISS-01` |
 | `MISS004` | `unavailable` points at an observation of the failure | (checked on the whole set) |
