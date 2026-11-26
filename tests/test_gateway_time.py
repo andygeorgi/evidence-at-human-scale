@@ -1084,11 +1084,16 @@ class TwoReceiptsForOneAttemptAreAmbiguousForAReplay(unittest.TestCase):
 class AVersionNameIsReadByItsAsciiDigitsOnly(unittest.TestCase):
     """int() refuses a digit of another script that str.isdigit() accepts ("v\u00b2"), and a version name is data."""
 
-    def test_the_number_in_a_version_name(self):
-        from eahs.model import version_number
-        for name, number in (("v1", 1), ("v2", 2), ("v10", 10), ("v", 0), ("", 0), ("v1.2", 12), ("v\u00b2", 0), ("v\u0662", 0), ("v\uff12", 0), ("v\u00b23", 3)):
+    def test_the_place_of_a_version_name(self):
+        """Only the digits 0-9 give a version name its place. v1.2 is the numbers 1 and 2, and it is not 12; v1 and v01 have one place, and a name with no number has none."""
+        from eahs.model import version_key
+        for name, read_as in (("v1", "1"), ("v2", "2"), ("v10", "10"), ("v01", "1"), ("v1.2", "1.2"), ("v\u00b23", "3"), ("v", None), ("", None), ("v\u00b2", None), ("v\u0662", None), ("v\uff12", None)):
             with self.subTest(name):
-                self.assertEqual(version_number(name), number)
+                self.assertEqual(version_key(name), None if read_as is None else version_key(read_as))
+        self.assertLess(version_key("v2"), version_key("v10"))
+        self.assertLess(version_key("v1"), version_key("v1.1"))
+        self.assertLess(version_key("v1.2"), version_key("v12"))
+        self.assertNotEqual(version_key("v1.2"), version_key("v12"))
 
     def test_a_grant_version_with_such_a_name_is_ordered_and_does_not_end_the_check(self):
         from eahs.model import Instance, Model

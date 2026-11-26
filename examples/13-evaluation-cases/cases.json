@@ -200,14 +200,42 @@
       ],
       "mutations": [
         {
-          "target": "C02 GR-5521 v1",
+          "target": "C02 SUM-A-0417 v1",
           "ops": [
             {
               "op": "replace",
               "path": "/lineage/parent_references",
               "value": [
                 {
-                  "record_id": "M3W-0417",
+                  "record_id": "GR-5521",
+                  "version": "v1"
+                },
+                {
+                  "record_id": "SUM-B-0417",
+                  "version": "v1"
+                }
+              ]
+            },
+            {
+              "op": "replace",
+              "path": "/producer_admission/admission_time",
+              "value": "2026-11-23T09:44:00Z"
+            }
+          ]
+        },
+        {
+          "target": "C02 SUM-B-0417 v1",
+          "ops": [
+            {
+              "op": "replace",
+              "path": "/lineage/parent_references",
+              "value": [
+                {
+                  "record_id": "GR-5521",
+                  "version": "v1"
+                },
+                {
+                  "record_id": "SUM-A-0417",
                   "version": "v1"
                 }
               ]

@@ -140,11 +140,14 @@ class TheEvidenceAPacketRestsOnWasAvailableAtItsAsOfTime(unittest.TestCase):
     def test_support_that_became_available_after_the_cutoff_is_found(self):
         for label in (GOODS_RECEIPT, MATCH, MONITOR):
             with self.subTest(label):
-                self.assertEqual(codes(self.late(label)), ["PKT007"])
+                # The match result is derived from the goods receipt, so a receipt that came after the match result was admitted was not available to it either (LIN008).
+                self.assertEqual(codes(self.late(label)), ["LIN008", "PKT007"] if label == GOODS_RECEIPT else ["PKT007"])
 
     def test_the_finding_names_the_record_the_cutoff_and_the_place_the_packet_cites_it(self):
+        """The receipt is cited as a claim of its own, and the match result, which is derived from it, is cited as another: the second is found through the first."""
         found = packet_findings(self.late(GOODS_RECEIPT))
-        self.assertEqual(where(found), [("PKT007", "c04-PKT-0417-v2.json", "/supported_claims_references/2/supporting_references/0")])
+        self.assertEqual(where(found), [("PKT007", "c04-PKT-0417-v2.json", "/supported_claims_references/2/supporting_references/0"),
+                                        ("PKT007", "c04-PKT-0417-v2.json", "/supported_claims_references/3/supporting_references/0")])
         for part in ("2026-11-23T14:10:00Z", "GR-5521 v2", "was admitted at 2026-11-23T14:11:00Z", "after the packet's as-of time"):
             self.assertIn(part, found[0].message)
 
@@ -152,7 +155,7 @@ class TheEvidenceAPacketRestsOnWasAvailableAtItsAsOfTime(unittest.TestCase):
         for path, word in ((ADMITTED, "admitted"), (INGESTED, "ingested")):
             with self.subTest(word):
                 found = packet_findings(self.late(GOODS_RECEIPT, self.LATE, path))
-                self.assertEqual([f.code for f in found], ["PKT007"])
+                self.assertEqual([f.code for f in found], ["PKT007", "PKT007"], "the receipt, and the match result that is derived from it")
                 self.assertIn("was %s at 2026-11-23T14:11:00Z" % word, found[0].message)
 
     def test_a_record_available_exactly_at_the_cutoff_is_available(self):
@@ -160,7 +163,7 @@ class TheEvidenceAPacketRestsOnWasAvailableAtItsAsOfTime(unittest.TestCase):
         self.assertEqual(packet_findings(self.late(GOODS_RECEIPT, "2026-11-23T15:10:00+01:00", ADMITTED), self.late(GOODS_RECEIPT, "2026-11-23T14:10:00Z", INGESTED)), [])
 
     def test_the_smallest_step_after_the_cutoff_is_after_it(self):
-        self.assertEqual(codes(self.late(GOODS_RECEIPT, "2026-11-23T14:10:00.000001Z")), ["PKT007"])
+        self.assertEqual(codes(self.late(GOODS_RECEIPT, "2026-11-23T14:10:00.000001Z")), ["LIN008", "PKT007"])
 
     def test_support_of_an_inference_is_held_to_the_cutoff_too(self):
         found = packet_findings(change("C02 SUM-A-0417 v1", rep(ADMITTED, "2026-11-23T10:00:01Z")))
@@ -168,12 +171,12 @@ class TheEvidenceAPacketRestsOnWasAvailableAtItsAsOfTime(unittest.TestCase):
 
     def test_a_record_that_was_never_admitted_is_no_basis_at_any_time(self):
         found = packet_findings(change(GOODS_RECEIPT, rep("/producer_admission/admission_status", "quarantined")))
-        self.assertEqual([f.code for f in found], ["PKT007"])
+        self.assertEqual([f.code for f in found], ["PKT007", "PKT007"], "the receipt, and the match result that is derived from it")
         self.assertIn("admission status 'quarantined'", found[0].message)
 
     def test_a_record_whose_admission_time_cannot_be_read_cannot_be_shown_to_be_available(self):
         found = packet_findings(change(GOODS_RECEIPT, rep(ADMITTED, "unknown")))
-        self.assertEqual([f.code for f in found], ["PKT007"])
+        self.assertEqual([f.code for f in found], ["PKT007", "PKT007"], "the receipt, and the match result that is derived from it")
         self.assertIn("missing or unknown", found[0].message)
 
     def test_a_challenge_link_may_name_evidence_that_arrived_after_the_packet(self):

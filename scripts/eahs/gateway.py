@@ -18,7 +18,7 @@ from decimal import Decimal
 from fractions import Fraction
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from .model import Instance, Model, claims_of, payload_of, resolve_pointer, version_number as _vn
+from .model import Instance, Model, VersionOrderError, claims_of, is_later, ordered, payload_of, resolve_pointer
 
 # The same shape as the schema's date-time pattern: a zone designator is required. ASCII digits only: \d would also match the digits of other scripts.
 _RFC3339 = re.compile(r"(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:([Zz])|([+-])(\d{2}):(\d{2}))", re.ASCII)
@@ -211,6 +211,39 @@ def availability_problem(record: Instance, at: datetime, moment: str = "the atte
     return None
 
 
+def declared_inputs(model: Model, record: Instance) -> List[Instance]:
+    """The records that `record` names as its parents, and theirs in turn: every input it rests on that exists in the set, nearest first and once each.
+
+    A parent that does not exist is left out: the reference check reports it. A damaged list of parents names none.
+    """
+    seen = {record.key}
+    found: List[Instance] = []
+    queue = [record]
+    while queue:
+        current = queue.pop(0)
+        for ref in _list(_object(current.data.get("lineage")).get("parent_references")):
+            parent = _record(model, ref)
+            if parent is not None and parent.key not in seen:
+                seen.add(parent.key)
+                found.append(parent)
+                queue.append(parent)
+    return found
+
+
+def input_availability_problems(model: Model, record: Instance, at: datetime, moment: str = "the attempt") -> List[Reason]:
+    """Why a record that was available itself could not be relied on at `at`: it is derived from inputs that were not. One reason for each declared input, at any depth, that was not available, in the order
+    of their identities, so that the order in which a record lists its parents decides nothing. None when every input it rests on was available.
+
+    A derived record is built from its parents, so the record cannot be relied on before they could be. A record that names an input which arrived later does not stand in for that input.
+    """
+    out: List[Reason] = []
+    for parent in sorted(declared_inputs(model, record), key=lambda r: (r.id, r.version)):
+        problem = availability_problem(parent, at, moment)
+        if problem is not None:
+            out.append(Reason(problem.code, "%s %s is derived from an input that was not available: %s" % (record.id, record.version, problem.message)))
+    return out
+
+
 def lifecycle_problem(record: Instance, at: datetime) -> Optional[Reason]:
     """Why the record was not current in its lifecycle at `at`, or None if its lifecycle allowed use.
 
@@ -299,22 +332,47 @@ def evidence_refs(proposal: dict, grant: dict) -> List[dict]:
     return out
 
 
-def _target_state(model: Model, entity: str, at: datetime) -> dict:
-    """The latest recorded state of the target at or before `at`.
+@dataclass
+class TargetState:
+    """What is recorded of a target at the latest instant at or before an attempt."""
+    values: dict                                               # the keys on which every record of that instant agrees, with their values
+    conflicts: Dict[str, list] = field(default_factory=dict)   # the keys on which the records of that instant disagree, with the different values they give
+    at: str = ""                                               # that instant, as its earliest-written record states it (so that it does not depend on the order of the records)
+
+
+def _target_state(model: Model, entity: str, at: datetime) -> TargetState:
+    """The state of the target at the latest instant at or before `at`, read from every record of that instant and not from the one that came last.
+
+    Records are read as instants, so one instant written two ways is one instant, and a record made after `at` is not yet a record. The records of the latest instant are read together:
+    where they agree about a key, that is its value, and where they disagree it is unresolved (named in `conflicts` and left out of `values`), so that a rule that asks for the key is not
+    met by whichever record happened to be listed last. A later record that is unambiguous replaces an earlier disagreement, because only the latest instant is read.
 
     An entry for the target whose time cannot be read cannot be placed before the attempt or after it: it could be the state that
     holds at the attempt, so the state at the attempt cannot be established, and nothing is returned. The older state is not used instead.
     """
-    latest, latest_at = {}, None
+    latest_at: Optional[datetime] = None
+    here: List[dict] = []
     for item in map(_object, model.registry.target_states):
         if item.get("entity_id") != entity:
             continue
         seen = parse_time(item.get("at"))
         if seen is None:
-            return {}
-        if seen <= at and (latest_at is None or seen >= latest_at):
-            latest, latest_at = _object(item.get("state")), seen
-    return latest
+            return TargetState({})
+        if seen > at:
+            continue
+        if latest_at is None or seen > latest_at:
+            latest_at, here = seen, [item]
+        elif seen == latest_at:
+            here.append(item)
+    given: Dict[str, list] = {}
+    for item in here:
+        for key, value in _object(item.get("state")).items():
+            distinct = given.setdefault(key, [])
+            if not any(_equal(value, other) for other in distinct):
+                distinct.append(value)
+    return TargetState({key: found[0] for key, found in given.items() if len(found) == 1},
+                       {key: sorted(found, key=repr) for key, found in given.items() if len(found) > 1},
+                       min((str(item.get("at")) for item in here), default=""))
 
 
 def _target_permitted(target: dict, permitted: List[dict]) -> bool:
@@ -331,10 +389,13 @@ def grant_in_force(model: Model, grant_id: str, at: datetime, current: Optional[
 
     `current` is the grant that is being evaluated: where a what-if has changed it (an override of its issuance time), its own version
     is read as it stands, and not as it is stored.
+
+    The latest is the one the numbers in the version names put last (see `model.ordered`), and it is never guessed: the versions issued by `at` may not share a place in the
+    order or have none, because then it cannot be told which of them replaced which. Raises VersionOrderError for such versions. A version issued after `at` is not in force, so it is not asked for.
     """
     versions = [current if current is not None and g.version == current.version else g for g in model.versions("C06", grant_id)]
     issued = [g for g in versions if _issued(g) is not None and _issued(g) <= at]
-    return issued[-1] if issued else None
+    return ordered(issued)[-1] if issued else None
 
 
 def _window(limit: dict) -> Optional[Tuple[datetime, datetime]]:
@@ -354,6 +415,13 @@ def _equal(held, wanted) -> bool:
     if isinstance(held, list) and isinstance(wanted, list):
         return len(held) == len(wanted) and all(_equal(a, b) for a, b in zip(held, wanted))
     return held == wanted
+
+
+def same_value(first, second) -> bool:
+    """Whether two values read from the records are the same. Numbers are compared exactly as written (18400 and 18400.0 are one number), true and false are not the numbers 1 and 0, and objects and lists are compared member by member."""
+    if _is_quantity(first) and _is_quantity(second) and not any(isinstance(x, float) and not math.isfinite(x) for x in (first, second)):
+        return _exact(first) == _exact(second)
+    return _equal(first, second)
 
 
 def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datetime, ledger: List[LedgerEntry]) -> Decision:
@@ -388,9 +456,14 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
         reasons.append(Reason("GRANT_TIME_UNKNOWN", "the grant's issuance time is missing or unknown, so it cannot be shown to have been issued by the attempt"))
     elif issued > at:
         reasons.append(Reason("GRANT_NOT_YET_VALID", "grant issued after the attempt"))
-    newest = grant_in_force(model, grant.id, at, current=grant)
     # Superseded means that a NEWER version is in force. When the version evaluated is itself not yet issued (GRANT_NOT_YET_VALID above), an older one is in force, and that is not a supersession.
-    if newest is not None and _vn(newest.version) > _vn(grant.version):
+    # Where the versions issued by the attempt cannot be put in order, it cannot be ruled out that one of them replaced this one: the attempt is blocked, and no guess says which is in force.
+    try:
+        newest = grant_in_force(model, grant.id, at, current=grant)
+    except VersionOrderError as unordered:
+        newest = None
+        reasons.append(Reason("GRANT_SUPERSEDED", "it cannot be ruled out that a version of the grant issued by the attempt replaced %s, because %s" % (grant.version, unordered)))
+    if newest is not None and is_later(newest.version, grant.version):
         reasons.append(Reason("GRANT_SUPERSEDED", "grant version %s is in force; %s is no longer usable" % (newest.version, grant.version)))
     for other in model.versions("C06", grant.id):
         if other.version != grant.version and _issued(other) is None:
@@ -429,8 +502,9 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
             reasons.append(Reason("EVIDENCE_UNRESOLVED", "evidence %s %s does not exist" % (ref.get("record_id"), ref.get("version"))))
             continue
         unavailable = availability_problem(rec, at)
-        if unavailable is not None:
-            reasons.append(unavailable)
+        unavailable = [unavailable] if unavailable is not None else input_availability_problems(model, rec, at)
+        if unavailable:
+            reasons.extend(unavailable)
             continue
         stale_or_gone = lifecycle_problem(rec, at)
         if stale_or_gone is not None:
@@ -472,6 +546,7 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
             reasons.append(Reason("PRECONDITION_UNDEFINED", "no rule is defined for %s" % condition_id))
             continue
         ok = False
+        unresolved = ""
         try:
             if rule.get("type") == "evidence_payload_equals":
                 for ref in refs:
@@ -489,12 +564,15 @@ def evaluate_commit(model: Model, proposal: Instance, grant: Instance, at: datet
                         ok = age is not None and age <= float(rule["max_age_hours"])
             elif rule.get("type") == "target_state_equals":
                 # A state that does not hold the key says nothing about it: a missing key is not a value (null) that a rule could ask for.
+                # Records of the latest instant that disagree about the key leave it unresolved: none of their values is the state, so none is the value that the rule asks for.
                 state = _target_state(model, rule["entity_id"], at)
-                ok = rule["key"] in state and _equal(state[rule["key"]], rule["equals"])
+                ok = rule["key"] in state.values and _equal(state.values[rule["key"]], rule["equals"])
+                if rule["key"] in state.conflicts:
+                    unresolved = " (the records of %s at %s disagree about %r: %s, so its state cannot be established)" % (rule["entity_id"], state.at, rule["key"], " and ".join(repr(value) for value in state.conflicts[rule["key"]]))
         except (KeyError, TypeError, ValueError, OverflowError, AttributeError):
             ok = False
         if not ok:
-            reasons.append(Reason("PRECONDITION_FAILED", "%s is not satisfied: %s" % (condition_id, pre.get("condition"))))
+            reasons.append(Reason("PRECONDITION_FAILED", "%s is not satisfied: %s%s" % (condition_id, pre.get("condition"), unresolved)))
 
     # 5. Per-action and cumulative limits, counting consumed and reserved capacity. A limit that cannot be read cannot be shown to hold.
     per_action, cumulative = life.get("per_action_limits"), life.get("cumulative_limits")
@@ -581,20 +659,46 @@ def _outcome_state(receipt: Instance):
     return _object(receipt.data.get("outcome")).get("state")
 
 
+def receipt_chains(model: Model) -> Dict[str, List[Instance]]:
+    """The versions of each receipt by receipt id, in the order the records of the set are kept in. That is a listing, not the order of the versions: see `in_order`."""
+    chains: Dict[str, List[Instance]] = {}
+    for rec in model.of("C07"):
+        chains.setdefault(rec.id, []).append(rec)
+    return chains
+
+
+def in_order(versions: List[Instance]) -> Optional[List[Instance]]:
+    """The versions of one receipt, earliest first, or None when their names cannot be put in order (they share a place, or one has none): then no version can be said to come first, or last."""
+    try:
+        return ordered(versions)
+    except VersionOrderError:
+        return None
+
+
+def attempt_of(receipt: Instance):
+    """The execution attempt that a version of a receipt records: its `execution_attempt_id`, or the receipt itself when it states none that can be read.
+
+    The identity of an attempt is the execution attempt id, and not the id of the receipt that describes it: the versions of one receipt describe one attempt, and so do two receipts that claim the same id.
+    """
+    attempt = _object(receipt.data.get("identity_binding")).get("execution_attempt_id")
+    return attempt if isinstance(attempt, str) and attempt else ("receipt", receipt.id)
+
+
 def regressive_receipt_versions(model: Model) -> List[Tuple[Instance, Instance]]:
     """(the version, the earlier version whose verified outcome it leaves) for each version of a receipt that goes back from a verified outcome.
 
     The versions of one receipt are read in the order of their numbers. The first version that is `completed_verified` or `not_executed_verified`
     closes the attempt: a later version may say the same, and one that says anything else (submitted, unknown, partial, or the other verified outcome) leaves it.
     What the unresolved states do among themselves is not judged here. No correction of a verified outcome is defined for these ordinary versions.
+    Versions that cannot be put in order are not judged: no state can be said to go back while it is not known which comes after which (the lifecycle check reports the names, `LIFE006`).
     """
-    by_id: Dict[str, List[Instance]] = {}
-    for rec in model.of("C07"):
-        by_id.setdefault(rec.id, []).append(rec)
     found: List[Tuple[Instance, Instance]] = []
-    for versions in by_id.values():
+    for versions in receipt_chains(model).values():
+        chain = in_order(versions)
+        if chain is None:
+            continue
         closed: Optional[Instance] = None
-        for rec in sorted(versions, key=lambda r: _vn(r.version)):
+        for rec in chain:
             if closed is None:
                 closed = rec if _outcome_state(rec) in TERMINAL_OUTCOMES else None
             elif _outcome_state(rec) != _outcome_state(closed):
@@ -618,24 +722,28 @@ def receipt_known_at(receipt: dict, first_version: bool = False) -> Optional[dat
 
 
 def attempt_receipt_ids(model: Model, proposal: Instance, grant: Instance, at: datetime) -> List[str]:
-    """The receipts that record this very attempt: they cite this proposal and this grant, and the attempt was submitted at `at`.
+    """The receipts that record this very attempt: they cite this proposal and this grant, and the attempt was submitted at `at`, together with every other receipt that records the same attempt.
 
-    Replaying an attempt must not charge it against itself, so a replay leaves these out of the ledger and nothing else. Two receipts
-    that record attempts of the same proposal under the same grant at the same instant leave the replay unable to tell which of them is
-    its own, and the other one must count: it raises ValueError (a replay that guessed would free capacity another attempt holds).
+    Replaying an attempt must not charge it against itself, so a replay leaves these out of the ledger and nothing else. The attempt is its execution attempt id: a receipt that claims the same id
+    records the same attempt, whenever it says it was submitted, and leaving one of them in would charge the attempt against itself. Two receipts that record attempts of the same proposal under
+    the same grant at the same instant, and different attempts, leave the replay unable to tell which of them is its own, and the other one must count: it raises ValueError (a replay that
+    guessed would free capacity another attempt holds). The receipts that match come first, in the order of the records, and the others follow by receipt id.
     """
     found: List[str] = []
+    attempts = set()
     for rec in model.of("C07"):
         binding = _object(rec.data.get("identity_binding"))
         p_ref, g_ref = _object(binding.get("proposal_reference")), _object(binding.get("grant_reference"))
         submitted = parse_time(_object(_object(rec.data.get("outcome")).get("timestamps")).get("submitted"))
         if (p_ref.get("id"), p_ref.get("version")) == (proposal.id, proposal.version) and (g_ref.get("id"), g_ref.get("version")) == (grant.id, grant.version) \
-                and submitted is not None and submitted == at and rec.id not in found:
-            found.append(rec.id)
-    if len(found) > 1:
+                and submitted is not None and submitted == at:
+            attempts.add(attempt_of(rec))
+            if rec.id not in found:
+                found.append(rec.id)
+    if len(attempts) > 1:
         raise ValueError("%s receipts (%s) record an attempt of %s %s under %s %s at the same moment, so a replay cannot tell which one is its own and which one must count "
                          "against the limit. Give each attempt its own time, or correct the receipts" % (len(found), ", ".join(found), proposal.id, proposal.version, grant.id, grant.version))
-    return found
+    return found + sorted({rec.id for rec in model.of("C07") if attempt_of(rec) in attempts and rec.id not in found})
 
 
 def _capacity_held(receipt: dict, before: datetime) -> Optional[str]:
@@ -661,55 +769,122 @@ def _capacity_held(receipt: dict, before: datetime) -> Optional[str]:
     return "reserved"
 
 
-def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str = "", exclude_receipt_ids: Iterable[str] = ()) -> List[LedgerEntry]:
-    """Capacity already used or held at `before`: for each attempt, the latest receipt version already known then.
+def _same_reference(first, second) -> bool:
+    """Whether two references are the same object, member by member. A reference that is missing on either side is not the same as one that is missing on both."""
+    return isinstance(first, dict) and isinstance(second, dict) and _equal(first, second)
 
-    A receipt known at exactly `before` counts, like any time equal to the attempt: it was available. The only receipt that
+
+def effect_is_bound(effect, binding) -> bool:
+    """Whether a structured effect of a receipt is for the action and the target of that receipt: its action reference is the proposal the receipt cites, and its target is the receipt's target."""
+    effect, binding = _object(effect), _object(binding)
+    return _same_reference(effect.get("action_reference"), binding.get("proposal_reference")) and _same_reference(effect.get("target"), binding.get("target"))
+
+
+def _known_effects(versions: List[Instance], before: datetime, units: str) -> Optional[Fraction]:
+    """What the structured effects that these versions of one receipt state add up to in `units`, as far as they had been observed by `before`.
+
+    Only an effect that is bound to the action and the target of its receipt counts (`effect_is_bound`), in the unit of the limit: an effect in another unit is another measure, and nothing is converted
+    or added across units. An effect counts once, however many versions state it, at the largest quantity any of them gives: a later version that states less does not give capacity back. An effect
+    whose observation time cannot be read cannot be shown to be later than `before`, so it counts. None when an effect that counts states a unit or a quantity that cannot be read: it cannot be shown to be small.
+    """
+    largest: Dict[object, Fraction] = {}
+    for rec in versions:
+        binding = _object(rec.data.get("identity_binding"))
+        for index, effect in enumerate(_list(_object(rec.data.get("outcome")).get("observed_effects"))):
+            effect = _object(effect)
+            if not effect_is_bound(effect, binding):
+                continue
+            effect_units, quantity = effect.get("units"), effect.get("quantity")
+            if not isinstance(effect_units, str) or not effect_units:
+                return None
+            if effect_units != units:
+                continue
+            observed = parse_time(effect.get("observed_at"))
+            if observed is not None and observed > before:
+                continue
+            if not _is_quantity(quantity) or quantity < 0 or (isinstance(quantity, float) and not math.isfinite(quantity)):
+                return None
+            name = effect.get("effect_id")
+            key = name if isinstance(name, str) and name else (rec.version, index)
+            exact = _exact(quantity)
+            largest[key] = max(largest.get(key, exact), exact)
+    return sum(largest.values(), Fraction(0))
+
+
+def _one_attempt(first: LedgerEntry, second: LedgerEntry) -> LedgerEntry:
+    """One entry for two descriptions of one attempt: the larger quantity, reserved if either holds it so, from the earlier start (unknown if either is), under the smaller receipt id."""
+    return LedgerEntry(first.grant_id, first.accounting_scope, first.units, max(first.quantity, second.quantity),
+                       "reserved" if "reserved" in (first.state, second.state) else first.state,
+                       None if first.start is None or second.start is None else min(first.start, second.start),
+                       min(first.receipt, second.receipt))
+
+
+def ledger_from_receipts(model: Model, before: datetime, exclude_receipt_id: str = "", exclude_receipt_ids: Iterable[str] = ()) -> List[LedgerEntry]:
+    """Capacity already used or held at `before`: for each attempt, what its latest receipt version already known then holds.
+
+    An attempt is its execution attempt id (`attempt_of`), and holds one entry for each grant, scope and unit: the versions of one receipt are one attempt, and so are receipts that claim the same
+    id, whatever their ids or submission times (the validator reports those, `ACC007`). Where such descriptions differ, the attempt is held once, at the larger quantity and as reserved if any of
+    them says so: it is never counted twice, and never at less than any of them says.
+
+    A receipt known at exactly `before` counts, like any time equal to the attempt: it was available. The only attempt that
     does not count is the attempt's own, which a replay names (`exclude_receipt_id`, or `attempt_receipt_ids` for several): an
-    attempt must not be charged against itself. An attempt is known from its submission, so a receipt that already carries its
+    attempt must not be charged against itself, and every receipt that records it is left out, not only the one that was named. An attempt is known from its submission, so a receipt that already carries its
     verification still holds its reservation until that verification is available (see `_capacity_held`). A receipt whose time
     is unknown cannot be shown to come after `before`, so it is counted: capacity is never freed by a time that cannot be read.
 
+    The quantity of an attempt is what its proposal states, which it reserves from its submission, and never less than what its structured effects say once they have been observed (see
+    `_known_effects`): a payment that was booked for more than was approved holds the amount that was booked. It is not made smaller by an effect that is smaller: capacity comes back only through the
+    verification that `_capacity_held` describes, and nothing is converted between units.
+
     A version that goes back from a verified outcome of an earlier version (see `regressive_receipt_versions`) is not the latest state of the attempt:
     the replay keeps the verified outcome, so that a completed attempt is never read as unresolved again. The validator reports the history (`ACC005`).
+    The versions of a receipt that cannot be put in order (see `in_order`) have no latest: each version already known holds the attempt, and the attempt is held once at the most that any of them says.
     """
-    excluded = set(exclude_receipt_ids) | ({exclude_receipt_id} if exclude_receipt_id else set())
-    first: Dict[str, int] = {}
-    for rec in model.of("C07"):
-        first[rec.id] = min(first.get(rec.id, _vn(rec.version)), _vn(rec.version))
+    named = set(exclude_receipt_ids) | ({exclude_receipt_id} if exclude_receipt_id else set())
+    chains = receipt_chains(model)
+    own = {attempt_of(rec) for name in named for rec in chains.get(name, [])}
     regressive = {later.key for later, _ in regressive_receipt_versions(model)}
-    latest: Dict[str, Instance] = {}
-    for rec in model.of("C07"):
-        known = receipt_known_at(rec.data, first_version=_vn(rec.version) == first[rec.id])
-        if rec.id in excluded or rec.key in regressive or (known is not None and known > before):
-            continue
-        cur = latest.get(rec.id)
-        if cur is None or _vn(rec.version) > _vn(cur.version):
-            latest[rec.id] = rec
-    entries: List[LedgerEntry] = []
-    for rec in latest.values():
-        d = rec.data
-        submitted = parse_time(_object(_object(d.get("outcome")).get("timestamps")).get("submitted"))
-        binding = _object(d.get("identity_binding"))
-        grant_ref, proposal_ref = _object(binding.get("grant_reference")), _object(binding.get("proposal_reference"))
-        grant = model.get("C06", grant_ref.get("id"), grant_ref.get("version")) if isinstance(grant_ref.get("id"), str) and isinstance(grant_ref.get("version"), str) else None
-        proposal = model.get("C05", proposal_ref.get("id"), proposal_ref.get("version")) if isinstance(proposal_ref.get("id"), str) and isinstance(proposal_ref.get("version"), str) else None
-        if grant is None or proposal is None:
-            continue
-        held = _capacity_held(d, before=before)
-        if held is None:
-            continue
-        counted = set()
-        for limit in map(_object, _list(_object(grant.data.get("limits_lifecycle")).get("cumulative_limits"))):
-            scope = limit.get("accounting_scope")
-            if not isinstance(scope, str) or not isinstance(limit.get("units"), str):
+    merged: Dict[tuple, LedgerEntry] = {}
+    for receipt_id in sorted(chains):
+        chain = in_order(chains[receipt_id])
+        available: List[Instance] = []
+        for position, rec in enumerate(chain if chain is not None else chains[receipt_id]):
+            if rec.id in named or attempt_of(rec) in own or rec.key in regressive:
                 continue
-            # One entry for each attempt, scope and unit, however many windows the grant states for them: every window is applied to the entry
-            # when its limit is evaluated, and a second entry would count the same attempt twice in each of them.
-            if (scope, limit["units"]) in counted:
+            known = receipt_known_at(rec.data, first_version=chain is None or position == 0)
+            if known is None or known <= before:
+                available.append(rec)
+        for rec in (available if chain is None else available[-1:]):
+            d = rec.data
+            submitted = parse_time(_object(_object(d.get("outcome")).get("timestamps")).get("submitted"))
+            binding = _object(d.get("identity_binding"))
+            grant_ref, proposal_ref = _object(binding.get("grant_reference")), _object(binding.get("proposal_reference"))
+            grant = model.get("C06", grant_ref.get("id"), grant_ref.get("version")) if isinstance(grant_ref.get("id"), str) and isinstance(grant_ref.get("version"), str) else None
+            proposal = model.get("C05", proposal_ref.get("id"), proposal_ref.get("version")) if isinstance(proposal_ref.get("id"), str) and isinstance(proposal_ref.get("version"), str) else None
+            if grant is None or proposal is None:
                 continue
-            counted.add((scope, limit["units"]))
-            # An attempt whose amount cannot be read cannot be shown to have used less than everything: it is counted without limit.
-            qty = action_quantity(proposal.data, limit["units"])
-            entries.append(LedgerEntry(grant.id, scope, limit["units"], float("inf") if qty is None else qty, held, submitted, rec.id))
-    return entries
+            held = _capacity_held(d, before=before)
+            if held is None:
+                continue
+            counted = set()
+            for limit in map(_object, _list(_object(grant.data.get("limits_lifecycle")).get("cumulative_limits"))):
+                scope = limit.get("accounting_scope")
+                if not isinstance(scope, str) or not isinstance(limit.get("units"), str):
+                    continue
+                # One entry for each attempt, scope and unit, however many windows the grant states for them: every window is applied to the entry
+                # when its limit is evaluated, and a second entry would count the same attempt twice in each of them.
+                if (scope, limit["units"]) in counted:
+                    continue
+                counted.add((scope, limit["units"]))
+                # An attempt whose amount cannot be read cannot be shown to have used less than everything: it is counted without limit.
+                nominal, effects = action_quantity(proposal.data, limit["units"]), _known_effects(available, before, limit["units"])
+                if nominal is None or effects is None:
+                    quantity = float("inf")
+                elif effects > _exact(nominal):
+                    quantity = _plain(effects)
+                else:
+                    quantity = nominal
+                entry = LedgerEntry(grant.id, scope, limit["units"], quantity, held, submitted, rec.id)
+                key = (attempt_of(rec), grant.id, scope, limit["units"])
+                merged[key] = _one_attempt(merged[key], entry) if key in merged else entry
+    return list(merged.values())
