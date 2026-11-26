@@ -2,6 +2,24 @@
 
 Releases are labeled `vMAJOR.MINOR.PATCH` and tagged in Git. Each entry lists what the release contains.
 
+## 1.0.6, 26 November 2026
+
+A corrective release for gaps in the reference validator and the reference commit check, which an independent review of 1.0.5 confirmed. The contracts, the schema, the figures, the evaluation statuses and the data of the examples are unchanged, apart from one generated evaluation case. A set of records that passed the checks before passes now, unless it falls into one of the gaps below.
+
+### What changed
+
+- **A gap rests on the retrieval of its own selection.** A `not_retrieved` entry names a retrieval unit of the selection it belongs to, at that selection's version, and the unit completed by the selection's as-of time at the instant the entry states. A unit of another selection with the same name no longer stands in for it (`REF006`, `MISS001`).
+- **Provenance is explicit and ordered.** A source record assertion is an original and names no parent (`LIN007`). A declared parent was admitted and ingested by the time its child was admitted, and a packet or an action that cites a derived record does not rest on an input that came later (`LIN008`, `PKT007`, `EVIDENCE_NOT_YET_ADMITTED`). A supersession goes from the record that holds it and does not end there (`LIN009`).
+- **Records that wrap one source record are one origin.** Source assertions that declare the same source system, record locator and immutable version are counted once when corroboration is judged (`COR001`, `COR002`).
+- **The state of the target does not depend on the order of the records.** The records of the latest instant before the attempt are read together, and a disagreement about a value leaves it unresolved (`PRECONDITION_FAILED`).
+- **Version names are exact.** The order of the versions of a record is read from the numbers in the names and is never guessed. `v1` and `v01`, or a name with no number, cannot be put in order: that is reported (`LIFE006`), and it blocks the grant (`GRANT_SUPERSEDED`) and the receipt replay's reading of a latest version. The schema is unchanged.
+- **Effects and attempts of a receipt.** Each effect is for the action and the target of its receipt (`AUTH010`), and a later version that repeats a verified outcome keeps each effect as it was recorded (`ACC006`). The ledger counts an attempt at no less than its observed effects say, in the unit of the limit. Receipts that claim one execution attempt id are one attempt, found in each (`ACC007`) and counted once.
+- **One evaluation case was rebuilt.** `CASE-LIN-01` built its cycle on a source record, which is now a finding of its own, so it builds the cycle between two derived records and still shows only `LIN001`.
+
+### Known limitations
+
+The standing claims and limits are on the [claims and limits](docs/claims-and-limits.md) page.
+
 ## 1.0.5, 25 November 2026
 
 A corrective release for four gaps in the reference validator. The contracts, the schema, the figures, the examples and the evaluation statuses are unchanged. A set of records that passed the checks before passes now, unless it falls into one of the four gaps below.

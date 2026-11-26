@@ -44,7 +44,7 @@ Each label says something different about why a piece of evidence is not in fron
 | Label | In `SEL-0417` v1 | What supports it | What it does **not** mean |
 |---|---|---|---|
 | `missing` | Carrier proof of delivery for a second pallet | Nothing more is required beyond the common fields: expected, not obtained. | Not that no delivery happened. Search coverage is not established. |
-| `not_retrieved` | Open credit notes for the supplier | A **completed** retrieval unit (`RETR-CREDIT-0417`) that returned zero relevant records, with its completion time. | Not that there are none. The retrieval covered one ledger only. |
+| `not_retrieved` | Open credit notes for the supplier | A **completed** retrieval unit (`RETR-CREDIT-0417`) that returned zero relevant records, with its completion time. The unit is one of the selection's own, listed once and named by the version of that selection, and it completed by the selection's as-of time. The second snapshot lists the unit again and its entry names that version. | Not that there are none. The retrieval covered one ledger only. |
 | `inaccessible` | Part of the requested scope that the requestor may not read | A permission decision (`AUTHZ-READ-LIMIT-0417`) that allows a coverage limitation, and the summary in the decision's words. | Nothing about the source: not its name, type, count, state or age. |
 | `unavailable` | Treasury cash position | A dependency-failure record (`MON-TREASURY-0001`). | Not a permission problem and not an empty result. |
 | `negative` | An earlier invoice with the same supplier, number and amount | An observation (`DUP-0417`), the method, the time and **complete** coverage of a declared scope. | Not "no duplicates anywhere": exact match, one window. |
@@ -78,11 +78,12 @@ The entries are produced by the viewer projection in [`scripts/eahs/disclosure.p
 
 | Code | Rule | Case that breaks it |
 |---|---|---|
-| `MISS001` | `not_retrieved` needs a completed retrieval unit | `CASE-MISS-03` |
+| `MISS001` | `not_retrieved` needs a completed retrieval unit of its own selection, whose completion time is the entry's and is not after the selection's as-of time (an unreadable time is not trusted) | `CASE-MISS-03`, `tests/test_retrieval_binding.py` |
 | `MISS002` | `negative` needs complete coverage of its scope | `CASE-MISS-02` |
 | `MISS003` | `stale` must be justified by the freshness policy | `CASE-MISS-01` |
 | `MISS004` | `unavailable` points at an observation of the failure | (checked on the whole set) |
 | `MISS005` | The packet keeps every gap and conflict of its selection | `CASE-MISS-04` |
+| `REF006` | A retrieval reference names a retrieval unit of the selection its entry belongs to, at that selection's version, listed once and completed | `CASE-MISS-03`, `tests/test_retrieval_binding.py` |
 | `DISC001` | A derived output does not name what the requestor may not see (a backstop word scan; the entry itself is checked by the rules below) | `CASE-DISC-01` |
 | `DISC002` | An entry about an unreadable source needs a decision that lets the requestor know it exists | `CASE-DISC-02` |
 | `DISC003` | The entry is exactly the generic disclosure the decision configures: its words, and every sibling field, and nothing added. An input the decision lets the reader read is not called inaccessible | `CASE-DISC-03` |
