@@ -176,6 +176,113 @@ class AVerifiedEffectIsNotRewrittenByALaterVersion(unittest.TestCase):
         self.assertEqual(support.example_model().get("C07", "RCP-REL-0417-A", "v1").data["outcome"]["observed_effects"], [])
 
 
+def another(**fields):
+    """A second effect of the same receipt: a fee booked beside the payment."""
+    item = stored_effect()
+    item.update(effect_id="EFF-REL-0417-B-FEE", quantity=12)
+    item.update(fields)
+    return item
+
+
+def versions(**stated):
+    """Later versions that repeat the completed outcome, each stating exactly these effects: {version name: [effects]}."""
+    def stating(effects):
+        def edit(data):
+            data["outcome"]["observed_effects"] = copy.deepcopy(effects)
+        return edit
+    return {name: ("v2", stating(effects)) for name, effects in stated.items()}
+
+
+def locations(model):
+    """Where ACC006 is found, with the message."""
+    return [(f.location, f.message) for f in semantics.check_authority(model) if f.code == "ACC006"]
+
+
+class AVerifiedEffectStaysAsItWasFirstVerifiedAcrossTheWholeChain(unittest.TestCase):
+    """Version 1 is unresolved and version 2 is the first verified version: it states the payment. Later versions repeat the verified outcome.
+
+    An effect is fixed by the first verified version that states it, whichever version that is. The payment is fixed by v2, and a fee that v3 states for the first time is fixed by v3.
+    No later version leaves out an effect that an earlier verified version stated or changes what it states about it, and the order in which a version lists its effects decides nothing.
+    """
+
+    AMOUNT, OBSERVED = "/outcome/observed_effects/0", "/outcome/observed_effects/1"
+    ALL = "/outcome/observed_effects"
+
+    def check(self, label, stated, expected):
+        """`expected`: the findings as (where, the version that first stated the effect), in any order."""
+        with self.subTest(label):
+            found = locations(chain(extra=versions(**stated)))
+            self.assertEqual(sorted(where for where, _ in found), sorted(where for where, _ in expected), found)
+            for where, first in expected:
+                self.assertTrue(any(w == where and "of version %s," % first in message for w, message in found), "%s names %s: %s" % (where, first, found))
+
+    def test_the_matrix(self):
+        payment, fee = stored_effect(), another()
+        again = dict(payment, observed_at="2026-11-23T17:07:00+01:00", quantity=18400.0)
+        again_fee = dict(fee, observed_at="2026-11-23T16:07:00.000Z", quantity=12.0)
+        self.check("v3 repeats the payment", {"v3": [payment]}, [])
+        self.check("v3 adds the fee", {"v3": [payment, fee]}, [])
+        self.check("v4 repeats both", {"v3": [payment, fee], "v4": [payment, fee]}, [])
+        self.check("v4 lists them the other way round", {"v3": [payment, fee], "v4": [fee, payment]}, [])
+        self.check("v4 writes the same instants and numbers another way", {"v3": [payment, fee], "v4": [again, again_fee]}, [])
+        self.check("v4 changes the payment", {"v3": [payment, fee], "v4": [dict(payment, quantity=18500), fee]}, [(self.AMOUNT + "/quantity", "v2")])
+        self.check("v4 leaves the payment out", {"v3": [payment, fee], "v4": [fee]}, [(self.ALL, "v2")])
+        self.check("v4 changes the fee that v3 stated first", {"v3": [payment, fee], "v4": [payment, dict(fee, quantity=13)]}, [(self.OBSERVED + "/quantity", "v3")])
+        self.check("v4 leaves the fee that v3 stated first out", {"v3": [payment, fee], "v4": [payment]}, [(self.ALL, "v3")])
+        self.check("the same change of the fee, listed first", {"v3": [payment, fee], "v4": [dict(fee, quantity=13), payment]}, [(self.AMOUNT + "/quantity", "v3")])
+
+    def test_each_fact_of_a_later_effect_is_fixed_not_only_the_quantity(self):
+        fee = another()
+        for fact, changed in (("units", "USD"), ("observed_at", "2026-11-23T16:07:00.000001Z"), ("accounting_reference", {"record_id": "ACCT-CHARGE-OTHER", "version": "v1"})):
+            self.check("v4 changes the %s of the fee" % fact, {"v3": [stored_effect(), fee], "v4": [stored_effect(), dict(fee, **{fact: changed})]}, [(self.OBSERVED + "/" + fact, "v3")])
+
+    def test_an_effect_first_stated_later_is_fixed_from_then_on(self):
+        payment, fee = stored_effect(), another()
+        self.check("v4 states the fee and v5 repeats it", {"v3": [payment], "v4": [payment, fee], "v5": [payment, fee]}, [])
+        self.check("v5 changes the fee that v4 stated first", {"v3": [payment], "v4": [payment, fee], "v5": [payment, dict(fee, quantity=13)]}, [(self.OBSERVED + "/quantity", "v4")])
+        self.check("v5 leaves the fee that v4 stated first out", {"v3": [payment], "v4": [payment, fee], "v5": [payment]}, [(self.ALL, "v4")])
+
+    def test_a_change_that_was_found_does_not_become_the_fact(self):
+        payment, fee = stored_effect(), another()
+        self.check("v4 changes the fee and v5 states it as v3 did", {"v3": [payment, fee], "v4": [payment, dict(fee, quantity=13)], "v5": [payment, fee]}, [(self.OBSERVED + "/quantity", "v3")])
+        self.check("v4 and v5 each change it", {"v3": [payment, fee], "v4": [payment, dict(fee, quantity=13)], "v5": [payment, dict(fee, quantity=14)]},
+                   [(self.OBSERVED + "/quantity", "v3"), (self.OBSERVED + "/quantity", "v3")])
+        found = locations(chain(extra=versions(v3=[payment, fee], v4=[payment, dict(fee, quantity=13)], v5=[payment, dict(fee, quantity=14)])))
+        self.assertEqual([("to 13" in m, "to 14" in m) for _, m in found], [(True, False), (False, True)])
+        self.assertTrue(all("from 12 " in m for _, m in found))
+
+    def test_the_finding_names_the_effect_the_fact_the_values_and_the_version_that_first_stated_it(self):
+        payment, fee = stored_effect(), another()
+        found = locations(chain(extra=versions(v3=[payment, fee], v4=[payment, dict(fee, quantity=13)])))
+        self.assertEqual(len(found), 1)
+        for part in ("EFF-REL-0417-B-FEE", "quantity", "12", "13", "v3", "v4"):
+            self.assertIn(part, found[0][1])
+
+    def test_a_version_that_states_one_effect_twice_with_different_facts_is_found_whichever_row_comes_first(self):
+        """A verified outcome states each effect once. Which of two different statements of one effect is the fact cannot be told from the order of the rows, so the version is found."""
+        payment, fee = stored_effect(), another()
+        twin = dict(fee, quantity=13)
+        for order in ([payment, fee, twin], [payment, twin, fee], [twin, fee, payment]):
+            with self.subTest([e["quantity"] for e in order]):
+                found = locations(chain(extra=versions(v3=order)))
+                self.assertEqual([where for where, _ in found], [self.ALL])
+                for part in ("EFF-REL-0417-B-FEE", "v3"):
+                    self.assertIn(part, found[0][1])
+        found = locations(chain(lambda data: effects_of(data, [stored_effect(), dict(stored_effect(), quantity=18500)])))
+        self.assertEqual([where for where, _ in found], [self.ALL], "the first verified version states the payment twice")
+        self.check("the same row twice is one effect", {"v3": [payment, fee, dict(fee)]}, [])
+
+    def test_the_free_text_is_not_read_and_a_version_that_is_not_a_repeat_states_no_verified_effect(self):
+        payment, fee = stored_effect(), another()
+        self.check("v4 words the fee differently", {"v3": [payment, fee], "v4": [payment, dict(fee, description="Booked with the payment.")]}, [])
+
+        def partial(data):
+            data["outcome"]["state"] = "partial"
+            data["outcome"]["unresolved_conditions"] = ["The remainder is not confirmed."]
+            data["outcome"]["observed_effects"] = [payment, dict(fee, quantity=99)]
+        self.assertEqual(locations(chain(extra={"v3": ("v2", partial)})), [], "that version is judged by ACC005, and a version that is not verified fixes nothing")
+
+
 def with_cap(cap, per_action=None):
     def edit(model):
         base = model

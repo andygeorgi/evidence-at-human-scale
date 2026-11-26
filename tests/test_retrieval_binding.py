@@ -1,8 +1,8 @@
-"""A not_retrieved entry rests on one completed retrieval unit of the selection that holds it, and that unit was completed by the selection's as-of time.
+"""A not_retrieved entry rests on one completed retrieval unit of the selection that holds it, and that unit was attempted, completed and had completed by the selection's as-of time, in that order.
 
 A retrieval unit is named by its id and by the version of the selection that lists it. An entry of a selection, or of a packet bound to that selection, must name that
 selection's own version and a unit that the selection lists once and completed. It does not rest on a unit of another selection, even one with the same name, and it does not rest on a
-run that finished after the cutoff. Completion times are compared as instants and not as written.
+run that finished after the cutoff or that is said to have finished before it started. Times are compared as instants and not as written.
 """
 import unittest
 
@@ -198,6 +198,87 @@ class TheEntryNamesTheUnitOfItsOwnSelection(unittest.TestCase):
         self.assertTrue(messages)
         for part in (UNIT, "v2", "SEL-0417 v1"):
             self.assertIn(part, messages[0])
+
+
+def attempted(version, value):
+    """The mutation that sets when the credit-note retrieval of one snapshot was attempted. A string is a known time, and anything else is the whole time value."""
+    return rep(SEL[version], "/retrieval/%d/attempted_at" % unit_at(version), {"state": "known", "value": value} if isinstance(value, str) else value)
+
+
+class TheRetrievalWasAttemptedBeforeItCompleted(unittest.TestCase):
+    """The unit that an empty result rests on was attempted, completed and had completed by the as-of time of its selection, in that order: attempted_at <= completed_at <= as_of.
+
+    The first snapshot is as of 10:00:00Z, and its unit was attempted and completed at 09:52:00Z. Equality is valid at both steps, and the times are compared as instants.
+    """
+
+    COMPLETED = "2026-11-23T09:52:00Z"
+
+    def test_a_retrieval_attempted_before_it_completed_or_when_it_completed_is_valid(self):
+        for stated in ("2026-11-23T09:51:59.999999Z", "2026-11-23T09:52:00Z", "2026-11-23T09:00:00Z"):
+            with self.subTest(stated):
+                self.assertEqual(found(attempted("v1", stated)), [])
+
+    def test_the_same_instant_in_another_offset_or_precision_is_the_same_instant(self):
+        for stated in ("2026-11-23T10:52:00+01:00", "2026-11-23T09:52:00.000Z", "2026-11-23T09:52:00.000000+00:00", "2026-11-23T08:52:00-01:00"):
+            with self.subTest(stated):
+                self.assertEqual(found(attempted("v1", stated)), [])
+
+    def test_a_retrieval_attempted_after_it_completed_is_not_a_completed_empty_result(self):
+        for stated in ("2026-11-23T09:52:00.000001Z", "2026-11-23T10:52:00.000001+01:00", "2026-11-23T09:53:00Z", "2026-11-23T11:00:00Z"):
+            with self.subTest(stated):
+                self.assertEqual(found(attempted("v1", stated)), sorted(entries("v1", "MISS001")), "in the entry of the selection and in the entry of its packet, and in nothing else")
+
+    def test_a_retrieval_attempted_after_the_cutoff_that_says_it_completed_before_it_is_found(self):
+        self.assertEqual(found(attempted("v1", "2026-11-23T10:00:01Z")), sorted(entries("v1", "MISS001")))
+
+    def test_a_completion_exactly_at_the_cutoff_is_valid_and_one_microsecond_after_it_is_not(self):
+        """At the cutoff itself the retrieval may have started at it or earlier. A completion after it is found by the cutoff, whatever the retrieval started."""
+        at_cutoff = "2026-11-23T10:00:00Z"
+        for started in (self.COMPLETED, at_cutoff):
+            with self.subTest("completed at the cutoff, attempted " + started):
+                self.assertEqual(found(attempted("v1", started), *retrieval("v1", completed=at_cutoff, entry_completed=at_cutoff)), [])
+        late = "2026-11-23T10:00:00.000001Z"
+        for started in (self.COMPLETED, at_cutoff, late):
+            with self.subTest("completed a microsecond after the cutoff, attempted " + started):
+                self.assertEqual(found(attempted("v1", started), *retrieval("v1", completed=late, entry_completed=late)), sorted(entries("v1", "MISS001")))
+
+    def test_both_orders_are_reported_when_both_are_wrong(self):
+        late, later = "2026-11-23T10:00:01Z", "2026-11-23T10:00:02Z"
+        model, _ = mutate_model(support.example_model(), [attempted("v1", later), *retrieval("v1", completed=late, entry_completed=late)])
+        messages = sorted(f.message for f in semantics.check_missingness(model) if f.code == "MISS001" and f.file.endswith("c03-SEL-0417-v1.json"))
+        self.assertEqual(len(messages), 2)
+        self.assertTrue(any(later in m and late in m and "attempted" in m for m in messages))
+        self.assertTrue(any(late in m and "2026-11-23T10:00:00Z" in m and "after the as-of time" in m for m in messages))
+
+    def test_a_start_that_is_not_known_or_cannot_be_compared_exactly_cannot_be_shown_to_come_first(self):
+        for stated in ({"state": "unknown", "reason": "The service did not report when it started."}, {"state": "not_applicable", "reason": "The retrieval was not started by a run."},
+                       "2026-11-23T09:51:00.0000001Z", "not a time"):
+            with self.subTest(str(stated)):
+                self.assertEqual(found(attempted("v1", stated)), sorted(entries("v1", "MISS001")))
+
+    def test_the_finding_names_the_unit_and_both_times(self):
+        model, _ = mutate_model(support.example_model(), [attempted("v1", "2026-11-23T09:52:00.000001Z")])
+        messages = [f.message for f in semantics.check_missingness(model) if f.code == "MISS001"]
+        self.assertEqual(len(messages), 2)
+        for part in (UNIT, "2026-11-23T09:52:00.000001Z", self.COMPLETED, "attempted"):
+            self.assertIn(part, messages[0])
+
+    def test_each_snapshot_is_held_to_the_unit_of_its_own_selection(self):
+        """The second selection lists the unit again. A start after the completion in one of them is found in that snapshot and not in the other."""
+        for version in ("v1", "v2"):
+            with self.subTest(version):
+                self.assertEqual(found(attempted(version, "2026-11-23T09:52:00.000001Z")), sorted(entries(version, "MISS001")))
+        self.assertEqual(found(attempted("v2", "2026-11-23T09:52:00.000001Z"), attempted("v1", "2026-11-23T09:51:00Z")), sorted(entries("v2", "MISS001")))
+
+    def test_the_wrong_version_of_the_reference_is_still_found_and_the_chronology_is_judged_in_the_selection_of_the_entry(self):
+        """The entry of the first snapshot names the unit of the second selection, which was started after it completed. The first snapshot's own unit is in order: the reference is wrong, and that is all that is wrong."""
+        got = found(attempted("v2", "2026-11-23T09:52:00.000001Z"), *retrieval("v1", reference=("version", "v2")))
+        self.assertEqual(got, sorted(entries("v1", "REF006") + entries("v2", "MISS001")))
+
+    def test_an_unrelated_retrieval_that_was_started_late_is_not_asked_to_be_a_completed_empty_result(self):
+        """Only the unit that a not_retrieved entry rests on is held to the order. The other units of the selection are not, whatever they say."""
+        other = next(i for i, u in enumerate(support.example_model().get("C03", "SEL-0417", "v1").data["retrieval"]) if u["retrieval_unit_id"] == "RETR-ERP-0417")
+        self.assertEqual(found(rep(SEL["v1"], "/retrieval/%d/attempted_at" % other, {"state": "known", "value": "2026-11-23T09:46:00Z"})), [])
 
 
 if __name__ == "__main__":

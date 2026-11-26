@@ -2,9 +2,13 @@
 
 A source record assertion is an original: it states what a source system recorded and names no parent, because a parent would change the origin it is counted from. A derived record is
 built from its parents, so each parent was available when the derived record was admitted, and a packet or an action that rests on the derived record does not rest on an input that
-came later. A typed supersession is an edge from the record that holds it to the older version it replaces, and it agrees with the replacement that the older version records.
+came later. At commit, a derived record is relied on only while each input it declares is current at the attempt. A typed supersession is an edge from the record that holds it to the older
+version it replaces, and it agrees with the replacement that the older version records.
 """
+import copy
+import itertools
 import unittest
+from datetime import timedelta
 
 import support  # noqa: F401  (puts scripts/ on the path)
 
@@ -16,6 +20,7 @@ LIN = ("LIN001", "LIN003", "LIN004", "LIN006", "LIN007", "LIN008", "LIN009")
 ADMITTED, INGESTED = "/producer_admission/admission_time", "/times/ingestion"
 PARENTS = "/lineage/parent_references"
 HOLD, HOLD_GRANT = ("ACT-HOLD-0417", "v1"), ("GRT-CLASS-HOLD", "v1")
+RELEASE_B, APPROVAL_B = ("ACT-REL-0417", "v2"), ("GRT-APPR-0417-B", "v1")
 
 
 def rep(target, path, value):
@@ -204,6 +209,162 @@ class WhatRestsOnADerivedRecordDoesNotRestOnAnInputThatCameLater(unittest.TestCa
     def test_a_declared_input_that_does_not_exist_is_the_business_of_the_reference_check(self):
         decision = self.hold_at("2026-11-23T10:03:00Z", rep("C02 M3W-0417 v1", PARENTS + "/1/version", "v9"))
         self.assertEqual(decision.codes, [])
+
+
+USABLE, NOT_CURRENT = (True, []), (False, ["EVIDENCE_NOT_CURRENT"])
+
+
+def shifted(base, microseconds):
+    """`base` (a time in UTC written with Z) moved by a number of microseconds, written with six fractional digits."""
+    return (ts(base) + timedelta(microseconds=microseconds)).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
+def lifecycle_of(label, state, effective):
+    return [rep(label, "/lifecycle/state", state), rep(label, "/lifecycle/effective_time", effective)]
+
+
+def hold(at, cited, *mutations, invoice_open=False):
+    """The decision on the hold at `at`, citing only these records, after these in-memory mutations. `invoice_open` keeps the invoice open all day, so that only the evidence decides."""
+    model = model_with(rep("C05 ACT-HOLD-0417 v1", "/action/evidence_references", [{"record_id": r, "version": v} for r, v in cited]), *mutations)
+    if invoice_open:
+        model.registry = copy.deepcopy(model.registry)
+        model.registry.target_states = [{"entity_id": "INV-2026-0417", "at": "2026-11-23T07:30:00Z", "state": {"status": "open"}}]
+    return evaluate_commit(model, model.get("C05", *HOLD), model.get("C06", *HOLD_GRANT), ts(at), [])
+
+
+def verdict(decision):
+    return decision.allow, decision.codes
+
+
+class ADerivedRecordIsUsableOnlyWhileTheInputsItDeclaresAreCurrent(unittest.TestCase):
+    """SUM-A-0417 v1 declares one input, the receipt GR-5521 v1, and M3W-0417 v1 declares three: the invoice, the purchase order and that receipt.
+
+    An input is current at the attempt unless a state other than current took effect at or before it, and an input is not yet current if it became current after the attempt. That is the reading
+    that the cited record itself is held to. A record that is derived from an input that was not current is not usable, whatever its own state is.
+    """
+
+    ATTEMPT = "2026-11-23T10:03:00Z"
+    SUMMARY, MATCH = [("SUM-A-0417", "v1")], [("M3W-0417", "v1")]
+    PARENT = "C02 GR-5521 v1"
+
+    def test_the_stored_hold_is_unchanged_and_so_is_its_packet(self):
+        """The hold at 10:03 rests on the match result, which rests on the receipt that was current then. A later correction does not reach back into it."""
+        cited = [("INV-2026-0417", "v1"), ("GR-5521", "v1"), ("M3W-0417", "v1")]
+        self.assertEqual(verdict(hold(self.ATTEMPT, cited)), USABLE)
+        self.assertEqual(semantics.check_packets(support.example_model()), [])
+
+    def test_a_single_input_decides_at_the_instant_its_state_takes_effect(self):
+        grid = ((3600 * 10**6, USABLE), (1, USABLE), (0, NOT_CURRENT), (-1, NOT_CURRENT), (-3600 * 10**6, NOT_CURRENT))
+        for offset, expected in grid:
+            with self.subTest(microseconds=offset):
+                effective = shifted(self.ATTEMPT, offset)
+                self.assertEqual(verdict(hold(self.ATTEMPT, self.SUMMARY, *lifecycle_of(self.PARENT, "superseded", effective))), expected)
+
+    def test_the_instant_is_the_same_instant_however_it_is_written(self):
+        for stated, expected in (("2026-11-23T11:03:00+01:00", NOT_CURRENT), ("2026-11-23T10:03:00.000Z", NOT_CURRENT), ("2026-11-23T11:02:59.999999+01:00", NOT_CURRENT),
+                                 ("2026-11-23T11:03:00.000001+01:00", USABLE), ("2026-11-23T10:03:00.000001Z", USABLE)):
+            with self.subTest(stated):
+                self.assertEqual(verdict(hold(self.ATTEMPT, self.SUMMARY, *lifecycle_of(self.PARENT, "superseded", stated))), expected)
+
+    def test_every_state_other_than_current_applies_from_its_effective_time(self):
+        for state in ("superseded", "withdrawn", "revoked", "expired"):
+            for offset, expected in ((0, NOT_CURRENT), (1, USABLE)):
+                with self.subTest(state, microseconds=offset):
+                    self.assertEqual(verdict(hold(self.ATTEMPT, self.SUMMARY, *lifecycle_of(self.PARENT, state, shifted(self.ATTEMPT, offset)))), expected)
+
+    def test_an_input_that_became_current_after_the_attempt_was_not_current_at_it(self):
+        for offset, expected in ((0, USABLE), (-1, USABLE), (1, NOT_CURRENT)):
+            with self.subTest(microseconds=offset):
+                self.assertEqual(verdict(hold(self.ATTEMPT, self.SUMMARY, *lifecycle_of(self.PARENT, "current", shifted(self.ATTEMPT, offset)))), expected)
+
+    def test_an_input_whose_state_time_cannot_be_read_cannot_be_shown_to_be_current(self):
+        for stated in ("not a time", "2026-11-23T10:03:00.0000001Z", None):
+            with self.subTest(stated):
+                self.assertEqual(verdict(hold(self.ATTEMPT, self.SUMMARY, *lifecycle_of(self.PARENT, "superseded", stated))), (False, ["EVIDENCE_TIME_UNKNOWN"]))
+
+    def test_an_input_that_is_not_yet_admitted_is_still_refused_as_it_was_and_one_admitted_at_the_attempt_is_available(self):
+        for offset, expected in ((1, (False, ["EVIDENCE_NOT_YET_ADMITTED"])), (0, USABLE), (-1, USABLE)):
+            with self.subTest(microseconds=offset):
+                self.assertEqual(verdict(hold(self.ATTEMPT, self.SUMMARY, *available_at(self.PARENT, shifted(self.ATTEMPT, offset)))), expected)
+
+    def test_the_reason_names_the_derived_record_the_input_and_what_happened_to_it(self):
+        decision = hold(self.ATTEMPT, self.SUMMARY, *lifecycle_of(self.PARENT, "superseded", self.ATTEMPT))
+        self.assertEqual(len(decision.reasons), 1)
+        for part in ("SUM-A-0417 v1", "GR-5521 v1", "superseded", self.ATTEMPT):
+            self.assertIn(part, decision.reasons[0].message)
+
+    def test_a_record_that_is_not_current_itself_is_refused_for_that_and_not_twice(self):
+        decision = hold(self.ATTEMPT, self.SUMMARY, *lifecycle_of("C02 SUM-A-0417 v1", "withdrawn", shifted(self.ATTEMPT, -1)), *lifecycle_of(self.PARENT, "superseded", self.ATTEMPT))
+        self.assertEqual(verdict(decision), NOT_CURRENT)
+        self.assertEqual(len(decision.reasons), 1)
+
+    def test_with_several_declared_inputs_each_one_that_is_not_current_is_a_reason_whatever_the_order_they_are_listed_in(self):
+        parents = [("INV-2026-0417", "v1"), ("PO-77231", "v1"), ("GR-5521", "v1")]
+        for gone, named in (([], []), (lifecycle_of("C02 PO-77231 v1", "withdrawn", self.ATTEMPT), ["PO-77231"]),
+                            (lifecycle_of(self.PARENT, "superseded", self.ATTEMPT) + lifecycle_of("C02 PO-77231 v1", "withdrawn", shifted(self.ATTEMPT, -1)), ["GR-5521", "PO-77231"])):
+            with self.subTest(gone=named):
+                seen = set()
+                for order in itertools.permutations(parents):
+                    decision = hold(self.ATTEMPT, self.MATCH, parents_of("C02 M3W-0417 v1", *order), *gone)
+                    seen.add((decision.allow, tuple((r.code, r.message) for r in decision.reasons)))
+                self.assertEqual(len(seen), 1, "the same reasons, in the same order, whatever the order of the parents")
+                (allow, reasons), = seen
+                self.assertEqual(allow, not named)
+                self.assertEqual(len(reasons), len(named))
+                for (code, message), name in zip(reasons, named):
+                    self.assertEqual(code, "EVIDENCE_NOT_CURRENT")
+                    self.assertIn(name, message)
+
+    def test_an_input_of_an_input_that_is_not_current_counts_too(self):
+        """Only the summary is cited. It is derived from the match result, which is derived from the receipt."""
+        deeper = parents_of("C02 SUM-A-0417 v1", ("M3W-0417", "v1"))
+        self.assertEqual(verdict(hold(self.ATTEMPT, self.SUMMARY, deeper)), USABLE)
+        decision = hold(self.ATTEMPT, self.SUMMARY, deeper, *lifecycle_of(self.PARENT, "superseded", self.ATTEMPT))
+        self.assertEqual(verdict(decision), NOT_CURRENT)
+        self.assertIn("GR-5521 v1", decision.reasons[0].message)
+
+    def test_an_input_that_is_not_declared_is_not_looked_for(self):
+        """The match result no longer names the receipt as one of its inputs, so the end of the receipt's state does not touch it."""
+        undeclared = parents_of("C02 M3W-0417 v1", ("INV-2026-0417", "v1"), ("PO-77231", "v1"))
+        self.assertEqual(verdict(hold(self.ATTEMPT, self.MATCH, undeclared, *lifecycle_of(self.PARENT, "superseded", self.ATTEMPT))), USABLE)
+        self.assertEqual(verdict(hold(self.ATTEMPT, self.MATCH, *lifecycle_of(self.PARENT, "superseded", self.ATTEMPT))), NOT_CURRENT)
+
+    def test_a_precondition_cannot_use_a_derived_record_whose_declared_basis_is_not_current(self):
+        """The corrected release cites the match result M3W-0417 v2 and not the receipt GR-5521 v2 that it is derived from. With that receipt no longer current, the match result is not usable: it does not show that
+        the match passed, and the precondition that reads it is not satisfied."""
+        stored = support.example_model().get("C05", *RELEASE_B).data["action"]["evidence_references"]
+        cited = [r for r in stored if r["record_id"] != "GR-5521"]
+        mutations = [rep("C05 ACT-REL-0417 v2", "/action/evidence_references", cited), rep("C06 GRT-APPR-0417-B v1", "/scope_binding/evidence_constraints", cited)]
+
+        def release(*more):
+            model = model_with(*mutations, *more)
+            return evaluate_commit(model, model.get("C05", *RELEASE_B), model.get("C06", *APPROVAL_B), ts("2026-11-23T16:00:05Z"), [])
+        self.assertEqual(verdict(release()), USABLE)
+        decision = release(*lifecycle_of("C02 GR-5521 v2", "superseded", "2026-11-23T15:30:00Z"))
+        self.assertEqual(list(dict.fromkeys(decision.codes)), ["EVIDENCE_NOT_CURRENT", "PRECONDITION_FAILED"])
+        self.assertFalse(decision.allow)
+
+    def test_the_known_window_in_which_the_old_match_result_is_current_and_the_receipt_it_rests_on_is_not(self):
+        """The receipt v1 stopped being current at 13:40:00Z, when v2 was admitted. The match result of v1 stops being current at 13:51:00Z, when the match result of v2 is admitted.
+        In between, the one is current and rests on the other. No match result is usable then: the old one is refused for its input, and the new one is not yet admitted."""
+        old, new, invoice = ("M3W-0417", "v1"), ("M3W-0417", "v2"), ("INV-2026-0417", "v1")
+        grid = (("2026-11-23T13:39:59.999999Z", USABLE, (False, ["EVIDENCE_NOT_YET_ADMITTED"])),
+                ("2026-11-23T13:40:00Z", NOT_CURRENT, (False, ["EVIDENCE_NOT_YET_ADMITTED"])),
+                ("2026-11-23T13:45:00Z", NOT_CURRENT, (False, ["EVIDENCE_NOT_YET_ADMITTED"])),
+                ("2026-11-23T13:50:59.999999Z", NOT_CURRENT, (False, ["EVIDENCE_NOT_YET_ADMITTED"])),
+                ("2026-11-23T13:51:00Z", NOT_CURRENT, USABLE),
+                ("2026-11-23T13:52:00Z", NOT_CURRENT, USABLE))
+        for at, with_old, with_new in grid:
+            with self.subTest(at):
+                self.assertEqual(verdict(hold(at, [invoice, old], invoice_open=True)), with_old)
+                self.assertEqual(verdict(hold(at, [invoice, new], invoice_open=True)), with_new)
+
+    def test_a_finding_of_a_producer_that_computes_outside_the_records_has_no_declared_input_to_lose(self):
+        """The screening and the duplicate check state no parent. What they were computed from is outside the records and is not looked for."""
+        model = support.example_model()
+        for record_id, version in (("SCR-S1042", "v2"), ("DUP-0417", "v1")):
+            self.assertEqual(model.get("C02", record_id, version).data["lineage"]["parent_references"], [])
+        self.assertEqual(verdict(hold("2026-11-23T16:00:05Z", [("SCR-S1042", "v2"), ("DUP-0417", "v1")], invoice_open=True)), USABLE)
 
 
 class ASupersessionEdgeGoesFromTheNewVersionToTheOldOne(unittest.TestCase):
