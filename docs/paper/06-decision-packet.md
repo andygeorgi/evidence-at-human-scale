@@ -1,6 +1,6 @@
 # 6. The decision packet
 
-[← 5. Context and selection](05-context-and-attention.md) · [Paper contents](README.md) · [Next: one interaction →](07-one-interaction.md)
+[← 5. Context and selection](05-context-and-attention.md) · [Paper contents](README.md) · [Next: 7. One interaction →](07-one-interaction.md)
 
 The decision packet (C04) is a versioned review object bound to the exact context and selection manifest. It shortens what the Decision Owner has to read. It never shortens the provenance of a claim or the uncertainty around it, and it keeps advice separate from authority.
 
@@ -45,4 +45,4 @@ A challenged packet is not overwritten. The affected lineage is reassessed, the 
 
 **See it working:** [a complete decision packet](../../examples/05-decision-packet/README.md) and [the assistant response rendered from it](../../examples/06-assistant-response/README.md).
 
-[← 5. Context and selection](05-context-and-attention.md) · [Paper contents](README.md) · [Next: one interaction →](07-one-interaction.md)
+[← 5. Context and selection](05-context-and-attention.md) · [Paper contents](README.md) · [Next: 7. One interaction →](07-one-interaction.md)

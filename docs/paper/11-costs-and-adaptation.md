@@ -1,6 +1,6 @@
 # 11. Costs and adaptation
 
-[← 10. Degraded operation](10-degraded-operation.md) · [Paper contents](README.md) · [Next: evaluation →](12-evaluation.md)
+[← 10. Degraded operation](10-degraded-operation.md) · [Paper contents](README.md) · [Next: 12. Evaluation →](12-evaluation.md)
 
 The design adds engineering and operating work: authorization and coverage checks, versioned state and reference management, invalidation, and a separate commit verification. Whether that work raises or lowers the total cost and latency of a task has to be measured against matched baselines, not assumed in either direction. In return, particular failures can be inspected. Residual risks remain, and the domain has to accept them.
 
@@ -34,4 +34,4 @@ The fisheries question echoes the originating engagement and its demonstrator as
 
 A fourth illustration is worked through in data instead of prose. The [synthetic supplier-payment scenario](../../examples/README.md) asks the same questions in a domain that needs no specialist knowledge. It is synthetic, belongs to no customer and is not one of the three illustrations above.
 
-[← 10. Degraded operation](10-degraded-operation.md) · [Paper contents](README.md) · [Next: evaluation →](12-evaluation.md)
+[← 10. Degraded operation](10-degraded-operation.md) · [Paper contents](README.md) · [Next: 12. Evaluation →](12-evaluation.md)

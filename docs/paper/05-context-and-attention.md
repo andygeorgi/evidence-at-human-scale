@@ -1,6 +1,6 @@
 # 5. Context and selection
 
-[← 4. Evidence and lineage](04-evidence-and-lineage.md) · [Paper contents](README.md) · [Next: the decision packet →](06-decision-packet.md)
+[← 4. Evidence and lineage](04-evidence-and-lineage.md) · [Paper contents](README.md) · [Next: 6. The decision packet →](06-decision-packet.md)
 
 Context (C01) records who is asking and for what: the requesting principal, the permitted task and purpose, the relevant entities, the scope, the time and the policy constraints. The workload identity is separate from the requesting principal. Retrieval is authorized against this context before evidence enters model context. Filtering an answer after it has been produced is not enough.
 
@@ -18,4 +18,4 @@ When mandatory items overflow the queue, the system exposes the true authorized 
 
 The context and selection contracts make these choices inspectable. They keep the task scope, the as-of time, the policy references and the relevant versions. They do not claim to reconstruct an unlimited corpus. The [lineage, selection and disclosure reference](../../architecture/lineage-selection-disclosure.md) gives the complete treatment of selection and disclosure, and the [JSON Schema bundle](../../schemas/README.md) carries the formal structure.
 
-[← 4. Evidence and lineage](04-evidence-and-lineage.md) · [Paper contents](README.md) · [Next: the decision packet →](06-decision-packet.md)
+[← 4. Evidence and lineage](04-evidence-and-lineage.md) · [Paper contents](README.md) · [Next: 6. The decision packet →](06-decision-packet.md)

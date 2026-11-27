@@ -3,7 +3,7 @@
 **Evidence at Human Scale: Reference Architecture for Accountable Decisions in Agentic Systems**
 Andy Georgi · version 1.0.7 · 26 November 2026
 
-The paper argues that the unit of design for an agentic system is the decision context, not the agent hierarchy: the outputs selected for one decision and released as one versioned decision packet. Each chapter can be read on its own. It links to the contract or reference page that holds the detail and, where one exists, to a worked example. To run something first, start with the [examples](../../examples/README.md).
+The paper argues that the unit of design for an agentic system is the decision context, not the agent hierarchy: the outputs selected for one decision and released as one versioned decision packet. Each chapter can be read on its own. It links to the contract or reference page that holds the detail and, where one exists, to a worked example. For the argument in short form, read the [ten-minute path](../../README.md#ten-minute-path); to run something first, start with the [examples](../../examples/README.md).
 
 | # | Chapter | Takeaway |
 | --- | --- | --- |
@@ -23,4 +23,4 @@ The paper argues that the unit of design for an agentic system is the decision c
 | 13 | [Implementation options](13-implementation-options.md) | Which Azure services and features could implement the architecture's responsibilities, with each product fact dated and qualified. |
 | 14 | [Starting with one decision](14-start-monday.md) | Five things to do before writing agent code, one late correction walked through, and the decisions that stay with named people. |
 
-Shorter routes are in the [guided reading paths](../README.md). The terms are defined in the [glossary](../glossary.md); the boundaries of what is claimed are in [claims and limits](../claims-and-limits.md).
+Routes by purpose are in the [guided reading paths](../README.md). The terms are defined in the [glossary](../glossary.md); the boundaries of what is claimed are in [claims and limits](../claims-and-limits.md).

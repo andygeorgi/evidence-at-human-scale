@@ -55,7 +55,7 @@ class ExpectedOutput(unittest.TestCase):
 
     def test_the_ten_minute_path_leads_to_pages_that_exist(self):
         readme = (REPO / "README.md").read_text(encoding="utf-8")
-        path = readme.split("## Ten-minute path", 1)[1].split("\n## ", 1)[0]
+        path = readme.split("## Ten-minute path", 1)[1].split("\n## Quickstart", 1)[0]
         targets = re.findall(r"\]\(([^)#]+)(?:#[^)]*)?\)", path)
         self.assertGreaterEqual(len(targets), 4)
         for target in targets:

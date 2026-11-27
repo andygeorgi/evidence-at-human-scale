@@ -1,6 +1,6 @@
 # 10. Information can degrade without widening authority
 
-[← 9. Authority](09-authority.md) · [Paper contents](README.md) · [Next: costs and adaptation →](11-costs-and-adaptation.md)
+[← 9. Authority](09-authority.md) · [Paper contents](README.md) · [Next: 11. Costs and adaptation →](11-costs-and-adaptation.md)
 
 Information and authority can fail separately. A source can be stale, partial or unavailable while authority is still valid, and authority can be invalid while the information is available. When the evidence is current and sufficient and the authority is valid and current, review is normal and an action is eligible to proceed once the commit checks pass. Qualified information (available, but stale, partial, or from a source that did not answer) can still support a limited review. Invalid or uncertain authority closes execution, even when the information is available and the recommendation sounds compelling.
 
@@ -47,4 +47,4 @@ Late evidence and challenges start a reassessment. Neither becomes ground truth 
 
 **See it working:** the [degraded-mode example](../../examples/10-degraded-modes/README.md) runs the same decision with a dependency down and shows what the packet, the assistant and the gateway each do.
 
-[← 9. Authority](09-authority.md) · [Paper contents](README.md) · [Next: costs and adaptation →](11-costs-and-adaptation.md)
+[← 9. Authority](09-authority.md) · [Paper contents](README.md) · [Next: 11. Costs and adaptation →](11-costs-and-adaptation.md)

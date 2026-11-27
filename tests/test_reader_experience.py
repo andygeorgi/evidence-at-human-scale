@@ -70,19 +70,32 @@ class TheFirstScreen(unittest.TestCase):
         readme = text("README.md")
         self.assertTrue(readme.startswith("# Evidence at Human Scale"))
         self.assertLess(readme.index("[Start with the ten-minute path](#ten-minute-path)"), readme.index("<!-- banner:start -->"))
-        self.assertLess(readme.index("<!-- banner:end -->"), readme.index("## The problem, in one invoice"))
+        self.assertLess(readme.index("<!-- banner:end -->"), readme.index("## Ten-minute path"))
+        self.assertLess(readme.index("## Ten-minute path"), readme.index("## 1. The problem, in one invoice"))
 
-    def test_the_one_path_has_its_steps_and_the_quickstart_it_sends_to(self):
+    def test_the_one_path_has_five_numbered_steps_and_the_quickstart_comes_after_it(self):
         readme = text("README.md")
         self.assertEqual(readme.count("## Ten-minute path"), 1)
         self.assertEqual(readme.count("## Quickstart"), 1)
         self.assertLess(readme.index("## Ten-minute path"), readme.index("## Quickstart"))
-        path = readme.split("## Ten-minute path", 1)[1].split("\n## ", 1)[0]
-        self.assertIn("(#quickstart)", path)
-        self.assertEqual(len(re.findall(r"(?m)^\d\. ", path)), 5)
+        path = readme.split("## Ten-minute path", 1)[1].split("\n## Quickstart", 1)[0]
+        headings = re.findall(r"(?m)^## (.+)$", path)
+        self.assertEqual([int(re.match(r"(\d+)\. ", heading).group(1)) for heading in headings if re.match(r"\d+\. ", heading)], [1, 2, 3, 4, 5], "no number missing, repeated or out of order")
+        self.assertEqual([heading for heading in headings if not re.match(r"\d+\. ", heading)], [], "every step of the path is numbered")
+        self.assertNotRegex(path, r"(?m)^\d+\. ", "the steps are the numbered headings; a numbered list inside a step would read as a second sequence")
+
+    def test_the_path_ends_with_a_conclusion_and_one_next_step_and_not_with_an_index(self):
+        path = text("README.md").split("## Ten-minute path", 1)[1].split("\n## Quickstart", 1)[0]
+        last = path.split("\n## 5. ", 1)[1]
+        closing = last.split("\n### Where the path ends", 1)[1]
+        items = re.findall(r"(?m)^- \*\*([^*]+)\*\*", closing)
+        self.assertEqual(len(items), 5, "what the reader understands, what is reusable, what is implemented, what stays a reference pattern, the next step")
+        self.assertIn("(docs/implementation-guide.md)", closing.split("- **" + items[-1] + "**", 1)[1], "the next step is one thing, with the page that supports it")
+        for index in ("docs/paper/README.md", "architecture/README.md", "figures/README.md", "contracts/README.md", "docs/README.md"):
+            self.assertNotIn("(%s" % index, closing, "the last step does not end at an index: " + index)
 
     def test_the_problem_keeps_its_anchor_and_names_its_things_before_their_numbers(self):
-        problem = text("README.md").split("## The problem, in one invoice", 1)[1].split("\n## ", 1)[0]
+        problem = text("README.md").split("## 1. The problem, in one invoice", 1)[1].split("\n## ", 1)[0]
         for phrase in ("invoice", "goods receipt", "AI summaries", "treasury service", "requestor's read permissions", "corrects the receipt"):
             self.assertIn(phrase, problem)
         self.assertEqual(MACHINE_ID.findall(problem) + re.findall(r"\bINV-\d|GR-\d", problem), [])
@@ -243,10 +256,10 @@ class DeepLinksOfEarlierReleasesKeepWorking(unittest.TestCase):
     """A page was reorganized for the reader, but a link to a section of v1.0.1 still lands on the section that replaced it."""
 
     def test_the_smallest_useful_experiment_lands_on_the_experiment_and_not_on_the_quickstart(self):
-        """In v1.0.1 this was the exercise of replaying one case on paper. Today that exercise is the row of the guide that follows the anchor."""
+        """In v1.0.1 this was the exercise of replaying one case on paper. Today that exercise is the first step that closes the ten-minute path."""
         after = text("README.md").split('<a id="the-smallest-useful-experiment"></a>', 1)[1]
         heading = next(line for line in after.split("\n") if line.strip() and not line.startswith("<a id="))
-        self.assertEqual(heading, "## Go deeper")
+        self.assertEqual(heading, "## 5. What to do on Monday")
         section = after.split("\n## ")[1]
         self.assertIn("replay one recent case on paper", section)
         self.assertNotIn("pip install", section)
@@ -256,7 +269,7 @@ class DeepLinksOfEarlierReleasesKeepWorking(unittest.TestCase):
         self.assertIn("They are not evidence that the architecture works.", text("examples/README.md"))
 
     LEGACY = {
-        "README.md": ("status-and-limits", "what-a-pass-means-and-what-it-does-not", "the-smallest-useful-experiment", "where-to-go-next"),
+        "README.md": ("the-problem-in-one-invoice", "what-the-architecture-does-about-it", "status-and-limits", "what-a-pass-means-and-what-it-does-not", "the-smallest-useful-experiment", "where-to-go-next"),
         "docs/paper/00-overview.md": ("how-the-paper-is-organized",),
         "examples/07-authority-and-delegation/README.md": ("the-commit-check-six-times",),
         "examples/10-degraded-modes/README.md": ("the-three-fail-closed-evaluations",),
@@ -370,6 +383,31 @@ class WordingThatStaysTrueToTheSchemaAndTheExamples(unittest.TestCase):
             body = (support.EXAMPLES / name).read_text(encoding="utf-8")
             self.assertIn("Proposed (not executed or approved): release payment on invoice INV-2026-0417 (proposal ACT-REL-0417 v2).", body, name)
             self.assertNotIn("release_payment on invoice", body, name)
+
+
+class RoutesAreNumberedConsistently(unittest.TestCase):
+    """A reader who follows "Next" through the paper meets each chapter under the number it has, and a guided route does not number some stops and not others."""
+
+    PREVIOUS = re.compile(r"\[← (\d+)\. [^\]]+\]\((\d\d)-[^)]+\)")
+    NEXT = re.compile(r"\[Next: (\d+)\. [^\]]+ →\]\((\d\d)-[^)]+\)")
+
+    def test_a_chapter_numbers_the_next_chapter_as_it_numbers_the_previous_one(self):
+        for number in range(15):
+            relative = next(name for name in pages("docs/paper/[0-9]*.md") if name.startswith("docs/paper/%02d-" % number))
+            lines = text(relative).rstrip().split("\n")
+            top = lines[2]
+            self.assertEqual(lines[-1], top, "%s: the line under the title and the last line are the same" % relative)
+            previous, following = self.PREVIOUS.findall(top), self.NEXT.findall(top)
+            self.assertEqual([(int(label), int(target)) for label, target in previous], [(number - 1, number - 1)] if number else [], relative)
+            self.assertEqual([(int(label), int(target)) for label, target in following], [(number + 1, number + 1)] if number < 14 else [], relative)
+
+    def test_the_guided_routes_use_chapter_numbers_in_words_and_number_no_topic(self):
+        page = text("docs/README.md")
+        paths = page.split("## Paths", 1)[1].split("\n## ", 1)[0]
+        self.assertNotRegex(paths, r"\[\d+\. ", "a stop that is a chapter is not numbered inside a route: some stops would carry a number and the others none")
+        self.assertNotIn("Short path", paths)
+        topics = page.split("## Topics and where to read about them", 1)[1].split("\n## ", 1)[0]
+        self.assertEqual(re.findall(r"(?m)^\| \d+\. ", topics), [], "a topic number would read as a chapter number")
 
 
 class ReferenceSurfacesKeepTheirIdentifiers(unittest.TestCase):

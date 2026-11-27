@@ -1,10 +1,8 @@
 # Guided reading paths
 
-Choose a route by what you want to do. To look up a topic or a folder instead, use the tables after the paths.
+The [ten-minute path](../README.md#ten-minute-path) in the README is the way in. The routes below continue from it, by purpose. To look up a topic or a folder instead, use the tables after the paths.
 
 ## Paths
-
-**Short path: the argument in a few pages.** [Overview](paper/00-overview.md) → [1. Human attention](paper/01-human-attention.md) → [3. The reference architecture](paper/03-governed-context.md) → [Where the architecture stops](paper/14-start-monday.md#where-the-architecture-stops).
 
 **Architect path: the whole paper.** Read the [paper](paper/README.md) in order. Open the [worked example](../examples/README.md) after chapter 6.
 
@@ -18,16 +16,16 @@ Choose a route by what you want to do. To look up a topic or a folder instead, u
 
 | Topic | Read |
 | --- | --- |
-| 1. Why human attention is the scarce resource | [Chapter 1](paper/01-human-attention.md) |
-| 2. Why adding more agents can make it worse | [Chapter 1](paper/01-human-attention.md), [chapter 7](paper/07-one-interaction.md) |
-| 3. The architectural thesis | [Overview](paper/00-overview.md) |
-| 4. The logical reference architecture | [Chapter 3](paper/03-governed-context.md) (Figure F02) |
-| 5. The evidence and context contracts | [Chapters 4–6](paper/04-evidence-and-lineage.md), [contracts](../contracts/README.md) |
-| 6. Roles, approval and execution | [Chapter 9](paper/09-authority.md) |
-| 7. Degraded and failure modes | [Chapter 10](paper/10-degraded-operation.md) |
-| 8. How to begin implementing it | [Chapter 14](paper/14-start-monday.md), [implementation guide](implementation-guide.md) |
-| 9. How to evaluate it | [Chapter 12](paper/12-evaluation.md), [evaluation guide](../evaluation/README.md) |
-| 10. What it does not claim | [Claims and limits](claims-and-limits.md), [chapter 14](paper/14-start-monday.md#where-the-architecture-stops) |
+| Why human attention is the scarce resource | [Chapter 1](paper/01-human-attention.md) |
+| Why adding more agents can make it worse | [Chapter 1](paper/01-human-attention.md), [chapter 7](paper/07-one-interaction.md) |
+| The architectural thesis | [Overview](paper/00-overview.md) |
+| The logical reference architecture | [Chapter 3](paper/03-governed-context.md) (Figure F02) |
+| The evidence and context contracts | [Chapters 4–6](paper/04-evidence-and-lineage.md), [contracts](../contracts/README.md) |
+| Roles, approval and execution | [Chapter 9](paper/09-authority.md) |
+| Degraded and failure modes | [Chapter 10](paper/10-degraded-operation.md) |
+| How to begin implementing it | [Chapter 14](paper/14-start-monday.md), [implementation guide](implementation-guide.md) |
+| How to evaluate it | [Chapter 12](paper/12-evaluation.md), [evaluation guide](../evaluation/README.md) |
+| What it does not claim | [Claims and limits](claims-and-limits.md), [chapter 14](paper/14-start-monday.md#where-the-architecture-stops) |
 
 ## Map of the repository
 

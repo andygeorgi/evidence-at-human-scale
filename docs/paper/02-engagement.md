@@ -1,6 +1,6 @@
 # 2. What the engagement showed
 
-[← 1. Human attention](01-human-attention.md) · [Paper contents](README.md) · [Next: the reference architecture →](03-governed-context.md)
+[← 1. Human attention](01-human-attention.md) · [Paper contents](README.md) · [Next: 3. The reference architecture →](03-governed-context.md)
 
 The architecture grew out of a case-based architecture engagement. There was no client commission: the author acted as architect on a written case brief about a national fisheries-control authority in Iceland that registers catches and landings, confirms quota transfers and takes enforcement decisions that can be appealed. The work combined the brief, research into the authority's public record, and prototypes that the author built and tested on synthetic data, including a demonstrator assistant. The authority took no part: no interview, data, approval or outcome from it forms part of this evidence. Nothing in this repository is a statement by, about or on behalf of the authority.
 
@@ -63,4 +63,4 @@ The demonstrator also taught a lesson about coverage (IN04, synthetic data). Its
 
 Published guidance already sets the obligation. Trustworthy AI should be accountable, transparent, explainable and interpretable (RG01), and high-risk AI must enable the people who oversee it to interpret its output, stay aware of automation bias, and override or interrupt it (RG02). The engagement showed how the conditions for such oversight fail in practice, in record- and rule-based decisions and in a synthetic demonstrator: a correction that never reaches the decision, a rule applied over the wrong period, a status mistaken for an outcome, a picture that implies coverage it does not have. This paper adds contracts that make those failures visible to the Decision Owner: typed evidence with lineage, seven missingness labels, a decision packet that separates claims from inferences, and an action boundary with current checks, shared accounting and verified receipts. The recommendation to begin with zero specialist agents follows from the same engagement: the author's internal, AI-assisted test (IN01) found no evidence-backed value in the proposed agents alone. That is one observation within a single case-based engagement, not statistical evidence.
 
-[← 1. Human attention](01-human-attention.md) · [Paper contents](README.md) · [Next: the reference architecture →](03-governed-context.md)
+[← 1. Human attention](01-human-attention.md) · [Paper contents](README.md) · [Next: 3. The reference architecture →](03-governed-context.md)

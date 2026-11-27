@@ -21,4 +21,4 @@ The reference keeps all seven contracts, C01 to C07, with their 41 field groups,
 
 ## What a domain still needs
 
-Before adoption, a domain needs approved owners and parameters, working authorization, defined failure routes, executed fixtures and a recorded acceptance. A record's provenance does not make it true, and a schema's shape does not make it accurate. Permission synchronization can lag, external actions can race, and attention stays finite.
+The list of what adoption needs, from approved owners and parameters to a recorded acceptance, is in [paper chapter 14](../docs/paper/14-start-monday.md#what-adoption-needs). Whatever a domain supplies, a record's provenance does not make it true and a schema's shape does not make it accurate. Permission synchronization can lag, external actions can race, and attention stays finite.

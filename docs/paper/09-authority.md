@@ -1,6 +1,6 @@
 # 9. Authority remains a separate boundary
 
-[← 8. Uncertainty](08-uncertainty.md) · [Paper contents](README.md) · [Next: degraded operation →](10-degraded-operation.md)
+[← 8. Uncertainty](08-uncertainty.md) · [Paper contents](README.md) · [Next: 10. Degraded operation →](10-degraded-operation.md)
 
 Reading, synthesis, approval and execution are different permissions, and different roles hold them. The **requestor** asks for the packet. The **Decision Owner**, also called the accountable reviewer, reviews it and owns the decision. The **approver** authorizes one exact proposal or issues a bounded grant. The **executor**, which is the action gateway, rechecks and performs the action, and an authoritative target confirms what happened. Beside them sit the read-authorized context service and the workload or orchestration identity. One person may hold more than one of these roles only where the domain's policy explicitly allows it; in the worked example the controller is both Decision Owner and approver, and the example's `registry.json` records that. No contract treats the roles as the same. A service identity never grants the requestor rights to every underlying source, and never gives the assistant permission to perform every action.
 
@@ -60,4 +60,4 @@ An external target may not support atomic checks and business commit. If it does
 
 **See it working:** [example 07](../../examples/07-authority-and-delegation/README.md) has a bounded delegation, an exact approval and a proposal the delegation does not cover; [example 08](../../examples/08-blocked-action/README.md) has a blocked action with a `not_executed_verified` receipt; and [example 09](../../examples/09-unknown-outcome/README.md) has an unknown outcome that keeps its reservation.
 
-[← 8. Uncertainty](08-uncertainty.md) · [Paper contents](README.md) · [Next: degraded operation →](10-degraded-operation.md)
+[← 8. Uncertainty](08-uncertainty.md) · [Paper contents](README.md) · [Next: 10. Degraded operation →](10-degraded-operation.md)
