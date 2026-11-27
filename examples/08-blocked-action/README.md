@@ -39,7 +39,7 @@ Job A was queued at 10:40 under approval `GRT-APPR-0417-A` for proposal `ACT-REL
 | `EVIDENCE_STALE` | The screening is 56 hours old against a 24-hour policy. |
 | `PRECONDITION_FAILED` | No *current* passing match result and no *current* fresh screening are among the evidence the proposal cites. |
 
-The business situation had in fact been fixed by 14:10: the corrected receipt matches the invoice. The approval is still not usable. **It was given for a proposal built on evidence that has since been replaced, and a new proposal needs a new approval.** That is the point of the example.
+By 14:10 the business situation had in fact been fixed: the corrected receipt matches the invoice. The approval is still not usable, because **it was given for a proposal built on evidence that has since been replaced, and a new proposal needs a new approval.**
 
 ## The receipt
 

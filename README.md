@@ -17,95 +17,87 @@ When several systems and AI assistants feed one decision, the person who decides
 
 ## Ten-minute path
 
-Five steps, about ten minutes, all on this page. Each answers one question, from the problem to what you can do on Monday. The links inside the steps lead to optional detail.
+The path has five steps and takes about ten minutes. It starts with one invoice and ends with what you can do on Monday. You can read it without leaving this page. The links in steps 1 to 4 lead to optional detail, and step 5 ends with where to go next.
 
 <a id="the-problem-in-one-invoice"></a>
 ## 1. The problem, in one invoice
 
-A supplier invoice is ready to pay, and the goods receipt disagrees with it. The accounts-payable controller has to decide whether to hold or release the payment. The material in front of them comes from several systems and two AI assistants, and part of it is missing, restricted or about to be corrected.
+A supplier invoice is ready to pay, and the goods receipt disagrees with it. The invoice says 100 units, EUR 18,400; version 1 of the receipt says 60 units were received. The accounts-payable controller has to decide whether to hold the payment or release it, working from several systems and two AI assistants, and part of that material is missing, restricted or about to be corrected.
 
-- **The records disagree.** The invoice says 100 units, EUR 18,400. The goods receipt, version 1, says 60 units received.
-- **The cause is unknown.** Two AI summaries offer the same explanation, a receiving delay, but both read the same receipt, so they are one opinion. The treasury service did not answer, and part of the requested scope is outside the requestor's read permissions.
-- **A person decides.** The controller owns the decision: hold the payment, or release it. A bounded grant lets the system place holds, and releasing this payment needs the controller's approval of one exact proposal.
-- **Then the facts change.** The warehouse finds a second pallet and corrects the receipt to 100 units. Everything built on version 1 stops being current, the summaries and the approval included, and the controller reviews the corrected material before approving again.
+The two AI summaries offer the same explanation, a receiving delay, but both read the same receipt, so they are one opinion. The treasury service did not answer, and part of the requested scope lies outside the requestor's read permissions, so the analyst who asked for the review may not read it. The controller owns the decision. The system can place holds under a bounded grant, but releasing this payment needs the controller's approval of one exact proposal.
 
-Every name, amount and system in this example is invented. [The full story](examples/README.md#the-story), with times and record numbers, is in the examples.
+Later the warehouse finds a second pallet and corrects the receipt to 100 units. Everything built on version 1 stops being current, and the controller has to review the corrected material before approving again.
+
+Every name, amount and system in this example is invented. The examples tell the [full story](examples/README.md#the-story), with times and record numbers.
 
 <a id="what-the-architecture-does-about-it"></a>
 ## 2. The architecture's answer: one decision packet
 
-The architecture gives the controller one versioned **decision packet** instead of a pile of agent output:
+The architecture gives the controller one versioned **decision packet** instead of a pile of agent output. In the packet, a source record, a deterministic finding and a model inference stay distinct from one another. Each establishes something different: a source record shows what its source asserted, a deterministic finding shows what a declared rule produces from stated inputs, and a model inference shows only that an interpretation was produced, not that it is true. Every claim cites an exact record version. Conflicts, gaps and unavailable sources remain visible, each with its reason and in the wording the requestor's permissions allow.
 
-- **Each item says what it is.** A source record, a deterministic finding and a model inference are kept apart. A claim cites an exact record version, and two summaries of one receipt count as one origin.
-- **What is unknown stays visible.** A conflict, a gap or an unavailable source stays in the packet with its reason, in the wording the requestor's permissions allow.
-- **Authority stays separate.** A proposal is not an approval, and an approval is not execution. At commit, a gateway rechecks the grant, the evidence, the preconditions and the limits against the current state.
-- **Corrections travel.** When a record is superseded, everything built on the old version, a pending approval included, stops being current.
+A proposal is not an approval, and an approval is not execution. Before an action is carried out, at commit, a gateway rechecks the grant or approval, the evidence, the preconditions and the limits against the current state. A correction to a record invalidates what was derived from the earlier version and revokes a pending approval.
 
-More agents give the controller more interpretations to read. The unit of design here is the decision context rather than the agent hierarchy, and [the paper](docs/paper/README.md) argues why.
+More agents can give the controller more interpretations to read. The unit of design here is the decision context, meaning the outputs selected for one decision and released as one packet, rather than the agent hierarchy. [The paper](docs/paper/README.md), which you can skip for now, argues why.
 
 ## 3. What the controller reviews
 
-The controller reviews the decision packet, not the agents' output. Its first view states the task and the as-of time, shows what could change the decision, and shows where the basis is weak or incomplete. From there the controller can follow a claim back to its source, inspect a conflicting account, challenge a claim and review a revised version.
+The controller reviews the decision packet, a versioned review object that holds supported claims, labeled inferences, conflicts, gaps, recommendations and proposals. Its first view should state the task and the as-of time, show the information that could change the decision, and show where the basis is weak or incomplete. From there the controller can follow a claim back to the original evidence, inspect a conflicting account, challenge a claim and review a revised version.
 
-Version 1 of the packet, produced at 10:00, holds:
+In the example, version 1 of the packet was produced at 10:00 and holds:
 
 | Part of the packet | What this one holds |
 |---|---|
-| Supported claims | Seven, among them the invoice, the goods receipt (60 units) and the failed three-way match. Each cites an exact record version. |
-| Labeled inferences | Two, one for each AI summary. Each states its method and its limits, including that both rest on the same receipt. Neither is a claim. |
-| Conflicts and gaps | The quantity conflict, with its cause not established, and seven labeled gaps, among them the treasury service that did not answer, a screening that is out of date and the part of the scope the requestor may not read. |
-| Recommendations | Hold the invoice. Release at 16:00 only if the match passes, the screening is current and the invoice is held. |
-| Action proposals | The hold and the release, each marked proposed, not executed. |
+| Supported claims | Seven, among them the invoice, the goods receipt (60 units) and the failed three-way match, which is a deterministic finding. Each cites an exact record version. |
+| Labeled inferences | Two, one for each AI summary. Each states its method and its limits, including that the two share one origin. Neither is a supported claim. |
+| Conflicts and gaps | The quantity conflict, with its cause not established, and seven labeled gaps. They include the treasury service that did not answer, a screening that is out of date and the part of the scope the requestor may not read. |
+| Recommendations | The advice: hold the invoice, and release at 16:00 only if the three-way match passes, the supplier screening is current and the invoice is on hold. |
+| Action proposals | The exact actions that would carry that advice out, the hold and the release, each marked proposed and not executed. |
 
-The example shows that every claim can be followed to a source and that inference, conflict, gap and proposal stay separate. It does not show that a reader finds such a packet readable or quicker than the current process, or that its size is right; a real packet would be much larger, and usability is an open evaluation question. A claim is checked against its sources only mechanically: statuses and figures must match, and the check does not read free text for meaning. [The full packet](examples/05-decision-packet/README.md) lists every reference and the checks that run on it.
+Every claim in this packet can be traced to a source. The example leaves open whether a reader finds such a packet readable or quicker than the current process, and whether its size is right: a real packet would be much larger, and usability is an open evaluation question. The repository's check that a claim agrees with its source is mechanical. It compares statuses and figures and does not read free text for meaning, so passing it does not show that a claim means what its source means. The [full packet](examples/05-decision-packet/README.md) has every reference and the checks that run on it.
 
-## 4. Approval and execution stay separate
+## 4. Who decides, and what stays separate
 
-The controller reviewed packet version 1 at 10:35 and gave an exact approval, at 10:40, for a conditional release of the payment at the 16:00 payment run. At 13:40 the warehouse corrected the receipt. At 13:45 the packet and the summaries stopped being current and the approval was revoked.
+Four decisions remain with named people, and the architecture makes none of them: whether a source record is true (the source owner), what the evidence means for this case and what to do (the Decision Owner), whether one exact proposal goes ahead (the approver), and policy, thresholds, safe states and source authority (the domain owners). The controller in the example is both the Decision Owner and the approver, which the example's policy allows. Approving an action and carrying it out are separate steps, and a gateway checks the second one again at commit.
 
-At 16:00 the queued release ran under the old approval, and the gateway refused it at commit. It rechecked what an approval cannot vouch for and found four independent reasons: the approval had been revoked; the evidence the proposal cites had been superseded; the screening it cites was 56 hours old against a 24-hour policy; and the proposal cites no current passing match result and no current fresh screening. By 14:10 the corrected receipt matched the invoice, and the approval was still unusable. It was given for a proposal built on evidence that had since been replaced, and a new proposal needs a new approval.
+The controller reviewed version 1 of the packet at 10:35 and gave an exact approval at 10:40 for a conditional release of the payment at the 16:00 payment run. The warehouse corrected the goods receipt at 13:40. At 13:45 the packet and the summaries stopped being current, and the approval was revoked.
 
-The receipt keeps three things apart:
+When the 16:00 payment run started, the gateway rechecked the queued release and refused it at commit. It found four independent reasons: the approval had been revoked, the evidence the proposal cites had been superseded, the screening it cites was 56 hours old against a 24-hour policy, and a precondition failed because the proposal cites neither a current passing match result nor a current fresh screening. By 14:10 the corrected goods receipt matched the invoice, yet the old approval remained unusable. It was given for a proposal built on evidence that has since been replaced, and a new proposal needs a new approval.
 
-- **Rejected before submission.** The gateway checked the action at commit and submitted nothing. This says nothing about the target: another route, system or person could still have paid the invoice.
-- **Verified no effect.** An authoritative check of the target, made after the attempt, found no effect for this attempt, target and scope (`not_executed_verified`). This receipt rests on the rejection and on that separate check.
-- **Outcome unknown.** Nobody has an authoritative answer yet. The release under the second approval went out at 16:00:05 and the bank interface timed out, so that receipt stayed unknown, with the allowance reserved, until reconciliation at 16:20 showed the payment completed.
+The execution receipt, the gateway's record of an attempt, keeps what the gateway did apart from what is known about the target. A refusal before submission says only that the gateway submitted nothing: another route, system or person could still have paid the invoice. Here an authoritative check of the target, made after the attempt, found no effect for this attempt, target and scope, so the receipt records a verified no effect (`not_executed_verified`).
 
-Four decisions stay with named people, and the architecture decides none of them: whether a source record is true (the source owner); what the evidence means for this case and what to do (the Decision Owner); whether one exact proposal goes ahead (the approver); and policy, thresholds, safe states and source authority (the domain owners).
-
-The commit check in the example is a small reference function with no state, no concurrency control and no connection to a target; it is not an implementation of a gateway. The example does not show that a real system would notice the correction in time, or that blocking is the right business outcome. [The full blocked action](examples/08-blocked-action/README.md) lists all 21 commit-time reason codes.
+The commit check here is a small reference function with no state, no concurrency control and no connection to a target, so it is not an implementation of a gateway. The example does not show that a real system would notice the correction in time, or that blocking is the right business outcome. Nor is it an argument that approvals are unnecessary: the gateway can only refuse what it can check. The [full blocked action](examples/08-blocked-action/README.md) lists all 21 commit-time reason codes.
 
 <a id="the-smallest-useful-experiment"></a>
 ## 5. What to do on Monday
 
-Choose one recurring, consequential decision in which people already struggle to absorb the available evidence. Before you write any agent code:
+You can start without building the full contract set, the seven record formats the architecture defines. Pick one recurring, consequential decision in which people already struggle to absorb the available evidence. Before you write any agent code:
 
-- **Name the decision and its people.** Write down the decision question, the Decision Owner and the actions that could follow, and record separately who may read, who may approve and who may execute.
-- **Inventory the sources.** Record producer, evidence kind, version, owner and freshness requirement for each, and give every mandatory signal a notification route that does not depend on the assistant.
-- **Draft the first packet.** Supported claims with exact references, labeled inferences, conflicts and gaps, and walk a recent case through it with the Decision Owner.
-- **Put a gateway before every consequential action.** It rechecks permission, evidence, policy, target state and limits at commit, and its receipt is verified against the authoritative target.
-- **Compare simpler baselines.** Run the current workflow, a deterministic template and a zero-specialist synthesis on the same fixed cases before you consider any specialist agent.
+- write down the decision question, the accountable Decision Owner and the actions that could follow, and record separately who may read, who may approve and who may execute;
+- inventory the sources behind the decision by producer, evidence kind, version, owner and freshness requirement, mark the mandatory signals, and give them a deterministic notification route that does not depend on the assistant;
+- draft the first view of the decision packet, with supported claims that cite exact references, labeled inferences, conflicts and the labeled gaps that apply, and walk a recent case through it with the Decision Owner;
+- put a gateway in front of every consequential action to recheck it at commit, and verify the execution receipt against the authoritative target rather than the executor's own status;
+- run the current workflow, a deterministic template and a simple synthesis with no specialist agents on the same fixed cases, and record omissions, evidence actually inspected, time and cost, each with a declared denominator, before you consider any specialist agent.
 
-[Paper chapter 14](docs/paper/14-start-monday.md) gives the reasons for each of the five.
+Optional: [paper chapter 14](docs/paper/14-start-monday.md) gives the reasoning for each of these five actions.
 
 ### Where the path ends
 
-- **You can now explain** why source records, deterministic findings and model inference are kept apart, what the person who decides reviews, and why approval and execution stay separate.
-- **Reusable.** The seven contracts and their JSON Schemas, the structure of the decision packet, the commit-time recheck and the templates in the implementation guide. A domain supplies its own owners, sources, policies and parameters.
-- **Implemented.** A JSON Schema bundle, validators and a reference commit check, with tests, on one invented example. The [Quickstart](#quickstart) runs them.
-- **Reference pattern only.** Everything else. The commit check has no state, no concurrency control and no connection to a target, and permission-bound output is a reference projection, not an authorization service. Nothing has been deployed, and real-world effectiveness has not been evaluated. [Claims and limits](docs/claims-and-limits.md) has the full statement.
-- **Best first step.** Pick one recurring decision and replay one recent case on paper with the person who owns it. The [implementation guide](docs/implementation-guide.md) has a template for each step.
+- **What you can now explain.** Why a decision packet distinguishes source records, deterministic findings and model inference, what the person who decides reviews, and why approval and execution are separate steps.
+- **What is reusable.** By design, every deployment keeps the same parts, including the seven contracts (context, evidence, selection, decision packet, action proposal, delegation and execution receipt) and a separate gateway for actions ([the full list](docs/paper/11-costs-and-adaptation.md#what-stays-fixed-and-what-a-domain-supplies)). The domain supplies the parameters, such as source authority, freshness, safe states, thresholds and who can approve or execute.
+- **What is implemented.** A JSON Schema bundle for the contracts, validators and a reference commit check, exercised by tests on one invented example. The [Quickstart](#quickstart) runs the example checks.
+- **What remains a reference pattern.** The gateway: the commit check in step 4 is only a small reference function. Permission-bound output, which shows a reader only what their permissions allow, is a reference projection, not an authorization service. The architecture is not a production deployment, and its real-world effectiveness has not been evaluated ([claims and limits](docs/claims-and-limits.md)).
+- **Best first step.** Pick one recurring decision and replay one recent case on paper with the person who owns it, which covers the first three actions above. The [implementation guide](docs/implementation-guide.md) has a template for each of them.
 
 ## Quickstart
 
-Optional, and not needed for the path above. Two commands validate the invented examples on your machine.
+You do not need this for the path above. Two commands validate the invented examples on your machine.
 
 ```bash
 python -m pip install -r requirements.txt   # one package: jsonschema
 python scripts/validate_examples.py         # validate the synthetic examples
 ```
 
-You need Python 3.9 or later. It is tested on Windows and Linux (nothing in it is platform-specific, so macOS should work too), uses no network, and starts no service or model. `validate_examples.py`, the second command, should print:
+You need Python 3.9 or later. The repository is tested on Windows and Linux (nothing in it is platform-specific, so macOS should work too). The checks use no network and start no service or model. `validate_examples.py`, the second command, should print:
 
 ```text
 Evidence at Human Scale 1.0.7: example validation
@@ -126,7 +118,7 @@ A stage passes only if it evaluated something, and a failing check names its cod
 <a id="where-to-go-next"></a>
 ## Go deeper
 
-The path ends at step 5. Everything here is optional.
+The path ends with step 5. Everything below is optional depth.
 
 | Goal | Where |
 |---|---|
@@ -142,11 +134,13 @@ The path ends at step 5. Everything here is optional.
 <a id="what-a-pass-means-and-what-it-does-not"></a>
 ## What this shows, and what it does not
 
-A pass means the invented examples are structurally valid, that their records agree with one another wherever the checks compare them, and that the deterministic checks behave as documented. It says nothing about any real system, model or process. These checks are not the evaluation programme (the twelve evaluation tests, EV01–EV12, all NOT ASSESSED), and they are not model evaluation or human-outcome evaluation. [Claims and limits](docs/claims-and-limits.md) lists what a pass does not establish.
+A pass means that the invented examples are structurally valid, that their records agree with one another wherever the checks compare them, and that the deterministic checks behave as documented. It says nothing about any real system, model or process. The checks are not the evaluation programme (the twelve evaluation tests, EV01–EV12, all NOT ASSESSED), and they are not model evaluation or human-outcome evaluation. [Claims and limits](docs/claims-and-limits.md) lists what a pass does not establish.
 
-- **A reference architecture, not a deployment.** This is a reference architecture, not a production deployment or benefit claim. The contracts and synthetic examples are tested; real-world effectiveness has not been evaluated. The evaluation programme is defined and none of it has been run ([why](evaluation/README.md#which-tests-can-be-run-today)). The proposed benefit is more inspectable context, not a measured gain in speed, accuracy, cost or decision quality.
-- **All example data is invented.** The buyer, the supplier, the amounts and the systems describe no real organization, person or system.
-- **Case-based, not a client commission.** The design comes from an architecture engagement on a written case about a public-sector fisheries-control authority in Iceland. The authority took no part, and nothing here is a statement by, about or on behalf of it. The observations that came out of the engagement are single dated cases and one internal, AI-assisted test; none measures this architecture's benefit ([claims and limits](docs/claims-and-limits.md) gives their limits).
+This is a reference architecture, not a production deployment or benefit claim. The contracts and synthetic examples are tested; real-world effectiveness has not been evaluated. The evaluation programme is defined and none of it has been run ([why](evaluation/README.md#which-tests-can-be-run-today)). The proposed benefit is more inspectable context, not a measured gain in speed, accuracy, cost or decision quality.
+
+All example data is invented: the buyer, the supplier, the amounts and the systems describe no real organization, person or system.
+
+The design comes from an architecture engagement on a written case about a public-sector fisheries-control authority in Iceland, not from a client commission. The authority took no part, and nothing here is a statement by, about or on behalf of it. The observations that came out of the engagement are single dated cases and one internal, AI-assisted test, and none of them measures this architecture's benefit ([claims and limits](docs/claims-and-limits.md) gives their limits).
 
 ## Citing, contributing, security
 

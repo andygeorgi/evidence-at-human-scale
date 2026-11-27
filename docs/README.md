@@ -1,6 +1,6 @@
 # Guided reading paths
 
-The [ten-minute path](../README.md#ten-minute-path) in the README is the way in. The routes below continue from it, by purpose. To look up a topic or a folder instead, use the tables after the paths.
+The README's [ten-minute path](../README.md#ten-minute-path) is the way in. The paths below pick up from there, by purpose. To look up a topic or a folder instead, use the tables after them.
 
 ## Paths
 

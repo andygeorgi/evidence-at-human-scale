@@ -6,7 +6,7 @@
 
 ## Purpose
 
-A decision packet ([C04](../../contracts/c04-decision-packet.md)) is what the Decision Owner reviews, and what the requestor meets through the assistant. It is bound to one exact context and selection, presents supported claims with the evidence behind each, keeps inferences separate and labeled, shows conflicts, uncertainty and gaps, and lists action proposals that are **proposed, not executed**. A packet is a review object. It is not an approval, not an instruction and not a truth certificate. See [chapter 6](../../docs/paper/06-decision-packet.md).
+A decision packet ([C04](../../contracts/c04-decision-packet.md)) is what the Decision Owner reviews, and what the requestor meets through the assistant. It is bound to one exact context and selection, presents supported claims with the evidence behind each, keeps inferences separate and labeled, shows conflicts, uncertainty and gaps, and lists action proposals that are **proposed, not executed**. A packet is a review object, not an approval, an instruction or a truth certificate. See [chapter 6](../../docs/paper/06-decision-packet.md).
 
 <!-- figure:F04:start -->
 **Figure F04.** A decision packet (C04) has nine groups, among them supported claims, labeled inferences, conflicts, gaps, obligations and action proposals that are not executed. Tags show which groups point to evidence records, the selection manifest and action proposal records.
