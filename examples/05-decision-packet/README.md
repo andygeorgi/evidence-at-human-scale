@@ -74,7 +74,7 @@ A proposal ([C05](../../contracts/c05-action-proposal.md)) names an exact action
 | `PKT009` | A packet carries every obligation of its selection | `tests/test_obligations.py` |
 | `KIND002` | A model inference is never a supported claim | `CASE-KIND-02` |
 | `COR001` / `COR002` | No independent corroboration without independence | `CASE-COR-02`, `CASE-COR-01` |
-| `LIFE003` / `LIFE004` | A packet that cites superseded records, or has a newer version, is not active | `CASE-LIFE-02` |
+| `LIFE003` / `LIFE004` | A packet that rests on a record that is not current, or that has a later version, is not active | `CASE-LIFE-02` |
 
 **One snapshot.** The context, the selection and the packet state one as-of time, and the selection reads no time outside the interval of its context. A packet cites only records that were available at its as-of time: the rule of the commit check, applied at the packet's own time. A record admitted exactly then was available, and so is a derived record only when the records it declares as its parents were. A later correction does not make an earlier packet wrong, and a challenge link may name evidence that came after. A packet carries every obligation of its selection, once, and a proposal rests on the context of its packet. These decision-time checks are separate from the commit-time checks of the [blocked action example](../08-blocked-action/README.md).
 

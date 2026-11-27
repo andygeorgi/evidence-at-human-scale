@@ -83,8 +83,9 @@ The corrected receipt makes the release legitimate, and approval A is still refu
 |---|---|---|
 | `LIFE001` | A superseded record names a later version of itself as its replacement | (checked on the whole set) |
 | `LIFE002` | A record derived from a non-current record is not current | `CASE-LIFE-01` |
-| `LIFE003` / `LIFE004` | An active packet cites no non-current record and has no newer version | `CASE-LIFE-02` |
+| `LIFE003` / `LIFE004` | An active packet rests only on current records (in a claim, an inference, a conflict or behind a gap) and has no later version, whether or not that version lists it as a prior version | `CASE-LIFE-02` |
 | `LIFE005` | An approval whose packet is invalidated is revoked | `CASE-LIFE-03` (which also shows `AUTH007`: the rejection that cited the revocation cites a check that no longer fails) |
+| `LIFE007` | A prior version that a packet lists is an earlier version of that packet | (checked on the whole set) |
 | `LIN003` | A supersession is acknowledged by the older record | `CASE-LIN-03` |
 | `REF001` | References name exact versions that exist | `CASE-REF-01` |
 

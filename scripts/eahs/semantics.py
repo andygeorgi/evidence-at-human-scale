@@ -23,8 +23,8 @@ from typing import Dict, List, Optional, Set, Tuple
 from .disclosure import Decision, Viewer, binding_problems, differences, gap_entry, may_know, retrieval_entry
 from .findings import Finding, doc_for_contract
 from .gateway import (GATE_CODES, TERMINAL_OUTCOMES, age_hours, attempt_of, availability_problem, evaluate_commit, freshness_max_age, in_order, input_availability_problems, is_current_at, ledger_from_receipts,
-                      parse_time, receipt_chains, regressive_receipt_versions, same_instant, same_value, ts)
-from .model import IDENTITY, Instance, Model, claims_of, duplicate_claim_ids, is_later, iter_refs, payload_object_of, resolve_pointer, version_problems
+                      parse_time, receipt_chains, regressive_receipt_versions, same_instant, same_value)
+from .model import IDENTITY, Instance, Model, Ref, claims_of, duplicate_claim_ids, is_later, iter_refs, payload_object_of, resolve_pointer, version_key, version_problems
 
 DOC_EVIDENCE = "architecture/evidence-semantics.md"
 DOC_LINEAGE = "architecture/lineage-selection-disclosure.md"
@@ -374,20 +374,15 @@ def check_lifecycle(model: Model) -> List[Finding]:
                 if anc.data["lifecycle"]["state"] != "current":
                     out.append(_f("LIFE002", "still current, but derived from %s %s which is %s: a correction must invalidate its derivatives" % (anc.id, anc.version, anc.data["lifecycle"]["state"]), rec, "/lifecycle/state", DOC_LINEAGE))
                     break
-    successors: Dict[Tuple[str, str], List[Instance]] = {}
     for pkt in model.of("C04"):
-        for prior in pkt.data["review_version_history"]["prior_version_references"]:
-            successors.setdefault((prior["id"], prior["version"]), []).append(pkt)
-    for pkt in model.of("C04"):
-        d = pkt.data
         if packet_active(pkt):
-            for ref in _packet_evidence_refs(d):
-                rec = model.get("C02", ref["record_id"], ref["version"])
-                if rec is not None and rec.data["lifecycle"]["state"] != "current":
-                    out.append(_f("LIFE003", "packet is still active but cites %s %s which is %s" % (rec.id, rec.version, rec.data["lifecycle"]["state"]), pkt, "/review_version_history/state", DOC_LINEAGE))
-                    break
-        if (pkt.id, pkt.version) in successors and packet_active(pkt):
-            out.append(_f("LIFE004", "a newer packet version exists, so this version must be invalidated or superseded", pkt, "/review_version_history/state", DOC_LINEAGE))
+            rec = _non_current_basis(model, pkt)
+            if rec is not None:
+                out.append(_f("LIFE003", "packet is still active but cites %s %s which is %s" % (rec.id, rec.version, rec.data["lifecycle"]["state"]), pkt, "/review_version_history/state", DOC_LINEAGE))
+            later = _later_versions(model, pkt)
+            if later:
+                out.append(_f("LIFE004", "a newer packet version exists, so this version must be invalidated or superseded (newer: %s)" % ", ".join(later), pkt, "/review_version_history/state", DOC_LINEAGE))
+        out.extend(_check_prior_versions(model, pkt))
     grants_by_id: Dict[str, List[Instance]] = {}
     for grant in model.of("C06"):
         grants_by_id.setdefault(grant.id, []).append(grant)
@@ -411,13 +406,60 @@ def check_lifecycle(model: Model) -> List[Finding]:
     return out
 
 
-def _packet_evidence_refs(d: dict) -> List[dict]:
-    refs: List[dict] = []
-    for c in d["supported_claims_references"]:
-        refs.extend(c["supporting_references"])
-    for i in d["labeled_inferences"]:
-        refs.extend(i["supporting_references"])
-    return refs
+def _non_current_basis(model: Model, pkt: Instance) -> Optional[Instance]:
+    """A C02 record that the packet rests on (`packet_basis_refs`) and that is not current, or None.
+
+    Where there are several, the first by name: the finding does not depend on the order of the packet's lists, and a packet that has to be given up is given up once.
+    """
+    named = {(ref.record_id, ref.version) for ref in packet_basis_refs(pkt)}
+    gone = [rec for rec in (model.get("C02", record_id, version) for record_id, version in named) if rec is not None and rec.data["lifecycle"]["state"] != "current"]
+    return min(gone, key=lambda rec: (rec.id, version_key(rec.version) or (), rec.version)) if gone else None
+
+
+def _later_versions(model: Model, pkt: Instance) -> List[str]:
+    """The versions of this packet that stand after it, earliest first.
+
+    Only the numbers in the names say so (`is_later`), and a name that cannot be put in order with this one is neither before nor after it: nothing guesses (`LIFE006` reports such names).
+    What a version lists as its prior versions has no part in it, and neither has the order in which the records were read.
+    """
+    return [other.version for other in model.versions("C04", pkt.id) if is_later(other.version, pkt.version)]
+
+
+def _check_prior_versions(model: Model, pkt: Instance) -> List[Finding]:
+    """The prior versions that a packet lists are earlier versions of this same packet (`LIFE007`).
+
+    A reference must name a C04 packet (the schema requires it as well), a version of this packet and not of another, and not this version itself, and it must come before this version in the order that the numbers
+    in the names give. Where the two names cannot be put in order, the reference is not shown to be an earlier version, and no order is guessed. A version that is listed more than once is one reference, listed too
+    often. A packet that does not exist is reported by `REF004` and is not judged for its order, but a reference to another packet is a finding of this check whether that packet exists or not. The order of the list
+    does not matter, and nothing is repaired: an invalid reference is reported, and it is not read as a link.
+    """
+    base = "/review_version_history/prior_version_references"
+    listed: Dict[Tuple, List[int]] = {}
+    for position, ref in enumerate(pkt.data["review_version_history"]["prior_version_references"]):
+        if isinstance(ref, dict) and isinstance(ref.get("id"), str) and isinstance(ref.get("version"), str):   # a reference that names no version is the schema's finding
+            contract = ref.get("contract_id")
+            listed.setdefault((contract if isinstance(contract, str) else repr(contract), ref["id"], ref["version"]), []).append(position)
+    out: List[Finding] = []
+    for (contract, pid, version), positions in listed.items():
+        named = "%s %s" % (pid, version)
+        if contract != "C04":
+            problem = "prior version %s names its contract as %s, not C04: a prior version is an earlier version of this packet" % (named, contract)
+        elif pid != pkt.id:
+            problem = "prior version %s is a version of another packet: a prior version is an earlier version of this packet, %s" % (named, pkt.id)
+        elif version == pkt.version:
+            problem = "prior version %s is this version itself: a version is not its own prior version" % named
+        elif model.get("C04", pid, version) is None or is_later(pkt.version, version):
+            problem = ""
+        elif is_later(version, pkt.version):
+            problem = "prior version %s comes after this version (%s): a prior version is an earlier version of this packet" % (named, pkt.version)
+        else:
+            why = "; ".join("%s %s" % item for item in version_problems([pkt.version, version]))
+            problem = "prior version %s cannot be shown to come before this version (%s): the two names cannot be put in order (%s), and no order is guessed" % (named, pkt.version, why)
+        if problem:
+            out.append(_f("LIFE007", problem, pkt, "%s/%d" % (base, positions[0])))
+        if len(positions) > 1:
+            out.append(_f("LIFE007", "prior version %s is listed %d times: each prior version is listed once" % (named, len(positions)), pkt, base))
+    return out
 
 
 # --------------------------------------------------------------------------- missingness
@@ -468,9 +510,15 @@ def _check_gap(model: Model, inst: Instance, sel: Instance, m: dict, loc: str) -
                 limit = freshness_max_age(model, rec.data)
             except ValueError:
                 limit = None   # a limit that cannot be read cannot show that the label is wrong
-            age = age_hours(rec.data, ts(m["freshness"]["evaluated_at"]))
-            if limit is not None and age is not None and age <= limit:
-                out.append(_f("MISS003", "labeled stale, but the record is %.1f h old and policy allows %.0f h" % (age, limit), inst, loc, DOC_LINEAGE))
+            evaluated_at = m["freshness"]["evaluated_at"]
+            evaluated = parse_time(evaluated_at)
+            if evaluated is None:
+                out.append(_f("MISS003", "%s: the stale label rests on a freshness evaluation made at %r, a time that cannot be compared exactly (at most six meaningful fractional digits are read, and a finer time is never rounded), "
+                                         "so the label cannot be shown to be justified" % (inst.label(), evaluated_at), inst, loc + "/freshness/evaluated_at", DOC_LINEAGE))
+            else:
+                age = age_hours(rec.data, evaluated)
+                if limit is not None and age is not None and age <= limit:
+                    out.append(_f("MISS003", "labeled stale, but the record is %.1f h old and policy allows %.0f h" % (age, limit), inst, loc, DOC_LINEAGE))
     elif state == "unavailable":
         rec = model.get("C02", m["dependency_failure_reference"]["record_id"], m["dependency_failure_reference"]["version"])
         if rec is not None and rec.data["identity_schema"]["kind"] != "source_record_assertion":
@@ -597,10 +645,20 @@ def _check_packet_as_of(pkt: Instance, ctx: Optional[Instance], sel: Optional[In
 CHALLENGE_LINKS = "/review_version_history/challenge_links"
 
 
-def _check_packet_basis_available(model: Model, pkt: Instance) -> List[Finding]:
-    """Every record a packet cites as the basis of what it says was available at the packet's as-of time.
+def packet_basis_refs(pkt: Instance) -> List[Ref]:
+    """Every reference of a packet to a C02 record that the packet rests on, in the order the packet states them.
 
-    That is every exact support reference (a claim, an inference, a conflict, a negative gap) and every record behind a gap, and no challenge link.
+    That is every exact support reference (a claim, an inference, a conflict, a negative gap) and every record behind a gap (the observation of a negative, the dependency failure of an unavailable gap,
+    the available record of a stale one), and no challenge link. It is one reading for each check that asks what a packet rests on: availability at the as-of time (`PKT007`) and lifecycle (`LIFE003`) judge the
+    same records. A context, a selection, a proposal, a policy, a retrieval unit and an external record are not C02 records the packet rests on, and an object that only looks like a reference is not one:
+    `model.iter_refs` classifies a reference by the key it hangs from.
+    """
+    return [ref for ref in iter_refs(pkt.data) if ref.kind in ("support", "evidence") and not ref.path.startswith(CHALLENGE_LINKS)]
+
+
+def _check_packet_basis_available(model: Model, pkt: Instance) -> List[Finding]:
+    """Every record a packet cites as the basis of what it says was available at the packet's as-of time (`packet_basis_refs`).
+
     Availability is the rule of the commit check, applied at the packet's as-of time: from the later of the admission and the ingestion of the record, and a time equal
     to the as-of time was reached. Only availability is judged. A record superseded later was current at the cutoff, so a later correction does not make an
     earlier packet wrong, and the commit-time checks of lifecycle and freshness are not repeated here.
@@ -612,8 +670,8 @@ def _check_packet_basis_available(model: Model, pkt: Instance) -> List[Finding]:
                          "with it exactly. Correct the time" % (pkt.file, pkt.id, pkt.version, as_of))
     out: List[Finding] = []
     seen: Set[Tuple[str, str]] = set()
-    for ref in iter_refs(pkt.data):
-        if ref.kind not in ("support", "evidence") or ref.path.startswith(CHALLENGE_LINKS) or (ref.record_id, ref.version) in seen:
+    for ref in packet_basis_refs(pkt):
+        if (ref.record_id, ref.version) in seen:
             continue
         seen.add((ref.record_id, ref.version))
         record = model.get("C02", ref.record_id, ref.version)
@@ -1550,6 +1608,25 @@ def _holders(roles: dict, role: str) -> Set[str]:
     return set(entry.get("holders", entry.get("principals", [])))
 
 
+def _at_or_before(when, limit) -> bool:
+    """Whether the time `when` is at or before `limit`. A time that cannot be compared exactly (see `parse_time`) is not shown to be."""
+    parsed = parse_time(when)
+    return parsed is not None and parsed <= limit
+
+
+def _owners_who_reviewed(packet: Instance, owners: Set[str], log: list) -> Set[str]:
+    """The registered Decision Owners who reviewed this exact packet version: the one the packet names as its reviewer while it is marked reviewed, and each one the registry's review log records.
+
+    The log is read as well because a packet that was invalidated since states only its invalidation. A person who reviewed it and is not a registered Decision Owner did not take the role, and `ROLE003` reports that review.
+    """
+    named = "%s %s" % (packet.id, packet.version)
+    who = {entry.get("actor") for entry in log if entry.get("packet") == named and entry.get("action") == "reviewed"}
+    history = packet.data["review_version_history"]
+    if history["state"] == "reviewed":
+        who.add(history["actor"].get("value"))
+    return {person for person in who if person in owners}
+
+
 def _check_authority_binding(model: Model, roles: dict) -> List[Finding]:
     """Authority goes to the executor, and only the executor that holds it acts on it.
 
@@ -1583,11 +1660,14 @@ def _check_authority_binding(model: Model, roles: dict) -> List[Finding]:
 def check_accountability(model: Model) -> List[Finding]:
     """Requestor, Decision Owner, approver and executor stay distinct unless the registry says one person may hold two.
 
-    An exact approval needs an approver who is not the requestor, and an earlier review of its packet by a Decision Owner.
-    A packet marked reviewed names a Decision Owner as the reviewer, and the review log agrees. The assistant proposes and the
-    executor receives authority: a grant names a registered executor as its grantee, never the assistant workload, and an
-    execution receipt is made by the grantee of the grant it cites and by no one else. Both grant shapes (an exact approval
-    and a bounded class) follow the same rule; the shape decides what the grant covers, not who may act under it.
+    One person may hold two of the roles requestor, Decision Owner and approver in one decision only where the registry lists that pair in `may_hold_together`. Each pair is a permission of its own, and it
+    is read in either order. The roles are the ones the decision uses: the requestor of the context that the packet is bound to, the Decision Owner who reviewed that exact packet (as the packet states it and as
+    the registry's review log records it), and the issuer of the exact approval. A person who is registered for two roles and performs one of them in a decision is not found. The requestor and approver pair is
+    `ROLE002`; the requestor and Decision Owner pair of a packet, and the Decision Owner and approver pair of an approval, are `ROLE009`.
+
+    An exact approval needs an earlier review of its packet by a Decision Owner. A packet marked reviewed names a Decision Owner as the reviewer, and the review log agrees. The assistant proposes and the
+    executor receives authority: a grant names a registered executor as its grantee, never the assistant workload, and an execution receipt is made by the grantee of the grant it cites and by no one else.
+    Both grant shapes (an exact approval and a bounded class) follow the same rule; the shape decides what the grant covers, not who may act under it. The executor rules do not read `may_hold_together`.
     """
     out: List[Finding] = []
     acc = model.registry.accountability
@@ -1609,7 +1689,7 @@ def check_accountability(model: Model) -> List[Finding]:
         if binding["binding_type"] != "exact_proposal":
             continue
         who = grant.data["identity_principals"]
-        issuer, issued = who["issuer"], ts(who["issuance_time"])
+        issuer = who["issuer"]
         if issuer not in approvers:
             out.append(_f("ROLE001", "%s issues an exact approval but is not a registered approver (%s)" % (issuer, ", ".join(sorted(approvers)) or "none"), grant, "/identity_principals/issuer", DOC_ROLES))
         ref = binding["proposal_reference"]
@@ -1624,12 +1704,27 @@ def check_accountability(model: Model) -> List[Finding]:
         context = model.get("C01", cref["id"], cref["version"])
         requestor = context.data["identity_principal"]["requesting_principal"] if context is not None else None
         if requestor == issuer and {"requestor", "approver"} not in together:
-            out.append(_f("ROLE002", "%s asked for the packet and also approves the action it proposes; the registry does not let one person hold the requestor and approver roles" % issuer, grant, "/identity_principals/issuer", DOC_ROLES))
-        reviewed = [e for e in log if e.get("packet") == "%s %s" % (packet.id, packet.version) and e.get("action") == "reviewed" and e.get("actor") in owners and ts(e["time"]) <= issued]
+            out.append(_f("ROLE002", "%s asked for the packet and also approves the action it proposes; the registry does not let one person hold the requestor and approver roles (packet %s %s, proposal %s %s, request context %s %s)" % (
+                issuer, packet.id, packet.version, proposal.id, proposal.version, cref["id"], cref["version"]), grant, "/identity_principals/issuer", DOC_ROLES))
+        if issuer in _owners_who_reviewed(packet, owners, log) and {"decision_owner", "approver"} not in together:
+            out.append(_f("ROLE009", "%s reviewed packet %s %s as Decision Owner and also issues the exact approval of proposal %s %s that rests on it (request context %s %s); the registry does not let one person hold the Decision Owner and approver roles" % (
+                issuer, packet.id, packet.version, proposal.id, proposal.version, cref["id"], cref["version"]), grant, "/identity_principals/issuer", DOC_ROLES))
+        issued = parse_time(who["issuance_time"])
+        if issued is None:
+            out.append(_f("ROLE004", "the issuance time of approval %s %s (%r) cannot be compared exactly (at most six meaningful fractional digits are read, and a finer time is never rounded), "
+                                     "so it cannot be shown that a Decision Owner reviewed packet %s %s at or before the approval" % (grant.id, grant.version, who["issuance_time"], packet.id, packet.version), grant, "/identity_principals/issuance_time", DOC_ROLES))
+            continue
+        reviewed = [e for e in log if e.get("packet") == "%s %s" % (packet.id, packet.version) and e.get("action") == "reviewed" and e.get("actor") in owners and _at_or_before(e.get("time"), issued)]
         if not reviewed:
             out.append(_f("ROLE004", "no Decision Owner reviewed packet %s %s at or before the approval (%s): an approval follows the review of the packet it rests on" % (packet.id, packet.version, who["issuance_time"]), grant, "/identity_principals/issuance_time", DOC_ROLES))
     for packet in model.of("C04"):
         history = packet.data["review_version_history"]
+        cref = packet.data["decision_context_as_of"]["context_reference"]
+        context = model.get("C01", cref["id"], cref["version"])
+        requestor = context.data["identity_principal"]["requesting_principal"] if context is not None else None
+        if requestor in _owners_who_reviewed(packet, owners, log) and {"requestor", "decision_owner"} not in together:
+            out.append(_f("ROLE009", "%s asked for packet %s %s (request context %s %s) and also reviewed it as its Decision Owner; the registry does not let one person hold the requestor and Decision Owner roles" % (
+                requestor, packet.id, packet.version, cref["id"], cref["version"]), packet, "/review_version_history", DOC_ROLES))
         if history["state"] != "reviewed":
             continue
         actor, when = history["actor"].get("value"), history["time"].get("value")

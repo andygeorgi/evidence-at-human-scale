@@ -7,13 +7,19 @@ that equals the attempt time was reached when the attempt was made. A time that 
 """
 import copy
 import dataclasses
+import json
+import shutil
+import tempfile
 import unittest
+from pathlib import Path
 
 import support  # noqa: F401  (puts scripts/ on the path)
 
+import validate_examples as ve
 from eahs import semantics
 from eahs.cases import mutate_model
 from eahs.gateway import GATE_CODES, LedgerEntry, attempt_receipt_ids, evaluate_commit, ledger_from_receipts, parse_time, ts
+from eahs.status import FAIL
 
 HOLD, HOLD_GRANT = ("ACT-HOLD-0417", "v1"), ("GRT-CLASS-HOLD", "v1")
 RELEASE_B, APPROVAL_B = ("ACT-REL-0417", "v2"), ("GRT-APPR-0417-B", "v1")
@@ -1201,6 +1207,92 @@ class ParsingTimes(unittest.TestCase):
     def test_the_strict_parser_raises_instead_of_guessing(self):
         with self.assertRaises(ValueError):
             ts("2026-11-23T10:03:00")
+
+
+class AnApprovalOrFreshnessTimeFinerThanAMicrosecondIsReportedWhereItStandsAndNeverRounded(unittest.TestCase):
+    """The schema accepts a time with any number of fractional digits, and a time is read to the microsecond (see `parse_time`): a finer fraction that is not zero is not rounded.
+
+    Two semantic checks, the one that judges the stale label of a gap by the time its freshness was evaluated and the one that checks the issuance time of an exact approval, report such a time at the record
+    and the field that hold it, say that at most six meaningful fractional digits are read, and go on with the other records and the other checks of the same record. A fraction of seven digits whose last is a zero
+    is the same instant as the six digits and is read exactly. Other times that the checks read, such as the as-of time of a selection or a packet, are not covered here.
+    """
+
+    APPROVAL, EVALUATED = "2026-11-23T15:20:00", "2026-11-23T10:00:00"
+    EXACT = (".123456Z", ".1234560Z", ".0000000Z")
+    FINER = ".1234567Z"
+    GRANT_B = "c06-GRT-APPR-0417-B-v1.json"
+
+    def approval(self, written, *more):
+        model, _ = mutate_model(support.example_model(), [replace("C06 GRT-APPR-0417-B v1", "/identity_principals/issuance_time", written)] + list(more))
+        return model
+
+    def stale(self, written, *more):
+        """The stale gap of the first selection and the same gap in the first packet, which must state the same entry, evaluated at this time."""
+        model, _ = mutate_model(support.example_model(), [replace("C03 SEL-0417 v1", "/conflicts_gaps/missingness/6/freshness/evaluated_at", written),
+                                                          replace("C04 PKT-0417 v1", "/coverage_omissions_gaps/missingness/6/freshness/evaluated_at", written)] + list(more))
+        return model
+
+    def where(self, findings):
+        return sorted((f.code, Path(f.file).name, f.location) for f in findings)
+
+    def test_an_issuance_time_that_is_exact_is_read_as_it_is(self):
+        for fraction in self.EXACT:
+            with self.subTest(fraction):
+                self.assertEqual(semantics.check_accountability(self.approval(self.APPROVAL + fraction)), [])
+
+    def test_an_issuance_time_finer_than_a_microsecond_is_one_finding_at_the_approval(self):
+        found = semantics.check_accountability(self.approval(self.APPROVAL + self.FINER))
+        self.assertEqual(self.where(found), [("ROLE004", self.GRANT_B, "/identity_principals/issuance_time")])
+        for part in ("GRT-APPR-0417-B v1", self.APPROVAL + self.FINER, "six meaningful fractional digits", "rounded"):
+            self.assertIn(part, found[0].message)
+
+    def test_the_other_approvals_and_the_other_checks_of_the_same_approval_are_still_made(self):
+        model = self.approval(self.APPROVAL + self.FINER, replace("C06 GRT-APPR-0417-B v1", "/identity_principals/issuer", "person:ap-clerk-07"),
+                              replace("C06 GRT-APPR-0417-A v1", "/identity_principals/issuer", "person:ap-clerk-08"))
+        self.assertEqual(self.where(semantics.check_accountability(model)), [("ROLE001", "c06-GRT-APPR-0417-A-v1.json", "/identity_principals/issuer"),
+                                                                              ("ROLE001", self.GRANT_B, "/identity_principals/issuer"), ("ROLE004", self.GRANT_B, "/identity_principals/issuance_time")])
+
+    def test_a_review_logged_at_a_time_finer_than_a_microsecond_is_no_review_at_or_before_the_approval(self):
+        """A registry that is read from a file is refused when it is loaded, with the entry named. This registry was built in memory, and the check does not raise on it."""
+        model, _ = mutate_model(support.example_model(), [])
+        model.registry = copy.deepcopy(model.registry)
+        for entry in model.registry.accountability["review_log"]:
+            if entry["packet"] == "PKT-0417 v2":
+                entry["time"] = "2026-11-23T15:10:00" + self.FINER
+        self.assertEqual(sorted((f.code, Path(f.file).name) for f in semantics.check_accountability(model)), [("ROLE003", "c04-PKT-0417-v2.json"), ("ROLE004", self.GRANT_B)])
+
+    def test_an_evaluation_time_that_is_exact_is_read_as_it_is(self):
+        for fraction in self.EXACT:
+            with self.subTest(fraction):
+                self.assertEqual(semantics.check_missingness(self.stale(self.EVALUATED + fraction)), [])
+
+    def test_an_evaluation_time_finer_than_a_microsecond_is_one_finding_in_each_record_that_holds_it(self):
+        written = self.EVALUATED + self.FINER
+        found = semantics.check_missingness(self.stale(written))
+        self.assertEqual(self.where(found), [("MISS003", "c03-SEL-0417-v1.json", "/conflicts_gaps/missingness/6/freshness/evaluated_at"),
+                                             ("MISS003", "c04-PKT-0417-v1.json", "/coverage_omissions_gaps/missingness/6/freshness/evaluated_at")])
+        for f in found:
+            for part in (written, "six meaningful fractional digits", "rounded"):
+                self.assertIn(part, f.message)
+        self.assertTrue(any("SEL-0417 v1" in f.message for f in found) and any("PKT-0417 v1" in f.message for f in found))
+
+    def test_the_other_records_of_the_check_are_still_judged(self):
+        found = semantics.check_missingness(self.stale(self.EVALUATED + self.FINER, replace("C03 SEL-0417 v1", "/retrieval/5/status", "failed")))
+        self.assertEqual([f.code for f in found].count("MISS003"), 2)
+        self.assertIn("MISS001", [f.code for f in found])
+
+    def test_the_command_reports_the_approval_and_the_semantics_stage_still_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "examples"
+            shutil.copytree(support.EXAMPLES, root)
+            path = root / "11-late-correction" / self.GRANT_B
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["identity_principals"]["issuance_time"] = self.APPROVAL + self.FINER
+            path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            result = next(r for r in ve.run(root, only={"semantics"}) if r.stage == "semantics")
+        self.assertEqual(result.status, FAIL, "a finding, and not an input error that stops the stage")
+        self.assertNotIn("INP002", {f.code for f in result.findings})
+        self.assertIn(("ROLE004", self.GRANT_B, "/identity_principals/issuance_time"), self.where(result.findings))
 
 
 class Receipts(unittest.TestCase):

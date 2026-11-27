@@ -2,6 +2,23 @@
 
 Releases are labeled `vMAJOR.MINOR.PATCH` and tagged in Git. Each entry lists what the release contains.
 
+## 1.0.9, 27 November 2026
+
+A corrective release for two gaps in the validator's lifecycle and role checks, and one in how it reads a time. The schema, the data of the examples, the figures, the reference commit check and the evaluation statuses are unchanged, and the contract pages now state the rules these checks enforce. A set of records that passed before still passes, unless it falls into one of the gaps below.
+
+### What changed
+
+- **A packet version is judged by the versions that exist.** When a later version of a packet exists, the older version must be invalidated or superseded, whether or not the later version lists it as a prior version (`LIFE004`). "Later" is read from the numbers in the version names (`v2` before `v10`), never from the order of the files. Names that cannot be put in order are neither before nor after each other, and `LIFE006` reports them.
+- **A prior version is an earlier version of the same packet.** Each entry of `prior_version_references` must be a C04 packet that exists, a version of this packet that comes before this one, and listed once. An entry that names the packet itself, a later version, another packet, or a name that cannot be put in order with this one, and a version listed twice, are reported and not treated as links (`LIFE007`; `REF004` reports a packet that does not exist). Before, such an entry could make `LIFE004` blame the wrong packet, or pass unnoticed.
+- **An active packet rests only on current records, wherever it cites them.** The records behind its claims, inferences, conflicts and gaps (the observation of a negative, the dependency failure of an unavailable gap, the record behind a stale one) are one set, the same set the availability check reads. A challenge link is not part of it (`LIFE003`). Before, only claims and inferences were read.
+- **Each pair of roles is a permission of its own.** One person may be both requestor and Decision Owner of a decision, or both Decision Owner and approver, only where the registry lists that pair in `accountability.may_hold_together`, as it already had to for requestor and approver. The roles are the ones the decision uses: the requestor of the packet's context, the registered Decision Owner who reviewed that exact packet version (as the packet states it or the review log records it), and the issuer of the exact approval. A person who is registered for two roles but performs one is not found, and the order in which a pair is written does not matter (`ROLE009`; `ROLE002` remains the requestor and approver pair).
+- **Two times finer than a microsecond are reported where they stand.** The issuance time of an exact approval and the time a stale gap's freshness was evaluated were read with a call that raised, so one such time stopped the whole check and produced a single folder-level message (`INP002`). Each is now a finding of its own that names the file, the record and the field, says that at most six fractional digits are read, and does not round (`ROLE004`, `MISS003`). A seven-digit fraction whose last digit is a zero is the same instant as the six-digit one and is read exactly. Review-log times were already refused when the registry is read. Other times that the checks read, such as the as-of time of a selection or a packet, are unchanged.
+- **Tests.** A new module covers the packet chain, the prior versions and the packet basis, with the records read in several orders. The role tests cover each choice of reviewer and approver among three people against every set of listed pairs, with each pair written in both orders. The time tests cover each affected field. They show how the reference validator behaves on synthetic records, not how it would perform on real data.
+
+### Known limitations
+
+The standing claims and limits are on the [claims and limits](docs/claims-and-limits.md) page.
+
 ## 1.0.8, 27 November 2026
 
 A reader-path revision. The ten-minute path is rebuilt as five numbered steps on the README page, and it ends with a conclusion and one practical first step. The architecture, the contracts, the schema, the validators, the gateway, the examples, the figures and the evaluation statuses are unchanged.
