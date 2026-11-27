@@ -1,6 +1,6 @@
 # Overview
 
-[Paper contents](README.md) · [Next: the scarce resource is human attention →](01-human-attention.md)
+[Paper contents](README.md) · [Next: 1. Human attention →](01-human-attention.md)
 
 A supplier invoice says 100 units, and the goods receipt says 60. The accounts-payable controller, who owns the decision, has to hold the payment or release it. The material comes from several systems and from two AI assistants. Their summaries both suggest a receiving delay, but both assistants read the same receipt, so the summaries are one opinion. The treasury service did not answer. Part of the requested scope is outside the read permissions of the requestor, the person who asked for it. Later the warehouse finds a second pallet and corrects the receipt to 100 units. Everything built on the first version stops being current.
 
@@ -13,6 +13,6 @@ The reusable unit of the architecture is the decision context, not the agent hie
 The design comes from a case-based architecture engagement on a public-sector fisheries-control authority in Iceland. Public audit findings and appeal rulings in that domain showed how decisions built on records and automated flags can go wrong. The engagement's own prototype tests on synthetic data showed similar risks for model output. [What the engagement showed](02-engagement.md) maps each observation to the design decision it informed, and [Starting with one decision](14-start-monday.md) gives the first practical steps.
 
 <a id="how-the-paper-is-organized"></a>
-This is a reference architecture, not a production deployment or benefit claim; real-world effectiveness has not been evaluated ([claims and limits](../claims-and-limits.md)). The [architecture reference](../../architecture/README.md) and the [contract reference](../../contracts/README.md) hold the full controls; this paper gives the argument and says what the controls are for. The [paper contents](README.md) list each chapter and its takeaway, the [guided reading paths](../README.md) suggest shorter routes, and the [glossary](../glossary.md) defines the terms used throughout.
+This is a reference architecture, not a production deployment or benefit claim; real-world effectiveness has not been evaluated ([claims and limits](../claims-and-limits.md)). The [architecture reference](../../architecture/README.md) and the [contract reference](../../contracts/README.md) hold the full controls; this paper gives the argument and says what the controls are for. The [paper contents](README.md) list each chapter and its takeaway, the [guided reading paths](../README.md) offer routes by purpose, and the [glossary](../glossary.md) defines the terms used throughout.
 
-[Paper contents](README.md) · [Next: the scarce resource is human attention →](01-human-attention.md)
+[Paper contents](README.md) · [Next: 1. Human attention →](01-human-attention.md)

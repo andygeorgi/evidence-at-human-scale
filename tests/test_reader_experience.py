@@ -65,27 +65,102 @@ class TheFirstScreen(unittest.TestCase):
         self.assertNotIn("not a production deployment", screen)
         self.assertEqual(screen.count("](#"), 1, "one way in, not several")
 
-    def test_the_title_and_the_first_paragraph_come_before_the_banner(self):
-        """The narrow banner is tall: on a phone it would fill the whole first screen, so the reader meets what this is, and what to do, before it."""
+    def test_the_opening_leads_directly_to_the_path_and_the_banner_stays_in_optional_depth(self):
+        """The generated banner repeats the introduction; retain it after the path without changing the drawing."""
         readme = text("README.md")
         self.assertTrue(readme.startswith("# Evidence at Human Scale"))
-        self.assertLess(readme.index("[Start with the ten-minute path](#ten-minute-path)"), readme.index("<!-- banner:start -->"))
-        self.assertLess(readme.index("<!-- banner:end -->"), readme.index("## The problem, in one invoice"))
+        self.assertRegex(readme, r"\[Start with the ten-minute path\]\(#ten-minute-path\)\.\*\*\n\n## Ten-minute path")
+        self.assertLess(readme.index("## Ten-minute path"), readme.index("## 1. The problem, in one invoice"))
+        self.assertLess(readme.index("## Quickstart"), readme.index("## Go deeper"))
+        self.assertLess(readme.index("## Go deeper"), readme.index("<!-- banner:start -->"))
+        self.assertEqual(readme.count("<!-- banner:start -->"), 1)
+        self.assertEqual(re.findall(r"\[\s*\]\(\s*\)", readme), [], "no empty-link editing artifacts")
 
-    def test_the_one_path_has_its_steps_and_the_quickstart_it_sends_to(self):
+    def test_the_one_path_has_five_numbered_steps_and_the_quickstart_comes_after_it(self):
         readme = text("README.md")
         self.assertEqual(readme.count("## Ten-minute path"), 1)
         self.assertEqual(readme.count("## Quickstart"), 1)
         self.assertLess(readme.index("## Ten-minute path"), readme.index("## Quickstart"))
-        path = readme.split("## Ten-minute path", 1)[1].split("\n## ", 1)[0]
-        self.assertIn("(#quickstart)", path)
-        self.assertEqual(len(re.findall(r"(?m)^\d\. ", path)), 5)
+        path = readme.split("## Ten-minute path", 1)[1].split("\n## Quickstart", 1)[0]
+        headings = re.findall(r"(?m)^## (.+)$", path)
+        self.assertEqual([int(re.match(r"(\d+)\. ", heading).group(1)) for heading in headings if re.match(r"\d+\. ", heading)], [1, 2, 3, 4, 5], "no number missing, repeated or out of order")
+        self.assertEqual([heading for heading in headings if not re.match(r"\d+\. ", heading)], [], "every step of the path is numbered")
+        self.assertNotRegex(path, r"(?m)^\d+\. ", "the steps are the numbered headings; a numbered list inside a step would read as a second sequence")
+
+    def test_the_path_ends_with_a_conclusion_and_one_next_step_and_not_with_an_index(self):
+        path = text("README.md").split("## Ten-minute path", 1)[1].split("\n## Quickstart", 1)[0]
+        last = path.split("\n## 5. ", 1)[1]
+        closing = last.split("\n### Where the path ends", 1)[1]
+        blocks = closing.strip().split("\n\n")
+        self.assertLessEqual(len(blocks), 2, "a conclusion, not five symmetrical recap blocks")
+        self.assertNotRegex(closing, r"(?m)^- \*\*")
+        for phrase in ("evidence types", "Decision Owner", "approval", "execution", "seven contracts", "Each domain supplies",
+                       "JSON Schema bundle", "validators", "reference commit check", "one invented example",
+                       "gateway remains a reference pattern", "reference projection", "not an authorization service",
+                       "#what-this-shows-and-what-it-does-not"):
+            self.assertIn(phrase, closing)
+        self.assertIn("(docs/implementation-guide.md)", last, "working templates remain reachable from step 5")
+        self.assertTrue(closing.rstrip().endswith("pick one recurring decision and replay one recent case on paper with its Decision Owner."))
+        for index in ("docs/paper/README.md", "architecture/README.md", "figures/README.md", "contracts/README.md", "docs/README.md"):
+            self.assertNotIn("(%s" % index, closing, "the last step does not end at an index: " + index)
 
     def test_the_problem_keeps_its_anchor_and_names_its_things_before_their_numbers(self):
-        problem = text("README.md").split("## The problem, in one invoice", 1)[1].split("\n## ", 1)[0]
-        for phrase in ("invoice", "goods receipt", "AI summaries", "treasury service", "requestor's read permissions", "corrects the receipt"):
+        problem = text("README.md").split("## 1. The problem, in one invoice", 1)[1].split("\n## ", 1)[0]
+        for phrase in ("invoice", "goods receipt", "100 units, EUR 18,400", "60 units", "two AI assistants",
+                       "AI summaries", "same receipt", "independent corroboration", "treasury service",
+                       "requestor's read permissions", "controller still owns the decision"):
             self.assertIn(phrase, problem)
+        for spoiler in ("second pallet", "corrected", "corrects", "non-current", "stops being current", "approving again"):
+            self.assertNotIn(spoiler, problem)
         self.assertEqual(MACHINE_ID.findall(problem) + re.findall(r"\bINV-\d|GR-\d", problem), [])
+
+    def test_the_evidence_types_are_grounded_in_the_invoice_before_their_limits(self):
+        answer = text("README.md").split("## 2. ", 1)[1].split("\n## ", 1)[0]
+        for example in ("warehouse receipt says 60 units", "three-way-match rule finds that invoice and receipt do not match",
+                        "AI summary suggests a receiving delay"):
+            self.assertLess(answer.index(example), answer.index("what each establishes"))
+        for distinction in ("what its source asserted", "what the declared rule produced from stated inputs",
+                            "not that the interpretation is true", "approval and execution remain separate steps"):
+            self.assertIn(distinction, answer)
+
+    def test_the_packet_table_keeps_counts_and_material_qualifications_visible(self):
+        review = text("README.md").split("## 3. ", 1)[1].split("\n## ", 1)[0]
+        for category in ("Supported claims", "Labeled inferences", "Conflicts and gaps", "Recommendations", "Action proposals"):
+            self.assertIn("| " + category + " |", review)
+        for phrase in ("invoice says 100 units", "receipt says 60", "seven supported claims", "exact record version",
+                       "two AI summaries", "same underlying receipt", "two independent corroborations", "labeled model inferences",
+                       "cause is not established", "Seven labeled gaps", "treasury service that did not answer",
+                       "out-of-date screening", "requestor may not read", "proposed and not executed",
+                       "does not authorize", "usability is an open evaluation question", "mechanical",
+                       "does not read free text for meaning", "does not show that a claim means what its source means"):
+            self.assertIn(phrase, review)
+
+    def test_the_correction_precedes_commit_and_all_four_reasons_remain_explicit(self):
+        action = text("README.md").split("## 4. ", 1)[1].split("\n## ", 1)[0]
+        events = ("10:35", "10:40", "second pallet", "13:40", "from 60 to 100", "13:45", "approval was revoked",
+                  "14:10", "new proposal needed a new approval", "When the 16:00 payment run", "refused it at commit")
+        positions = [action.index(event) for event in events]
+        self.assertEqual(positions, sorted(positions))
+        for reason in ("four independent reasons", "approval had been revoked", "evidence the proposal cites had been superseded",
+                       "56 hours old against a 24-hour policy",
+                       "precondition failed because the proposal cites neither a current passing match result nor a current fresh screening"):
+            self.assertIn(reason, action)
+        for boundary in ("gateway submitted nothing", "does not prove that nobody else changed the target",
+                         "separate authoritative target check after the attempt", "this attempt, target and scope",
+                         "small stateless reference function, not a production gateway",
+                         "does not show that a real system would notice the correction in time",
+                         "or that blocking is the right business outcome"):
+            self.assertIn(boundary, action)
+        self.assertNotIn("not_executed_verified", action, "the state machine belongs to optional depth")
+
+    def test_monday_starts_with_one_case_and_keeps_the_programme_optional(self):
+        monday = text("README.md").split("## 5. What to do on Monday", 1)[1].split("\n### Where the path ends", 1)[0]
+        self.assertTrue(monday.lstrip().startswith("Pick one recurring, consequential decision and replay one recent case on paper with its Decision Owner"))
+        for item in ("decision question", "evidence actually used", "missing or inaccessible", "actions that could follow",
+                     "who may read, who may approve and who may execute", "approval and execution boundaries",
+                     "(docs/paper/14-start-monday.md)", "(docs/implementation-guide.md)", "optional next steps"):
+            self.assertIn(item, monday)
+        self.assertNotRegex(monday, r"(?m)^(?:- |\d+\. )", "the implementation programme stays in the linked guide")
 
     def test_the_version_and_date_are_given_where_a_citation_needs_them(self):
         from eahs import __version__
@@ -243,10 +318,10 @@ class DeepLinksOfEarlierReleasesKeepWorking(unittest.TestCase):
     """A page was reorganized for the reader, but a link to a section of v1.0.1 still lands on the section that replaced it."""
 
     def test_the_smallest_useful_experiment_lands_on_the_experiment_and_not_on_the_quickstart(self):
-        """In v1.0.1 this was the exercise of replaying one case on paper. Today that exercise is the row of the guide that follows the anchor."""
+        """In v1.0.1 this was the exercise of replaying one case on paper. Today that exercise is the first step that closes the ten-minute path."""
         after = text("README.md").split('<a id="the-smallest-useful-experiment"></a>', 1)[1]
         heading = next(line for line in after.split("\n") if line.strip() and not line.startswith("<a id="))
-        self.assertEqual(heading, "## Go deeper")
+        self.assertEqual(heading, "## 5. What to do on Monday")
         section = after.split("\n## ")[1]
         self.assertIn("replay one recent case on paper", section)
         self.assertNotIn("pip install", section)
@@ -256,7 +331,7 @@ class DeepLinksOfEarlierReleasesKeepWorking(unittest.TestCase):
         self.assertIn("They are not evidence that the architecture works.", text("examples/README.md"))
 
     LEGACY = {
-        "README.md": ("status-and-limits", "what-a-pass-means-and-what-it-does-not", "the-smallest-useful-experiment", "where-to-go-next"),
+        "README.md": ("the-problem-in-one-invoice", "what-the-architecture-does-about-it", "status-and-limits", "what-a-pass-means-and-what-it-does-not", "the-smallest-useful-experiment", "where-to-go-next"),
         "docs/paper/00-overview.md": ("how-the-paper-is-organized",),
         "examples/07-authority-and-delegation/README.md": ("the-commit-check-six-times",),
         "examples/10-degraded-modes/README.md": ("the-three-fail-closed-evaluations",),
@@ -370,6 +445,31 @@ class WordingThatStaysTrueToTheSchemaAndTheExamples(unittest.TestCase):
             body = (support.EXAMPLES / name).read_text(encoding="utf-8")
             self.assertIn("Proposed (not executed or approved): release payment on invoice INV-2026-0417 (proposal ACT-REL-0417 v2).", body, name)
             self.assertNotIn("release_payment on invoice", body, name)
+
+
+class RoutesAreNumberedConsistently(unittest.TestCase):
+    """A reader who follows "Next" through the paper meets each chapter under the number it has, and a guided route does not number some stops and not others."""
+
+    PREVIOUS = re.compile(r"\[← (\d+)\. [^\]]+\]\((\d\d)-[^)]+\)")
+    NEXT = re.compile(r"\[Next: (\d+)\. [^\]]+ →\]\((\d\d)-[^)]+\)")
+
+    def test_a_chapter_numbers_the_next_chapter_as_it_numbers_the_previous_one(self):
+        for number in range(15):
+            relative = next(name for name in pages("docs/paper/[0-9]*.md") if name.startswith("docs/paper/%02d-" % number))
+            lines = text(relative).rstrip().split("\n")
+            top = lines[2]
+            self.assertEqual(lines[-1], top, "%s: the line under the title and the last line are the same" % relative)
+            previous, following = self.PREVIOUS.findall(top), self.NEXT.findall(top)
+            self.assertEqual([(int(label), int(target)) for label, target in previous], [(number - 1, number - 1)] if number else [], relative)
+            self.assertEqual([(int(label), int(target)) for label, target in following], [(number + 1, number + 1)] if number < 14 else [], relative)
+
+    def test_the_guided_routes_use_chapter_numbers_in_words_and_number_no_topic(self):
+        page = text("docs/README.md")
+        paths = page.split("## Paths", 1)[1].split("\n## ", 1)[0]
+        self.assertNotRegex(paths, r"\[\d+\. ", "a stop that is a chapter is not numbered inside a route: some stops would carry a number and the others none")
+        self.assertNotIn("Short path", paths)
+        topics = page.split("## Topics and where to read about them", 1)[1].split("\n## ", 1)[0]
+        self.assertEqual(re.findall(r"(?m)^\| \d+\. ", topics), [], "a topic number would read as a chapter number")
 
 
 class ReferenceSurfacesKeepTheirIdentifiers(unittest.TestCase):

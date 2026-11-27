@@ -2,6 +2,23 @@
 
 Releases are labeled `vMAJOR.MINOR.PATCH` and tagged in Git. Each entry lists what the release contains.
 
+## 1.0.8, 27 November 2026
+
+A reader-path revision. The ten-minute path is rebuilt as five numbered steps on the README page, and it ends with a conclusion and one practical first step. The architecture, the contracts, the schema, the validators, the gateway, the examples, the figures and the evaluation statuses are unchanged.
+
+### What changed
+
+- **The ten-minute path can be finished.** It starts with one invoice and runs in five numbered steps: the problem, the decision packet, what the controller reviews, who decides and what stays separate, and what to do on Monday. In 1.0.7 it sent the reader through five pages and ended at two contents tables.
+- **The path has an ending.** It says what the reader can now explain, what is reusable, what can be run, what remains a reference pattern and where the limits are, and it names one first step for another architect: pick one recurring decision and replay one recent case on paper with its Decision Owner.
+- **Numbering and navigation agree.** The paper's "Next" links carry the chapter number, as the "previous" links do, and the guided reading paths no longer number some stops and leave others unnumbered.
+- **Less repetition.** The Quickstart and the contents tables are no longer part of the path, and the README no longer repeats the long list of what a pass does not establish; claims and limits keeps it. The banner, which repeated the introduction, now follows the path. The drawing is unchanged.
+- **Plainer prose.** The path is written in ordinary sentences about what a record, a check or a contract does.
+- **Tests.** The reader-experience tests check the numbering of the path, its ending, the order of the correction, the four reasons for the refused release and the limits that stay beside them, and the chapter links.
+
+### Known limitations
+
+The standing claims and limits are on the [claims and limits](docs/claims-and-limits.md) page.
+
 ## 1.0.7, 26 November 2026
 
 A corrective release for five gaps in the reference commit check and the reference validator, and a related one in the role check. The schema, the figures, the evaluation statuses and the data of the examples are unchanged, and the contract pages now state the rules that the checks enforce. A set of records that passed the checks before passes now, unless it falls into one of the gaps below.

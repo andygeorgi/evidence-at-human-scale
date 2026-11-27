@@ -1,6 +1,6 @@
 # 4. Evidence keeps its type and its ancestry
 
-[← 3. The reference architecture](03-governed-context.md) · [Paper contents](README.md) · [Next: context and selection →](05-context-and-attention.md)
+[← 3. The reference architecture](03-governed-context.md) · [Paper contents](README.md) · [Next: 5. Context and selection →](05-context-and-attention.md)
 
 Evidence is an attributable, scoped assertion, not guaranteed truth. A source record establishes what that source asserted in a specified version and scope. A deterministic finding reports a declared rule over stated inputs. An analytical result depends on its method and assumptions. A model inference establishes that an interpretation was produced, not that it is true.
 
@@ -38,4 +38,4 @@ Derivation ancestry is directed and acyclic. Contradiction, supersession, valida
 
 **See it working:** [example 03](../../examples/03-lineage-and-common-origin/README.md) has a source record, two common-origin summaries and a conflicting record, and [example 11](../../examples/11-late-correction/README.md) adds a late correction. The schema validates the structure of every record, and the repository's checks test the semantics.
 
-[← 3. The reference architecture](03-governed-context.md) · [Paper contents](README.md) · [Next: context and selection →](05-context-and-attention.md)
+[← 3. The reference architecture](03-governed-context.md) · [Paper contents](README.md) · [Next: 5. Context and selection →](05-context-and-attention.md)

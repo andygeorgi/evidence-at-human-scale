@@ -1,6 +1,6 @@
 # 8. Uncertainty is part of the result
 
-[← 7. One interaction](07-one-interaction.md) · [Paper contents](README.md) · [Next: authority →](09-authority.md)
+[← 7. One interaction](07-one-interaction.md) · [Paper contents](README.md) · [Next: 9. Authority →](09-authority.md)
 
 Absence has several meanings, and treating them as one changes decisions. An expected input may not have arrived. A completed retrieval may have returned no relevant record. A principal may lack access. A dependency may have failed. An explicit observation may have reported absence. Each of these states has a different remedy and a different consequence for action.
 
@@ -46,4 +46,4 @@ Because each gap has an explicit state, the recovery owner can be pointed at the
 
 **See it working:** one synthetic decision packet ([example 05](../../examples/05-decision-packet/README.md)) carries all seven labels, each with the reference the contract requires, and so does the [selection it rests on](../../examples/04-selection-and-missingness/README.md). The schema rejects, for instance, a `not_retrieved` entry that does not point to a completed retrieval.
 
-[← 7. One interaction](07-one-interaction.md) · [Paper contents](README.md) · [Next: authority →](09-authority.md)
+[← 7. One interaction](07-one-interaction.md) · [Paper contents](README.md) · [Next: 9. Authority →](09-authority.md)

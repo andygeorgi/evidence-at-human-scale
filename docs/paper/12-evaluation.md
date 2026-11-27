@@ -1,6 +1,6 @@
 # 12. Evaluate simpler baselines before multi-agent value
 
-[← 11. Costs and adaptation](11-costs-and-adaptation.md) · [Paper contents](README.md) · [Next: implementation options →](13-implementation-options.md)
+[← 11. Costs and adaptation](11-costs-and-adaptation.md) · [Paper contents](README.md) · [Next: 13. Implementation options →](13-implementation-options.md)
 
 The evaluation programme is defined, and none of it has been run. The twelve tests, EV01 to EV12, and their 70 synthetic fixtures are NOT ASSESSED: each applies fixed inputs to an implementation, and none exists. Every fixture has fixed inputs, an expected oracle, metrics and a gate, and it needs an accountable owner, who is not yet assigned. Human evaluation and measures of operational performance, cost, latency and return are NOT ASSESSED as well, because they need participants and an environment that do not exist. What the repository does test is its contracts, its synthetic examples and its tooling. The [evaluation guide](../../evaluation/README.md) keeps these checks apart from the evaluation programme.
 
@@ -36,4 +36,4 @@ Before deployment, declare the task time budget B_time (critical path), the cost
 
 **Start here:** the [evaluation guide](../../evaluation/README.md) separates schema checks, deterministic functional checks, model evaluation, human outcome evaluation, operational validation and production evidence, and states which of them exist today.
 
-[← 11. Costs and adaptation](11-costs-and-adaptation.md) · [Paper contents](README.md) · [Next: implementation options →](13-implementation-options.md)
+[← 11. Costs and adaptation](11-costs-and-adaptation.md) · [Paper contents](README.md) · [Next: 13. Implementation options →](13-implementation-options.md)

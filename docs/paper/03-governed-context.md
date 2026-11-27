@@ -1,6 +1,6 @@
 # 3. The reference architecture
 
-[← 2. The engagement](02-engagement.md) · [Paper contents](README.md) · [Next: evidence and lineage →](04-evidence-and-lineage.md)
+[← 2. The engagement](02-engagement.md) · [Paper contents](README.md) · [Next: 4. Evidence and lineage →](04-evidence-and-lineage.md)
 
 The logical architecture begins with sources. Registered sources, events, deterministic services and analytics submit records or results through admission. The registry retains each admitted version, and versions are immutable. Authorized retrieval produces candidate evidence and coverage. Relevance, priority, grouping and coverage then produce a selected set and a selection manifest.
 
@@ -40,4 +40,4 @@ The action path is separate again. An exact approval of one proposal, or a valid
 
 Seven documentation contracts carry these responsibilities: [context (C01)](../../contracts/c01-context.md), [evidence record (C02)](../../contracts/c02-evidence.md), [selection manifest (C03)](../../contracts/c03-selection.md), [decision packet (C04)](../../contracts/c04-decision-packet.md), [action proposal (C05)](../../contracts/c05-action-proposal.md), [delegation (C06)](../../contracts/c06-delegation.md) and [execution receipt (C07)](../../contracts/c07-execution-receipt.md). A documentation contract states what a unit of information must carry and how it is referenced; it is documentation, not a deployable interface, and the schema bundle checks structure only. The following sections explain each; the [contract reference](../../contracts/README.md) lists all 41 field groups.
 
-[← 2. The engagement](02-engagement.md) · [Paper contents](README.md) · [Next: evidence and lineage →](04-evidence-and-lineage.md)
+[← 2. The engagement](02-engagement.md) · [Paper contents](README.md) · [Next: 4. Evidence and lineage →](04-evidence-and-lineage.md)

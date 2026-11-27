@@ -1,6 +1,6 @@
 # 1. The scarce resource is human attention
 
-[← Overview](00-overview.md) · [Paper contents](README.md) · [Next: what the engagement showed →](02-engagement.md)
+[← 0. Overview](00-overview.md) · [Paper contents](README.md) · [Next: 2. The engagement →](02-engagement.md)
 
 Before a consequential decision, a person receives records, events, deterministic findings, analytical results and model interpretations, each in its own form and through its own interface. There may be enough information to decide and still no reliable way to see which statements share an origin, where they disagree and which expected inputs never arrived. What runs short is the person's attention, not output.
 
@@ -34,4 +34,4 @@ The design therefore starts from the decision question rather than an agent rost
 
 The architecture is suitable where evidence comes from different kinds of sources, permissions can be enforced, a Decision Owner can be identified, the domain sets obligations of its own and outcomes can be evaluated. It is unsuitable as a service that certifies truth, as a way around native safety controls, or as a basis for unrestricted autonomous action. Human presence alone is not a safety guarantee.
 
-[← Overview](00-overview.md) · [Paper contents](README.md) · [Next: what the engagement showed →](02-engagement.md)
+[← 0. Overview](00-overview.md) · [Paper contents](README.md) · [Next: 2. The engagement →](02-engagement.md)

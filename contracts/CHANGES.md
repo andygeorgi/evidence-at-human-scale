@@ -8,6 +8,16 @@ The schema file is [`schemas/contracts-v1.schema.json`](../schemas/contracts-v1.
 
 For each change give: the previous form, the new form, the reason, the compatibility impact (does any previously valid instance become invalid, or the reverse?) and the migration. Then update the validation-surface hash below. `python scripts/schema_surface_hash.py --check` fails if the hash and the schema disagree.
 
+## v1.0.8
+
+No change to the schema. The file, the validation surface and the 38 valid and 64 invalid embedded examples are exactly as in v1.0.7, so no instance that validated against the schema stops validating, none that was invalid becomes valid, and there is nothing to migrate. This release changed the wording and order of documents and the reader-experience tests, as the [changelog](../CHANGELOG.md) describes. No rule of the reference validator or of the reference commit check changed. `python scripts/schema_surface_hash.py --check` confirms that the surface is unchanged.
+
+| Property | Value |
+|---|---|
+| File | `schemas/contracts-v1.schema.json` |
+| SHA-256 of the file | `c23e10748393e8f3eab498d18b0a117fc23e14449bdb1218526ce4481035c2c3` (741,666 bytes), as in v1.0.7 |
+| Validation surface SHA-256 | `48dc0402cc4957d1f3e8583ee408159dcb787cbafdb655708b5c7f5ec69860a3` (unchanged) |
+
 ## v1.0.7
 
 No change to the schema. The file, the validation surface and the 38 valid and 64 invalid embedded examples are exactly as in v1.0.6, so no instance that validated against the schema stops validating, none that was invalid becomes valid, and there is nothing to migrate. This release changed the semantic checks of the reference validator and of the reference commit check (which are not part of the schema), the tests and the wording of documents, as the [changelog](../CHANGELOG.md) describes. The schema still accepts a version of a C02 record whose claims share one `claim_id`, because JSON Schema cannot state that a property is unique across the items of an array: the reference validator reports it (`REF008`), which needs no change to the contracts. `python scripts/schema_surface_hash.py --check` confirms that the surface is unchanged.
@@ -112,4 +122,4 @@ The validation surface is every validating keyword of the root and of each `$def
 - A change to `$id` is made only for an incompatible change: `…:contracts:2`.
 - Annotation-only changes get a row here and keep the validation-surface hash.
 
-This policy was proposed with the first release (v1.0.0). The only changes since were annotation-only (v1.0.1), and none at all to the schema (v1.0.2, v1.0.3, v1.0.4, v1.0.5, v1.0.6 and v1.0.7).
+This policy was proposed with the first release (v1.0.0). The only changes since were annotation-only (v1.0.1), and none at all to the schema (v1.0.2, v1.0.3, v1.0.4, v1.0.5, v1.0.6, v1.0.7 and v1.0.8).

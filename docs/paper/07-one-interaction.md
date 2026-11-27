@@ -1,6 +1,6 @@
 # 7. One interaction, several runtimes
 
-[← 6. The decision packet](06-decision-packet.md) · [Paper contents](README.md) · [Next: uncertainty →](08-uncertainty.md)
+[← 6. The decision packet](06-decision-packet.md) · [Paper contents](README.md) · [Next: 8. Uncertainty →](08-uncertainty.md)
 
 One assistant interaction is a review contract: the Decision Owner works with the context, the versioned packets, the evidence, the limitations, the challenges and the action review in one place. The interaction need not be chat-only. It does not mean one model, one runtime or one failure domain. Several models, runtimes and services can sit behind the workspace, and any of them can be unavailable while the workspace is available. If the assistant model is unavailable, for example, the owner can still review from a qualified deterministic template ([chapter 10](10-degraded-operation.md)).
 
@@ -14,4 +14,4 @@ An optional specialist has bounded inputs, a defined purpose and an output contr
 
 The tradeoff is deliberate. A single review interaction asks the architecture to carry the contracts and limitations, so the owner does not have to infer them from many messages. The cost is explicit coordination and traceability. The proposed benefit is more inspectable context. No gain in speed, accuracy, cost or decision quality is claimed.
 
-[← 6. The decision packet](06-decision-packet.md) · [Paper contents](README.md) · [Next: uncertainty →](08-uncertainty.md)
+[← 6. The decision packet](06-decision-packet.md) · [Paper contents](README.md) · [Next: 8. Uncertainty →](08-uncertainty.md)
