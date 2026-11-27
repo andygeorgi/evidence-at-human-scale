@@ -5,9 +5,11 @@ decision. The approver issues the exact approval. The executor performs the acti
 registry says the policy allows it, and no one reviews or approves on the requestor's behalf.
 """
 import copy
+import itertools
 import json
 import re
 import unittest
+from pathlib import Path
 
 import support  # noqa: F401  (puts scripts/ on the path)
 
@@ -298,6 +300,144 @@ class TheReviewOfAPacketIsFoundInTheLogAsAnInstant(unittest.TestCase):
         self.assertEqual(codes_of(model), [])
         later = self.model(log={"time": "2026-11-23T16:21:00+01:00"})
         self.assertEqual(codes_of(later), ["ROLE003", "ROLE004"])
+
+
+SECOND_OWNER, SECOND_APPROVER = "person:ap-controller-02", "person:ap-approver-09"
+PACKET_V1, PACKET_V2 = "c04-PKT-0417-v1.json", "c04-PKT-0417-v2.json"
+GRANT_A, GRANT_B = "c06-GRT-APPR-0417-A-v1.json", "c06-GRT-APPR-0417-B-v1.json"
+PAIRS = (("requestor", "decision_owner"), ("requestor", "approver"), ("decision_owner", "approver"))
+
+
+def rep(target, path, value):
+    return {"target": target, "ops": [{"op": "replace", "path": path, "value": value}]}
+
+
+def decision(reviewer=CONTROLLER, issuer=CONTROLLER, together=(("decision_owner", "approver"),), owners=(CONTROLLER, SECOND_OWNER, ANALYST), approvers=(CONTROLLER, SECOND_APPROVER, ANALYST), log=None):
+    """The stored set in which packet v2 was reviewed by `reviewer` (as the packet states it and as the registry's log records it), the second approval is issued by `issuer`, and the registry names these
+    Decision Owners and approvers and lets one person hold these pairs of roles. The requestor is the analyst, as stored. `log` changes more entries of the review log: {packet: actor}."""
+    model, _ = mutate_model(support.example_model(), [rep("C04 PKT-0417 v2", "/review_version_history/actor/value", reviewer), rep("C06 GRT-APPR-0417-B v1", "/identity_principals/issuer", issuer)])
+    model.registry = copy.deepcopy(model.registry)   # the example model is shared: never change its registry in place
+    accountability = model.registry.accountability
+    accountability["roles"]["decision_owner"]["holders"] = list(owners)
+    accountability["roles"]["approver"]["holders"] = list(approvers)
+    accountability["may_hold_together"] = [list(pair) for pair in together]
+    for entry in accountability["review_log"]:
+        if entry["packet"] == "PKT-0417 v2":
+            entry["actor"] = reviewer
+        if entry["packet"] in (log or {}):
+            entry["actor"] = log[entry["packet"]]
+    return model
+
+
+def found(model, files=None):
+    """The role findings as (code, file name), in a fixed order. `files` keeps only those of the files named."""
+    return sorted((f.code, Path(f.file).name) for f in semantics.check_accountability(model) if files is None or Path(f.file).name in files)
+
+
+def pair_findings(reviewer, issuer, listed):
+    """What the policy says, written out again: the requestor is the analyst, and a pair is found when one person performs both roles in this decision and the registry does not list the pair."""
+    allowed = {frozenset(pair) for pair in listed}
+    want = []
+    if issuer == ANALYST and frozenset(("requestor", "approver")) not in allowed:
+        want.append(("ROLE002", GRANT_B))
+    if reviewer == ANALYST and frozenset(("requestor", "decision_owner")) not in allowed:
+        want.append(("ROLE009", PACKET_V2))
+    if reviewer == issuer and frozenset(("decision_owner", "approver")) not in allowed:
+        want.append(("ROLE009", GRANT_B))
+    return sorted(want)
+
+
+class OnePersonInTwoRolesOfOneDecision(unittest.TestCase):
+    """One person may hold two of the roles requestor, Decision Owner and approver in one decision only where the registry lists that pair, and each pair is a permission of its own.
+
+    The roles are the ones the decision uses: the requestor of the context that the packet is bound to, the Decision Owner who reviewed that exact packet (as the packet states it and as the registry's
+    review log records it), and the issuer of the exact approval. A person who is registered for two roles but performs one of them in the decision is not found.
+    """
+
+    FILES = {PACKET_V2, GRANT_B}
+
+    def test_a_pair_is_found_exactly_when_one_person_performs_both_roles_and_the_registry_does_not_list_the_pair(self):
+        subsets = [chosen for size in range(4) for chosen in itertools.combinations(PAIRS, size)]
+        for reviewer in (ANALYST, CONTROLLER, SECOND_OWNER):
+            for issuer in (ANALYST, CONTROLLER, SECOND_APPROVER):
+                for listed in subsets:
+                    for backwards in (False, True):
+                        together = [tuple(reversed(pair)) if backwards else pair for pair in listed]
+                        with self.subTest(reviewer=reviewer, issuer=issuer, listed=listed, written_backwards=backwards):
+                            self.assertEqual(found(decision(reviewer, issuer, together), self.FILES), pair_findings(reviewer, issuer, listed))
+
+    def test_the_stored_set_with_an_empty_policy_finds_the_controller_in_both_roles_of_each_approval(self):
+        self.assertEqual(found(decision(together=())), [("ROLE009", GRANT_A), ("ROLE009", GRANT_B)])
+
+    def test_a_person_who_is_registered_for_two_roles_but_performs_one_is_not_found(self):
+        """The controller is registered as Decision Owner and as approver and the policy lists no pair, but another person reviewed and a third approved."""
+        self.assertEqual(found(decision(SECOND_OWNER, SECOND_APPROVER, together=()), self.FILES), [])
+        self.assertEqual(found(decision(CONTROLLER, SECOND_APPROVER, together=()), self.FILES), [])
+        self.assertEqual(found(decision(SECOND_OWNER, CONTROLLER, together=()), self.FILES), [])
+
+    def test_a_list_of_three_roles_is_not_a_permission_for_any_pair(self):
+        model = decision(ANALYST, ANALYST, together=[("requestor", "decision_owner", "approver")])
+        self.assertEqual(found(model, self.FILES), [("ROLE002", GRANT_B), ("ROLE009", PACKET_V2), ("ROLE009", GRANT_B)])
+
+    def test_the_order_of_the_holders_of_the_log_and_of_the_policy_does_not_change_the_findings(self):
+        """One person performs all three roles and the policy lists the two pairs with the approver, written backwards: only the requestor and Decision Owner pair is found, in every order."""
+        for owners in itertools.permutations((CONTROLLER, SECOND_OWNER, ANALYST)):
+            for approvers in itertools.permutations((CONTROLLER, SECOND_APPROVER, ANALYST)):
+                for backwards in (False, True):
+                    with self.subTest(owners=owners, approvers=approvers, log_reversed=backwards):
+                        model = decision(ANALYST, ANALYST, [("approver", "decision_owner"), ("approver", "requestor")], owners, approvers)
+                        if backwards:
+                            model.registry.accountability["review_log"].reverse()
+                        self.assertEqual(found(model), [("ROLE009", PACKET_V2)])
+
+    def test_a_review_that_only_the_log_records_is_the_decision_owner_role(self):
+        """Packet v1 was invalidated, so what it states is the invalidation. The registry's log keeps who reviewed it before."""
+        self.assertEqual(found(decision(log={"PKT-0417 v1": ANALYST})), [("ROLE009", PACKET_V1)])
+
+    def test_the_review_a_packet_states_counts_too(self):
+        """The packet names the analyst as its reviewer and the log names the controller: the log cannot confirm the packet (ROLE003), and the person who asked for the packet is named as its reviewer."""
+        model, _ = mutate_model(support.example_model(), [rep("C04 PKT-0417 v2", "/review_version_history/actor/value", ANALYST)])
+        model.registry = copy.deepcopy(model.registry)
+        model.registry.accountability["roles"]["decision_owner"]["holders"].append(ANALYST)
+        self.assertEqual(found(model), [("ROLE003", PACKET_V2), ("ROLE009", PACKET_V2)])
+
+    def test_a_reviewer_who_is_not_a_registered_decision_owner_is_not_the_decision_owner(self):
+        """That is `ROLE003`'s finding and nothing is added to it (the case CASE-ROLE-02)."""
+        model, _ = mutate_model(support.example_model(), [rep("C04 PKT-0417 v2", "/review_version_history/actor/value", ANALYST)])
+        self.assertEqual(found(model), [("ROLE003", PACKET_V2)])
+
+    def test_a_requestor_who_reviews_is_found_where_no_approval_follows(self):
+        model = decision(ANALYST, CONTROLLER)
+        model.instances = {key: inst for key, inst in model.instances.items() if key[0] not in ("C06", "C07")}
+        self.assertEqual(found(model), [("ROLE009", PACKET_V2)])
+
+    def test_a_finding_names_the_person_the_two_roles_and_the_decision(self):
+        requestor = [f for f in semantics.check_accountability(decision(ANALYST, CONTROLLER)) if f.code == "ROLE009"]
+        self.assertEqual(len(requestor), 1)
+        for part in (ANALYST, "requestor", "Decision Owner", "PKT-0417 v2", "CTX-0417 v2", "does not let one person hold the requestor and Decision Owner roles"):
+            self.assertIn(part, requestor[0].message)
+        approver = [f for f in semantics.check_accountability(decision(together=())) if f.code == "ROLE009" and Path(f.file).name == GRANT_B]
+        self.assertEqual(len(approver), 1)
+        for part in (CONTROLLER, "Decision Owner", "approver", "PKT-0417 v2", "ACT-REL-0417 v2", "CTX-0417 v2", "does not let one person hold the Decision Owner and approver roles"):
+            self.assertIn(part, approver[0].message)
+        self.assertEqual((requestor[0].location, approver[0].location), ("/review_version_history", "/identity_principals/issuer"))
+
+    def test_the_requestor_and_approver_pair_keeps_its_own_code_and_gives_the_same_context_as_the_other_pairs(self):
+        model = decision(together=[("decision_owner", "approver")], issuer=ANALYST)
+        found_002 = [f for f in semantics.check_accountability(model) if f.code == "ROLE002"]
+        self.assertEqual(len(found_002), 1)
+        self.assertTrue(found_002[0].message.startswith("%s asked for the packet and also approves the action it proposes; the registry does not let one person hold the requestor and approver roles" % ANALYST))
+        for part in ("PKT-0417 v2", "ACT-REL-0417 v2", "CTX-0417 v2"):
+            self.assertIn(part, found_002[0].message)
+
+    def test_the_executor_rules_do_not_read_the_policy(self):
+        for who, expected in (("workload:ap-assistant", ["ROLE006", "ROLE008"]), ("workload:other-executor", ["ROLE006", "ROLE007"])):
+            for together in ([], [["decision_owner", "approver"]], [list(pair) for pair in PAIRS], [["executor", "approver"], ["executor", "requestor"]]):
+                with self.subTest(who=who, together=together):
+                    model, _ = mutate_model(support.example_model(), [rep("C07 RCP-HOLD-0417 v1", "/identity_binding/executor", who)])
+                    model.registry = copy.deepcopy(model.registry)
+                    model.registry.accountability["may_hold_together"] = together
+                    self.assertEqual(sorted(f.code for f in semantics.check_accountability(model) if f.code in ("ROLE006", "ROLE007", "ROLE008")), expected)
 
 
 class TheNarrative(unittest.TestCase):
